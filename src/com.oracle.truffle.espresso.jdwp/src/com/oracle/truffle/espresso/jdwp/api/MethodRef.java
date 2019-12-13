@@ -30,7 +30,7 @@ import com.oracle.truffle.api.source.Source;
 public interface MethodRef {
 
     /**
-     * Returnes the first code index for a given line within the method
+     * Returnes the first code index for a given line within the method.
      * 
      * @param line the line number in the source code of the method
      * @return the first bci for the line
@@ -38,7 +38,7 @@ public interface MethodRef {
     long getBCIFromLine(int line);
 
     /**
-     * Returns the source for the method
+     * Returns the source for the method.
      * 
      * @return the source
      */
@@ -86,7 +86,7 @@ public interface MethodRef {
      * @param bci the code index.
      * @return line number at the code index
      */
-    int BCItoLineNumber(int bci);
+    int bciToLineNumber(int bci);
 
     /**
      * @return true if method is native, false otherwise
@@ -118,7 +118,7 @@ public interface MethodRef {
     LineNumberTableRef getLineNumberTable();
 
     /**
-     * Invokes the method on the input callee object with input arguments
+     * Invokes the method on the input callee object with input arguments.
      * 
      * @param callee guest-language object on which to execute the method
      * @param args guest-language arguments used when calling the method

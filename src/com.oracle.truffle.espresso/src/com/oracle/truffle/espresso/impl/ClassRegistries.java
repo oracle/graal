@@ -154,18 +154,18 @@ public final class ClassRegistries {
         return registry.defineKlass(type, bytes);
     }
 
-    public final BootClassRegistry getBootClassRegistry() {
+    public BootClassRegistry getBootClassRegistry() {
         return (BootClassRegistry) bootClassRegistry;
     }
 
-    public final void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
         if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
             constraints.checkConstraint(toCheck, loader1, loader2);
         }
     }
 
-    final void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
         assert !Types.isArray(type);
         if (!Types.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader);

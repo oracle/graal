@@ -70,7 +70,7 @@ import com.oracle.truffle.espresso.vm.VM;
 public final class EspressoContext {
 
     public static final int DEFAULT_STACK_SIZE = 32;
-    public static StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
+    public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
@@ -225,7 +225,11 @@ public final class EspressoContext {
         return meta;
     }
 
-    public final ReferenceQueue<StaticObject> REFERENCE_QUEUE = new ReferenceQueue<>();
+    public ReferenceQueue<StaticObject> getReferenceQueue() {
+        return referenceQueue;
+    }
+
+    private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
 
     private void spawnVM() {
 
@@ -269,7 +273,7 @@ public final class EspressoContext {
                         // so that the References are not considered active.
                         EspressoReference head;
                         do {
-                            head = (EspressoReference) REFERENCE_QUEUE.remove();
+                            head = (EspressoReference) referenceQueue.remove();
                             assert head != null;
                         } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
 
@@ -277,8 +281,9 @@ public final class EspressoContext {
                             assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
 
-                            EspressoReference prev = head, ref;
-                            while ((ref = (EspressoReference) REFERENCE_QUEUE.poll()) != null) {
+                            EspressoReference prev = head;
+                            EspressoReference ref;
+                            while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
                                 if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
                                     continue;
                                 }
@@ -518,15 +523,15 @@ public final class EspressoContext {
         this.meta = meta;
     }
 
-    public final Names getNames() {
+    public Names getNames() {
         return getLanguage().getNames();
     }
 
-    public final MethodHandleIntrinsics getMethodHandleIntrinsics() {
+    public MethodHandleIntrinsics getMethodHandleIntrinsics() {
         return methodHandleIntrinsics;
     }
 
-    public final EspressoException getStackOverflow() {
+    public EspressoException getStackOverflow() {
         return stackOverflow;
     }
 
@@ -588,10 +593,17 @@ public final class EspressoContext {
     }
 
     // region Options
+
+    // Checkstyle: stop field name check
+
     public final boolean InlineFieldAccessors;
 
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
+
+    // Checkstyle: resume field name check
+
+    // endregion Options
 
     public boolean isMainThreadCreated() {
         return mainThreadCreated;
@@ -633,6 +645,4 @@ public final class EspressoContext {
     public boolean canEnterOtherThread() {
         return contextReady;
     }
-
-    // endregion Options
 }

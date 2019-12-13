@@ -241,7 +241,7 @@ class FieldTable {
     /**
      * Greedily tries to fill the space between a parent's fields and its child.
      */
-    static class FillingSchedule {
+    static final class FillingSchedule {
         static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
 
         List<ScheduleEntry> schedule;

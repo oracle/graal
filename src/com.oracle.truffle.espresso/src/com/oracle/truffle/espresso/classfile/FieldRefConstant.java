@@ -61,7 +61,7 @@ public interface FieldRefConstant extends MemberRefConstant {
          *
          * To resolve an unresolved symbolic reference from D to a field in a class or interface C,
          * the symbolic reference to C given by the field reference must first be resolved
-         * (§5.4.3.1). Therefore, any exception that can be thrown as a result of failure of
+         * (&sect;5.4.3.1). Therefore, any exception that can be thrown as a result of failure of
          * resolution of a class or interface reference can be thrown as a result of failure of
          * field resolution. If the reference to C can be successfully resolved, an exception
          * relating to the failure of resolution of the field reference itself can be thrown.
@@ -81,12 +81,13 @@ public interface FieldRefConstant extends MemberRefConstant {
          * <ul>
          * <li>If field lookup fails, field resolution throws a NoSuchFieldError.
          * <li>Otherwise, if field lookup succeeds but the referenced field is not accessible
-         * (§5.4.4) to D, field resolution throws an IllegalAccessError.
+         * (&sect;5.4.4) to D, field resolution throws an IllegalAccessError.
          * <li>Otherwise, let < E, L1 > be the class or interface in which the referenced field is
          * actually declared and let L2 be the defining loader of D.
          * <li>Given that the type of the referenced field is Tf, let T be Tf if Tf is not an array
-         * type, and let T be the element type (§2.4) of Tf otherwise.
-         * <li>The Java Virtual Machine must impose the loading constraint that TL1 = TL2 (§5.3.4).
+         * type, and let T be the element type (&sect;2.4) of Tf otherwise.
+         * <li>The Java Virtual Machine must impose the loading constraint that TL1 = TL2
+         * (&sect;5.3.4).
          * </ul>
          */
         private static Field lookupField(Klass seed, Symbol<Name> name, Symbol<Type> type) {

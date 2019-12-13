@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.descriptors;
 
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 
 public final class Validation {
     private Validation() {
@@ -57,8 +57,8 @@ public final class Validation {
 
     /**
      * Method names are further constrained so that, with the exception of the special method names
-     * <init> and <clinit> (§2.9), they must not contain the ASCII characters < or > (that is, left
-     * angle bracket or right angle bracket).
+     * <init> and <clinit> (&sect;2.9), they must not contain the ASCII characters < or > (that is,
+     * left angle bracket or right angle bracket).
      *
      * Does not check that the byte sequence is well-formed modified-UTF8 string.
      */
@@ -81,10 +81,10 @@ public final class Validation {
 
     /**
      * For historical reasons, the syntax of binary names that appear in class file structures
-     * differs from the syntax of binary names documented in JLS §13.1. In this internal form, the
-     * ASCII periods (.) that normally separate the identifiers which make up the binary name are
-     * replaced by ASCII forward slashes (/). The identifiers themselves must be unqualified names
-     * (§4.2.2).
+     * differs from the syntax of binary names documented in JLS &sect;13.1. In this internal form,
+     * the ASCII periods (.) that normally separate the identifiers which make up the binary name
+     * are replaced by ASCII forward slashes (/). The identifiers themselves must be unqualified
+     * names (&sect;4.2.2).
      */
     public static boolean validBinaryName(ByteSequence bytes) {
         if (bytes.length() == 0) {
@@ -94,7 +94,8 @@ public final class Validation {
             return false;
         }
         int prev = 0;
-        for (int i = 0; i < bytes.length(); ++i) {
+        int i = 0;
+        while (i < bytes.length()) {
             while (i < bytes.length() && bytes.byteAt(i) != '/') {
                 ++i;
             }
@@ -102,6 +103,7 @@ public final class Validation {
                 return false;
             }
             prev = i + 1;
+            ++i;
         }
         return true;
     }
@@ -246,6 +248,6 @@ public final class Validation {
     }
 
     public static boolean validModifiedUTF8(ByteSequence bytes) {
-        return Utf8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
+        return ModifiedUtf8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
     }
 }

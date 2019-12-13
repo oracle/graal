@@ -22,7 +22,11 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.*;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
@@ -230,7 +234,7 @@ public final class RequestedJDWPEvents {
                 klass = (KlassRef) ids.fromId((int) classId);
                 String slashName = klass.getTypeAsString();
                 MethodRef method = (MethodRef) ids.fromId((int) methodId);
-                int line = method.BCItoLineNumber((int) bci);
+                int line = method.bciToLineNumber((int) bci);
 
                 LineBreakpointInfo info = new LineBreakpointInfo(filter, typeTag, classId, methodId, bci, slashName, line);
                 filter.addBreakpointInfo(info);

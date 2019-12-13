@@ -167,7 +167,7 @@ public final class Target_java_lang_Class {
         // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
         if (klass.isAnonymous()) {
             // A small improvement over HotSpot here, which uses the class identity hash code.
-            externalName += "/" + klass.getID(); // VM.JVM_IHashCode(self);
+            externalName += "/" + klass.getId(); // VM.JVM_IHashCode(self);
         }
 
         // Class names must be interned.
@@ -598,8 +598,9 @@ public final class Target_java_lang_Class {
                     }
                 }
             }
-            if (found)
+            if (found) {
                 break;
+            }
         }
 
         // TODO(peterssen): Follow HotSpot implementation described below.

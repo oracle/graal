@@ -119,7 +119,7 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
     public static final int ERRONEOUS = 99;
 
-    public final Attribute getAttribute(Symbol<Name> name) {
+    public Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
     }
 
@@ -227,7 +227,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final int getModifiers() {
+    public int getModifiers() {
         return linkedKlass.getFlags();
     }
 
@@ -258,7 +258,7 @@ public final class ObjectKlass extends Klass {
                 try {
                     /**
                      * Spec fragment: Then, initialize each final static field of C with the
-                     * constant value in its ConstantValue attribute (§4.7.2), in the order the
+                     * constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
                      * fields appear in the ClassFile structure.
                      *
                      * ...
@@ -462,7 +462,7 @@ public final class ObjectKlass extends Klass {
         return innerClasses;
     }
 
-    public final LinkedKlass getLinkedKlass() {
+    public LinkedKlass getLinkedKlass() {
         return linkedKlass;
     }
 
@@ -500,18 +500,18 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Field lookupFieldTable(int slot) {
+    public Field lookupFieldTable(int slot) {
         assert (slot >= 0 && slot < getInstanceFieldSlots());
         return fieldTable[slot];
     }
 
     @Override
-    public final Field lookupStaticFieldTable(int slot) {
+    public Field lookupStaticFieldTable(int slot) {
         assert (slot >= 0 && slot < getStaticFieldSlots());
         return staticFieldTable[slot];
     }
 
-    public final Field lookupHiddenField(Symbol<Name> name) {
+    public Field lookupHiddenField(Symbol<Name> name) {
         // Hidden fields are (usually) located at the end of the field table.
         for (int i = fieldTable.length - 1; i > 0; i--) {
             Field f = fieldTable[i];
@@ -533,12 +533,12 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Method vtableLookup(int index) {
+    public Method vtableLookup(int index) {
         assert (index >= 0) : "Undeclared virtual method";
         return vtable[index];
     }
 
-    public final Method itableLookup(Klass interfKlass, int index) {
+    public Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
         try {
             return itable[findITableIndex(interfKlass)][index];
@@ -560,15 +560,15 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    final Method[][] getItable() {
+    Method[][] getItable() {
         return itable;
     }
 
-    final ObjectKlass[] getiKlassTable() {
+    ObjectKlass[] getiKlassTable() {
         return iKlassTable;
     }
 
-    final int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
+    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
         for (int i = 0; i < vtable.length; i++) {
             Method m = vtable[i];
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
@@ -582,7 +582,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
+    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : vtable) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
@@ -595,7 +595,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
         /*
          * 2. Otherwise, if C declares a method with the name and descriptor specified by the
@@ -632,10 +632,10 @@ public final class ObjectKlass extends Klass {
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
                     if (!superM.isAbstract() && (resolved == null || !superInterf.isAssignableFrom(resolved.getDeclaringKlass()))) {
                         /*
-                         * 4. Otherwise, if the maximally-specific superinterface methods (§5.4.3.3)
-                         * of C for the name and descriptor specified by the method reference
-                         * include exactly one method that does not have its ACC_ABSTRACT flag set,
-                         * then this method is chosen and method lookup succeeds.
+                         * 4. Otherwise, if the maximally-specific superinterface methods
+                         * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
+                         * reference include exactly one method that does not have its ACC_ABSTRACT
+                         * flag set, then this method is chosen and method lookup succeeds.
                          * 
                          * Note: If there is more than one such method, we still select it, for it
                          * still complies with point 5.
@@ -665,7 +665,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         methodLookupCount.inc();
         Method method = lookupDeclaredMethod(methodName, signature);
         if (method == null) {
@@ -681,11 +681,11 @@ public final class ObjectKlass extends Klass {
         return method;
     }
 
-    public final Field[] getFieldTable() {
+    public Field[] getFieldTable() {
         return fieldTable;
     }
 
-    public final Field[] getStaticFieldTable() {
+    public Field[] getStaticFieldTable() {
         return staticFieldTable;
     }
 
@@ -779,7 +779,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public final boolean hasFinalizer() {
+    public boolean hasFinalizer() {
         return (getModifiers() & ACC_FINALIZER) != 0;
     }
 
@@ -870,7 +870,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public final int getClassModifiers() {
+    public int getClassModifiers() {
         int modifiers = computedModifiers;
         if (modifiers == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

@@ -154,7 +154,8 @@ public final class PacketStream {
     }
 
     public char readChar() {
-        int b1, b2;
+        int b1;
+        int b2;
 
         b1 = packet.data[readPosition++] & 0xff;
         b2 = packet.data[readPosition++] & 0xff;
@@ -163,38 +164,31 @@ public final class PacketStream {
     }
 
     public short readShort() {
-        int b1, b2;
-
-        b1 = packet.data[readPosition++] & 0xff;
-        b2 = packet.data[readPosition++] & 0xff;
+        int b1 = packet.data[readPosition++] & 0xff;
+        int b2 = packet.data[readPosition++] & 0xff;
 
         return (short) ((b1 << 8) + b2);
     }
 
     public int readInt() {
-        int b1, b2, b3, b4;
-
-        b1 = packet.data[readPosition++] & 0xff;
-        b2 = packet.data[readPosition++] & 0xff;
-        b3 = packet.data[readPosition++] & 0xff;
-        b4 = packet.data[readPosition++] & 0xff;
+        int b1 = packet.data[readPosition++] & 0xff;
+        int b2 = packet.data[readPosition++] & 0xff;
+        int b3 = packet.data[readPosition++] & 0xff;
+        int b4 = packet.data[readPosition++] & 0xff;
 
         return ((b1 << 24) + (b2 << 16) + (b3 << 8) + b4);
     }
 
     public long readLong() {
-        long b1, b2, b3, b4;
-        long b5, b6, b7, b8;
+        long b1 = packet.data[readPosition++] & 0xff;
+        long b2 = packet.data[readPosition++] & 0xff;
+        long b3 = packet.data[readPosition++] & 0xff;
+        long b4 = packet.data[readPosition++] & 0xff;
 
-        b1 = packet.data[readPosition++] & 0xff;
-        b2 = packet.data[readPosition++] & 0xff;
-        b3 = packet.data[readPosition++] & 0xff;
-        b4 = packet.data[readPosition++] & 0xff;
-
-        b5 = packet.data[readPosition++] & 0xff;
-        b6 = packet.data[readPosition++] & 0xff;
-        b7 = packet.data[readPosition++] & 0xff;
-        b8 = packet.data[readPosition++] & 0xff;
+        long b5 = packet.data[readPosition++] & 0xff;
+        long b6 = packet.data[readPosition++] & 0xff;
+        long b7 = packet.data[readPosition++] & 0xff;
+        long b8 = packet.data[readPosition++] & 0xff;
 
         return ((b1 << 56) + (b2 << 48) + (b3 << 40) + (b4 << 32) + (b5 << 24) + (b6 << 16) + (b7 << 8) + b8);
     }

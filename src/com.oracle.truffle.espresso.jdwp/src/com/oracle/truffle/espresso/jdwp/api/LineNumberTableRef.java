@@ -28,7 +28,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 public interface LineNumberTableRef {
 
     /**
-     * Returns all entries in the line number table
+     * Returns all entries in the line number table.
      * 
      * @return an array of EntryRef for all entries.
      */

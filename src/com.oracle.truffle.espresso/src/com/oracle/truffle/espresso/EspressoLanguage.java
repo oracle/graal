@@ -22,22 +22,20 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.meta.Local;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
-import com.oracle.truffle.espresso.nodes.QuickNode;
+import java.util.Collections;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -51,13 +49,15 @@ import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Local;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
+import com.oracle.truffle.espresso.nodes.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-
-import java.util.Collections;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
@@ -245,23 +245,23 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(final Object object) {
+    protected boolean isObjectOfLanguage(Object object) {
         return object instanceof StaticObject;
     }
 
-    public final Utf8ConstantTable getUtf8ConstantTable() {
+    public Utf8ConstantTable getUtf8ConstantTable() {
         return utf8Constants;
     }
 
-    public final Names getNames() {
+    public Names getNames() {
         return names;
     }
 
-    public final Types getTypes() {
+    public Types getTypes() {
         return types;
     }
 
-    public final Signatures getSignatures() {
+    public Signatures getSignatures() {
         return signatures;
     }
 

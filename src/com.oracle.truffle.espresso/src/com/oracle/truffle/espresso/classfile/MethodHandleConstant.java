@@ -166,7 +166,8 @@ public interface MethodHandleConstant extends PoolConstant {
                 case PUTSTATIC:
                     // If the value of the reference_kind item is 1 (REF_getField), 2
                     // (REF_getStatic), 3 (REF_putField), or 4 (REF_putStatic), then the
-                    // constant_pool entry at that index must be a CONSTANT_Fieldref_info (§4.4.2)
+                    // constant_pool entry at that index must be a CONSTANT_Fieldref_info
+                    // (&sect;4.4.2)
                     // structure representing a field for which a method handle is to be created.
                     valid = (tag == Tag.FIELD_REF);
                     break;
@@ -174,8 +175,8 @@ public interface MethodHandleConstant extends PoolConstant {
                 case NEWINVOKESPECIAL:
                     // If the value of the reference_kind item is 5 (REF_invokeVirtual) or 8
                     // (REF_newInvokeSpecial), then the constant_pool entry at that index must be a
-                    // CONSTANT_Methodref_info structure (§4.4.2) representing a class's method or
-                    // constructor (§2.9) for which a method handle is to be created.
+                    // CONSTANT_Methodref_info structure (&sect;4.4.2) representing a class's method
+                    // or constructor (&sect;2.9) for which a method handle is to be created.
                     valid = tag == Tag.METHOD_REF;
                     break;
                 case INVOKESTATIC: // fall-through
@@ -186,8 +187,8 @@ public interface MethodHandleConstant extends PoolConstant {
                     // structure representing a class's method for which a method handle is to be
                     // created; if the class file version number is 52.0 or above, the constant_pool
                     // entry at that index must be either a CONSTANT_Methodref_info structure or a
-                    // CONSTANT_InterfaceMethodref_info structure (§4.4.2) representing a class's or
-                    // interface's method for which a method handle is to be created.
+                    // CONSTANT_InterfaceMethodref_info structure (&sect;4.4.2) representing a
+                    // class's or interface's method for which a method handle is to be created.
                     valid = (tag == Tag.METHOD_REF) ||
                                     (pool.getMajorVersion() >= ClassfileParser.JAVA_8_VERSION && tag == Tag.INTERFACE_METHOD_REF);
                     break;

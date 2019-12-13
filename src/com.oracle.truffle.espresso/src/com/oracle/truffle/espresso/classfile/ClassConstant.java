@@ -77,15 +77,15 @@ public interface ClassConstant extends PoolConstant {
          * N, the following steps are performed:
          * <ol>
          * <li>The defining class loader of D is used to create a class or interface denoted by N.
-         * This class or interface is C. The details of the process are given in §5.3. <b>Any
+         * This class or interface is C. The details of the process are given in &sect;5.3. <b>Any
          * exception that can be thrown as a result of failure of class or interface creation can
          * thus be thrown as a result of failure of class and interface resolution.</b>
          * <li>If C is an array class and its element type is a reference type, then a symbolic
          * reference to the class or interface representing the element type is resolved by invoking
-         * the algorithm in §5.4.3.1 recursively.
+         * the algorithm in &sect;5.4.3.1 recursively.
          * <li>Finally, access permissions to C are checked.
          * <ul>
-         * <li><b>If C is not accessible (§5.4.4) to D, class or interface resolution throws an
+         * <li><b>If C is not accessible (&sect;5.4.4) to D, class or interface resolution throws an
          * IllegalAccessError.</b> This condition can occur, for example, if C is a class that was
          * originally declared to be public but was changed to be non-public after D was compiled.
          * </ul>

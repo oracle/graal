@@ -185,7 +185,7 @@ public final class DebuggerConnection implements Commands {
         // waking up the main Espresso startup thread
         private static final int GRACE_PERIOD = 100;
 
-        public JDWPTransportThread(boolean suspend) {
+        JDWPTransportThread(boolean suspend) {
             this.started = !suspend;
         }
 

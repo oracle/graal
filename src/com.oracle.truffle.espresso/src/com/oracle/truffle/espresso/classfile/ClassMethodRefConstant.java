@@ -54,11 +54,11 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * <h3>5.4.3.3. Method Resolution</h3>
          *
          * To resolve an unresolved symbolic reference from D to a method in a class C, the symbolic
-         * reference to C given by the method reference is first resolved (§5.4.3.1). Therefore, any
-         * exception that can be thrown as a result of failure of resolution of a class reference
-         * can be thrown as a result of failure of method resolution. If the reference to C can be
-         * successfully resolved, exceptions relating to the resolution of the method reference
-         * itself can be thrown.
+         * reference to C given by the method reference is first resolved (&sect;5.4.3.1).
+         * Therefore, any exception that can be thrown as a result of failure of resolution of a
+         * class reference can be thrown as a result of failure of method resolution. If the
+         * reference to C can be successfully resolved, exceptions relating to the resolution of the
+         * method reference itself can be thrown.
          *
          * When resolving a method reference:
          * <ol>
@@ -70,8 +70,8 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * <ul>
          *
          * <li>If C declares exactly one method with the name specified by the method reference, and
-         * the declaration is a signature polymorphic method (§2.9), then method lookup succeeds.
-         * All the class names mentioned in the descriptor are resolved (§5.4.3.1).
+         * the declaration is a signature polymorphic method (&sect;2.9), then method lookup
+         * succeeds. All the class names mentioned in the descriptor are resolved (&sect;5.4.3.1).
          *
          * <li>The resolved method is the signature polymorphic method declaration. It is not
          * necessary for C to declare a method with the descriptor specified by the method
@@ -118,7 +118,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * <li>If method lookup fails, method resolution throws a NoSuchMethodError.
          *
          * <li>Otherwise, if method lookup succeeds and the referenced method is not accessible
-         * (§5.4.4) to D, method resolution throws an IllegalAccessError.
+         * (&sect;5.4.4) to D, method resolution throws an IllegalAccessError.
          *
          * Otherwise, let < E, L1 > be the class or interface in which the referenced method m is
          * actually declared, and let L2 be the defining loader of D.
@@ -126,21 +126,21 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * Given that the return type of m is Tr, and that the formal parameter types of m are Tf1,
          * ..., Tfn, then:
          *
-         * If Tr is not an array type, let T0 be Tr; otherwise, let T0 be the element type (§2.4) of
-         * Tr.
+         * If Tr is not an array type, let T0 be Tr; otherwise, let T0 be the element type
+         * (&sect;2.4) of Tr.
          *
          * For i = 1 to n: If Tfi is not an array type, let Ti be Tfi; otherwise, let Ti be the
-         * element type (§2.4) of Tfi.
+         * element type (&sect;2.4) of Tfi.
          *
          * The Java Virtual Machine must impose the loading constraints TiL1 = TiL2 for i = 0 to n
-         * (§5.3.4).
+         * (&sect;5.3.4).
          * </ul>
          * When resolution searches for a method in the class's superinterfaces, the best outcome is
          * to identify a maximally-specific non-abstract method. It is possible that this method
          * will be chosen by method selection, so it is desirable to add class loader constraints
          * for it.
          *
-         * Otherwise, the result is nondeterministic. This is not new: The Java® Virtual Machine
+         * Otherwise, the result is nondeterministic. This is not new: The Java&reg; Virtual Machine
          * Specification has never identified exactly which method is chosen, and how "ties" should
          * be broken. Prior to Java SE 8, this was mostly an unobservable distinction. However,
          * beginning with Java SE 8, the set of interface methods is more heterogenous, so care must
@@ -198,7 +198,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             super.validate(pool);
             // If the name of the method of a CONSTANT_Methodref_info structure begins with a '<'
             // ('\u003c'), then the name must be the special name <init>, representing an instance
-            // initialization method (§2.9). The return type of such a method must be void.
+            // initialization method (&sect;2.9). The return type of such a method must be void.
             pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
             Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
             if (name.equals(Name.INIT)) {

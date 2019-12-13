@@ -41,7 +41,7 @@ public interface ModifiersProvider {
 
     /**
      * Since we do not have direct access to the Varargs flag, we use the transient flag (that has
-     * the same value)
+     * the same value).
      */
     default boolean isVarargs() {
         return Modifier.isTransient(getModifiers());

@@ -320,7 +320,7 @@ public final class Types {
         return isValid(type) ? type : null;
     }
 
-    public final Symbol<Type> fromName(Symbol<Name> name) {
+    public Symbol<Type> fromName(Symbol<Name> name) {
         if (name.byteAt(0) == '[') {
             // TODO(peterssen): Verify . or / separators.
             return fromSymbol(name);
@@ -332,15 +332,16 @@ public final class Types {
         return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
     }
 
-    public final Symbol<Type> lookup(String type) {
+    public Symbol<Type> lookup(String type) {
         return symbols.lookup(checkType(type));
     }
 
     public static String getRuntimePackage(Symbol<Type> symbol) {
         String typeString = symbol.toString();
         int lastSlash = typeString.lastIndexOf('/');
-        if (lastSlash < 0)
+        if (lastSlash < 0) {
             return "";
+        }
         assert typeString.startsWith("L");
         return typeString.substring(1, lastSlash);
     }

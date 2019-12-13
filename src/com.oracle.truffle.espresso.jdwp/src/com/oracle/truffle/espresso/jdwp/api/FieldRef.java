@@ -109,7 +109,7 @@ public interface FieldRef {
     void removeFieldBreakpointInfo(int requestId);
 
     /**
-     * Determines if there are any breakpoints set on this field
+     * Determines if there are any breakpoints set on this field.
      * 
      * @return true if this field has any breakpoints, false otherwise
      */

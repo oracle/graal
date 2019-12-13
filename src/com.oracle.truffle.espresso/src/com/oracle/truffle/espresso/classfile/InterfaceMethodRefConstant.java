@@ -56,7 +56,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          *
          * To resolve an unresolved symbolic reference from D to an interface method in an interface
          * C, the symbolic reference to C given by the interface method reference is first resolved
-         * (§5.4.3.1). Therefore, any exception that can be thrown as a result of failure of
+         * (&sect;5.4.3.1). Therefore, any exception that can be thrown as a result of failure of
          * resolution of an interface reference can be thrown as a result of failure of interface
          * method resolution. If the reference to C can be successfully resolved, exceptions
          * relating to the resolution of the interface method reference itself can be thrown.
@@ -70,8 +70,8 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          * <li>Otherwise, if the class Object declares a method with the name and descriptor
          * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
          * not have its ACC_STATIC flag set, method lookup succeeds.
-         * <li>Otherwise, if the maximally-specific superinterface methods (§5.4.3.3) of C for the
-         * name and descriptor specified by the method reference include exactly one method that
+         * <li>Otherwise, if the maximally-specific superinterface methods (&sect;5.4.3.3) of C for
+         * the name and descriptor specified by the method reference include exactly one method that
          * does not have its ACC_ABSTRACT flag set, then this method is chosen and method lookup
          * succeeds.
          * <li>Otherwise, if any superinterface of C declares a method with the name and descriptor
@@ -85,18 +85,18 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          * <ul>
          * <li><b>If method lookup fails, interface method resolution throws a
          * NoSuchMethodError.</b>
-         * <li><b>If method lookup succeeds and the referenced method is not accessible (§5.4.4) to
-         * D, interface method resolution throws an IllegalAccessError.</b>
+         * <li><b>If method lookup succeeds and the referenced method is not accessible
+         * (&sect;5.4.4) to D, interface method resolution throws an IllegalAccessError.</b>
          * <li>Otherwise, let < E, L1 > be the class or interface in which the referenced interface
          * method m is actually declared, and let L2 be the defining loader of D.
          * <li>Given that the return type of m is Tr, and that the formal parameter types of m are
          * Tf1, ..., Tfn, then:
          * <li>If Tr is not an array type, let T0 be Tr; otherwise, let T0 be the element type
-         * (§2.4) of Tr.
+         * (&sect;2.4) of Tr.
          * <li>For i = 1 to n: If Tfi is not an array type, let Ti be Tfi; otherwise, let Ti be the
-         * element type (§2.4) of Tfi.
+         * element type (&sect;2.4) of Tfi.
          * <li>The Java Virtual Machine must impose the loading constraints TiL1 = TiL2 for i = 0 to
-         * n (§5.3.4).
+         * n (&sect;5.3.4).
          * </ul>
          * The clause about accessibility is necessary because interface method resolution may pick
          * a private method of interface C. (Prior to Java SE 8, the result of interface method

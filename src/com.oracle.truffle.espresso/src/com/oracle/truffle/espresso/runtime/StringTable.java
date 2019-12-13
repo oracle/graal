@@ -52,7 +52,7 @@ public final class StringTable {
         this.context = context;
     }
 
-    public final StaticObject intern(Symbol<?> value) {
+    public StaticObject intern(Symbol<?> value) {
         // Weak values? Too expensive?
         return interned.computeIfAbsent(
                         cache.computeIfAbsent(value, new Function<Symbol<?>, String>() {
@@ -77,7 +77,7 @@ public final class StringTable {
         return value.toString();
     }
 
-    public final @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
+    public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
         assert StaticObject.notNull(guestString);
         String hostString = Meta.toHostString(guestString);
         return interned.computeIfAbsent(hostString, new Function<String, StaticObject>() {

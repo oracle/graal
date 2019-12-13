@@ -42,7 +42,7 @@ class StackFrame {
     // For stackMap extraction
     int lastLocal;
 
-    StackFrame(Stack stack, Locals locals) {
+    StackFrame(OperandStack stack, Locals locals) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -50,7 +50,7 @@ class StackFrame {
         this.subroutineModificationStack = locals.subRoutineModifications;
     }
 
-    StackFrame(Stack stack, Operand[] locals) {
+    StackFrame(OperandStack stack, Operand[] locals) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -58,7 +58,7 @@ class StackFrame {
         this.subroutineModificationStack = null;
     }
 
-    StackFrame(Stack stack, Operand[] locals, SubroutineModificationStack sms) {
+    StackFrame(OperandStack stack, Operand[] locals, SubroutineModificationStack sms) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -67,7 +67,7 @@ class StackFrame {
     }
 
     StackFrame(MethodVerifier mv) {
-        this(new Stack(mv.getMaxStack()), new Locals(mv));
+        this(new OperandStack(mv.getMaxStack()), new Locals(mv));
         int last = (mv.isStatic() ? -1 : 0);
         for (int i = 0; i < mv.getSig().length - 1; i++) {
             if (isType2(locals[++last])) {
@@ -93,8 +93,8 @@ class StackFrame {
         this.subroutineModificationStack = sms;
     }
 
-    Stack extractStack(int maxStack) {
-        Stack res = new Stack(maxStack);
+    OperandStack extractStack(int maxStack) {
+        OperandStack res = new OperandStack(maxStack);
         System.arraycopy(stack, 0, res.stack, 0, top);
         res.size = stackSize;
         res.top = top;
@@ -118,13 +118,13 @@ class StackFrame {
     }
 }
 
-class Stack {
+final class OperandStack {
     final Operand[] stack;
 
     int top;
     int size;
 
-    Stack(int maxStack) {
+    OperandStack(int maxStack) {
         this.stack = new Operand[maxStack];
         this.top = 0;
         this.size = 0;
@@ -441,7 +441,7 @@ class Stack {
     }
 }
 
-class Locals {
+final class Locals {
     Operand[] registers;
 
     // Created an inherited in the verifier.
@@ -556,7 +556,7 @@ class Locals {
     }
 }
 
-class SubroutineModificationStack {
+final class SubroutineModificationStack {
     SubroutineModificationStack next;
     boolean[] subRoutineModifications;
     int jsrBCI;

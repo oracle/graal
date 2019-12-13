@@ -38,7 +38,7 @@ public abstract class MHLinkToNode extends EspressoMethodNode {
     final int argCount;
     final MethodHandleIntrinsics.PolySigIntrinsics id;
     @Child IndirectCallNode callNode;
-    private final int hidden_vmtarget;
+    private final int hiddenVmtarget;
     private final boolean hasReceiver;
 
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
@@ -46,7 +46,7 @@ public abstract class MHLinkToNode extends EspressoMethodNode {
         this.id = id;
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
         this.callNode = IndirectCallNode.create();
-        this.hidden_vmtarget = method.getMeta().HIDDEN_VMTARGET.getFieldIndex();
+        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getFieldIndex();
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         assert method.isStatic();
     }
@@ -105,11 +105,11 @@ public abstract class MHLinkToNode extends EspressoMethodNode {
         }
     }
 
-    private final Method getTarget(Object[] args) {
+    private Method getTarget(Object[] args) {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
-        Method target = (Method) memberName.getUnsafeField(hidden_vmtarget);
+        Method target = (Method) memberName.getUnsafeField(hiddenVmtarget);
         return target;
     }
 }

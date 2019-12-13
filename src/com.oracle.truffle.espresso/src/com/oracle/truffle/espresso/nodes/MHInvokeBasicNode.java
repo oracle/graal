@@ -32,7 +32,7 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
 
     private final int form;
     private final int vmentry;
-    private final int hidden_vmtarget;
+    private final int hiddenVmtarget;
     private @Child IndirectCallNode callNode;
 
     public MHInvokeBasicNode(Method method) {
@@ -41,7 +41,7 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
         Meta meta = getMeta();
         this.form = meta.MethodHandle_form.getFieldIndex();
         this.vmentry = meta.LambdaForm_vmentry.getFieldIndex();
-        this.hidden_vmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
+        this.hiddenVmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
         this.callNode = IndirectCallNode.create();
     }
 
@@ -50,7 +50,7 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
         StaticObject mh = (StaticObject) frame.getArguments()[0];
         StaticObject lform = (StaticObject) mh.getUnsafeField(form);
         StaticObject mname = (StaticObject) lform.getUnsafeField(vmentry);
-        Method target = (Method) mname.getUnsafeField(hidden_vmtarget);
+        Method target = (Method) mname.getUnsafeField(hiddenVmtarget);
         return callNode.call(target.getCallTarget(), frame.getArguments());
     }
 

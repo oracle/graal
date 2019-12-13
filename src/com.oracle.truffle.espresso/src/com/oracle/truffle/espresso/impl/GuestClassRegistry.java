@@ -60,21 +60,21 @@ public final class GuestClassRegistry extends ClassRegistry {
     private final StaticObject classLoader;
 
     // The virtual method can be cached because the receiver (classLoader) is constant.
-    private final Method ClassLoader_loadClass;
-    private final Method ClassLoader_addClass;
+    private final Method loadClass;
+    private final Method addClass;
 
     public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
         super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
-        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
+        this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
+        this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
     @Override
     public Klass loadKlassImpl(Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
+        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
         Klass klass = guestClass.getMirrorKlass();
         getRegistries().recordConstraint(type, klass, getClassLoader());
         Klass previous = classes.putIfAbsent(type, klass);
@@ -92,7 +92,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
         ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
-        ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
+        addClass.invokeDirect(classLoader, klass.mirror());
         return klass;
     }
 }

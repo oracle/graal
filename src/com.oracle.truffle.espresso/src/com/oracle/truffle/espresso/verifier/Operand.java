@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 abstract class Operand {
-    static public Operand[] EMPTY_ARRAY = new Operand[0];
+    public static final Operand[] EMPTY_ARRAY = new Operand[0];
 
     protected JavaKind kind;
 
@@ -130,7 +130,7 @@ class PrimitiveOperand extends Operand {
     }
 }
 
-class ReturnAddressOperand extends PrimitiveOperand {
+final class ReturnAddressOperand extends PrimitiveOperand {
     ArrayList<Integer> targetBCIs = new ArrayList<>();
     int subroutineBCI;
 
@@ -314,7 +314,7 @@ class ReferenceOperand extends Operand {
     }
 }
 
-class ArrayOperand extends Operand {
+final class ArrayOperand extends Operand {
     private int dimensions;
     private Operand elemental;
     private Operand component = null;
@@ -427,7 +427,7 @@ class ArrayOperand extends Operand {
     }
 }
 
-class UninitReferenceOperand extends ReferenceOperand {
+final class UninitReferenceOperand extends ReferenceOperand {
     final int newBCI;
 
     UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {

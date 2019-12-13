@@ -28,12 +28,12 @@ import java.io.IOException;
  * A class that represents a JDWP packet. Code copied from com.sun.tools.jdi.Packet
  */
 public final class Packet {
-    public final static short NoFlags = 0x0;
-    public final static short Reply = 0x80;
-    public final static short ReplyNoError = 0x0;
+    public static final short NoFlags = 0x0;
+    public static final short Reply = 0x80;
+    public static final short ReplyNoError = 0x0;
 
     static int uID = 1;
-    final static byte[] nullData = new byte[0];
+    static final byte[] nullData = new byte[0];
 
     // Note! flags, cmdSet, and cmd are all byte values.
     // We represent them as shorts to make them easier
@@ -51,7 +51,7 @@ public final class Packet {
      */
     public byte[] toByteArray() {
         int len = data.length + 11;
-        byte b[] = new byte[len];
+        byte[] b = new byte[len];
         b[0] = (byte) ((len >>> 24) & 0xff);
         b[1] = (byte) ((len >>> 16) & 0xff);
         b[2] = (byte) ((len >>> 8) & 0xff);
@@ -80,7 +80,7 @@ public final class Packet {
      * @return a packet created from the input byte array
      * @throws IOException
      */
-    public static Packet fromByteArray(byte b[]) throws IOException, ConnectionClosedException {
+    public static Packet fromByteArray(byte[] b) throws IOException, ConnectionClosedException {
         if (b.length < 11) {
             if (Thread.currentThread().isInterrupted()) {
                 throw new ConnectionClosedException();
@@ -130,7 +130,7 @@ public final class Packet {
         data = nullData;
     }
 
-    static synchronized private int uniqID() {
+    private static synchronized int uniqID() {
         /*
          * JDWP spec does not require this id to be sequential and increasing, but our
          * implementation does. See VirtualMachine.notifySuspend, for example.

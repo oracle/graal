@@ -30,7 +30,7 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 import sun.misc.VM;
@@ -85,11 +85,11 @@ public final class Symbol<T> extends ByteSequence {
         return EMPTY_ARRAY;
     }
 
-    final ByteSequence substring(int from) {
+    ByteSequence substring(int from) {
         return substring(from, length());
     }
 
-    final ByteSequence substring(int from, int to) {
+    ByteSequence substring(int from, int to) {
         assert 0 <= from && from <= to && to <= length();
         if (from == 0 && to == length()) {
             return this;
@@ -102,26 +102,26 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     @Override
-    public final byte byteAt(int index) {
+    public byte byteAt(int index) {
         return value[index];
     }
 
     @Override
-    public final String toString() {
+    public String toString() {
         try {
-            return Utf8.toJavaString(value);
+            return ModifiedUtf8.toJavaString(value);
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
 
     @Override
-    public final int length() {
+    public int length() {
         return value.length;
     }
 
     @Override
-    public final int offset() {
+    public int offset() {
         return 0;
     }
 
