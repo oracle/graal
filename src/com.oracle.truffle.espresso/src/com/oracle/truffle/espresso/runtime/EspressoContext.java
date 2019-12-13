@@ -34,19 +34,13 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleFile;
-
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -62,10 +56,14 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.jdwp.api.VMListener;
+import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
