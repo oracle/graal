@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -43,9 +44,15 @@ final class EventContextObject implements TruffleObject {
         this.context = context;
     }
 
-    RuntimeException rethrow(Exception ex) {
-        if (ex instanceof TruffleException && ex instanceof RuntimeException) {
-            return context.createError((RuntimeException) ex);
+    RuntimeException wrap(Object target, int arity, InteropException ex) {
+        IllegalStateException ill = new IllegalStateException("Cannot invoke " + target + " with " + arity + " arguments: " + ex.getMessage());
+        ill.initCause(ex);
+        return context.createError(ill);
+    }
+
+    RuntimeException rethrow(RuntimeException ex) {
+        if (ex instanceof TruffleException) {
+            return context.createError(ex);
         }
         throw AgentException.raise(ex);
     }
