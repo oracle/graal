@@ -32,11 +32,12 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 /**
- * This annotation is similar to {@link CFunction} but not public API.
+ * This annotation is used to override or extend the behavior of {@link CFunction}. Must only be
+ * used on methods that are annotated with {@link CFunction}.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface InternalCFunction {
+public @interface CFunctionOptions {
     /**
      * Describes the thread state transition performed when the C function is invoked.
      */
@@ -51,13 +52,8 @@ public @interface InternalCFunction {
     }
 
     /**
-     * The symbol name to use to link this method. If no value is specified, the name of the method
-     * (without name mangling or a class name prefix) is used.
-     */
-    String value() default "";
-
-    /**
-     * The Java-to-C thread transition code used when calling the function.
+     * The Java-to-C thread transition code used when calling the C function. Overrides the
+     * transition that is set via the {@link CFunction} annotation.
      */
     Transition transition();
 }

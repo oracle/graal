@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -60,10 +59,8 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     private Class<?> getAnnotationClass() {
         if (original.getAnnotation(CFunction.class) != null) {
             return CFunction.class;
-        } else if (original.getAnnotation(InternalCFunction.class) != null) {
-            return InternalCFunction.class;
         } else {
-            throw VMError.shouldNotReachHere("Method is neither annotated with @" + CFunction.class.getSimpleName() + " nor with @" + InternalCFunction.class.getSimpleName());
+            throw VMError.shouldNotReachHere("Method is not annotated with @" + CFunction.class.getSimpleName());
         }
     }
 

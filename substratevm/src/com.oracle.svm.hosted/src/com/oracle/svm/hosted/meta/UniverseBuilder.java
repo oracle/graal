@@ -66,7 +66,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
-import com.oracle.svm.core.c.function.InternalCFunction;
+import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -264,10 +264,17 @@ public class UniverseBuilder {
         assert !hUniverse.methods.containsKey(aMethod);
         hUniverse.methods.put(aMethod, sMethod);
 
-        if (aMethod.getAnnotation(CFunction.class) != null || aMethod.getAnnotation(InternalCFunction.class) != null) {
+        boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
+        boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
+        if (hasCFunctionOptions && !isCFunction) {
+            unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
+                            "Method annotated with @" + CFunctionOptions.class.getSimpleName() + " must also be annotated with @" + CFunction.class);
+        }
+
+        if (isCFunction) {
             if (!aMethod.isNative()) {
                 unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
-                                "Method annotated with @" + CFunction.class.getSimpleName() + " or @" + InternalCFunction.class.getSimpleName() + " must be declared native");
+                                "Method annotated with @" + CFunction.class.getSimpleName() + " must be declared native");
             }
         } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, AnnotationSubstitutionProcessor.deleteErrorMessage(aMethod, DeletedMethod.NATIVE_MESSAGE, true));

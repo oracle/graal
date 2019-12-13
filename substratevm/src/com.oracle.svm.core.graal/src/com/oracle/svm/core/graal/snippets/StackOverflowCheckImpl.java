@@ -66,7 +66,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
-import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -247,7 +246,7 @@ final class InsertStackOverflowCheckPhase extends Phase {
              */
             return;
 
-        } else if (graph.method().getAnnotation(CFunction.class) != null || graph.method().getAnnotation(InternalCFunction.class) != null) {
+        } else if (graph.method().getAnnotation(CFunction.class) != null) {
             /*
              * We are leaving Java code. C code (and the transitioning frame to C code) can run in
              * the red zone of the stack. This avoids reporting a StackOverflowError at a strange

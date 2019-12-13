@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
@@ -76,12 +75,6 @@ public final class CFunctionLinkages {
         if (cFunctionAnnotation != null) {
             return cFunctionAnnotation.value();
         }
-
-        InternalCFunction internalCFunctionAnnotation = method.getAnnotation(InternalCFunction.class);
-        if (internalCFunctionAnnotation != null) {
-            return internalCFunctionAnnotation.value();
-        }
-
         return null;
     }
 }

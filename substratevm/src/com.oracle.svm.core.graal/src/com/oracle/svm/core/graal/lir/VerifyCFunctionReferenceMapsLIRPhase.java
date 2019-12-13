@@ -130,7 +130,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
              * also capture the debugger state.
              */
             if (states.size() < expectedFrameStates()) {
-                throw VMError.shouldNotReachHere("Expected at least 2 instructions with states, but found " + states.size());
+                throw VMError.shouldNotReachHere("Expected at least " + expectedFrameStates() + " instructions with states, but found " + states.size());
             }
 
             /*

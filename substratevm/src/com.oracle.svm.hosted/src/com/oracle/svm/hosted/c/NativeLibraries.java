@@ -62,7 +62,6 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
@@ -228,7 +227,7 @@ public final class NativeLibraries {
             /* Nothing to do, all elements in context are ignored. */
         } else if (method.getAnnotation(CConstant.class) != null) {
             context.appendConstantAccessor(method);
-        } else if (method.getAnnotation(CFunction.class) != null || method.getAnnotation(InternalCFunction.class) != null) {
+        } else if (method.getAnnotation(CFunction.class) != null) {
             /* Nothing to do, handled elsewhere but the NativeCodeContext above is important. */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);

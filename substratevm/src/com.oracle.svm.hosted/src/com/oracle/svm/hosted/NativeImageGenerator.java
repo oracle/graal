@@ -156,7 +156,6 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.code.RuntimeCodeCache;
-import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -1472,9 +1471,6 @@ public class NativeImageGenerator {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
-            nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
-        }
-        for (Method method : loader.findAnnotatedMethods(InternalCFunction.class)) {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class, false)) {

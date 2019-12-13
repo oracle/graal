@@ -41,7 +41,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.InternalCFunction;
+import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
@@ -519,7 +519,7 @@ public abstract class VMThreads {
         public static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
         /** The thread is running in native code. */
         public static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
-        /** The thread is running in native code. */
+        /** The thread is running in trusted native code that was linked into the image. */
         public static final int STATUS_IN_VM = STATUS_IN_NATIVE + 1;
         private static final int MAX_STATUS = STATUS_IN_VM;
 
@@ -670,7 +670,7 @@ public abstract class VMThreads {
             }
         }
 
-        public static int getNewThreadStatus(InternalCFunction.Transition transition) {
+        public static int getNewThreadStatus(CFunctionOptions.Transition transition) {
             switch (transition) {
                 case TO_VM:
                     return StatusSupport.STATUS_IN_VM;

@@ -383,7 +383,7 @@ public final class Safepoint {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean fastTransitionNativeToVM() {
+    public static boolean tryFastTransitionNativeToVM() {
         return StatusSupport.compareAndSetNativeToNewStatus(StatusSupport.STATUS_IN_VM);
     }
 
