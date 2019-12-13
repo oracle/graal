@@ -102,7 +102,7 @@ public abstract class BuiltinModule {
     protected int defineTable(WasmContext context, WasmModule module, String tableName, int initSize, int maxSize, byte type) {
         Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
         module.symbolTable().allocateTable(context, initSize, maxSize);
-        module.symbolTable().exportTable(tableName);
+        module.symbolTable().exportTable(context, tableName);
         return 0;
     }
 

@@ -586,7 +586,8 @@ public class SymbolTable {
     void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
         checkNotLinked();
         validateSingleTable();
-        context.linker().importTable(context, module, moduleName, tableName, initSize, maxSize);
+        importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
+        context.linker().resolveTableImport(context, module, importedTableDescriptor, initSize, maxSize);
     }
 
     private void validateSingleTable() {
@@ -602,7 +603,7 @@ public class SymbolTable {
         return importedTableDescriptor != null || table != null;
     }
 
-    public void exportTable(String name) {
+    public void exportTable(WasmContext context, String name) {
         checkNotLinked();
         if (exportedTable != null) {
             throw new WasmException("A table has been already exported from this module.");
@@ -611,14 +612,11 @@ public class SymbolTable {
             throw new WasmException("No table has been declared or imported, so a table cannot be exported.");
         }
         exportedTable = name;
+        context.linker().resolveTableExport(module, exportedTable);
     }
 
     public Table table() {
         return table;
-    }
-
-    int tableCount() {
-        return tableExists() ? 1 : 0;
     }
 
     void setTable(Table table) {
@@ -626,7 +624,11 @@ public class SymbolTable {
         this.table = table;
     }
 
-    public ImportDescriptor importedTable() {
+    int tableCount() {
+        return tableExists() ? 1 : 0;
+    }
+
+    ImportDescriptor importedTable() {
         return importedTableDescriptor;
     }
 
@@ -650,7 +652,7 @@ public class SymbolTable {
         checkNotLinked();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);
-        context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize, wasmMemory -> memory = wasmMemory);
+        context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize);
     }
 
     private void validateSingleMemory() {
@@ -682,7 +684,12 @@ public class SymbolTable {
         return memory;
     }
 
-    public int memoryCount() {
+    public void setMemory(WasmMemory memory) {
+        checkNotLinked();
+        this.memory = memory;
+    }
+
+    int memoryCount() {
         return memoryExists() ? 1 : 0;
     }
 
