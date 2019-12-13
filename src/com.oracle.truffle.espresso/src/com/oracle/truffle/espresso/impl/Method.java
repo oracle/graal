@@ -37,7 +37,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -78,8 +77,8 @@ import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.HandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -404,7 +403,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                  *
                                  * Redundant callTarget assignment. Better sure than sorry.
                                  */
-                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature(), declaringKlass).getCallTarget();
+                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                                 throw getMeta().throwEx(UnsatisfiedLinkError.class);
@@ -662,8 +661,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // Polymorphic signature method 'creation'
 
-    Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoMethodNode> baseNodeFactory, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, baseNodeFactory, id);
+    Method findIntrinsic(Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
+        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, id);
     }
 
     void setVTableIndex(int i) {
@@ -694,14 +693,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isVirtualCall() {
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
-    }
-
-    public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature, Function<Method, EspressoMethodNode> baseNodeFactory) {
-        assert (declaringKlass == getMeta().MethodHandle);
-        Method method = new Method(declaringKlass, linkedMethod, polymorphicRawSignature);
-        EspressoRootNode rootNode = EspressoRootNode.create(null, baseNodeFactory.apply(method));
-        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        return method;
     }
 
     public void setPoisonPill() {
@@ -839,6 +830,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         for (Symbol<Type> type : getParsedSignature()) {
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
         }
+    }
+
+    // Spawns a placeholder method for MH intrinsics
+    public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
+        assert isMethodHandleIntrinsic();
+        return new Method(declaringKlass, linkedMethod, polymorphicRawSignature);
+    }
+
+    public HandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
+        assert isMethodHandleIntrinsic();
+        return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
     }
 
     // region jdwp-specific

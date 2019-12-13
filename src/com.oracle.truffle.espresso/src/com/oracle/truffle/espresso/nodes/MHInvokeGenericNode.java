@@ -22,12 +22,16 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class MHInvokeGenericNode extends EspressoMethodNode {
+public class MHInvokeGenericNode extends HandleIntrinsicNode {
     private final StaticObject appendix;
     @Child private DirectCallNode callNode;
 
@@ -39,12 +43,22 @@ public class MHInvokeGenericNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
+    public Object call(Object[] args) {
         // The quick node gave us the room to append the appendix.
         assert args[args.length - 1] == null;
         args[args.length - 1] = appendix;
         return callNode.call(args);
     }
 
+    public static MHInvokeGenericNode create(Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature, Meta meta) {
+        Klass callerKlass = accessingKlass == null ? meta.Object : accessingKlass;
+        StaticObject appendixBox = StaticObject.createArray(meta.Object_array, new Object[1]);
+        StaticObject memberName = (StaticObject) meta.MethodHandleNatives_linkMethod.invokeDirect(
+                        null,
+                        callerKlass.mirror(), (int) REF_invokeVirtual,
+                        meta.MethodHandle.mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
+                        appendixBox);
+        StaticObject appendix = appendixBox.get(0);
+        return new MHInvokeGenericNode(method, memberName, appendix);
+    }
 }

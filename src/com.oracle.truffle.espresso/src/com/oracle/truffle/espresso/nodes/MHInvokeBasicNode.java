@@ -22,13 +22,12 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class MHInvokeBasicNode extends EspressoMethodNode {
+public final class MHInvokeBasicNode extends HandleIntrinsicNode {
 
     private final int form;
     private final int vmentry;
@@ -37,7 +36,6 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
 
     public MHInvokeBasicNode(Method method) {
         super(method);
-
         Meta meta = getMeta();
         this.form = meta.MethodHandle_form.getFieldIndex();
         this.vmentry = meta.LambdaForm_vmentry.getFieldIndex();
@@ -46,12 +44,11 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        StaticObject mh = (StaticObject) frame.getArguments()[0];
+    public Object call(Object[] args) {
+        StaticObject mh = (StaticObject) args[0];
         StaticObject lform = (StaticObject) mh.getUnsafeField(form);
         StaticObject mname = (StaticObject) lform.getUnsafeField(vmentry);
         Method target = (Method) mname.getUnsafeField(hiddenVmtarget);
-        return callNode.call(target.getCallTarget(), frame.getArguments());
+        return callNode.call(target.getCallTarget(), args);
     }
-
 }

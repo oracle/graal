@@ -26,7 +26,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -34,12 +33,35 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
+import com.oracle.truffle.espresso.nodes.HandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeBasicNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.MHLinkToNode;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
+
+    public HandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
+        PolySigIntrinsics id = getId(method);
+        switch (id) {
+            case InvokeBasic:
+                return new MHInvokeBasicNode(method);
+            case InvokeGeneric:
+                return MHInvokeGenericNode.create(accessingKlass, method, methodName, signature, getMeta());
+            case LinkToVirtual:
+            case LinkToStatic:
+            case LinkToSpecial:
+            case LinkToInterface:
+                return MHLinkToNode.create(method, id);
+            default:
+                throw EspressoError.shouldNotReachHere("unrecognized intrinsic polymorphic method: " + method);
+
+        }
+    }
+
     public enum PolySigIntrinsics {
         None(0),
         InvokeGeneric(1),
@@ -91,6 +113,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     public static PolySigIntrinsics getId(Method m) {
+        assert m.getDeclaringKlass() == m.getMeta().MethodHandle;
         Symbol<Name> name = m.getName();
         if (name == Name.linkToStatic) {
             return PolySigIntrinsics.LinkToStatic;
@@ -159,14 +182,14 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return context;
     }
 
-    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, Function<Method, EspressoMethodNode> baseNodeFactory, PolySigIntrinsics id) {
+    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, PolySigIntrinsics id) {
         ConcurrentHashMap<Symbol<Signature>, Method> intrinsics = getIntrinsicMap(id, thisMethod);
         Method method = intrinsics.get(signature);
         if (method != null) {
             return method;
         }
         CompilerAsserts.neverPartOfCompilation();
-        method = thisMethod.createIntrinsic(signature, baseNodeFactory);
+        method = thisMethod.createIntrinsic(signature);
         Method previous = intrinsics.putIfAbsent(signature, method);
         if (previous != null) {
             return previous;

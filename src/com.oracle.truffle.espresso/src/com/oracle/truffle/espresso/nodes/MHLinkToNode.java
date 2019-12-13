@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -34,7 +33,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class MHLinkToNode extends EspressoMethodNode {
+public abstract class MHLinkToNode extends HandleIntrinsicNode {
     final int argCount;
     final MethodHandleIntrinsics.PolySigIntrinsics id;
     @Child IndirectCallNode callNode;
@@ -52,10 +51,11 @@ public abstract class MHLinkToNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Method target = getTarget(frame.getArguments());
-        Object[] args = unbasic(frame.getArguments(), target.getParsedSignature(), 0, argCount - 1, hasReceiver);
-        return rebasic(linkTo(target, args), target.getReturnKind());
+    public Object call(Object[] args) {
+        assert (getMethod().isStatic());
+        Method target = getTarget(args);
+        Object[] basicArgs = unbasic(args, target.getParsedSignature(), 0, argCount - 1, hasReceiver);
+        return rebasic(linkTo(target, basicArgs), target.getReturnKind());
     }
 
     protected abstract Object linkTo(Method target, Object[] args);

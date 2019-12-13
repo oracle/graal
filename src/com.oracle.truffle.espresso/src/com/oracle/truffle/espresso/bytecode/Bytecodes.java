@@ -255,7 +255,7 @@ public final class Bytecodes {
 
     // Espresso quickened bytecodes.
     public static final int QUICK                = 203; // 0xCB
-
+    
     public static final int ILLEGAL = 255;
     public static final int END = 256;
     // @formatter:on
