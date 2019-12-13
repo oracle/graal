@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeOf;
+import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
@@ -40,11 +40,11 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;

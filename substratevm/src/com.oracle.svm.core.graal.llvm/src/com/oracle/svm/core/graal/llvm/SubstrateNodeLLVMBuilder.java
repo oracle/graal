@@ -52,8 +52,8 @@ import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
