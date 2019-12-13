@@ -142,13 +142,13 @@ public class BinaryParser extends BinaryStreamParser {
                     readStartSection();
                     break;
                 case Section.ELEMENT:
-                    readElementSection();
+                    readElementSection(context);
                     break;
                 case Section.CODE:
                     readCodeSection(context);
                     break;
                 case Section.DATA:
-                    readDataSection();
+                    readDataSection(context);
                     break;
                 default:
                     Assert.fail("invalid section ID: " + sectionID);
@@ -1000,8 +1000,7 @@ public class BinaryParser extends BinaryStreamParser {
         return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer);
     }
 
-    private void readElementSection() {
-        final WasmContext context = WasmLanguage.getCurrentContext();
+    private void readElementSection(WasmContext context) {
         int numElements = readVectorLength();
         for (int i = 0; i != numElements; ++i) {
             int tableIndex = readUnsignedInt32();
@@ -1009,11 +1008,12 @@ public class BinaryParser extends BinaryStreamParser {
             // table index is 0.
             Assert.assertIntEqual(tableIndex, 0, "Invalid table index");
 
-            // Read the offset expression.
-            byte instruction = read1();
             // Table offset expression must be a constant expression with result type i32.
             // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+
+            // Read the offset expression.
+            byte instruction = read1();
             switch (instruction) {
                 case Instructions.I32_CONST: {
                     int elementOffset = readSignedInt32();
@@ -1157,40 +1157,34 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection() {
-        final WasmContext context = WasmLanguage.getCurrentContext();
-        int numDataSections = readVectorLength();
+    private void readDataSection(WasmContext context) {
+        int numDataSegments = readVectorLength();
         boolean allDataSectionsResolved = true;
-        for (int dataSectionId = 0; dataSectionId != numDataSections; ++dataSectionId) {
+        for (int dataSegmentId = 0; dataSegmentId != numDataSegments; ++dataSegmentId) {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
             // memory index is 0.
             Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported");
             long dataOffset = 0;
-            byte instruction;
-            do {
-                instruction = read1();
+            byte instruction = read1();
 
-                // Data dataOffset expression must be a constant expression with result type i32.
-                // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
-                // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+            // Data dataOffset expression must be a constant expression with result type i32.
+            // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
+            // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
 
-                switch (instruction) {
-                    case Instructions.I32_CONST:
-                        dataOffset = readSignedInt32();
-                        break;
-                    case Instructions.GLOBAL_GET:
-                        readGlobalIndex();
-                        // TODO: Implement GLOBAL_GET case for data sections (and add tests).
-                        throw new WasmException("GLOBAL_GET in data section not implemented.");
-                        // dataOffset = module.globals().getAsInt(index);
-                        // break;
-                    case Instructions.END:
-                        break;
-                    default:
-                        Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
-                }
-            } while (instruction != Instructions.END);
+            switch (instruction) {
+                case Instructions.I32_CONST:
+                    dataOffset = readSignedInt32();
+                    readEnd();
+                    break;
+                case Instructions.GLOBAL_GET:
+                    readGlobalIndex();
+                    readEnd();
+                    // TODO: Implement GLOBAL_GET case for data sections (and add tests).
+                    throw new WasmException("GLOBAL_GET in data section not implemented.");
+                default:
+                    Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
+            }
 
             int byteLength = readVectorLength();
             long baseAddress = dataOffset;
@@ -1211,7 +1205,7 @@ public class BinaryParser extends BinaryStreamParser {
                     byte b = read1();
                     dataSegment[writeOffset] = b;
                 }
-                context.linker().resolveDataSection(module, dataSectionId, baseAddress, byteLength, dataSegment, allDataSectionsResolved);
+                context.linker().resolveDataSection(module, dataSegmentId, baseAddress, byteLength, dataSegment, allDataSectionsResolved);
                 allDataSectionsResolved = false;
             }
         }
@@ -1456,13 +1450,13 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    void resetMemoryState(boolean zeroMemory) {
+    void resetMemoryState(WasmContext context, boolean zeroMemory) {
         final WasmMemory memory = module.symbolTable().memory();
         if (memory != null && zeroMemory) {
             memory.clear();
         }
         if (tryJumpToSection(Section.DATA)) {
-            readDataSection();
+            readDataSection(context);
         }
     }
 }
