@@ -52,9 +52,11 @@ final class EventContextObject implements TruffleObject {
 
     RuntimeException rethrow(RuntimeException ex) {
         if (ex instanceof TruffleException) {
-            return context.createError(ex);
+            if (!((TruffleException) ex).isInternalError()) {
+                return context.createError(ex);
+            }
         }
-        throw AgentException.raise(ex);
+        throw ex;
     }
 
     @ExportMessage
