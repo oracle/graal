@@ -38,9 +38,9 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.HandleIntrinsicNode;
-import com.oracle.truffle.espresso.nodes.MHInvokeBasicNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeBasicNodeGen;
 import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
-import com.oracle.truffle.espresso.nodes.MHLinkToNode;
+import com.oracle.truffle.espresso.nodes.MHLinkToNodeGen;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
 
@@ -48,14 +48,14 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         PolySigIntrinsics id = getId(method);
         switch (id) {
             case InvokeBasic:
-                return new MHInvokeBasicNode(method);
+                return MHInvokeBasicNodeGen.create(method);
             case InvokeGeneric:
                 return MHInvokeGenericNode.create(accessingKlass, method, methodName, signature, getMeta());
             case LinkToVirtual:
             case LinkToStatic:
             case LinkToSpecial:
             case LinkToInterface:
-                return MHLinkToNode.create(method, id);
+                return MHLinkToNodeGen.create(method, id);
             default:
                 throw EspressoError.shouldNotReachHere("unrecognized intrinsic polymorphic method: " + method);
 
