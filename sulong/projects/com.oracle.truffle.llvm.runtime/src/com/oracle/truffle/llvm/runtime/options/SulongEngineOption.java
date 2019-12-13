@@ -156,8 +156,7 @@ public final class SulongEngineOption {
                    "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> TRACE_IR = new OptionKey<>("");
 
-    public static final String LIBRARIES_NAME = "llvm.libraries";
-    @Option(name = LIBRARIES_NAME,
+    @Option(name = "llvm.libraries",
             category = OptionCategory.USER,
             stability = OptionStability.STABLE,
             help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " +
