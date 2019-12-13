@@ -184,6 +184,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean useG1GC(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useG1GC;
+    }
+
+    @Fold
     public static boolean verifyOops(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.verifyOops;
     }
@@ -597,32 +602,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int objectAlignment(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectAlignment;
-    }
-
-    /**
-     * Calls {@link #arrayAllocationSize(int, int, int, int)} using an injected VM configuration
-     * object.
-     */
-    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
-        return arrayAllocationSize(length, headerSize, log2ElementSize, objectAlignment(INJECTED_VMCONFIG));
-    }
-
-    /**
-     * Computes the size of the memory chunk allocated for an array. This size accounts for the
-     * array header size, body size and any padding after the last element to satisfy object
-     * alignment requirements.
-     *
-     * @param length the number of elements in the array
-     * @param headerSize the size of the array header
-     * @param log2ElementSize log2 of the size of an element in the array
-     * @param alignment the {@linkplain GraalHotSpotVMConfig#objectAlignment object alignment
-     *            requirement}
-     * @return the size of the memory chunk
-     */
-    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
-        long size = ((long) length << log2ElementSize) + headerSize + (alignment - 1);
-        long mask = ~(alignment - 1);
-        return size & mask;
     }
 
     @Fold

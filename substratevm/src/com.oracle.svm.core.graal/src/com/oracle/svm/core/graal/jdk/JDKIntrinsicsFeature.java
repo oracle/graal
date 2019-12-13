@@ -52,9 +52,9 @@ final class JDKIntrinsicsFeature implements GraalFeature {
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-        for (SubstrateForeignCallDescriptor descriptor : ArraycopySnippets.FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+        ArraycopySnippets.registerForeignCalls(providers, foreignCalls);
+        SubstrateObjectCloneSnippets.registerForeignCalls(providers, foreignCalls);
+        SubstrateArraysCopyOfSnippets.registerForeignCalls(providers, foreignCalls);
     }
 
     @Override
@@ -63,6 +63,8 @@ final class JDKIntrinsicsFeature implements GraalFeature {
                     SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new ArraycopySnippets(options, factories, providers, snippetReflection, lowerings);
+        SubstrateObjectCloneSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        SubstrateArraysCopyOfSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
     }
 
     @Override

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.NumUtil.roundUp;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;

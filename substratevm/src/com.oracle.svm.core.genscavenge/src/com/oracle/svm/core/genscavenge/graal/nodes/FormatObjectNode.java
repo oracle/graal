@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.genscavenge.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
@@ -36,22 +36,22 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
-    public static final NodeClass<FormatArrayNode> TYPE = NodeClass.create(FormatArrayNode.class);
+public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
+    public static final NodeClass<FormatObjectNode> TYPE = NodeClass.create(FormatObjectNode.class);
 
     @Input protected ValueNode memory;
     @Input protected ValueNode hub;
-    @Input protected ValueNode length;
     @Input protected ValueNode rememberedSet;
-    @Input protected ValueNode unaligned;
+    @Input protected ValueNode fillContents;
+    @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned) {
+    public FormatObjectNode(ValueNode memory, ValueNode hub, ValueNode rememberedSet, ValueNode fillContents, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
-        this.length = length;
         this.rememberedSet = rememberedSet;
-        this.unaligned = unaligned;
+        this.fillContents = fillContents;
+        this.emitMemoryBarrier = emitMemoryBarrier;
     }
 
     public ValueNode getMemory() {
@@ -62,16 +62,16 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
         return hub;
     }
 
-    public ValueNode getLength() {
-        return length;
-    }
-
     public ValueNode getRememberedSet() {
         return rememberedSet;
     }
 
-    public ValueNode getUnaligned() {
-        return unaligned;
+    public ValueNode getFillContents() {
+        return fillContents;
+    }
+
+    public ValueNode getEmitMemoryBarrier() {
+        return emitMemoryBarrier;
     }
 
     @Override
