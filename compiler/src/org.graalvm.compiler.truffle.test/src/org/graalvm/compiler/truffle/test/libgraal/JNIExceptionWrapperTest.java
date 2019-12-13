@@ -53,11 +53,10 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     @Test
     public void testMergedStackTrace() throws Exception {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
         if (isSilent()) {
             testMergedStackTraceImpl();
         } else {
-            SubprocessUtil.Subprocess proc = SubprocessUtil.java(makeSilent(vmArgs), "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
+            SubprocessUtil.Subprocess proc = SubprocessUtil.java(makeSilent(getVmArgs()), "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
             int exitCode = proc.exitCode;
             if (exitCode != 0) {
                 fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
@@ -68,6 +67,12 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     private static boolean isSilent() {
         Object value = System.getProperty(String.format("graal.%s", GraalCompilerOptions.CompilationFailureAction.getName()));
         return CompilationWrapper.ExceptionAction.Silent.toString().equals(value);
+    }
+
+    private static List<String> getVmArgs() {
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+        return vmArgs;
     }
 
     private static List<String> makeSilent(List<? extends String> vmArgs) {

@@ -2288,6 +2288,17 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_TRUFFLE_OPTIONS" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.options",
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TRUFFLE_COMMON_HOTSPOT" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2333,7 +2344,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_RUNTIME",
         "GRAAL_TRUFFLE_COMMON",
-        "truffle:TRUFFLE_API",
+        "GRAAL_TRUFFLE_OPTIONS",
       ],
       "maven": False,
     },
@@ -2345,6 +2356,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_TRUFFLE_COMMON",
+        "GRAAL_TRUFFLE_OPTIONS",
         "truffle:TRUFFLE_API",
       ],
       "maven": False,
@@ -2530,6 +2542,7 @@ suite = {
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
+        "GRAAL_TRUFFLE_OPTIONS",
         "GRAAL_TRUFFLE_RUNTIME",
         "GRAAL_TRUFFLE_COMPILER",
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",

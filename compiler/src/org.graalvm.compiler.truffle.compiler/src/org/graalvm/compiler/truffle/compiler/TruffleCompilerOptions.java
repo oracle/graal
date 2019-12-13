@@ -161,10 +161,6 @@ public final class TruffleCompilerOptions {
         throw new IllegalStateException("No instance allowed.");
     }
 
-    static class Lazy {
-        static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
-    }
-
     @NativeImageReinitialize private static volatile OptionValues optionValues;
 
     private static OptionValues getInitialOptions() {
@@ -184,7 +180,7 @@ public final class TruffleCompilerOptions {
         if (options != null && options.hasBeenSet(optionKey)) {
             return options.get(optionKey);
         }
-        OptionKey<T> compilerOptionKey = (OptionKey<T>) POLYGLOT_TO_COMPILER.get(optionKey);
+        OptionKey<T> compilerOptionKey = (OptionKey<T>) Lazy.POLYGLOT_TO_COMPILER.get(optionKey);
         if (compilerOptionKey != null) {
             return getValue(compilerOptionKey);
         }
@@ -301,36 +297,41 @@ public final class TruffleCompilerOptions {
         return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
-    // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.
-    private static final EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
+    private static final class Lazy {
 
-    private static EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> initializePolyglotToGraalMapping() {
-        EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> result = EconomicMap.create(Equivalence.IDENTITY);
-        result.put(InlineAcrossTruffleBoundary, TruffleInlineAcrossTruffleBoundary);
-        result.put(TracePerformanceWarnings, TraceTrufflePerformanceWarnings);
-        result.put(PrintExpansionHistogram, PrintTruffleExpansionHistogram);
-        result.put(IterativePartialEscape, TruffleIterativePartialEscape);
-        result.put(InstrumentFilter, TruffleInstrumentFilter);
-        result.put(InstrumentationTableSize, TruffleInstrumentationTableSize);
-        result.put(MaximumGraalNodeCount, TruffleMaximumGraalNodeCount);
-        result.put(MaximumInlineNodeCount, TruffleMaximumInlineNodeCount);
-        result.put(TraceInliningDetails, TraceTruffleInliningDetails);
-        result.put(InliningPolicy, TruffleInliningPolicy);
-        result.put(InliningExpansionBudget, TruffleInliningExpansionBudget);
-        result.put(InliningInliningBudget, TruffleInliningInliningBudget);
-        result.put(InliningCutoffCountPenalty, TruffleInliningCutoffCountPenalty);
-        result.put(InliningNodeCountPenalty, TruffleInliningNodeCountPenalty);
-        result.put(InliningExpandAllProximityFactor, TruffleInliningExpandAllProximityFactor);
-        result.put(InliningExpandAllProximityBonus, TruffleInliningExpandAllProximityBonus);
-        result.put(InliningExpansionCounterPressure, TruffleInliningExpansionCounterPressure);
-        result.put(InliningInliningCounterPressure, TruffleInliningInliningCounterPressure);
-        result.put(CompilationExceptionsAreFatal, SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal);
-        result.put(PerformanceWarningsAreFatal, SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal);
-        result.put(TraceInlining, SharedTruffleCompilerOptions.TraceTruffleInlining);
-        result.put(TraceStackTraceLimit, SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit);
-        result.put(Inlining, SharedTruffleCompilerOptions.TruffleFunctionInlining);
-        result.put(InliningRecursionDepth, SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining);
-        result.put(LanguageAgnosticInlining, SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining);
-        return result;
+        static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
+
+        // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.
+        private static final EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
+
+        private static EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> initializePolyglotToGraalMapping() {
+            EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> result = EconomicMap.create(Equivalence.IDENTITY);
+            result.put(InlineAcrossTruffleBoundary, TruffleInlineAcrossTruffleBoundary);
+            result.put(TracePerformanceWarnings, TraceTrufflePerformanceWarnings);
+            result.put(PrintExpansionHistogram, PrintTruffleExpansionHistogram);
+            result.put(IterativePartialEscape, TruffleIterativePartialEscape);
+            result.put(InstrumentFilter, TruffleInstrumentFilter);
+            result.put(InstrumentationTableSize, TruffleInstrumentationTableSize);
+            result.put(MaximumGraalNodeCount, TruffleMaximumGraalNodeCount);
+            result.put(MaximumInlineNodeCount, TruffleMaximumInlineNodeCount);
+            result.put(TraceInliningDetails, TraceTruffleInliningDetails);
+            result.put(InliningPolicy, TruffleInliningPolicy);
+            result.put(InliningExpansionBudget, TruffleInliningExpansionBudget);
+            result.put(InliningInliningBudget, TruffleInliningInliningBudget);
+            result.put(InliningCutoffCountPenalty, TruffleInliningCutoffCountPenalty);
+            result.put(InliningNodeCountPenalty, TruffleInliningNodeCountPenalty);
+            result.put(InliningExpandAllProximityFactor, TruffleInliningExpandAllProximityFactor);
+            result.put(InliningExpandAllProximityBonus, TruffleInliningExpandAllProximityBonus);
+            result.put(InliningExpansionCounterPressure, TruffleInliningExpansionCounterPressure);
+            result.put(InliningInliningCounterPressure, TruffleInliningInliningCounterPressure);
+            result.put(CompilationExceptionsAreFatal, SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal);
+            result.put(PerformanceWarningsAreFatal, SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal);
+            result.put(TraceInlining, SharedTruffleCompilerOptions.TraceTruffleInlining);
+            result.put(TraceStackTraceLimit, SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit);
+            result.put(Inlining, SharedTruffleCompilerOptions.TruffleFunctionInlining);
+            result.put(InliningRecursionDepth, SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining);
+            result.put(LanguageAgnosticInlining, SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining);
+            return result;
+        }
     }
 }
