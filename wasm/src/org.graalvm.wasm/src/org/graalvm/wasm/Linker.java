@@ -314,7 +314,7 @@ public class Linker {
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
-    void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
+    void resolveDataSegment(WasmModule module, int dataSegmentId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
         Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
             WasmMemory memory = module.symbolTable().memory();
@@ -326,8 +326,8 @@ public class Linker {
             }
         };
         final ImportMemorySym importMemoryDecl = new ImportMemorySym(module.name(), module.symbolTable().importedMemory());
-        final Sym[] dependencies = priorDataSectionsResolved ? new Sym[]{importMemoryDecl} : new Sym[]{importMemoryDecl, new DataSym(module.name(), dataSectionId - 1)};
-        resolutionDag.resolveLater(new DataSym(module.name(), dataSectionId), dependencies, resolveAction);
+        final Sym[] dependencies = priorDataSectionsResolved ? new Sym[]{importMemoryDecl} : new Sym[]{importMemoryDecl, new DataSym(module.name(), dataSegmentId - 1)};
+        resolutionDag.resolveLater(new DataSym(module.name(), dataSegmentId), dependencies, resolveAction);
     }
 
     static class ResolutionDag {
@@ -514,21 +514,21 @@ public class Linker {
 
         static class DataSym extends Sym {
             final String moduleName;
-            final int dataSectionId;
+            final int dataSegmentId;
 
-            DataSym(String moduleName, int dataSectionId) {
+            DataSym(String moduleName, int dataSegmentId) {
                 this.moduleName = moduleName;
-                this.dataSectionId = dataSectionId;
+                this.dataSegmentId = dataSegmentId;
             }
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", dataSectionId, moduleName);
+                return String.format("(data %d in %s)", dataSegmentId, moduleName);
             }
 
             @Override
             public int hashCode() {
-                return moduleName.hashCode() ^ dataSectionId;
+                return moduleName.hashCode() ^ dataSegmentId;
             }
 
             @Override
@@ -537,7 +537,94 @@ public class Linker {
                     return false;
                 }
                 final DataSym that = (DataSym) object;
-                return this.dataSectionId == that.dataSectionId && this.moduleName.equals(that.moduleName);
+                return this.dataSegmentId == that.dataSegmentId && this.moduleName.equals(that.moduleName);
+            }
+        }
+
+        static class ImportTableSym extends Sym {
+            final String moduleName;
+            final ImportDescriptor importDescriptor;
+
+            ImportTableSym(String moduleName, ImportDescriptor importDescriptor) {
+                this.moduleName = moduleName;
+                this.importDescriptor = importDescriptor;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(import memory %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ImportTableSym)) {
+                    return false;
+                }
+                final ImportTableSym that = (ImportTableSym) object;
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+            }
+        }
+
+        static class ExportTableSym extends Sym {
+            final String moduleName;
+            final String tableName;
+
+            ExportTableSym(String moduleName, String tableName) {
+                this.moduleName = moduleName;
+                this.tableName = tableName;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(export memory %s from %s)", tableName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ tableName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ExportTableSym)) {
+                    return false;
+                }
+                final ExportTableSym that = (ExportTableSym) object;
+                return this.moduleName.equals(that.moduleName) && this.tableName.equals(that.tableName);
+            }
+        }
+
+        static class ElemSym extends Sym {
+            final String moduleName;
+            final int elemSegmentId;
+
+            ElemSym(String moduleName, int dataSegmentId) {
+                this.moduleName = moduleName;
+                this.elemSegmentId = dataSegmentId;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(data %d in %s)", elemSegmentId, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ elemSegmentId;
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ElemSym)) {
+                    return false;
+                }
+                final ElemSym that = (ElemSym) object;
+                return this.elemSegmentId == that.elemSegmentId && this.moduleName.equals(that.moduleName);
             }
         }
 

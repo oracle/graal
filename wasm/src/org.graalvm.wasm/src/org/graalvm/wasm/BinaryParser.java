@@ -1045,7 +1045,7 @@ public class BinaryParser extends BinaryStreamParser {
             if (table != null) {
                 // Note: we do not check if the earlier element segments were executed,
                 // and we do not try to execute the element segments in order,
-                // as we do with data sections for the memory.
+                // as we do with data sections and the memory.
                 // Instead, if any table element is written more than once, we report an error.
                 table.ensureSizeAtLeast(offset + segmentLength);
                 for (int index = 0; index != segmentLength; ++index) {
@@ -1054,6 +1054,12 @@ public class BinaryParser extends BinaryStreamParser {
                     table.set(offset + index, function);
                 }
             } else {
+                WasmFunction[] elements = new WasmFunction[segmentLength];
+                for (int index = 0; index != segmentLength; ++index) {
+                    final int functionIndex = readFunctionIndex();
+                    final WasmFunction function = symbolTable.function(functionIndex);
+                    elements[index] = function;
+                }
                 throw new WasmException("Table not resolved.");
             }
         }
@@ -1219,7 +1225,7 @@ public class BinaryParser extends BinaryStreamParser {
                     byte b = read1();
                     dataSegment[writeOffset] = b;
                 }
-                context.linker().resolveDataSection(module, dataSegmentId, baseAddress, byteLength, dataSegment, allDataSectionsResolved);
+                context.linker().resolveDataSegment(module, dataSegmentId, baseAddress, byteLength, dataSegment, allDataSectionsResolved);
                 allDataSectionsResolved = false;
             }
         }
