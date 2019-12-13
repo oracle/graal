@@ -40,8 +40,52 @@
 ;;
 (module
   (type (;0;) (func (result i32)))
-  (import "table-registry" "functiontable" (table (;0;) 10 10))
+  (type (;1;) (func (param i32) (result i32)))
+  (import "man-in-the-middle" "functiontable" (table (;0;) 6 6 funcref))
   (func (export "_main") (type 0)
+    (local i32)
+    ;; Multiply 1 by 2.
+    i32.const 0
     i32.const 1
+    call_indirect
+    local.set 0
+
+    ;; Multiply by 3.
+    i32.const 1
+    local.get 0
+    call_indirect
+    local.set 0
+
+    ;; Multiply by 4.
+    i32.const 2
+    local.get 0
+    call_indirect
+    local.set 0
+
+    ;; Add 1.
+    ;; Now we have 25.
+    i32.const 3
+    local.get 0
+    call_indirect
+    local.set 0
+
+    ;; Indirectly call multiplication by 3.
+    ;; Now we have 75.
+    i32.const 4
+    local.get 0
+    call_indirect
+    local.set 0
+
+    ;; Subtract 7.
+    ;; Result should be 68.
+    i32.const 4
+    local.get 0
+    call_indirect
   )
+  (func (type 1)
+    local.get 0
+    i32.const 7
+    i32.sub
+  )
+  (elem (;0;) (i32.const 5) 1)
 )

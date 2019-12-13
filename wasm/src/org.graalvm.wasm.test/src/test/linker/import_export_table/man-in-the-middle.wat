@@ -40,22 +40,17 @@
 ;;
 (module
   (type (;0;) (func (param i32) (result i32)))
-  (table 6 6 funcref)
+  (import "table-registry" "functiontable" (table (;0;) 6 6 funcref))
   (func (type 0)
     local.get 0
-    i32.const 2
-    i32.mul
+    i32.const 1
+    i32.add
   )
   (func (type 0)
+    i32.const 1
     local.get 0
-    i32.const 3
-    i32.mul
-  )
-  (func (type 0)
-    local.get 0
-    i32.const 4
-    i32.mul
+    call_indirect
   )
   (export "functiontable" (table 0))
-  (elem (;0;) (i32.const 0) 0 1 2)
+  (elem (;0;) (i32.const 3) 0 1)
 )
