@@ -5,13 +5,14 @@ A Java bytecode interpreter at its core, turned Just-In-Time (JIT) compiler by l
 It highlights the sublime potential of the GraalVM as a platform for implementing high-performance languages and runtimes.
 
 ## Status
-Espresso is still an early prototype, but it already passes **>99.9%** of the JCK 8b runtime suite.  
+Espresso is still an early prototype, but it already passes **>99.99%** of the JCK 8b runtime suite.  
 It can run some non-trivial applications:
   - Eclipse Neon (4.6)
   - Minecraft 1.2
   - Scala REPLs (2.11-13 + Dotty)
   - Nashorn
   - Groovy REPL
+  - [Mochadoom](https://github.com/AXDOOMER/mochadoom) Doom Java port
   - [kotNES](https://github.com/suchaHassle/kotNES) NES emulator written in Kotlin
   - [coffee-gb](https://github.com/trekawek/coffee-gb) GB Color emulator
   - jEdit 5.5.0
@@ -40,13 +41,14 @@ mx unittest --suite espresso
 ### Building _Espresso_ native image
 The Espresso native image is built as part of a GraalVM, it reuses all the jars and native libraries bundled with GraalVM. 
 ```bash
-mx --env espresso.svm build
-export ESPRESSO_NATIVE=`mx --env espresso.svm graalvm-home`/bin/espresso
+mx --env native-ce build
+export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
 
 # Run HelloWorld
-time $ESPRESSO_NATIVE -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+mx build
+time $ESPRESSO -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
-Configurations files: `mx.espresso/espresso.svm` and `mx.espresso/native-image.properties`
+Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce}` and `mx.espresso/native-image.properties`
 
 ### Running _Espresso_ unit tests
 Espresso runs a sub-set of the Graal compiler tests. For performance reasons, most unit tests are executed in the same context.
@@ -55,7 +57,7 @@ mx unittest --suite espresso
 ```
 
 ## Running _Espresso_
-Use `mx espresso` which mimics `java` (8). By default `mx espresso` runs on interpreter-only mode.
+`mx espresso` mimics `java` (8). By default `mx espresso` runs on interpreter-only mode.
 ```bash
 mx espresso -help
 mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
@@ -77,7 +79,7 @@ mx espresso-playground Tetris
 mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 
 # MacOS does not support Espresso on HotSpot, use the native image instead.
-$ESPRESSO_NATIVE -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+$ESPRESSO -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
 
 ### Dumping IGV graphs
