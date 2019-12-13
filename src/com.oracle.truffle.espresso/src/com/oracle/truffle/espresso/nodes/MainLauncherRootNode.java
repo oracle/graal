@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -53,12 +55,17 @@ public class MainLauncherRootNode extends RootNode {
             // getCallTarget initializes for us.
             return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
         } catch (EspressoException e) {
-            StaticObject guestException = e.getExceptionObject();
-            guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
+            printStackTrace(e);
             return StaticObject.NULL;
         } finally {
             main.getMeta().Shutdown_shutdown.invokeDirect(null);
         }
+    }
+
+    @TruffleBoundary
+    private static void printStackTrace(EspressoException e) {
+        StaticObject guestException = e.getExceptionObject();
+        guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
     }
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
