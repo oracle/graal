@@ -459,6 +459,56 @@ $ node --experimental-options --js.print --agentscript=agent-require.js yourScri
 This initialization sequence is known to work on GraalVM's node `v12.10.0`
 launched with a main `yourScript.js` parameter.
 
+### Handling Exceptions
+
+The T-Trace agents can throw exceptions which are then propagated to the
+surrounding user scripts. Imagine you have a program `seq.js`
+logging various messages:
+
+```js
+function log(msg) {
+    print(msg);
+}
+
+log('Hello T-Trace!');
+log('How');
+log('are');
+log('You?');
+```
+
+You can register an instrument `term.js` and terminate the execution in the middle
+of the `seq.js` program execution based on observing the logged message:
+
+```js
+agent.on('enter', (ev, frame) => { 
+    if (frame.msg === 'are') {
+        throw 'great you are!';
+    }
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'log'
+});
+```
+
+The `term.js` instrument waits for a call to `log` function with message 'are'
+and at that moment it emits its own exception effectively interrupting the user
+program execution. As a result one gets:
+
+```bash
+$ js --polyglot --experimental-options --agentscript=term.js seq.js
+Hello T-Trace!
+How
+great you are!
+        at <js> :=>(term.js:3:75-97)
+        at <js> log(seq.js:1-3:18-36)
+        at <js> :program(seq.js:7:74-83)
+```
+
+The exceptions emitted by T-Trace instruments are treated as regular language
+exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... }`
+block to catch them and deal with them as if they were emitted by the regular
+user code.
+
 <!--
 
 ### TODO:
