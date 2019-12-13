@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Engine;
@@ -171,7 +172,12 @@ public final class EspressoContext {
         if (bootClasspath == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             bootClasspath = new Classpath(
-                            getVmProperties().bootClasspath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+                            getVmProperties().bootClasspath().stream().map(new Function<Path, String>() {
+                                @Override
+                                public String apply(Path path) {
+                                    return path.toString();
+                                }
+                            }).collect(Collectors.joining(File.pathSeparator)));
         }
         return bootClasspath;
     }
