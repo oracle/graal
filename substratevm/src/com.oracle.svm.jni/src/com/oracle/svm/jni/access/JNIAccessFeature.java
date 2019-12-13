@@ -190,7 +190,8 @@ public class JNIAccessFeature implements Feature {
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
         UserError.guarantee(!sealed,
-                        "All linkages for JNI calls must be created before the analysis has completed.\nOffending class: " + declaringClass + " name: " + name + " descriptor: " + descriptor + "\n");
+                        "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
+                        declaringClass, name, descriptor);
 
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 

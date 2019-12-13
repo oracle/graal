@@ -146,10 +146,12 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         }
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) declaredReturnType);
         if (typeInfo instanceof EnumInfo) {
-            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance), "Enum class " +
-                            declaredReturnType.toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class.getSimpleName() +
-                            " because it is used as the return type of a method annotated with @" + getCorrespondingAnnotationName() +
-                            ": " + getOriginal().format("%H.%n(%p)"));
+            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance),
+                            "Enum class %s needs a method that is annotated with @%s because it is used as the return type of a method annotated with @%s: %s",
+                            declaredReturnType,
+                            CEnumLookup.class.getSimpleName(),
+                            getCorrespondingAnnotationName(),
+                            getOriginal());
 
             // We take a word return type because checks expect word type replacements, but it is
             // narrowed to cEnumKind here.

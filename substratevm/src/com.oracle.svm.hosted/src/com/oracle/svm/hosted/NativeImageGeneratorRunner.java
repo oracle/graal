@@ -278,9 +278,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                          */
                         javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
                     } catch (ReflectionUtilError ex) {
-                        throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "' is declared as the main entry point but it can not be found. " +
-                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.",
-                                        ex.getCause());
+                        throw UserError.abort(ex.getCause(),
+                                        String.format("Method '%s.%s' is declared as the main entry point but it can not be found. " +
+                                                        "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
+                                                        mainClass.getName(),
+                                                        mainEntryPointName,
+                                                        mainClass.getName(),
+                                                        mainEntryPointName));
                     }
 
                     if (javaMainMethod.getReturnType() != void.class) {

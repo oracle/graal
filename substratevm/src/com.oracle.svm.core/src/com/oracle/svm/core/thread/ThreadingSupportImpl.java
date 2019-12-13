@@ -237,7 +237,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         if (callback != null) {
-            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option " + enableSupportOption);
+            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option %s", enableSupportOption);
             UserError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
