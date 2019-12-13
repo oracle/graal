@@ -43,13 +43,13 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.memory.WasmMemory;
 
-public class Memories {
+public class MemoryRegistry {
     private static final int INITIAL_MEMORIES_SIZE = 4;
 
     @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
     private int numMemories;
 
-    public Memories() {
+    public MemoryRegistry() {
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.numMemories = 0;
     }

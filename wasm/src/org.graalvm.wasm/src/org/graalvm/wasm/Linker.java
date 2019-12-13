@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.graalvm.wasm.Linker.ResolutionDag.*;
+import static org.graalvm.wasm.TableRegistry.*;
 
 public class Linker {
     private enum LinkState {
@@ -182,21 +183,21 @@ public class Linker {
         return address;
     }
 
-    void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
-        final GlobalResolution resolution = module.symbolTable().globalResolution(globalIndex);
-        if (resolution.isResolved()) {
-            int address = module.symbolTable().globalAddress(globalIndex);
-            int offset = context.globals().loadAsInt(address);
-            module.symbolTable().initializeTableWithFunctions(context, offset, contents);
-        } else {
-            // TODO: Record the contents array for later initialization - with a single module,
-            // the predefined modules will be already initialized, so we don't yet run into this
-            // case.
-            throw new WasmLinkerException("Postponed table initialization not implemented.");
-        }
-    }
+    // void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
+    //     final GlobalResolution resolution = module.symbolTable().globalResolution(globalIndex);
+    //     if (resolution.isResolved()) {
+    //         int address = module.symbolTable().globalAddress(globalIndex);
+    //         int offset = context.globals().loadAsInt(address);
+    //         module.symbolTable().initializeTableWithFunctions(context, offset, contents);
+    //     } else {
+    //         // TODO: Record the contents array for later initialization - with a single module,
+    //         // the predefined modules will be already initialized, so we don't yet run into this
+    //         // case.
+    //         throw new WasmLinkerException("Postponed table initialization not implemented.");
+    //     }
+    // }
 
-    int importTable(WasmContext context, WasmModule module, String importedModuleName, String importedTableName, int initSize, int maxSize) {
+    Table importTable(WasmContext context, WasmModule module, String importedModuleName, String importedTableName, int initSize, int maxSize) {
         final WasmModule importedModule = context.modules().get(importedModuleName);
         if (importedModule == null) {
             // TODO: Record the fact that this table was not resolved, to be able to resolve it
@@ -212,8 +213,8 @@ public class Linker {
                 throw new WasmLinkerException(String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
                                 importedModuleName, exportedTableName, module.name(), importedTableName));
             }
-            final int tableIndex = importedModule.symbolTable().tableIndex();
-            final int declaredMaxSize = context.tables().maxSizeOf(tableIndex);
+            final Table table = importedModule.symbolTable().table();
+            final int declaredMaxSize = table.maxSize();
             if (declaredMaxSize >= 0 && (initSize > declaredMaxSize || maxSize > declaredMaxSize)) {
                 // This requirement does not seem to be mentioned in the WebAssembly specification.
                 // It might be necessary to refine what maximum size means in the import-table
@@ -221,10 +222,10 @@ public class Linker {
                 throw new WasmLinkerException(String.format("The table '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
                                 importedTableName, importedModuleName, declaredMaxSize, module.name(), maxSize));
             }
-            context.tables().ensureSizeAtLeast(tableIndex, initSize);
+            table.ensureSizeAtLeast(initSize);
             module.symbolTable().setImportedTable(new ImportDescriptor(importedModuleName, importedTableName));
-            module.symbolTable().setTableIndex(tableIndex);
-            return tableIndex;
+            module.symbolTable().setTable(table);
+            return table;
         }
     }
 

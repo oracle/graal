@@ -577,15 +577,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final int tableIndex = module().symbolTable().tableIndex();
-                    final Object[] table = context.tables().table(tableIndex);
+                    final Object[] elements = module().symbolTable().table().elements();
                     final int elementIndex = popInt(frame, stackPointer);
-                    if (elementIndex < 0 || elementIndex >= table.length) {
+                    if (elementIndex < 0 || elementIndex >= elements.length) {
                         throw new WasmTrap(this, "Element index out of table bounds.");
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
-                    final WasmFunction function = (WasmFunction) table[elementIndex];
+                    final WasmFunction function = (WasmFunction) elements[elementIndex];
 
                     // Extract the function type index.
                     int expectedFunctionTypeIndex = codeEntry().longConstantAsInt(longConstantOffset);

@@ -56,6 +56,8 @@ import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
 
+import static org.graalvm.wasm.TableRegistry.*;
+
 /**
  * Contains the symbol information of a module.
  */
@@ -65,7 +67,6 @@ public class SymbolTable {
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
     private static final int GLOBAL_EXPORT_BIT = 1 << 24;
-    private static final int UNINITIALIZED_TABLE_BIT = 0x8000_0000;
 
     @CompilationFinal private WasmModule module;
 
@@ -177,9 +178,9 @@ public class SymbolTable {
      * The index of the table from the context-specific table space, which this module is using.
      *
      * In the current WebAssembly specification, a module can use at most one table. The value
-     * {@link SymbolTable#UNINITIALIZED_TABLE_BIT} denotes that this module uses no table.
+     * {@code null} denotes that this module uses no table.
      */
-    @CompilationFinal private int tableIndex;
+    @CompilationFinal private Table table;
 
     /**
      * The table used in this module.
@@ -227,7 +228,7 @@ public class SymbolTable {
         this.importedGlobals = new LinkedHashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
         this.maxGlobalIndex = -1;
-        this.tableIndex = UNINITIALIZED_TABLE_BIT;
+        this.table = null;
         this.importedTableDescriptor = null;
         this.exportedTable = null;
         this.memory = null;
@@ -579,7 +580,7 @@ public class SymbolTable {
     public void allocateTable(WasmContext context, int initSize, int maxSize) {
         checkNotLinked();
         validateSingleTable();
-        tableIndex = context.tables().allocateTable(initSize, maxSize);
+        table = context.tables().allocateTable(initSize, maxSize);
     }
 
     void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
@@ -592,13 +593,13 @@ public class SymbolTable {
         if (importedTableDescriptor != null) {
             throw new WasmException("A table has been already imported in the module.");
         }
-        if ((tableIndex & UNINITIALIZED_TABLE_BIT) == 0) {
+        if (table != null) {
             throw new WasmException("A table has been already declared in the module.");
         }
     }
 
     boolean tableExists() {
-        return importedTableDescriptor != null || (tableIndex & UNINITIALIZED_TABLE_BIT) == 0;
+        return importedTableDescriptor != null || table != null;
     }
 
     public void exportTable(String name) {
@@ -612,17 +613,17 @@ public class SymbolTable {
         exportedTable = name;
     }
 
-    public int tableIndex() {
-        return tableIndex;
+    public Table table() {
+        return table;
     }
 
     int tableCount() {
         return tableExists() ? 1 : 0;
     }
 
-    void setTableIndex(int i) {
+    void setTable(Table table) {
         checkNotLinked();
-        tableIndex = i;
+        this.table = table;
     }
 
     public ImportDescriptor importedTable() {
@@ -635,17 +636,6 @@ public class SymbolTable {
 
     String exportedTable() {
         return exportedTable;
-    }
-
-    void initializeTableWithFunctions(WasmContext context, int offset, int[] contents) {
-        checkNotLinked();
-        context.tables().ensureSizeAtLeast(tableIndex, offset + contents.length);
-        final Object[] table = context.tables().table(tableIndex);
-        for (int i = 0; i < contents.length; i++) {
-            final int functionIndex = contents[i];
-            final WasmFunction function = function(functionIndex);
-            table[offset + i] = function;
-        }
     }
 
     public WasmMemory allocateMemory(WasmContext context, int initSize, int maxSize) {

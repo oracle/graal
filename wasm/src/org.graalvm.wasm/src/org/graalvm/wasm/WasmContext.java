@@ -54,9 +54,9 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
-    private final Memories memories;
+    private final MemoryRegistry memoryRegistry;
     private final Globals globals;
-    private final Tables tables;
+    private final TableRegistry tableRegistry;
     private final Linker linker;
     private Map<String, WasmModule> modules;
 
@@ -68,8 +68,8 @@ public final class WasmContext {
         this.env = env;
         this.language = language;
         this.globals = new Globals();
-        this.tables = new Tables();
-        this.memories = new Memories();
+        this.tableRegistry = new TableRegistry();
+        this.memoryRegistry = new MemoryRegistry();
         this.modules = new HashMap<>();
         this.linker = new Linker(language);
         initializeBuiltinModules();
@@ -88,16 +88,16 @@ public final class WasmContext {
         return language;
     }
 
-    public Memories memories() {
-        return memories;
+    public MemoryRegistry memories() {
+        return memoryRegistry;
     }
 
     public Globals globals() {
         return globals;
     }
 
-    public Tables tables() {
-        return tables;
+    public TableRegistry tables() {
+        return tableRegistry;
     }
 
     public Linker linker() {
