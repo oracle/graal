@@ -79,11 +79,6 @@ public class TableRegistry {
         return tables[index];
     }
 
-    public int maxSizeOf(int index) {
-        assert index < numTables : "Table index " + index + " out of table range.";
-        return tables[index].maxSize;
-    }
-
     public static final class Table {
         private final int tableIndex;
         private final int maxSize;

@@ -73,7 +73,7 @@ public class SymbolTable {
     /**
      * Encodes the arguments and return types of each function type.
      *
-     * Given a function type index, the {@link #offsets} array indicates where the encoding for that
+     * Given a function type index, the {@link #typeOffsets} array indicates where the encoding for that
      * function type begins in this array.
      *
      * For a function type starting at index i, the encoding is the following
@@ -98,10 +98,10 @@ public class SymbolTable {
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
      */
-    @CompilationFinal(dimensions = 1) private int[] offsets;
+    @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
     @CompilationFinal private int typeDataSize;
-    @CompilationFinal private int offsetsSize;
+    @CompilationFinal private int typeOffsetsSize;
 
     /**
      * Stores the function objects for a WebAssembly module.
@@ -213,9 +213,9 @@ public class SymbolTable {
     SymbolTable(WasmModule module) {
         this.module = module;
         this.typeData = new int[INITIAL_DATA_SIZE];
-        this.offsets = new int[INITIAL_OFFSET_SIZE];
+        this.typeOffsets = new int[INITIAL_OFFSET_SIZE];
         this.typeDataSize = 0;
-        this.offsetsSize = 0;
+        this.typeOffsetsSize = 0;
         this.functions = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
@@ -270,24 +270,24 @@ public class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #offsets} array has enough space to store {@code index}. If there is
+     * Ensure that the {@link #typeOffsets} array has enough space to store {@code index}. If there is
      * no enough space, then a reallocation of the array takes place, doubling its capacity.
      *
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
      */
     private void ensureOffsetsCapacity(int index) {
-        if (offsets.length <= index) {
-            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * offsets.length);
-            offsets = reallocate(offsets, offsetsSize, newLength);
+        if (typeOffsets.length <= index) {
+            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
+            typeOffsets = reallocate(typeOffsets, typeOffsetsSize, newLength);
         }
     }
 
     int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
         checkNotLinked();
-        ensureOffsetsCapacity(offsetsSize);
-        int typeIdx = offsetsSize++;
-        offsets[typeIdx] = typeDataSize;
+        ensureOffsetsCapacity(typeOffsetsSize);
+        int typeIdx = typeOffsetsSize++;
+        typeOffsets[typeIdx] = typeDataSize;
 
         assert 0 <= numReturnTypes && numReturnTypes <= 1;
         int size = 2 + numParameterTypes + numReturnTypes;
@@ -312,13 +312,13 @@ public class SymbolTable {
 
     void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
         checkNotLinked();
-        int idx = 2 + offsets[funcTypeIdx] + paramIdx;
+        int idx = 2 + typeOffsets[funcTypeIdx] + paramIdx;
         typeData[idx] = type;
     }
 
     void registerFunctionTypeReturnType(int funcTypeIdx, int returnIdx, byte type) {
         checkNotLinked();
-        int idx = 2 + offsets[funcTypeIdx] + typeData[offsets[funcTypeIdx]] + returnIdx;
+        int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + returnIdx;
         typeData[idx] = type;
     }
 
@@ -374,20 +374,20 @@ public class SymbolTable {
     }
 
     public int functionTypeArgumentCount(int typeIndex) {
-        int typeOffset = offsets[typeIndex];
+        int typeOffset = typeOffsets[typeIndex];
         int numArgs = typeData[typeOffset + 0];
         return numArgs;
     }
 
     public byte functionTypeReturnType(int typeIndex) {
-        int typeOffset = offsets[typeIndex];
+        int typeOffset = typeOffsets[typeIndex];
         int numArgTypes = typeData[typeOffset + 0];
         int numReturnTypes = typeData[typeOffset + 1];
         return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
     }
 
     int functionTypeReturnTypeLength(int typeIndex) {
-        int typeOffset = offsets[typeIndex];
+        int typeOffset = typeOffsets[typeIndex];
         int numReturnTypes = typeData[typeOffset + 1];
         return numReturnTypes;
     }
@@ -404,12 +404,12 @@ public class SymbolTable {
     }
 
     public byte functionTypeArgumentTypeAt(int typeIndex, int i) {
-        int typeOffset = offsets[typeIndex];
+        int typeOffset = typeOffsets[typeIndex];
         return (byte) typeData[typeOffset + 2 + i];
     }
 
     public byte functionTypeReturnTypeAt(int typeIndex, int i) {
-        int typeOffset = offsets[typeIndex];
+        int typeOffset = typeOffsets[typeIndex];
         int numArgs = typeData[typeOffset];
         return (byte) typeData[typeOffset + 2 + numArgs + i];
     }

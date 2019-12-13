@@ -49,7 +49,7 @@
   (func (type 0)
     i32.const 1
     local.get 0
-    call_indirect
+    call_indirect (type 0)
   )
   (export "functiontable" (table 0))
   (elem (;0;) (i32.const 3) 0 1)

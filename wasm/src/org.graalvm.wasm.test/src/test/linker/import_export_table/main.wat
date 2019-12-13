@@ -47,40 +47,40 @@
     ;; Multiply 1 by 2.
     i32.const 0
     i32.const 1
-    call_indirect
+    call_indirect (type 1)
     local.set 0
 
     ;; Multiply by 3.
     i32.const 1
     local.get 0
-    call_indirect
+    call_indirect (type 1)
     local.set 0
 
     ;; Multiply by 4.
     i32.const 2
     local.get 0
-    call_indirect
+    call_indirect (type 1)
     local.set 0
 
     ;; Add 1.
     ;; Now we have 25.
     i32.const 3
     local.get 0
-    call_indirect
+    call_indirect (type 1)
     local.set 0
 
     ;; Indirectly call multiplication by 3.
     ;; Now we have 75.
     i32.const 4
     local.get 0
-    call_indirect
+    call_indirect (type 1)
     local.set 0
 
     ;; Subtract 7.
     ;; Result should be 68.
     i32.const 4
     local.get 0
-    call_indirect
+    call_indirect (type 1)
   )
   (func (type 1)
     local.get 0

@@ -1050,11 +1050,11 @@ public class BinaryParser extends BinaryStreamParser {
                 // Thus, the order in which the element sections are loaded is not important
                 // (also, I did not notice the toolchains overriding the same element slots,
                 // or anything in the spec about that).
-                table.ensureSizeAtLeast(offset + segmentLength);
+                table.ensureSizeAtLeast(elemOffset + segmentLength);
                 for (int index = 0; index != segmentLength; ++index) {
                     final int functionIndex = readFunctionIndex();
                     final WasmFunction function = symbolTable.function(functionIndex);
-                    table.set(offset + index, function);
+                    table.set(elemOffset + index, function);
                 }
             } else {
                 WasmFunction[] elements = new WasmFunction[segmentLength];
