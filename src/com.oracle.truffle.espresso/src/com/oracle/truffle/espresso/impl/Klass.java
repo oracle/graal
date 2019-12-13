@@ -649,9 +649,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @TruffleBoundary
     private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
                     Symbol<Signature> signature,
-                    MethodHandleIntrinsics.PolySigIntrinsics id,
+                    MethodHandleIntrinsics.PolySigIntrinsics methodHandleId,
                     Klass accessingKlass) {
-        if (id == InvokeGeneric) {
+        if (methodHandleId == InvokeGeneric) {
             return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
@@ -667,26 +667,26 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     StaticObject appendix = appendixBox.get(0);
                     return new MHInvokeGenericNode(method, memberName, appendix);
                 }
-            }, id);
-        } else if (id == InvokeBasic) {
+            }, methodHandleId);
+        } else if (methodHandleId == InvokeBasic) {
             return getMeta().invokeBasic.findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 @Override
                 public EspressoMethodNode apply(Method method) {
                     return new MHInvokeBasicNode(method);
                 }
-            }, id);
+            }, methodHandleId);
         } else {
 
             Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
-            switch (id) {
+            switch (methodHandleId) {
                 case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, methodHandleId);
                 case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, methodHandleId);
                 case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, methodHandleId);
                 case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, methodHandleId);
                 default:
                     throw EspressoError.shouldNotReachHere();
             }
