@@ -724,6 +724,7 @@ suite = {
         "bitcodeformat/hello-darwin-compile-fembed-bitcode.o",
         "bitcodeformat/hello-darwin-link-fembed-bitcode",
         "bitcodeformat/hello-darwin-link-fembed-bitcode.dylib",
+        "bitcodeformat/hello-darwin-link.bundle",
       ],
       "buildEnv": {
         "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
