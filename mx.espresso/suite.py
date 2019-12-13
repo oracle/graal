@@ -77,6 +77,7 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
+            "checkstyleVersion": "8.8",
             "checkPackagePrefix": False, # java.lang.ref.PublicFinalReference
         },
 
