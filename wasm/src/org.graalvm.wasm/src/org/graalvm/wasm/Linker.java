@@ -47,6 +47,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
+import org.graalvm.wasm.SymbolTable.FunctionType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmLinkerException;
@@ -106,6 +107,7 @@ public class Linker {
             // TODO: Once topological linking starts handling all the import kinds,
             // remove the previous loop.
             linkTopologically();
+            assignTypeEquivalenceClasses();
             for (WasmModule module : modules.values()) {
                 module.setLinked();
             }
@@ -124,6 +126,29 @@ public class Linker {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
         for (Resolver resolver : sortedResolutions) {
             resolver.action.run();
+        }
+    }
+
+    private static void assignTypeEquivalenceClasses() {
+        final Map<String, WasmModule> modules = WasmContext.getCurrent().modules();
+        final Map<FunctionType, Integer> equivalenceClasses = new HashMap<>();
+        int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
+        for (WasmModule module : modules.values()) {
+            final SymbolTable symtab = module.symbolTable();
+            for (int index = 0; index < symtab.typeCount(); index++) {
+                FunctionType type = symtab.typeAt(index);
+                Integer equivalenceClass = equivalenceClasses.get(type);
+                if (equivalenceClass == null) {
+                    equivalenceClass = nextEquivalenceClass;
+                    equivalenceClasses.put(type, equivalenceClass);
+                    nextEquivalenceClass++;
+                }
+                symtab.setEquivalenceClass(index, equivalenceClass);
+            }
+            for (int index = 0; index < symtab.numFunctions(); index++) {
+                final WasmFunction function = symtab.function(index);
+                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
+            }
         }
     }
 

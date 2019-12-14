@@ -229,6 +229,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.ValueTypes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
@@ -577,17 +578,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final Object[] elements = module().symbolTable().table().elements();
+                    final SymbolTable symtab = module().symbolTable();
+                    final Object[] elements = symtab.table().elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
-                        throw new WasmTrap(this, "Element index out of table bounds.");
+                        throw new WasmTrap(this, "Element index '" + elementIndex + "' out of table bounds.");
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
                     final WasmFunction function = (WasmFunction) elements[elementIndex];
+                    if (function == null) {
+                        throw new WasmTrap(this, "Table element at index " + elementIndex + " is uninitialized.");
+                    }
 
                     // Extract the function type index.
                     int expectedFunctionTypeIndex = codeEntry().longConstantAsInt(longConstantOffset);
+                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
                     longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -596,12 +602,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    if (expectedFunctionTypeIndex != function.typeIndex()) {
+                    if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                         // TODO: This check may be too rigorous, as the WebAssembly specification
                         // seems to allow multiple definitions of the same type.
                         // We should refine the check.
-                        throw new WasmTrap(this, Assert.format("Actual (%d) and expected (%d) function types differ in the indirect call.",
-                                        function.typeIndex(), expectedFunctionTypeIndex));
+                        throw new WasmTrap(this, Assert.format("Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, module().name()));
                     }
 
                     // Invoke the resolved function.

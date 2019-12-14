@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,10 +64,46 @@ import static org.graalvm.wasm.TableRegistry.*;
  */
 public class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
-    private static final int INITIAL_OFFSET_SIZE = 128;
+    private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
     private static final int GLOBAL_EXPORT_BIT = 1 << 24;
+    private static final int NO_EQUIVALENCE_CLASS = 0;
+    static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
+
+    public static class FunctionType {
+        private final byte[] argumentTypes;
+        private final byte returnType;
+        private final int hashCode;
+
+        FunctionType(byte[] argumentTypes, byte returnType) {
+            this.argumentTypes = argumentTypes;
+            this.returnType = returnType;
+            this.hashCode = Arrays.hashCode(argumentTypes) ^ Byte.hashCode(returnType);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (!(object instanceof FunctionType)) {
+                return false;
+            }
+            FunctionType that = (FunctionType) object;
+            if (this.returnType != that.returnType) {
+                return false;
+            }
+            for (int i = 0; i < argumentTypes.length; i++) {
+                if (this.argumentTypes[i] != that.argumentTypes[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
 
     @CompilationFinal private WasmModule module;
 
@@ -85,7 +122,7 @@ public class SymbolTable {
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * </code>
      *
-     * where na: the number of arguments nr: the number of return values
+     * where `na` is the number of arguments, and `nr` is the number of return values.
      *
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
@@ -100,8 +137,18 @@ public class SymbolTable {
      */
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
+    /**
+     * Stores the type equivalence class.
+     *
+     * Since multiple types have the same shape, each type is mapped to an equivalence class,
+     * so that two types can be quickly compared.
+     *
+     * The equivalence classes are computed globally for all the modules, during linking.
+     */
+    @CompilationFinal(dimensions = 1) private int[] typeEquivalenceClasses;
+
     @CompilationFinal private int typeDataSize;
-    @CompilationFinal private int typeOffsetsSize;
+    @CompilationFinal private int typeCount;
 
     /**
      * Stores the function objects for a WebAssembly module.
@@ -213,9 +260,10 @@ public class SymbolTable {
     SymbolTable(WasmModule module) {
         this.module = module;
         this.typeData = new int[INITIAL_DATA_SIZE];
-        this.typeOffsets = new int[INITIAL_OFFSET_SIZE];
+        this.typeOffsets = new int[INITIAL_TYPE_SIZE];
+        this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
-        this.typeOffsetsSize = 0;
+        this.typeCount = 0;
         this.functions = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
@@ -270,23 +318,26 @@ public class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeOffsets} array has enough space to store {@code index}. If there is
-     * no enough space, then a reallocation of the array takes place, doubling its capacity.
+     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have
+     * enough space to store the data for the type at {@code index}.
+     * If there is not enough space, then a reallocation of the array takes place, doubling its
+     * capacity.
      *
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
      */
-    private void ensureOffsetsCapacity(int index) {
+    private void ensureTypeCapacity(int index) {
         if (typeOffsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
-            typeOffsets = reallocate(typeOffsets, typeOffsetsSize, newLength);
+            typeOffsets = reallocate(typeOffsets, typeCount, newLength);
+            typeEquivalenceClasses = reallocate(typeEquivalenceClasses, typeCount, newLength);
         }
     }
 
     int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
         checkNotLinked();
-        ensureOffsetsCapacity(typeOffsetsSize);
-        int typeIdx = typeOffsetsSize++;
+        ensureTypeCapacity(typeCount);
+        int typeIdx = typeCount++;
         typeOffsets[typeIdx] = typeDataSize;
 
         assert 0 <= numReturnTypes && numReturnTypes <= 1;
@@ -320,6 +371,18 @@ public class SymbolTable {
         checkNotLinked();
         int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + returnIdx;
         typeData[idx] = type;
+    }
+
+    public int equivalenceClass(int typeIndex) {
+        return typeEquivalenceClasses[typeIndex];
+    }
+
+    void setEquivalenceClass(int index, int eqClass) {
+        checkNotLinked();
+        if (typeEquivalenceClasses[index] != NO_EQUIVALENCE_CLASS) {
+            throw new WasmException("Type at index " + index + " already has an equivalence class.");
+        }
+        typeEquivalenceClasses[index] = eqClass;
     }
 
     private void ensureFunctionsCapacity(int index) {
@@ -420,6 +483,14 @@ public class SymbolTable {
             types.add(functionTypeArgumentTypeAt(typeIndex, i));
         }
         return types;
+    }
+
+    int typeCount() {
+        return typeCount;
+    }
+
+    FunctionType typeAt(int index) {
+        return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 
     void exportFunction(WasmContext context, int functionIndex, String exportName) {
