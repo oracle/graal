@@ -35,10 +35,10 @@ public class ClassLoaderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(object -> {
-            if (object instanceof NativeImageClassLoader || object instanceof DelegatorClassLoader) {
+            if (object instanceof NativeImageClassLoader || object instanceof NativeImageSystemClassLoader) {
                 /*
                  * Unwrap the original AppClassLoader from the NativeImageClassLoader and
-                 * DelegatorClassLoader
+                 * NativeImageSystemClassLoader
                  */
                 ClassLoader parent = ((ClassLoader) object).getParent();
                 VMError.guarantee(parent != null);

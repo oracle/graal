@@ -32,33 +32,37 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
- * DelegatorClassLoader is a minimal {@link ClassLoader} that delegates loading of a class to a
- * {@link DelegatorClassLoader#delegate} {@link ClassLoader}. If such delegate is null, then
- * DelegatorClassLoader forwards the class loading operation to its parent.
+ * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a
+ * class to a {@link NativeImageSystemClassLoader#delegate} {@link ClassLoader}. If such
+ * delegate is null, then NativeImageSystemClassLoader forwards the class loading operation to the default
+ * system class loader
  * 
- * This ClassLoader is necessary to enable the loading of classes during image build-time. Typically
- * this class is used as a replacement of {@link ClassLoader#getSystemClassLoader()} and the
- * delegate is set to an instance of {@link NativeImageClassLoader}.
+ * This ClassLoader is necessary to enable the loading of classes/resources during image build-time. This
+ * class must be used a replacement for {@link ClassLoader#getSystemClassLoader()} and its parent
+ * must be the default system class loader. The delegate is set to an instance of
+ * {@link NativeImageClassLoader}.
  */
-public final class DelegatorClassLoader extends SecureClassLoader {
+public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     private ClassLoader delegate = null;
+    private final ClassLoader defaultSystemClassLoader;
 
-    public DelegatorClassLoader(ClassLoader parent) {
-        super(parent);
+    public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
+        super(defaultSystemClassLoader);
+        this.defaultSystemClassLoader = defaultSystemClassLoader;
     }
 
     public void setDelegate(ClassLoader delegateClassLoader) {
         this.delegate = delegateClassLoader;
     }
 
-    public ClassLoader getDelegate() {
-        return delegate;
+    public ClassLoader getDefaultSystemClassLoader() {
+        return defaultSystemClassLoader;
     }
 
     @Override
     public Class<?> loadClass(String name) throws ClassNotFoundException {
-        ClassLoader cl = delegate != null ? delegate : getParent();
+        ClassLoader cl = delegate != null ? delegate : defaultSystemClassLoader;
         return cl.loadClass(name);
     }
 
