@@ -24,18 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,26 +40,31 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
 
     @Test
     @SuppressWarnings("try")
-    public void testOverrideOptions() {
+    public void testOverrideOptionsLegacy() {
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(
                         SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false,
                         SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
                         SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize, 42)) {
             Assert.assertEquals((Integer) 42, TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize));
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
-                @Override
-                public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph) {
-                    Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleInliningMaxCallerSize));
-                }
-            };
-            runtime.addListener(listener);
-            try {
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-                callTarget.call();
-            } finally {
-                runtime.removeListener(listener);
-            }
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            Assert.assertEquals((Integer) 42, TruffleRuntimeOptions.getPolyglotOptionValue(callTarget.getOptionValues(), PolyglotCompilerOptions.InliningNodeBudget));
+            OptionValues values = TruffleCompilerOptions.getOptionsForCompiler(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+            Assert.assertEquals(false, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.BackgroundCompilation));
+            Assert.assertEquals(true, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.CompileImmediately));
+            Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.InliningNodeBudget));
         }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testOverrideOptionsUsingContext() {
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
+                        Boolean.TRUE.toString()).option("engine.InliningNodeBudget", "42").build());
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        Assert.assertEquals((Integer) 42, TruffleRuntimeOptions.getPolyglotOptionValue(callTarget.getOptionValues(), PolyglotCompilerOptions.InliningNodeBudget));
+        OptionValues values = TruffleCompilerOptions.getOptionsForCompiler(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+        Assert.assertEquals(false, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.BackgroundCompilation));
+        Assert.assertEquals(true, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.CompileImmediately));
+        Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.InliningNodeBudget));
     }
 }

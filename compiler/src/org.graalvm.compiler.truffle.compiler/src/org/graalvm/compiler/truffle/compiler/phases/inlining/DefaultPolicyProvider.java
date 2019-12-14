@@ -25,8 +25,8 @@
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.options.OptionValues;
 
 @ServiceProvider(InliningPolicyProvider.class)
 public class DefaultPolicyProvider extends InliningPolicyProvider {
@@ -39,7 +39,7 @@ public class DefaultPolicyProvider extends InliningPolicyProvider {
     }
 
     @Override
-    public InliningPolicy get(CoreProviders providers, OptionValues optionValues) {
-        return new DefaultPolicy(optionValues);
+    public InliningPolicy get(OptionValues options, CoreProviders providers) {
+        return new DefaultPolicy(options);
     }
 }

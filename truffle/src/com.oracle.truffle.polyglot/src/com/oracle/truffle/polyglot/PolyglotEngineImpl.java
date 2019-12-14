@@ -224,7 +224,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
 
         this.engineOptions = createEngineOptionDescriptors();
-        this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
+        this.engineOptionValues = new OptionValuesImpl(this, engineOptions, true);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
         for (String key : this.idToLanguage.keySet()) {
@@ -306,7 +306,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
 
         this.engineOptions = createEngineOptionDescriptors();
-        this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
+        this.engineOptionValues = new OptionValuesImpl(this, engineOptions, true);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
         for (String key : this.idToLanguage.keySet()) {
@@ -503,7 +503,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     static OptionValuesImpl getEngineOptionsWithNoEngine() {
-        OptionValuesImpl optionValues = new OptionValuesImpl(null, createEngineOptionDescriptors());
+        OptionValuesImpl optionValues = new OptionValuesImpl(null, createEngineOptionDescriptors(), true);
         Map<String, String> options = readOptionsFromSystemProperties();
 
         for (String key : options.keySet()) {

@@ -22,18 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.options;
 
 import java.util.function.Function;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
-import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
@@ -87,20 +84,20 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
 
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleCompilerThreads.getDefaultValue());
+    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleCompilationThreshold.getDefaultValue());
+    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
 
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold.getDefaultValue());
+    public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
 
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, deprecated =  true)
-    public static final OptionKey<Integer> InvalidationReprofileCount = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount.getDefaultValue());
+    public static final OptionKey<Integer> InvalidationReprofileCount = new OptionKey<>(3);
 
     @Option(help = "Delay compilation after a node replacement. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, deprecated =  true)
-    public static final OptionKey<Integer> ReplaceReprofileCount = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount.getDefaultValue());
+    public static final OptionKey<Integer> ReplaceReprofileCount = new OptionKey<>(3);
 
     @Option(help = "Speculate on arguments types at call sites", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> ArgumentTypeSpeculation = new OptionKey<>(true);
@@ -115,10 +112,10 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold.getDefaultValue());
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold.getDefaultValue());
+    public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
 
     // Failed compilation behavior
 
@@ -161,7 +158,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
 
     @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit.getDefaultValue());
+    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
 
     // Inlining
 
@@ -169,10 +166,31 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
     @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize.getDefaultValue());
+    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
 
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining.getDefaultValue());
+    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
+
+    @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
+
+    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningCutoffCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningNodeCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningExpandAllProximityFactor = new OptionKey<>(0.5);
+
+    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpandAllProximityBonus = new OptionKey<>(10);
+
+    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpansionCounterPressure = new OptionKey<>(2000);
+
+    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningInliningCounterPressure = new OptionKey<>(2000);
 
     // Splitting
 
@@ -181,16 +199,16 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
 
     @Option(help = "Disable call target splitting if tree size exceeds this limit", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxCalleeSize = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize.getDefaultValue());
+    public static final OptionKey<Integer> SplittingMaxCalleeSize = new OptionKey<>(100);
 
     @Option(help = "Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double> SplittingGrowthLimit = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit.getDefaultValue());
+    public static final OptionKey<Double> SplittingGrowthLimit = new OptionKey<>(1.5);
 
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxNumberOfSplitNodes = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes.getDefaultValue());
+    public static final OptionKey<Integer> SplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getDefaultValue());
+    public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(5);
 
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceSplittingSummary = new OptionKey<>(false);
@@ -210,7 +228,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
     @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold.getDefaultValue());
+    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100000);
 
     @Option(help = "Enable partial compilation for BlockNode.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);
@@ -226,81 +244,48 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraceDeoptimization = new OptionKey<>(false);
     */
 
+    //Compiler options
+    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
+
+    @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TracePerformanceWarnings = new OptionKey<>(false);
+
+    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
+
+    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.EXPERT)
+    public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
+
+    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
+
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
+
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
+
+    // Language agnostic inlining
+
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
+
+    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)
+    public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
+
+    @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(50_000);
+
+    @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(50_000);
+
     // @formatter:on
 
-    private static final EconomicMap<OptionKey<?>, OptionKey<?>> POLYGLOT_TO_TRUFFLE = EconomicMap.create(Equivalence.IDENTITY);
-    static {
-        initializePolyglotToGraalMapping();
-    }
-
-    private static void initializePolyglotToGraalMapping() {
-        POLYGLOT_TO_TRUFFLE.put(Compilation, SharedTruffleRuntimeOptions.TruffleCompilation);
-        POLYGLOT_TO_TRUFFLE.put(CompileOnly, SharedTruffleRuntimeOptions.TruffleCompileOnly);
-        POLYGLOT_TO_TRUFFLE.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
-        POLYGLOT_TO_TRUFFLE.put(BackgroundCompilation, SharedTruffleRuntimeOptions.TruffleBackgroundCompilation);
-        POLYGLOT_TO_TRUFFLE.put(CompilerThreads, SharedTruffleRuntimeOptions.TruffleCompilerThreads);
-        POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
-        POLYGLOT_TO_TRUFFLE.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
-        POLYGLOT_TO_TRUFFLE.put(InvalidationReprofileCount, SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
-        POLYGLOT_TO_TRUFFLE.put(ReplaceReprofileCount, SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
-        POLYGLOT_TO_TRUFFLE.put(ArgumentTypeSpeculation, SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation);
-        POLYGLOT_TO_TRUFFLE.put(ReturnTypeSpeculation, SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation);
-
-        POLYGLOT_TO_TRUFFLE.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
-        POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
-        POLYGLOT_TO_TRUFFLE.put(FirstTierMinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
-
-        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsArePrinted, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted);
-        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsAreThrown, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
-        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsAreFatal, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
-        POLYGLOT_TO_TRUFFLE.put(PerformanceWarningsAreFatal, SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
-
-        POLYGLOT_TO_TRUFFLE.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
-        POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
-        POLYGLOT_TO_TRUFFLE.put(TraceCompilationPolymorphism, SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism);
-        POLYGLOT_TO_TRUFFLE.put(TraceCompilationAST, SharedTruffleRuntimeOptions.TraceTruffleCompilationAST);
-        POLYGLOT_TO_TRUFFLE.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
-        POLYGLOT_TO_TRUFFLE.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
-        POLYGLOT_TO_TRUFFLE.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
-
-        POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
-        POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
-
-        POLYGLOT_TO_TRUFFLE.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
-        POLYGLOT_TO_TRUFFLE.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
-        POLYGLOT_TO_TRUFFLE.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
-
-        POLYGLOT_TO_TRUFFLE.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
-        POLYGLOT_TO_TRUFFLE.put(SplittingMaxCalleeSize, SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
-        POLYGLOT_TO_TRUFFLE.put(SplittingGrowthLimit, SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
-        POLYGLOT_TO_TRUFFLE.put(SplittingMaxNumberOfSplitNodes, SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
-        POLYGLOT_TO_TRUFFLE.put(SplittingMaxPropagationDepth, SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
-        POLYGLOT_TO_TRUFFLE.put(TraceSplittingSummary, SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
-        POLYGLOT_TO_TRUFFLE.put(SplittingTraceEvents, SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
-        POLYGLOT_TO_TRUFFLE.put(SplittingDumpDecisions, SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
-        POLYGLOT_TO_TRUFFLE.put(SplittingAllowForcedSplits, SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
-
-        POLYGLOT_TO_TRUFFLE.put(OSR, SharedTruffleRuntimeOptions.TruffleOSR);
-        POLYGLOT_TO_TRUFFLE.put(OSRCompilationThreshold, SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
-    }
-
-    /**
-     * Uses the --engine option if set, otherwise fallback on the -Dgraal option.
-     */
-    @SuppressWarnings("unchecked")
-    static <T> T getValue(OptionValues polyglotValues, OptionKey<T> key) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
-            return polyglotValues.get(key);
-        } else {
-            OptionKey<?> truffleKey = POLYGLOT_TO_TRUFFLE.get(key);
-            if (truffleKey != null) {
-                return (T) TruffleRuntimeOptions.getValue(truffleKey);
-            }
-        }
-        return key.getDefaultValue();
-    }
-
-    static OptionDescriptors getDescriptors() {
+    public static OptionDescriptors getDescriptors() {
         return new PolyglotCompilerOptionsOptionDescriptors();
     }
 

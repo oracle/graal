@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
@@ -700,7 +701,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler();
+            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                 listeners.onCompilationStarted(callTarget);
                 TruffleInlining inlining = createInliningPlan(callTarget, task);

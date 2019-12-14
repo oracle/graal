@@ -95,9 +95,11 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println("package " + pkg + ";");
                 out.println("");
                 out.println("import " + optionKeyClassName + ";");
+                out.println("import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;");
                 if (isRuntime) {
                     out.println("import com.oracle.truffle.api.Option;");
                     out.println("import org.graalvm.options.OptionCategory;");
+                    out.println("import org.graalvm.options.OptionType;");
                 }
                 out.println("");
                 out.println("/**");
@@ -115,11 +117,11 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println("public abstract class " + className + " {");
 
                 for (Option option : Option.options) {
-                    String defaultValue = option.defaultValue;
+                    String defaultValue;
 
                     String deprecatedByText = null;
                     if (option.deprecatedBy != null) {
-                        deprecatedByText = "Deprecated by " + linkIfRuntime(isRuntime, "org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions#" + option.deprecatedBy) + ".";
+                        deprecatedByText = "Deprecated by {@link PolyglotCompilerOptions#" + option.deprecatedBy + "}.";
                     }
 
                     if (isRuntime) {
@@ -141,11 +143,10 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         } else {
                             help = option.help[0];
                         }
-                        if ("null".equals(defaultValue)) {
-                            defaultValue = "null, org.graalvm.options.OptionType.defaultType(" + option.type + ".class)";
-                        }
+                        defaultValue = option.defaultValue + ", OptionType.defaultType(" + option.type + ".class)";
                         out.printf("    @Option(help = \"%s\", category = OptionCategory.%s)\n", help, option.category);
                     } else {
+                        defaultValue = option.defaultValue;
                         String optionType;
                         if (option.category.equals("INTERNAL")) {
                             optionType = "Debug";
@@ -185,13 +186,5 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             }
         }
         return true;
-    }
-
-    private static String linkIfRuntime(boolean isRuntime, String className) {
-        if (isRuntime) {
-            return "{@link " + className + "}";
-        } else {
-            return className;
-        }
     }
 }

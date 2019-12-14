@@ -24,18 +24,17 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Inlining;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningProfile;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 public final class TraceInliningListener extends AbstractGraalTruffleRuntimeListener {
 
@@ -49,7 +48,7 @@ public final class TraceInliningListener extends AbstractGraalTruffleRuntimeList
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining) || !target.getOptionValue(TraceInlining) || inliningDecision == null) {
+        if (target.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining) || !target.getOptionValue(TraceInlining) || inliningDecision == null) {
             return;
         }
         if (target.getOptionValue(Inlining)) {

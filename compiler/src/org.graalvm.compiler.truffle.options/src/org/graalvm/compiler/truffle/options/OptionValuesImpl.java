@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.options;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -50,7 +50,7 @@ public final class OptionValuesImpl implements OptionValues {
         }
     }
 
-    OptionValuesImpl(
+    public OptionValuesImpl(
                     final OptionValuesImpl owner,
                     final UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
         this.descriptors = owner.descriptors;

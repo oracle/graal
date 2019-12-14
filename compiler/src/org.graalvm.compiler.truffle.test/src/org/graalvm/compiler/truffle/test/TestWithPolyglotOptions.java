@@ -22,22 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.impl.Accessor;
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 
-final class CompilerRuntimeAccessor extends Accessor {
+public abstract class TestWithPolyglotOptions {
 
-    private static final CompilerRuntimeAccessor ACCESSOR = new CompilerRuntimeAccessor();
+    private Context activeContext;
 
-    private CompilerRuntimeAccessor() {
+    @After
+    public final void cleanup() {
+        if (activeContext != null) {
+            try {
+                activeContext.leave();
+            } finally {
+                activeContext.close();
+                activeContext = null;
+            }
+        }
     }
 
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
-    }
-
-    static EngineSupport engineAccessor() {
-        return ACCESSOR.engineSupport();
+    protected Context setupContext(String... keyValuePairs) {
+        if ((keyValuePairs.length & 1) != 0) {
+            throw new IllegalArgumentException("KeyValuePairs must have even size");
+        }
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true);
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
+        }
+        cleanup();
+        Context newContext = builder.build();
+        newContext.enter();
+        activeContext = newContext;
+        return newContext;
     }
 }
