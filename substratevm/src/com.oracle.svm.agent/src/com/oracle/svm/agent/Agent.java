@@ -190,6 +190,7 @@ public final class Agent {
         RuleNode callersFilter = null;
         if (!builtinFilter) {
             callersFilter = RuleNode.createRoot();
+            callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
         }
         if (!callerFilterFiles.isEmpty()) {
             if (callersFilter == null) {
