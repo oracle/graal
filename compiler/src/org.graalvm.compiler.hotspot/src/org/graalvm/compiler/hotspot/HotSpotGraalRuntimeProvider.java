@@ -58,6 +58,8 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
         return getClass().getSimpleName();
     }
 
+    HotSpotGraalRuntime.HotSpotGC getGarbageCollector();
+
     @Override
     HotSpotBackend getHostBackend();
 
