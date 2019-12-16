@@ -968,7 +968,7 @@ class CMakeBuildTask(mx.NativeBuildTask):
 
     def needsBuild(self, newestInput):
         mx.logv('Checking whether to build {} with CMake'.format(self.subject.name))
-        if self._configure():
+        if self._configure(silent=True):
             return True, "rebuild needed by CMake"
         # Makefiles produced by CMake do not support --question. Assume nothing has changed.
         # return super(CMakeBuildTask, self).needsBuild(newestInput)
@@ -989,11 +989,11 @@ class CMakeBuildTask(mx.NativeBuildTask):
 
     def _check_cmake(self):
         try:
-            self.run_cmake(["--version"], nonZeroIsFatal=False)
+            self.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
         except OSError as e:
             mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
 
-    def _configure(self):
+    def _configure(self, silent=False):
         self._check_cmake()
         _, cwd, env = self._build_run_args()
         source_dir = self.subject.source_dirs()[0]
@@ -1004,16 +1004,17 @@ class CMakeBuildTask(mx.NativeBuildTask):
                 # remove cache file if it exist
                 os.remove(cmakefile)
             cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
-            self.run_cmake(cmdline, cwd=cwd, env=env)
+            self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
             return True
         return False
 
-    def run_cmake(self, cmdline, *args, **kwargs):
+    def run_cmake(self, cmdline, silent, *args, **kwargs):
         if mx._opts.verbose:
             mx.run(["cmake"] + cmdline, *args, **kwargs)
         else:
             with open(os.devnull, 'w') as fnull:
-                mx.run(["cmake"] + cmdline, out=fnull, *args, **kwargs)
+                err = fnull if silent else None
+                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
 
     def guard_file(self):
         return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
