@@ -320,7 +320,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param signatures known signatures for the context.
      * @return A basic signature corresponding to @sig
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({"unchecked"})
     public static Symbol<Signature> toBasic(Symbol<Type>[] sig, boolean keepLastArg, Signatures signatures) {
         int pcount = Signatures.parameterCount(sig, false);
         int params = max(pcount - (keepLastArg ? 0 : 1), 0);
@@ -335,7 +335,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
 
         Symbol<Type> rtype = toBasic(Signatures.returnType(sig));
-        return signatures.makeRaw(rtype, buf.toArray(new Symbol[params]));
+        return signatures.makeRaw(rtype, buf.toArray(Symbol.EMPTY_ARRAY));
     }
 
     private static Symbol<Type> toBasic(Symbol<Type> t) {

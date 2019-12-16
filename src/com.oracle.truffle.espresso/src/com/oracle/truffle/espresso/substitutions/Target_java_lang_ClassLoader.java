@@ -29,20 +29,18 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_lang_ClassLoader {
     @Substitution
     public static @Host(String.class) StaticObject findBuiltinLib(@SuppressWarnings("unused") @Host(String.class) StaticObject name) {
-        /**
-         * The native implementation assumes builtin libraries are loaded in the default namespace,
-         * Espresso loads isolated copies (mainly libjava).
-         *
-         * Native method linking needs special handling, since classes in the BCL must peek in
-         * libjava first, try different signatures in case of overloading, the naming scheme can be
-         * also platform dependent.
-         *
-         * A better workaround would be to load libjava the same way as libzip, we could then remove
-         * the logic to link native methods by hand and rely on the pure Java implementation e.g.
-         * ClassLoader.findNative.
-         *
-         * This substitution disables builtin libraries in Espresso.
-         */
+        // The native implementation assumes builtin libraries are loaded in the default namespace,
+        // Espresso loads isolated copies (mainly libjava).
+        //
+        // Native method linking needs special handling, since classes in the BCL must peek in
+        // libjava first, try different signatures in case of overloading, the naming scheme can be
+        // also platform dependent.
+        //
+        // A better workaround would be to load libjava the same way as libzip, we could then remove
+        // the logic to link native methods by hand and rely on the pure Java implementation e.g.
+        // ClassLoader.findNative.
+        //
+        // This substitution disables builtin libraries in Espresso.
         return StaticObject.NULL;
     }
 }

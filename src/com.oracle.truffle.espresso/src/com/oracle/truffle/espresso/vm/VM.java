@@ -541,7 +541,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    @SuppressWarnings("unchecked")
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
         Meta meta = getMeta();
         StackTrace frames = EspressoException.getFrames(self, meta);
@@ -553,7 +552,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    @SuppressWarnings("unchecked")
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         if (index < 0) {
@@ -1111,7 +1109,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
         if (run == null || !run.isPublic() || run.isStatic()) {
-            getMeta().throwEx(InternalError.class);
+            throw getMeta().throwEx(InternalError.class);
         }
 
         // Prepare the privileged stack

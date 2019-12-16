@@ -567,7 +567,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     // region Local accessors
 
     @Override
-    @SuppressWarnings("unchecked")
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public Object execute(VirtualFrame frame) {
 

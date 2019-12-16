@@ -77,25 +77,21 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    @SuppressWarnings("unchecked")
     public StaticObject resolvedStringAt(int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(null, index, "string");
         return (StaticObject) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Klass resolvedKlassAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "klass");
         return (Klass) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Field resolvedFieldAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "field");
         return (Field) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
         return (Method) resolved.value();

@@ -256,15 +256,13 @@ public final class ObjectKlass extends Klass {
                     throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
                 }
                 try {
-                    /**
-                     * Spec fragment: Then, initialize each final static field of C with the
-                     * constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
-                     * fields appear in the ClassFile structure.
-                     *
-                     * ...
-                     *
-                     * Next, execute the class or interface initialization method of C.
-                     */
+                    // Spec fragment: Then, initialize each final static field of C with the
+                    // constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
+                    // fields appear in the ClassFile structure.
+                    //
+                    // ...
+                    //
+                    // Next, execute the class or interface initialization method of C.
                     prepare();
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
