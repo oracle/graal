@@ -371,6 +371,64 @@ public class Linker {
         abstract static class Sym {
         }
 
+        static class ImportGlobalSym extends Sym {
+            final String moduleName;
+            final ImportDescriptor importDescriptor;
+
+            ImportGlobalSym(String moduleName, ImportDescriptor importDescriptor) {
+                this.moduleName = moduleName;
+                this.importDescriptor = importDescriptor;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(import global %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ImportGlobalSym)) {
+                    return false;
+                }
+                final ImportGlobalSym that = (ImportGlobalSym) object;
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+            }
+        }
+
+        static class ExportGlobalSym extends Sym {
+            final String moduleName;
+            final String globalName;
+
+            ExportGlobalSym(String moduleName, String globalName) {
+                this.moduleName = moduleName;
+                this.globalName = globalName;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(export global %s from %s)", globalName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ globalName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ExportFunctionSym)) {
+                    return false;
+                }
+                final ExportFunctionSym that = (ExportFunctionSym) object;
+                return this.moduleName.equals(that.moduleName) && this.globalName.equals(that.functionName);
+            }
+        }
+
         static class ImportFunctionSym extends Sym {
             final String moduleName;
             final ImportDescriptor importDescriptor;
@@ -402,21 +460,21 @@ public class Linker {
 
         static class ExportFunctionSym extends Sym {
             final String moduleName;
-            final String memoryName;
+            final String functionName;
 
-            ExportFunctionSym(String moduleName, String memoryName) {
+            ExportFunctionSym(String moduleName, String functionName) {
                 this.moduleName = moduleName;
-                this.memoryName = memoryName;
+                this.functionName = functionName;
             }
 
             @Override
             public String toString() {
-                return String.format("(export func %s from %s)", memoryName, moduleName);
+                return String.format("(export func %s from %s)", functionName, moduleName);
             }
 
             @Override
             public int hashCode() {
-                return moduleName.hashCode() ^ memoryName.hashCode();
+                return moduleName.hashCode() ^ functionName.hashCode();
             }
 
             @Override
@@ -425,7 +483,7 @@ public class Linker {
                     return false;
                 }
                 final ExportFunctionSym that = (ExportFunctionSym) object;
-                return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
+                return this.moduleName.equals(that.moduleName) && this.functionName.equals(that.functionName);
             }
         }
 
