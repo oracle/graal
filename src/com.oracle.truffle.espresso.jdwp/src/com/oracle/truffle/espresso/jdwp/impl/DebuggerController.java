@@ -379,8 +379,9 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void leaveTruffleContext() {
-        if (previous != null && truffleContext != null) {
+        if (truffleContext != null) {
             truffleContext.leave(previous);
+            previous = null;
         }
     }
 

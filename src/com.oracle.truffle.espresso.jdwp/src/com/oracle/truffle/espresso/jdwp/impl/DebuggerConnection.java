@@ -227,7 +227,6 @@ public final class DebuggerConnection implements Commands {
                     // we closed the session, so let the thread run dry
                 }
             }
-            controller.leaveTruffleContext();
         }
 
         private void processPacket(Packet packet) {
@@ -546,6 +545,7 @@ public final class DebuggerConnection implements Commands {
             } else {
                 JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
             }
+            controller.leaveTruffleContext();
         }
     }
 }
