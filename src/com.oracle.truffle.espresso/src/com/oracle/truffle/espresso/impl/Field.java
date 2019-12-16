@@ -29,12 +29,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -61,7 +61,7 @@ public final class Field extends Member<Type> implements FieldRef {
         return descriptor;
     }
 
-    public final Symbol<ModifiedUTF8> getGenericSignature() {
+    public Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
@@ -109,7 +109,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     /**
-     * The slot serves as the position in the `field table` of the ObjectKlass
+     * The slot serves as the position in the `field table` of the ObjectKlass.
      */
     public int getSlot() {
         return slot;
@@ -121,7 +121,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     /**
-     * The fieldIndex is the actual position in the field array of an actual instance
+     * The fieldIndex is the actual position in the field array of an actual instance.
      */
     public int getFieldIndex() {
         return fieldIndex;
@@ -178,7 +178,7 @@ public final class Field extends Member<Type> implements FieldRef {
         // Checkstyle: resume
     }
 
-    public final Klass resolveTypeKlass() {
+    public Klass resolveTypeKlass() {
         Klass tk = typeKlassCache;
         if (tk == null) {
             synchronized (this) {
@@ -318,7 +318,7 @@ public final class Field extends Member<Type> implements FieldRef {
         @CompilerDirectives.CompilationFinal private volatile Assumption unchanged;
         @CompilerDirectives.CompilationFinal private volatile boolean value;
 
-        public StableBoolean(boolean initialValue) {
+        StableBoolean(boolean initialValue) {
             this.value = initialValue;
             this.unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
         }

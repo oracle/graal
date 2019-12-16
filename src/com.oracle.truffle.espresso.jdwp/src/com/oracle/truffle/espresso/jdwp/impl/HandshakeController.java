@@ -51,15 +51,15 @@ public final class HandshakeController {
             throw new IOException("Unable to handshake with debubgger");
         }
         SocketConnection connection = new SocketConnection(connectionSocket, serverSocket);
-        Thread JDWPSender = new Thread(connection, "jdwp-transmitter");
-        JDWPSender.setDaemon(true);
-        JDWPSender.start();
-        activeThreads.add(JDWPSender);
+        Thread jdwpSender = new Thread(connection, "jdwp-transmitter");
+        jdwpSender.setDaemon(true);
+        jdwpSender.start();
+        activeThreads.add(jdwpSender);
         return connection;
     }
 
     /**
-     * Handshake with the debugger
+     * Handshake with the debugger.
      */
     private static boolean handshake(Socket s) throws IOException {
 

@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 class EspressoThreadManager implements ContextAccess {
 
@@ -46,7 +45,7 @@ class EspressoThreadManager implements ContextAccess {
         this.context = context;
     }
 
-    public static int DEFAULT_THREAD_ARRAY_SIZE = 8;
+    private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 

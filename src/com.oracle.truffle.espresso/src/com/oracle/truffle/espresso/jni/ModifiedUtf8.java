@@ -28,13 +28,13 @@ import java.io.UTFDataFormatException;
 /**
  * Modified UTF-8 conversions.
  */
-public final class Utf8 {
+public final class ModifiedUtf8 {
 
-    private Utf8() {
+    private ModifiedUtf8() {
         /* no instances */
     }
 
-    public static int UTFLength(String str) {
+    public static int utfLength(String str) {
         int strlen = str.length();
         int utflen = 0;
 
@@ -52,13 +52,14 @@ public final class Utf8 {
         return utflen;
     }
 
-    public static byte[] asUTF(String str, boolean append0) {
-        return asUTF(str, 0, str.length(), append0);
+    public static byte[] asUtf(String str, boolean append0) {
+        return asUtf(str, 0, str.length(), append0);
     }
 
-    public static byte[] asUTF(String str, int start, int len, boolean append0) {
+    public static byte[] asUtf(String str, int start, int len, boolean append0) {
         int utflen = 0;
-        int c, count = 0;
+        int c = 0;
+        int count = 0;
 
         /* use charAt instead of copying String to char array */
         for (int i = 0; i < len; i++) {
@@ -77,8 +78,9 @@ public final class Utf8 {
         int i = 0;
         for (i = 0; i < len; i++) {
             c = str.charAt(start + i);
-            if (!((c >= 0x0001) && (c <= 0x007F)))
+            if (!((c >= 0x0001) && (c <= 0x007F))) {
                 break;
+            }
             bytearr[count++] = (byte) c;
         }
 
@@ -110,16 +112,18 @@ public final class Utf8 {
 
     public static byte[] fromJavaString(String string) {
         int strlen = string.length();
-        int utflen = UTFLength(string);
-        int c, count = 0;
+        int utflen = utfLength(string);
+        int c;
+        int count = 0;
 
         byte[] bytearr = new byte[utflen];
 
         int i = 0;
         for (i = 0; i < strlen; i++) {
             c = string.charAt(i);
-            if (!((c >= 0x0001) && (c <= 0x007F)))
+            if (!((c >= 0x0001) && (c <= 0x007F))) {
                 break;
+            }
             bytearr[count++] = (byte) c;
         }
 
@@ -145,14 +149,17 @@ public final class Utf8 {
         int utflen = length;
         char[] chararr = new char[utflen];
 
-        int c, char2, char3;
+        int c;
+        int char2;
+        int char3;
         int count = 0;
         int chararrCount = 0;
 
         while (count < utflen) {
             c = bytearr[count + offset] & 0xff;
-            if (c > 127)
+            if (c > 127) {
                 break;
+            }
             count++;
             chararr[chararrCount++] = (char) c;
         }
@@ -176,27 +183,31 @@ public final class Utf8 {
                 case 13:
                     /* 110x xxxx 10xx xxxx */
                     count += 2;
-                    if (count > utflen)
+                    if (count > utflen) {
                         throw new UTFDataFormatException(
                                         "malformed input: partial character at end");
+                    }
                     char2 = bytearr[count - 1 + offset];
-                    if ((char2 & 0xC0) != 0x80)
+                    if ((char2 & 0xC0) != 0x80) {
                         throw new UTFDataFormatException(
                                         "malformed input around byte " + count);
+                    }
                     chararr[chararrCount++] = (char) (((c & 0x1F) << 6) |
                                     (char2 & 0x3F));
                     break;
                 case 14:
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
                     count += 3;
-                    if (count > utflen)
+                    if (count > utflen) {
                         throw new UTFDataFormatException(
                                         "malformed input: partial character at end");
+                    }
                     char2 = bytearr[count - 2 + offset];
                     char3 = bytearr[count - 1 + offset];
-                    if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
+                    if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
                         throw new UTFDataFormatException(
                                         "malformed input around byte " + (count - 1));
+                    }
                     chararr[chararrCount++] = (char) (((c & 0x0F) << 12) |
                                     ((char2 & 0x3F) << 6) |
                                     ((char3 & 0x3F) << 0));
@@ -212,13 +223,16 @@ public final class Utf8 {
     }
 
     public static boolean isValid(byte[] bytearr, int offset, int length) {
-        int c, char2, char3;
+        int c;
+        int char2;
+        int char3;
         int count = 0;
 
         while (count < length) {
             c = bytearr[count + offset] & 0xff;
-            if (c == 0 || c > 127)
+            if (c == 0 || c > 127) {
                 break;
+            }
             count++;
         }
 
@@ -250,21 +264,25 @@ public final class Utf8 {
                     case 13:
                         /* 110x xxxx 10xx xxxx */
                         count += 2;
-                        if (count > length)
+                        if (count > length) {
                             return false;
+                        }
                         char2 = bytearr[count - 1 + offset];
-                        if ((char2 & 0xC0) != 0x80)
+                        if ((char2 & 0xC0) != 0x80) {
                             return false;
+                        }
                         break;
                     case 14:
                         /* 1110 xxxx 10xx xxxx 10xx xxxx */
                         count += 3;
-                        if (count > length)
+                        if (count > length) {
                             return false;
+                        }
                         char2 = bytearr[count - 2 + offset];
                         char3 = bytearr[count - 1 + offset];
-                        if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
+                        if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80)) {
                             return false;
+                        }
                         break;
                     default:
                         /* 10xx xxxx, 1111 xxxx */

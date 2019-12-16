@@ -63,24 +63,24 @@ public abstract class ClassRegistry implements ContextAccess {
             }
         };
 
-        Stack stack = null;
+        Node head = null;
 
-        static final class Stack {
+        static final class Node {
             Symbol<Type> entry;
-            Stack next;
+            Node next;
 
-            Stack(Symbol<Type> entry, Stack next) {
+            Node(Symbol<Type> entry, Node next) {
                 this.entry = entry;
                 this.next = next;
             }
         }
 
         boolean isEmpty() {
-            return stack == null;
+            return head == null;
         }
 
         boolean contains(Symbol<Type> type) {
-            Stack curr = stack;
+            Node curr = head;
             while (curr != null) {
                 if (curr.entry == type) {
                     return true;
@@ -94,13 +94,13 @@ public abstract class ClassRegistry implements ContextAccess {
             if (isEmpty()) {
                 throw EspressoError.shouldNotReachHere();
             }
-            Symbol<Type> res = stack.entry;
-            stack = stack.next;
+            Symbol<Type> res = head.entry;
+            head = head.next;
             return res;
         }
 
         void push(Symbol<Type> type) {
-            stack = new Stack(type, stack);
+            head = new Node(type, head);
         }
 
         private TypeStack() {
@@ -168,7 +168,7 @@ public abstract class ClassRegistry implements ContextAccess {
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
     public Klass[] getLoadedKlasses() {
-        return classes.values().toArray(new Klass[classes.size()]);
+        return classes.values().toArray(Klass.EMPTY_ARRAY);
     }
 
     public Klass findLoadedKlass(Symbol<Type> type) {

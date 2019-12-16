@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,13 +79,13 @@ public abstract class VerificationTypeInfo {
 }
 
 class PrimitiveTypeInfo extends VerificationTypeInfo {
-    public PrimitiveTypeInfo(int tag) {
+    PrimitiveTypeInfo(int tag) {
         super(tag);
     }
 }
 
 class UninitializedThis extends VerificationTypeInfo {
-    public UninitializedThis(int tag) {
+    UninitializedThis(int tag) {
         super(tag);
     }
 
@@ -98,7 +98,7 @@ class UninitializedThis extends VerificationTypeInfo {
 class UninitializedVariable extends VerificationTypeInfo {
     private final int newOffset;
 
-    public UninitializedVariable(int tag, int newOffset) {
+    UninitializedVariable(int tag, int newOffset) {
         super(tag);
         this.newOffset = newOffset;
     }
@@ -117,7 +117,7 @@ class UninitializedVariable extends VerificationTypeInfo {
 class ReferenceVariable extends VerificationTypeInfo {
     private final int constantPoolOffset;
 
-    public ReferenceVariable(int tag, int constantPoolOffset) {
+    ReferenceVariable(int tag, int constantPoolOffset) {
         super(tag);
         this.constantPoolOffset = constantPoolOffset;
     }

@@ -32,21 +32,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleFile;
-
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -62,17 +57,21 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.jdwp.api.VMListener;
+import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 public final class EspressoContext {
 
     public static final int DEFAULT_STACK_SIZE = 32;
-    public static StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
+    public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
@@ -173,7 +172,12 @@ public final class EspressoContext {
         if (bootClasspath == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             bootClasspath = new Classpath(
-                            getVmProperties().bootClasspath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+                            getVmProperties().bootClasspath().stream().map(new Function<Path, String>() {
+                                @Override
+                                public String apply(Path path) {
+                                    return path.toString();
+                                }
+                            }).collect(Collectors.joining(File.pathSeparator)));
         }
         return bootClasspath;
     }
@@ -227,7 +231,11 @@ public final class EspressoContext {
         return meta;
     }
 
-    public final ReferenceQueue<StaticObject> REFERENCE_QUEUE = new ReferenceQueue<>();
+    public ReferenceQueue<StaticObject> getReferenceQueue() {
+        return referenceQueue;
+    }
+
+    private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
 
     private void spawnVM() {
 
@@ -271,7 +279,7 @@ public final class EspressoContext {
                         // so that the References are not considered active.
                         EspressoReference head;
                         do {
-                            head = (EspressoReference) REFERENCE_QUEUE.remove();
+                            head = (EspressoReference) referenceQueue.remove();
                             assert head != null;
                         } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
 
@@ -279,8 +287,9 @@ public final class EspressoContext {
                             assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
 
-                            EspressoReference prev = head, ref;
-                            while ((ref = (EspressoReference) REFERENCE_QUEUE.poll()) != null) {
+                            EspressoReference prev = head;
+                            EspressoReference ref;
+                            while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
                                 if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
                                     continue;
                                 }
@@ -499,7 +508,7 @@ public final class EspressoContext {
 
     public JniEnv getJNI() {
         if (jniEnv == null) {
-            CompilerAsserts.neverPartOfCompilation();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             jniEnv = JniEnv.create(this);
         }
         return jniEnv;
@@ -520,15 +529,15 @@ public final class EspressoContext {
         this.meta = meta;
     }
 
-    public final Names getNames() {
+    public Names getNames() {
         return getLanguage().getNames();
     }
 
-    public final MethodHandleIntrinsics getMethodHandleIntrinsics() {
+    public MethodHandleIntrinsics getMethodHandleIntrinsics() {
         return methodHandleIntrinsics;
     }
 
-    public final EspressoException getStackOverflow() {
+    public EspressoException getStackOverflow() {
         return stackOverflow;
     }
 
@@ -590,10 +599,17 @@ public final class EspressoContext {
     }
 
     // region Options
+
+    // Checkstyle: stop field name check
+
     public final boolean InlineFieldAccessors;
 
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
+
+    // Checkstyle: resume field name check
+
+    // endregion Options
 
     public boolean isMainThreadCreated() {
         return mainThreadCreated;
@@ -635,6 +651,4 @@ public final class EspressoContext {
     public boolean canEnterOtherThread() {
         return contextReady;
     }
-
-    // endregion Options
 }

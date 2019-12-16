@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,12 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions
 public class Target_java_lang_ref_Reference {
 
-    final static Class<?> PUBLIC_FINAL_REFERENCE;
+    static final Class<?> PUBLIC_FINAL_REFERENCE;
 
     /**
      * Compiled {@link java.lang.ref.PublicFinalReference} without the poisoned static initializer.
      */
-    private final static byte[] PUBLIC_FINAL_REFERENCE_BYTES = new byte[]{-54, -2, -70, -66, 0, 0, 0, 52, 0, 28, 7, 0, 2, 1, 0, 34, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 80,
+    private static final byte[] PUBLIC_FINAL_REFERENCE_BYTES = new byte[]{-54, -2, -70, -66, 0, 0, 0, 52, 0, 28, 7, 0, 2, 1, 0, 34, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 80,
                     117, 98, 108, 105, 99, 70, 105, 110, 97, 108, 82, 101, 102, 101, 114, 101, 110, 99, 101, 7, 0, 4, 1, 0, 28, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 70, 105,
                     110, 97, 108, 82, 101, 102, 101, 114, 101, 110, 99, 101, 1, 0, 6, 60, 105, 110, 105, 116, 62, 1, 0, 51, 40, 76, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 79, 98, 106, 101, 99,
                     116, 59, 76, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 114, 101, 102, 47, 82, 101, 102, 101, 114, 101, 110, 99, 101, 81, 117, 101, 117, 101, 59, 41, 86, 1, 0, 9, 83, 105, 103,
@@ -80,13 +80,13 @@ public class Target_java_lang_ref_Reference {
         // Guest referent field is ignored for weak/soft/final/phantom references.
         EspressoReference<StaticObject> ref = null;
         if (InterpreterToVM.instanceOf(self, meta.WeakReference)) {
-            ref = new EspressoWeakReference(self, referent, meta.getContext().REFERENCE_QUEUE);
+            ref = new EspressoWeakReference(self, referent, meta.getContext().getReferenceQueue());
         } else if (InterpreterToVM.instanceOf(self, meta.SoftReference)) {
-            ref = new EspressoSoftReference(self, referent, meta.getContext().REFERENCE_QUEUE);
+            ref = new EspressoSoftReference(self, referent, meta.getContext().getReferenceQueue());
         } else if (InterpreterToVM.instanceOf(self, meta.FinalReference)) {
-            ref = new EspressoFinalReference(self, referent, meta.getContext().REFERENCE_QUEUE);
+            ref = new EspressoFinalReference(self, referent, meta.getContext().getReferenceQueue());
         } else if (InterpreterToVM.instanceOf(self, meta.PhantomReference)) {
-            ref = new EspressoPhantomReference(self, referent, meta.getContext().REFERENCE_QUEUE);
+            ref = new EspressoPhantomReference(self, referent, meta.getContext().getReferenceQueue());
         }
         if (ref != null) {
             // Weak/Soft/Final/Phantom reference.

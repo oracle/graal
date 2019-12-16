@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -35,9 +38,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
-
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
     public enum PolySigIntrinsics {

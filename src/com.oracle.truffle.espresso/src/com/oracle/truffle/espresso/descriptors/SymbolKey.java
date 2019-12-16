@@ -33,7 +33,7 @@ final class SymbolKey {
     }
 
     @Override
-    public final boolean equals(Object other) {
+    public boolean equals(Object other) {
         if (this == other) {
             return true;
         }
@@ -67,7 +67,7 @@ final class SymbolKey {
     }
 
     @Override
-    public final int hashCode() {
+    public int hashCode() {
         return hash;
     }
 }

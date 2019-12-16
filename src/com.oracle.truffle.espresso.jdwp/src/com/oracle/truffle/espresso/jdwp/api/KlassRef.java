@@ -63,7 +63,7 @@ public interface KlassRef {
     MethodRef[] getDeclaredMethods();
 
     /**
-     * Returns a guest-language representation of the classloader for which loaded the class
+     * Returns a guest-language representation of the classloader for which loaded the class.
      * 
      * @return the class loader object
      */

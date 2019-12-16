@@ -451,7 +451,7 @@ public final class Target_java_lang_Thread {
     /**
      * Synchronizes on Target_ class to avoid deadlock when locking on thread object.
      */
-    private synchronized static SuspendLock initSuspendLock(@Host(Object.class) StaticObject self) {
+    private static synchronized SuspendLock initSuspendLock(@Host(Object.class) StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             lock = new SuspendLock();

@@ -979,7 +979,7 @@ final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
+                KlassRef klassRef = verifyRefType(input.readLong(), reply, context); // ref type
                 if (klassRef == null) {
                     return new CommandResult(reply);
                 }
@@ -1006,7 +1006,7 @@ final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
+                KlassRef klassRef = verifyRefType(input.readLong(), reply, context); // ref type
                 if (klassRef == null) {
                     return new CommandResult(reply);
                 }

@@ -58,7 +58,7 @@ import com.oracle.truffle.object.DebugCounter;
  */
 public abstract class ConstantPool {
 
-    static final DebugCounter utf8EntryCount = DebugCounter.create("utf8EntryCount");
+    private static final DebugCounter UTF8_ENTRY_COUNT = DebugCounter.create("UTF8 Constant Pool entries");
 
     public enum Tag {
         INVALID(0),
@@ -116,7 +116,7 @@ public abstract class ConstantPool {
             // @formatter:on
         }
 
-        public final static List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
     public abstract int getMajorVersion();
@@ -235,8 +235,7 @@ public abstract class ConstantPool {
 
     public final Utf8Constant utf8At(int index, String description) {
         try {
-            final Utf8Constant constant = (Utf8Constant) at(index);
-            return constant;
+            return (Utf8Constant) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, UTF8);
         }
@@ -482,7 +481,7 @@ public abstract class ConstantPool {
                 case UTF8: {
                     // Copy-less UTF8 constant.
                     // A new symbol is spawned (copy) only if doesn't already exists.
-                    utf8EntryCount.inc();
+                    UTF8_ENTRY_COUNT.inc();
                     ByteSequence bytes = stream.readByteSequenceUTF();
                     entries[i] = language.getUtf8ConstantTable().getOrCreate(bytes);
                     break;

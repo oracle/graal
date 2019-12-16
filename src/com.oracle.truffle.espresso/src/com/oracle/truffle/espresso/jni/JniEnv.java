@@ -120,17 +120,17 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    public final StaticObject getPendingException() {
+    public StaticObject getPendingException() {
         return threadLocalPendingException.get();
     }
 
     @TruffleBoundary
-    public final void clearPendingException() {
+    public void clearPendingException() {
         threadLocalPendingException.clear();
     }
 
     @TruffleBoundary
-    public final void setPendingException(StaticObject ex) {
+    public void setPendingException(StaticObject ex) {
         assert StaticObject.notNull(ex) && getMeta().Throwable.isAssignableFrom(ex.getKlass());
         threadLocalPendingException.set(ex);
     }
@@ -199,7 +199,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         private final long nativePointer;
 
-        public VarArgsImpl(long nativePointer) {
+        VarArgsImpl(long nativePointer) {
             this.nativePointer = nativePointer;
         }
 
@@ -395,7 +395,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @Override
-    public final EspressoContext getContext() {
+    public EspressoContext getContext() {
         return context;
     }
 
@@ -414,6 +414,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
         assert jniEnvPtr == 0L;
     }
+
+    // Checkstyle: stop method name check
 
     /**
      * <h3>jint GetVersion(JNIEnv *env);</h3>
@@ -1586,8 +1588,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     private ByteBuffer allocateDirect(int capacity) {
-        ByteBuffer bb = ByteBuffer.allocateDirect(capacity) //
-                        .order(ByteOrder.nativeOrder());
+        ByteBuffer bb = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
         long address = byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
@@ -1599,7 +1600,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        byte[] bytes = Utf8.asUTF(Meta.toHostString(str), true);
+        byte[] bytes = ModifiedUtf8.asUtf(Meta.toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
         return byteBufferAddress(region);
@@ -1863,16 +1864,17 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public static int GetStringUTFLength(@Host(String.class) StaticObject string) {
-        return Utf8.UTFLength(Meta.toHostString(string));
+        return ModifiedUtf8.utfLength(Meta.toHostString(string));
     }
 
     @JniImpl
     public void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
-        int length = Utf8.UTFLength(Meta.toHostString(str));
+        int length = ModifiedUtf8.utfLength(Meta.toHostString(str));
         if (start < 0 || start + (long) len > length) {
             throw getMeta().throwEx(StringIndexOutOfBoundsException.class);
         }
-        byte[] bytes = Utf8.asUTF(Meta.toHostString(str), start, len, true); // always 0 terminated.
+        byte[] bytes = ModifiedUtf8.asUtf(Meta.toHostString(str), start, len, true); // always 0
+                                                                                     // terminated.
         ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
@@ -2332,7 +2334,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *
      * @param clazz a Java class object.
      *
-     *            Returns “0” on success; returns a negative value on failure.
+     *            Returns 0 on success; returns a negative value on failure.
      */
     @JniImpl
     public int UnregisterNatives(@Host(Class.class) StaticObject clazz) {
@@ -2410,4 +2412,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         throw EspressoError.shouldNotReachHere("Field not found " + field);
     }
+
+    // Checkstyle: resume method name check
 }

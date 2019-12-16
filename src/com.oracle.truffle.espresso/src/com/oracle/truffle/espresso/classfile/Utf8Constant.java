@@ -41,7 +41,7 @@ public final class Utf8Constant implements PoolConstant {
     private byte validationCache;
 
     @Override
-    public final Tag tag() {
+    public Tag tag() {
         return Tag.UTF8;
     }
 
@@ -124,7 +124,7 @@ public final class Utf8Constant implements PoolConstant {
     }
 
     @Override
-    public final String toString() {
+    public String toString() {
         return value.toString();
     }
 

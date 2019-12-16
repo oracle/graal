@@ -24,12 +24,12 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Array;
 
-import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,

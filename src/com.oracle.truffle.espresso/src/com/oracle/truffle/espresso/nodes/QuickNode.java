@@ -46,7 +46,7 @@ public abstract class QuickNode extends Node {
     public abstract int invoke(VirtualFrame frame);
 
     // TODO(peterssen): Make this a node?
-    protected static final StaticObject nullCheck(StaticObject value) {
+    protected static StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.

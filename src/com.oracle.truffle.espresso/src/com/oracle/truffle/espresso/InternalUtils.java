@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,13 +42,13 @@ public class InternalUtils {
      * @param clazz the class you want to see the underlying representation of primitive fields.
      * @return the layout in memory of the primitive fields.
      */
-    public native static String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz);
+    public static native String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz);
 
     /**
      * @param clazz The class you want to know how many bytes are required for the primitive fields.
      * @return the requested number of bytes
      */
-    public native static int getPrimitiveFieldByteCount(@SuppressWarnings("unused") Class<?> clazz);
+    public static native int getPrimitiveFieldByteCount(@SuppressWarnings("unused") Class<?> clazz);
 
     /**
      * Returns a String representing all (even private ones) known fields in obj, except for hidden
@@ -57,7 +57,7 @@ public class InternalUtils {
      * @param obj the object you want to represent.
      * @return The representation of the obj.
      */
-    public native static String toVerboseString(@SuppressWarnings("unused") Object obj);
+    public static native String toVerboseString(@SuppressWarnings("unused") Object obj);
 
     /**
      * Returns the total number of bytes an instance of clazz takes up in memory.
@@ -65,12 +65,12 @@ public class InternalUtils {
      * @param clazz the class you want to know the memory consumption of
      * @return the total number of bytes used by an instance of clazz.
      */
-    public native static int bytesUsed(Class<?> clazz);
+    public static native int bytesUsed(Class<?> clazz);
 
     /**
      * Checks whether or not we are running in espresso.
      * 
      * @return true iff we are running in Espresso.
      */
-    public native static boolean inEspresso();
+    public static native boolean inEspresso();
 }

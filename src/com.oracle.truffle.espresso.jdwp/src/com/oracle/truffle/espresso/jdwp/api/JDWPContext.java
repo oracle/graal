@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public interface JDWPContext {
 
     /**
-     * Rerturns the guest language representation of a host thread
+     * Rerturns the guest language representation of a host thread.
      * 
      * @param hostThread
      * @return guest language thread
@@ -38,7 +38,7 @@ public interface JDWPContext {
     Object asGuestThread(Thread hostThread);
 
     /**
-     * Returns the host thread corresponding to the guest language thread
+     * Returns the host thread corresponding to the guest language thread.
      * 
      * @param thread guest language thread
      * @return host language thread
@@ -54,7 +54,7 @@ public interface JDWPContext {
     KlassRef[] findLoadedClass(String slashName);
 
     /**
-     * Returns all loaded classes by the VM
+     * Returns all loaded classes by the VM.
      * 
      * @return array containing every class loaded
      */
@@ -91,7 +91,7 @@ public interface JDWPContext {
     String getStringValue(Object object);
 
     /**
-     * Returns the declaring class for an object
+     * Returns the declaring class for an object.
      * 
      * @param object arbitrary guest language object
      * @return the declaring class of the object
@@ -115,7 +115,7 @@ public interface JDWPContext {
     Object getNullObject();
 
     /**
-     * Returns the name of the guest language thread
+     * Returns the name of the guest language thread.
      * 
      * @param thread guest language thread object
      * @return name of the thread
@@ -125,6 +125,7 @@ public interface JDWPContext {
     /**
      * Returns the status of the thread according to
      * https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_ThreadStatus
+     * .
      * 
      * @param thread guest language object representing the thread
      * @return the status of the thread
@@ -132,7 +133,7 @@ public interface JDWPContext {
     int getThreadStatus(Object thread);
 
     /**
-     * Returns the thread group for the thread
+     * Returns the thread group for the thread.
      * 
      * @param thread guest language object representing the thread
      * @return the thread group for the thread
@@ -157,7 +158,7 @@ public interface JDWPContext {
     byte getTypeTag(Object array);
 
     /**
-     * Returns an unboxed host primitive type array of the array
+     * Returns an unboxed host primitive type array of the array.
      * 
      * @param array guest language primitive array
      * @return primitive host language array
@@ -189,7 +190,7 @@ public interface JDWPContext {
     void setStaticFieldValue(FieldRef field, Object value);
 
     /**
-     * Retrieves the value of the array at the index
+     * Retrieves the value of the array at the index.
      * 
      * @param array guest language array
      * @param index
@@ -198,7 +199,7 @@ public interface JDWPContext {
     Object getArrayValue(Object array, int index);
 
     /**
-     * Set the guest language value at the given index in of the array
+     * Set the guest language value at the given index in of the array.
      * 
      * @param array guest language array
      * @param index
@@ -218,7 +219,7 @@ public interface JDWPContext {
     boolean isString(Object string);
 
     /**
-     * Determines if a thread is valid. A valid thread is an active thread
+     * Determines if a thread is valid. A valid thread is an active thread.
      * 
      * @param thread
      * @return true if thread is valid, false otherwise
@@ -234,7 +235,7 @@ public interface JDWPContext {
     boolean isValidThreadGroup(Object threadGroup);
 
     /**
-     * Determines if the object is an array
+     * Determines if the object is an array.
      * 
      * @param object guest language object
      * @return true if object is an array, false otherwise
@@ -242,7 +243,7 @@ public interface JDWPContext {
     boolean isArray(Object object);
 
     /**
-     * Verifies that the array has the expected length
+     * Verifies that the array has the expected length.
      * 
      * @param array guest language array object
      * @param length expected length of the array
@@ -259,7 +260,7 @@ public interface JDWPContext {
     boolean isValidClassLoader(Object object);
 
     /**
-     * Converts an arbitrary host object to the corresponding guest object
+     * Converts an arbitrary host object to the corresponding guest object.
      * 
      * @param object the host object to convert
      * @return the guest object
@@ -270,7 +271,7 @@ public interface JDWPContext {
     Object getGuestException(Throwable exception);
 
     /**
-     * Get the stackframes for the given guest thread
+     * Get the stackframes for the given guest thread.
      * 
      * @param thread the guest thread
      * @return an array of the call frames for the thread

@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A copy is created (almost) only if the symbol doesn't exist. This allows copy-less
@@ -54,12 +54,12 @@ public final class Symbols {
     }
 
     @SuppressWarnings("unchecked")
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     <T> Symbol<T> symbolify(final ByteSequence sequence) {
         final SymbolKey key = new SymbolKey(sequence);
         return (Symbol<T>) symbols.computeIfAbsent(key, new Function<SymbolKey, Symbol<?>>() {
             @Override
-            public Symbol<?> apply(SymbolKey __) {
+            public Symbol<?> apply(SymbolKey unused) {
                 // Create Symbol<?>
                 final byte[] bytes = Arrays.copyOfRange(sequence.getUnderlyingBytes(),
                                 sequence.offset(),

@@ -136,7 +136,7 @@ public final class Substitutions implements ContextAccess {
         private final Symbol<Signature> signature;
         private final int hash;
 
-        public MethodRef(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
+        MethodRef(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
             this.clazz = clazz;
             this.methodName = methodName;
             this.signature = signature;

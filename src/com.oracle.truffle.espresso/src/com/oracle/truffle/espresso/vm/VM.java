@@ -51,7 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -109,6 +108,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 
@@ -189,7 +189,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @Override
-    public final EspressoContext getContext() {
+    public EspressoContext getContext() {
         return jniEnv.getContext();
     }
 
@@ -245,6 +245,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
+
+    // Checkstyle: stop method name check
 
     // region VM methods
 
@@ -539,7 +541,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    @SuppressWarnings("unchecked")
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
         Meta meta = getMeta();
         StackTrace frames = EspressoException.getFrames(self, meta);
@@ -551,7 +552,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    @SuppressWarnings("unchecked")
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         if (index < 0) {
@@ -574,7 +574,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(method.getName()),
                         /* fileName */ meta.toGuestString(method.getSourceFile()),
-                        /* lineNumber */ method.BCItoLineNumber(bci));
+                        /* lineNumber */ method.bciToLineNumber(bci));
 
         return ste;
     }
@@ -1109,7 +1109,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
         if (run == null || !run.isPublic() || run.isStatic()) {
-            getMeta().throwEx(InternalError.class);
+            throw getMeta().throwEx(InternalError.class);
         }
 
         // Prepare the privileged stack
@@ -1605,6 +1605,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
         return res == null ? -1 : res;
     }
+
+    // Checkstyle: resume method name check
 
     private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
         if (stack.compare(frameInstance)) {

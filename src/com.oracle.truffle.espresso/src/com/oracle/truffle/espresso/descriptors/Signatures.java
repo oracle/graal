@@ -64,7 +64,7 @@ public final class Signatures {
         return symbols.symbolify(ByteSequence.create(signatureString));
     }
 
-    public final Types getTypes() {
+    public Types getTypes() {
         return types;
     }
 
@@ -219,7 +219,7 @@ public final class Signatures {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public final Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
+    public Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
         Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
         for (int i = 0; i < parameterClasses.length; ++i) {
             parameterTypes[i] = getTypes().fromClass(parameterClasses[i]);

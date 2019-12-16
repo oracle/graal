@@ -109,15 +109,15 @@ public final class CodeAttribute extends Attribute {
         return LocalVariableTable.EMPTY;
     }
 
-    public final int BCItoLineNumber(int BCI) {
+    public int bciToLineNumber(int bci) {
         LineNumberTable lnt = getLineNumberTableAttribute();
         if (lnt == LineNumberTable.EMPTY) {
             return -1;
         }
-        return lnt.getLineNumber(BCI);
+        return lnt.getLineNumber(bci);
     }
 
-    public final boolean useStackMaps() {
+    public boolean useStackMaps() {
         return majorVersion >= JAVA_6_VERSION;
     }
 

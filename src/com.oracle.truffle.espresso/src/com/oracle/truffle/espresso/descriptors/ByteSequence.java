@@ -28,7 +28,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Stable;
-import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -71,19 +71,19 @@ public abstract class ByteSequence {
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
             @Override
-            public final int length() {
+            public int length() {
                 return length;
             }
 
             @Override
-            public final int offset() {
+            public int offset() {
                 return offset;
             }
         };
     }
 
     public static ByteSequence create(String str) {
-        final byte[] bytes = Utf8.fromJavaString(str);
+        final byte[] bytes = ModifiedUtf8.fromJavaString(str);
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
@@ -144,7 +144,7 @@ public abstract class ByteSequence {
     @Override
     public String toString() {
         try {
-            return Utf8.toJavaString(getUnderlyingBytes(), offset(), length());
+            return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }

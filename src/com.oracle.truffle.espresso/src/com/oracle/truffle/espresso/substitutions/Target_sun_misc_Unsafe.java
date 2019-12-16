@@ -45,9 +45,8 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 import sun.misc.Unsafe;
 
@@ -181,7 +180,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    /** The value of {@code addressSize()} */
+    /** The value of {@code addressSize()}. */
     public static final int ADDRESS_SIZE = U.addressSize();
 
     /**

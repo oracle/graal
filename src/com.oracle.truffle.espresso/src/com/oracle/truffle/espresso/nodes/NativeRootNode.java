@@ -45,7 +45,7 @@ public final class NativeRootNode extends EspressoMethodNode {
     private final TruffleObject boundNative;
     private final boolean isJni;
 
-    public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
+    private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
     public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
         super(method);
@@ -53,7 +53,7 @@ public final class NativeRootNode extends EspressoMethodNode {
         this.isJni = isJni;
     }
 
-    protected final Object[] preprocessArgs(Object[] args) {
+    protected Object[] preprocessArgs(Object[] args) {
         int paramCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         // Meta.Klass[] params = getOriginalMethod().getParameterTypes();
         // TODO(peterssen): Static method does not get the clazz in the arguments,
@@ -88,9 +88,9 @@ public final class NativeRootNode extends EspressoMethodNode {
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         try {
-            nativeCalls.inc();
+            NATIVE_METHOD_CALLS.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
             // The frame.getArguments().length must match the arity of the native method, which is
             // constant.
@@ -115,7 +115,7 @@ public final class NativeRootNode extends EspressoMethodNode {
         System.err.println("Calling native " + getMethod() + Arrays.toString(argsWithEnv));
     }
 
-    private final Object callNative(Object[] argsWithEnv) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+    private Object callNative(Object[] argsWithEnv) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         return InteropLibrary.getFactory().getUncached().execute(boundNative, argsWithEnv);
     }
 
@@ -128,7 +128,7 @@ public final class NativeRootNode extends EspressoMethodNode {
         }
     }
 
-    protected final Object processResult(Object result) {
+    protected Object processResult(Object result) {
         JniEnv jniEnv = getMethod().getContext().getJNI();
         assert jniEnv.getNativePointer() != 0;
 

@@ -41,13 +41,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -68,7 +68,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
         @Override
         public int compare(Klass o1, Klass o2) {
-            return Integer.compare(o1.ID, o2.ID);
+            return Integer.compare(o1.id, o2.id);
         }
     };
 
@@ -85,7 +85,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private final EspressoContext context;
     private final ObjectKlass superKlass;
 
-    private final int ID;
+    private final int id;
 
     @CompilationFinal(dimensions = 1) //
     private final ObjectKlass[] superInterfaces;
@@ -107,7 +107,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * following is true:
      * <ul>
      * <li>C is public.
-     * <li>C and D are members of the same run-time package (§5.3).
+     * <li>C and D are members of the same run-time package (&sect;5.3).
      * </ul>
      */
     public static boolean checkAccess(Klass klass, Klass accessingKlass) {
@@ -132,7 +132,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
         this.isArray = Types.isArray(type);
-        this.ID = context.getNewId();
+        this.id = context.getNewId();
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -301,8 +301,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
-    public final int getID() {
-        return ID;
+    public final int getId() {
+        return id;
     }
 
     boolean checkInterfaceSubclassing(Klass other) {
@@ -646,11 +646,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return null;
     }
 
+    @TruffleBoundary
     private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
                     Symbol<Signature> signature,
-                    MethodHandleIntrinsics.PolySigIntrinsics id,
+                    MethodHandleIntrinsics.PolySigIntrinsics methodHandleId,
                     Klass accessingKlass) {
-        if (id == InvokeGeneric) {
+        if (methodHandleId == InvokeGeneric) {
             return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
@@ -666,26 +667,26 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     StaticObject appendix = appendixBox.get(0);
                     return new MHInvokeGenericNode(method, memberName, appendix);
                 }
-            }, id);
-        } else if (id == InvokeBasic) {
+            }, methodHandleId);
+        } else if (methodHandleId == InvokeBasic) {
             return getMeta().invokeBasic.findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 @Override
                 public EspressoMethodNode apply(Method method) {
                     return new MHInvokeBasicNode(method);
                 }
-            }, id);
+            }, methodHandleId);
         } else {
 
             Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
-            switch (id) {
+            switch (methodHandleId) {
                 case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, methodHandleId);
                 case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, methodHandleId);
                 case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, methodHandleId);
                 case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, id);
+                    return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, methodHandleId);
                 default:
                     throw EspressoError.shouldNotReachHere();
             }

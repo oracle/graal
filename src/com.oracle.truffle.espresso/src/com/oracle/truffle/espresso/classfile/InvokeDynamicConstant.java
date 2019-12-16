@@ -62,12 +62,12 @@ public interface InvokeDynamicConstant extends PoolConstant {
         }
 
         @Override
-        public final Symbol<Signature> getSignature(ConstantPool pool) {
+        public Symbol<Signature> getSignature(ConstantPool pool) {
             return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
         @Override
-        public final Symbol<Name> getName(ConstantPool pool) {
+        public Symbol<Name> getName(ConstantPool pool) {
             return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
         }
 

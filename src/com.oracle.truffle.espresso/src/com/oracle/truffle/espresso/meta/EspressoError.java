@@ -41,7 +41,7 @@ public final class EspressoError extends Error {
         private final Method method;
         private final int bci;
 
-        public Frame(Method method, int bci) {
+        Frame(Method method, int bci) {
 
             this.method = method;
             this.bci = bci;

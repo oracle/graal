@@ -99,14 +99,13 @@ public final class ClassRegistries {
 
     @TruffleBoundary
     public Klass[] getAllLoadedClasses() {
-        ArrayList<Klass> list = new ArrayList<>();
         // add classes from boot registry
-        list.addAll(bootClassRegistry.classes.values());
+        ArrayList<Klass> list = new ArrayList<>(bootClassRegistry.classes.values());
         // add classes from all other registries
         for (ClassRegistry registry : registries.values()) {
             list.addAll(registry.classes.values());
         }
-        return list.toArray(new Klass[list.size()]);
+        return list.toArray(Klass.EMPTY_ARRAY);
     }
 
     @TruffleBoundary
@@ -154,18 +153,18 @@ public final class ClassRegistries {
         return registry.defineKlass(type, bytes);
     }
 
-    public final BootClassRegistry getBootClassRegistry() {
+    public BootClassRegistry getBootClassRegistry() {
         return (BootClassRegistry) bootClassRegistry;
     }
 
-    public final void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
         if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
             constraints.checkConstraint(toCheck, loader1, loader2);
         }
     }
 
-    final void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
         assert !Types.isArray(type);
         if (!Types.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader);

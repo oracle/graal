@@ -60,7 +60,7 @@ public interface LocalRef {
     int getEndBCI();
 
     /**
-     * Returns the index of the frameslot used to store the local
+     * Returns the index of the frameslot used to store the local.
      * 
      * @return the slot index
      */

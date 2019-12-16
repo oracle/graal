@@ -474,102 +474,100 @@ public final class ClassfileParser {
         int attributeCount = stream.readU2();
         Attribute[] methodAttributes = new Attribute[attributeCount];
 
-        {
-            @SuppressWarnings("unused")
-            SignatureAttribute genericSignature = null;
-            CodeAttribute codeAttribute = null;
-            Attribute checkedExceptions = null;
-            Attribute runtimeVisibleAnnotations = null;
-            Attribute runtimeVisibleTypeAnnotations = null;
-            Attribute runtimeInvisibleTypeAnnotations = null;
-            @SuppressWarnings("unused")
-            Attribute runtimeVisibleParameterAnnotations = null;
-            @SuppressWarnings("unused")
-            Attribute annotationDefault = null;
-            MethodParametersAttribute methodParameters = null;
+        @SuppressWarnings("unused")
+        SignatureAttribute genericSignature = null;
+        CodeAttribute codeAttribute = null;
+        Attribute checkedExceptions = null;
+        Attribute runtimeVisibleAnnotations = null;
+        Attribute runtimeVisibleTypeAnnotations = null;
+        Attribute runtimeInvisibleTypeAnnotations = null;
+        @SuppressWarnings("unused")
+        Attribute runtimeVisibleParameterAnnotations = null;
+        @SuppressWarnings("unused")
+        Attribute annotationDefault = null;
+        MethodParametersAttribute methodParameters = null;
 
-            for (int i = 0; i < attributeCount; ++i) {
-                final int attributeNameIndex = stream.readU2();
-                final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
-                final int attributeSize = stream.readS4();
-                final int startPosition = stream.getPosition();
-                if (attributeName.equals(Name.Code)) {
-                    if (codeAttribute != null) {
-                        throw classFormatError("Duplicate Code attribute");
+        for (int i = 0; i < attributeCount; ++i) {
+            final int attributeNameIndex = stream.readU2();
+            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
+            final int attributeSize = stream.readS4();
+            final int startPosition = stream.getPosition();
+            if (attributeName.equals(Name.Code)) {
+                if (codeAttribute != null) {
+                    throw classFormatError("Duplicate Code attribute");
+                }
+                methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
+            } else if (attributeName.equals(Name.Exceptions)) {
+                if (checkedExceptions != null) {
+                    throw classFormatError("Duplicate Exceptions attribute");
+                }
+                methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
+            } else if (attributeName.equals(Name.Synthetic)) {
+                methodFlags |= ACC_SYNTHETIC;
+                methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
+            } else if (majorVersion >= JAVA_1_5_VERSION) {
+                if (attributeName.equals(Name.Signature)) {
+                    methodAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
+                } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                    assert runtimeVisibleAnnotations == null;
+                    // Check if java.lang.invoke.LambdaForm.Compiled is present here.
+                    byte[] data = stream.readByteArray(attributeSize);
+                    ClassfileStream subStream = new ClassfileStream(data, this.classfile);
+                    int count = subStream.readU2();
+                    for (int j = 0; j < count; j++) {
+                        int typeIndex = parseAnnotation(subStream);
+                        Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                        constant.validateType(false);
+                        Symbol<Type> annotType = constant.value();
+                        if (Type.LambdaForm$Compiled.equals(annotType)) {
+                            methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
+                            methodFlags |= ACC_CALLER_SENSITIVE;
+                        }
                     }
-                    methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
-                } else if (attributeName.equals(Name.Exceptions)) {
-                    if (checkedExceptions != null) {
-                        throw classFormatError("Duplicate Exceptions attribute");
+                    methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
+                } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
+                    if (runtimeVisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
                     }
-                    methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
-                } else if (attributeName.equals(Name.Synthetic)) {
-                    methodFlags |= ACC_SYNTHETIC;
-                    methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
-                } else if (majorVersion >= JAVA_1_5_VERSION) {
-                    if (attributeName.equals(Name.Signature)) {
-                        methodAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
-                    } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
-                        assert runtimeVisibleAnnotations == null;
-                        // Check if java.lang.invoke.LambdaForm.Compiled is present here.
-                        byte[] data = stream.readByteArray(attributeSize);
-                        ClassfileStream subStream = new ClassfileStream(data, this.classfile);
-                        int count = subStream.readU2();
-                        for (int j = 0; j < count; j++) {
-                            int typeIndex = parseAnnotation(subStream);
-                            Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
-                            constant.validateType(false);
-                            Symbol<Type> annotType = constant.value();
-                            if (Type.LambdaForm$Compiled.equals(annotType)) {
-                                methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                            } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
-                                methodFlags |= ACC_CALLER_SENSITIVE;
-                            }
-                        }
-                        methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
-                    } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
-                        if (runtimeVisibleTypeAnnotations != null) {
-                            throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
-                        }
-                        methodAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
-                    } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
-                        if (runtimeInvisibleTypeAnnotations != null) {
-                            throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
-                        }
-                        methodAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
-                    } else if (attributeName.equals(Name.RuntimeVisibleParameterAnnotations)) {
-                        methodAttributes[i] = runtimeVisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
-                    } else if (attributeName.equals(Name.MethodParameters)) {
-                        if (methodParameters != null) {
-                            throw classFormatError("Duplicate MethodParameters attribute");
-                        }
-                        methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
-                    } else if (attributeName.equals(Name.AnnotationDefault)) {
-                        methodAttributes[i] = annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
-                    } else {
-                        // stream.skip(attributeSize);
-                        methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    methodAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
+                    if (runtimeInvisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
                     }
+                    methodAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeVisibleParameterAnnotations)) {
+                    methodAttributes[i] = runtimeVisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.MethodParameters)) {
+                    if (methodParameters != null) {
+                        throw classFormatError("Duplicate MethodParameters attribute");
+                    }
+                    methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
+                } else if (attributeName.equals(Name.AnnotationDefault)) {
+                    methodAttributes[i] = annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 } else {
                     // stream.skip(attributeSize);
                     methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 }
-
-                final int distance = stream.getPosition() - startPosition;
-                if (attributeSize != distance) {
-                    final String message = "Invalid attribute_length for " + attributeName + " attribute (reported " + attributeSize + " != parsed " + distance + ")";
-                    throw classFormatError(message);
-                }
+            } else {
+                // stream.skip(attributeSize);
+                methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
             }
 
-            if (Modifier.isAbstract(methodFlags) || Modifier.isNative(methodFlags)) {
-                if (codeAttribute != null) {
-                    throw classFormatError("Code attribute supplied for native or abstract method");
-                }
-            } else {
-                if (codeAttribute == null) {
-                    throw classFormatError("Missing Code attribute");
-                }
+            final int distance = stream.getPosition() - startPosition;
+            if (attributeSize != distance) {
+                final String message = "Invalid attribute_length for " + attributeName + " attribute (reported " + attributeSize + " != parsed " + distance + ")";
+                throw classFormatError(message);
+            }
+        }
+
+        if (Modifier.isAbstract(methodFlags) || Modifier.isNative(methodFlags)) {
+            if (codeAttribute != null) {
+                throw classFormatError("Code attribute supplied for native or abstract method");
+            }
+        } else {
+            if (codeAttribute == null) {
+                throw classFormatError("Missing Code attribute");
             }
         }
 
