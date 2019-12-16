@@ -29,7 +29,6 @@ public final class ThreadLocalHandles {
         objects = new Object[MIN_VALUE + initialNumberOfHandles];
     }
 
-
     public int getHandleCount() {
         return top - MIN_VALUE;
     }

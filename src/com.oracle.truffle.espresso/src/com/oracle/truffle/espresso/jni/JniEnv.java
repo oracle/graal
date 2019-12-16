@@ -88,7 +88,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     static final int JNIWeakGlobalRefType = 3;
 
     // This is an arbitrary constant. The hard limit is defined by the host VM.
-    private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): User-configurable flag.
+    private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): User-configurable
+                                                               // flag.
 
     private final EspressoContext context;
 
@@ -2611,6 +2612,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     // endregion JNI handles
-    
+
     // Checkstyle: resume method name check
 }
