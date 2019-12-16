@@ -108,11 +108,12 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             resolveMethodCount.inc();
             EspressoContext context = pool.getContext();
+            Meta meta = context.getMeta();
+
             Klass holderInterface = getResolvedHolderKlass(accessingKlass, pool);
 
             Symbol<Name> name = getName(pool);
 
-            Meta meta = context.getMeta();
             // 1. If C is not an interface, interface method resolution throws an
             // IncompatibleClassChangeError.
             if (!holderInterface.isInterface()) {

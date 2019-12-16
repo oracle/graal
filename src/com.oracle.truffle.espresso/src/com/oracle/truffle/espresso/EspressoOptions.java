@@ -119,6 +119,10 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    @Option(help = "Force mimicing of hotspot behavior on unrespected specs points", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> ForceHotpotNonSpecCompliancy = new OptionKey<>(false);
+
     public enum VerifyMode {
         NONE,
         REMOTE, // Verifies all bytecodes not loaded by the bootstrap class loader.

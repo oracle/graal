@@ -127,6 +127,7 @@ public final class EspressoContext {
                                                                               // specified
         this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
+        this.forceHotpotNonSpecCompliancy = env.getOptions().get(EspressoOptions.ForceHotpotNonSpecCompliancy);
     }
 
     public ClassRegistries getRegistries() {
@@ -606,6 +607,11 @@ public final class EspressoContext {
 
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
+    public final boolean forceHotpotNonSpecCompliancy;
+
+    public boolean isForceHotpotNonSpecCompliancyEnabled() {
+        return forceHotpotNonSpecCompliancy;
+    }
 
     // Checkstyle: resume field name check
 
