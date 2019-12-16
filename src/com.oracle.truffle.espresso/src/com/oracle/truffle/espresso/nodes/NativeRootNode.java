@@ -42,6 +42,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
+import java.util.Arrays;
+
 public final class NativeRootNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
@@ -99,12 +101,12 @@ public final class NativeRootNode extends EspressoMethodNode {
     }
 
     @Override
-    public final Object invokeNaked(VirtualFrame frame) {
+    public final Object execute(VirtualFrame frame) {
         final JniEnv env = getContext().getJNI();
 
         int nativeFrame = env.getHandles().pushFrame();
         try {
-            nativeCalls.inc();
+            NATIVE_METHOD_CALLS.inc();
             Object[] unpackedArgs = preprocessArgs(env, frame.getArguments());
             Object result = executeNative.execute(boundNative, unpackedArgs);
             return processResult(env, result);

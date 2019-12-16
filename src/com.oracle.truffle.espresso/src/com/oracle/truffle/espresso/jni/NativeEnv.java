@@ -179,7 +179,7 @@ public abstract class NativeEnv {
         buf.clear();
         buf.get(bytes);
         try {
-            return Utf8.toJavaString(bytes);
+            return ModifiedUtf8.toJavaString(bytes);
         } catch (IOException e) {
             // return StaticObject.NULL;
             throw EspressoError.shouldNotReachHere(e);
