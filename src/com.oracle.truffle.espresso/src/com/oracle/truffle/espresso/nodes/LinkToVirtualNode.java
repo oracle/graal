@@ -31,7 +31,7 @@ public final class LinkToVirtualNode implements Linker {
     public static final Linker virtualLinker = new LinkToVirtualNode();
 
     @Override
-    public final Method linkTo(Method target, Object[] args) {
+    public Method linkTo(Method target, Object[] args) {
         Method resolved = target;
         StaticObject receiver = (StaticObject) args[0];
         if ((target.getRefKind() != REF_invokeSpecial)) {

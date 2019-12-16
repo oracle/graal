@@ -42,9 +42,8 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class MHLinkToNode extends HandleIntrinsicNode {
-    final int argCount;
-    final MethodHandleIntrinsics.PolySigIntrinsics id;
-    private Linker linker;
+    private final int argCount;
+    private final Linker linker;
     private final int hiddenVmtarget;
     private final boolean hasReceiver;
 
@@ -52,7 +51,6 @@ public abstract class MHLinkToNode extends HandleIntrinsicNode {
 
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
-        this.id = id;
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
         this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getFieldIndex();
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
@@ -119,7 +117,7 @@ public abstract class MHLinkToNode extends HandleIntrinsicNode {
         }
     }
 
-    public static Linker findLinker(MethodHandleIntrinsics.PolySigIntrinsics id) {
+    private static Linker findLinker(MethodHandleIntrinsics.PolySigIntrinsics id) {
         switch (id) {
             case LinkToVirtual:
                 return virtualLinker;
@@ -138,7 +136,6 @@ public abstract class MHLinkToNode extends HandleIntrinsicNode {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
-        Method target = (Method) memberName.getUnsafeField(hiddenVmtarget);
-        return target;
+        return (Method) memberName.getUnsafeField(hiddenVmtarget);
     }
 }
