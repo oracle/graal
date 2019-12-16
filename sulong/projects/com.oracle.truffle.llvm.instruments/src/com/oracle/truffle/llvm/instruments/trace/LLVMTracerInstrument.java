@@ -55,8 +55,6 @@ public final class LLVMTracerInstrument {
 
     @TruffleBoundary
     public void initialize(TruffleLanguage.Env env, String optionString) {
-        env.registerService(this);
-
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         builder.mimeTypeIs("text/x-llvmir");
         builder.tagIs(StandardTags.StatementTag.class, StandardTags.RootTag.class);
