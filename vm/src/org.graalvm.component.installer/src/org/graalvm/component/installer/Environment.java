@@ -247,6 +247,12 @@ public class Environment implements Feedback, CommandInput {
     }
 
     @Override
+    public boolean verbatimPart(String msg, boolean error, boolean beVerbose) {
+        print(beVerbose, false, null, error ? err : out, msg);
+        return beVerbose;
+    }
+
+    @Override
     public boolean backspace(int chars, boolean beVerbose) {
         if (beVerbose && !verbose) {
             return false;
@@ -333,6 +339,12 @@ public class Environment implements Feedback, CommandInput {
             }
 
             @Override
+            public boolean verbatimPart(String msg, boolean error, boolean verboseOutput) {
+                print(verboseOutput, false, null, error ? err : out, msg);
+                return verbose;
+            }
+
+            @Override
             public boolean backspace(int chars, boolean beVerbose) {
                 return Environment.this.backspace(chars, beVerbose);
             }
@@ -375,6 +387,9 @@ public class Environment implements Feedback, CommandInput {
                     args[i] = v;
                 }
             }
+        }
+        if (bundleKey == null) {
+            return String.valueOf(args[0]);
         }
         return MessageFormat.format(
                         bundle.getString(bundleKey),
