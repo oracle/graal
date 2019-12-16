@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -65,7 +64,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
-import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -74,6 +72,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -85,6 +84,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintToolchainPath;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -260,16 +260,15 @@ public final class LLVMContext {
     void initialize() {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
+
         final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
-        if (!"".equalsIgnoreCase(traceOption)) {
+        if (SulongEngineOption.optionEnabled(traceOption)) {
             if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
                 throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
             }
-            tracer = new LLVMTracerInstrument();
-            tracer.initialize(env, traceOption);
-        } else {
-            tracer = null;
+            tracer = new LLVMTracerInstrument(env, traceOption);
         }
+
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : language.getLanguageContextExtension()) {
             ext.initialize();
@@ -470,6 +469,10 @@ public final class LLVMContext {
 
         if (tracer != null) {
             tracer.dispose();
+        }
+
+        if (loaderTraceStream != null) {
+            loaderTraceStream.dispose();
         }
     }
 
@@ -957,26 +960,21 @@ public final class LLVMContext {
         }
     }
 
-    @CompilationFinal private boolean traceLoaderEnabled;
-    @CompilationFinal private PrintStream traceLoaderStream;
+    @CompilationFinal private TargetStream loaderTraceStream;
+    @CompilationFinal private boolean loaderTraceStreamInitialized = false;
 
-    private void cacheTrace() {
-        if (traceLoaderStream == null) {
+    public TargetStream loaderTraceStream() {
+        if (!loaderTraceStreamInitialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceLoaderStream = SulongEngineOption.getStream(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
-            traceLoaderEnabled = SulongEngineOption.isTrue(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
-            assert traceLoaderStream != null;
+
+            final String loaderDebugOption = env.getOptions().get(SulongEngineOption.LD_DEBUG);
+            if (SulongEngineOption.optionEnabled(loaderDebugOption)) {
+                loaderTraceStream = new TargetStream(env, loaderDebugOption);
+            }
+
+            loaderTraceStreamInitialized = true;
         }
-    }
-
-    boolean ldDebugEnabled() {
-        cacheTrace();
-        return traceLoaderEnabled;
-    }
-
-    PrintStream ldDebugStream() {
-        cacheTrace();
-        return traceLoaderStream;
+        return loaderTraceStream;
     }
 
 }

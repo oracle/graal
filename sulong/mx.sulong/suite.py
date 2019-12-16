@@ -189,25 +189,10 @@ suite = {
         "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
-        "com.oracle.truffle.llvm.instruments",
         "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "checkstyleVersion" : "8.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "1.8+",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-      "jacoco" : "include",
-    },
-
-    "com.oracle.truffle.llvm.instruments" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API"
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
