@@ -48,7 +48,7 @@
 				"graalvm.languageServer.inProcessServer": {
 					"type": "boolean",
 					"default": true,
-					"description": "Start GrallVM Language Server within processes being run or debugged"
+					"description": "Start GraalVM Language Server within processes being run or debugged"
 				}
 			}
 		},
