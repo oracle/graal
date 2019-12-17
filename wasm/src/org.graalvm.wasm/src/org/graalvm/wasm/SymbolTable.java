@@ -49,7 +49,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -67,7 +66,9 @@ public class SymbolTable {
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
-    private static final int GLOBAL_EXPORT_BIT = 1 << 24;
+    private static final int UNINITIALIZED_GLOBAL_ADDRESS = -1;
+    private static final int GLOBAL_MUTABLE_BIT = 0x0100;
+    private static final int GLOBAL_EXPORT_BIT = 0x0200;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
@@ -182,7 +183,7 @@ public class SymbolTable {
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th global in
      * this module. The value at the index i denotes the address of the global in the memory space
-     * for all the globals from all the modules (see {@link Globals}).
+     * for all the globals from all the modules (see {@link GlobalRegistry}).
      *
      * This separation of global indices is done because the index spaces of the globals are
      * module-specific, and the globals can be imported across modules. Thus, the address-space of
@@ -192,19 +193,14 @@ public class SymbolTable {
 
     /**
      * A global type is the value type of the global, followed by its mutability. This is encoded as
-     * two bytes -- the lowest (0th) byte is the value type, the 1st byte is the mutability of the
-     * global variable, and the 2nd byte is the global's resolution status (see
-     * {@link GlobalModifier}, {@link GlobalResolution} and {@link ValueTypes}).
+     * two bytes -- the lowest (0th) byte is the value type.
+     * The 1st byte is organized like this:
+     *
+     * <code>
+     * | . | . | . | . | . | . | exported flag | mutable flag |
+     * </code>
      */
-    @CompilationFinal(dimensions = 1) int[] globalTypes;
-
-    /**
-     * Tracks all the globals that have not yet been resolved, and will be resolved once the modules
-     * are fully linked. The lower 4 bytes are the index of the unresolved global, whereas the
-     * higher 4 bytes are the index of the global whose value this global should be initialized with
-     * (assuming that this global was declared with a {@code GLOBAL_GET} expression).
-     */
-    @CompilationFinal private final LongArrayList unresolvedGlobals;
+    @CompilationFinal(dimensions = 1) short[] globalTypes;
 
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
@@ -271,8 +267,7 @@ public class SymbolTable {
         this.exportedFunctionsByIndex = new HashMap<>();
         this.startFunctionIndex = -1;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
-        this.globalTypes = new int[INITIAL_GLOBALS_SIZE];
-        this.unresolvedGlobals = new LongArrayList();
+        this.globalTypes = new short[INITIAL_GLOBALS_SIZE];
         this.importedGlobals = new LinkedHashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
         this.maxGlobalIndex = -1;
@@ -413,7 +408,7 @@ public class SymbolTable {
         return function;
     }
 
-    public String exportedFunctionName(int index) {
+    String exportedFunctionName(int index) {
         return exportedFunctionsByIndex.get(index);
     }
 
@@ -522,7 +517,7 @@ public class SymbolTable {
             final int[] nGlobalIndices = new int[globalAddresses.length * 2];
             System.arraycopy(globalAddresses, 0, nGlobalIndices, 0, globalAddresses.length);
             globalAddresses = nGlobalIndices;
-            final int[] nGlobalTypes = new int[globalTypes.length * 2];
+            final short[] nGlobalTypes = new short[globalTypes.length * 2];
             System.arraycopy(globalTypes, 0, nGlobalTypes, 0, globalTypes.length);
             globalTypes = nGlobalTypes;
         }
@@ -532,29 +527,40 @@ public class SymbolTable {
      * Allocates a global index in the symbol table, for a global variable that was already
      * allocated.
      */
-    private void allocateGlobal(int index, int valueType, int mutability, GlobalResolution resolution, int address) {
+    void allocateGlobal(int index, byte valueType, byte mutability, int address) {
         assert (valueType & 0xff) == valueType;
-        assert (mutability & 0xff) == mutability;
         checkNotLinked();
         ensureGlobalsCapacity(index);
         maxGlobalIndex = Math.max(maxGlobalIndex, index);
         globalAddresses[index] = address;
-        int globalType = (resolution.ordinal() << 16) | ((mutability << 8) | valueType);
+        final int mutabilityBit;
+        if (mutability == GlobalModifier.CONSTANT) {
+            mutabilityBit = 0;
+        } else if (mutability == GlobalModifier.MUTABLE) {
+            mutabilityBit = GLOBAL_MUTABLE_BIT;
+        } else {
+            throw new WasmException("Invalid mutability: " + mutability);
+        }
+        short globalType = (short) (mutabilityBit | valueType);
         globalTypes[index] = globalType;
     }
 
-    int declareGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
-        assert !resolution.isImported();
-        final Globals globals = context.globals();
+    int declareGlobal(WasmContext context, int index, byte valueType, byte mutability) {
+        final GlobalRegistry globals = context.globals();
         final int address = globals.allocateGlobal();
-        allocateGlobal(index, valueType, mutability, resolution, address);
+        allocateGlobal(index, valueType, mutability, address);
         return address;
     }
 
-    void importGlobal(String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution, int address) {
-        assert resolution.isImported();
+    void importGlobal(WasmContext context, String moduleName, String globalName, int index, byte valueType, byte mutability) {
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
-        allocateGlobal(index, valueType, mutability, resolution, address);
+        allocateGlobal(index, valueType, mutability, UNINITIALIZED_GLOBAL_ADDRESS);
+        context.linker().resolveGlobalImport(context, module, new ImportDescriptor(moduleName, globalName), index, valueType, mutability);
+    }
+
+    void setGlobalAddress(int globalIndex, int address) {
+        checkNotLinked();
+        globalAddresses[globalIndex] = address;
     }
 
     LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
@@ -569,53 +575,22 @@ public class SymbolTable {
         return globalAddresses[index];
     }
 
-    boolean globalExported(int index) {
+    private boolean globalExported(int index) {
         final int exportStatus = globalTypes[index] & GLOBAL_EXPORT_BIT;
         return exportStatus != 0;
     }
 
-    public GlobalResolution globalResolution(int index) {
-        final int resolutionValue = (globalTypes[index] >>> 16) & 0xff;
-        return GlobalResolution.VALUES[resolutionValue];
-    }
-
     byte globalMutability(int index) {
-        return (byte) ((globalTypes[index] >>> 8) & 0xff);
+        final short globalType = globalTypes[index];
+        if ((globalType & GLOBAL_MUTABLE_BIT) != 0) {
+            return GlobalModifier.MUTABLE;
+        } else {
+            return GlobalModifier.CONSTANT;
+        }
     }
 
     public byte globalValueType(int index) {
         return (byte) (globalTypes[index] & 0xff);
-    }
-
-    private void addUnresolvedGlobal(long unresolvedEntry) {
-        checkNotLinked();
-        unresolvedGlobals.add(unresolvedEntry);
-    }
-
-    /**
-     * Tracks an unresolved imported global. The global must have been previously allocated.
-     */
-    public void trackUnresolvedGlobal(int globalIndex) {
-        checkNotLinked();
-        assertGlobalAllocated(globalIndex);
-        addUnresolvedGlobal(globalIndex);
-    }
-
-    /**
-     * Tracks an unresolved declared global, which depends on an unresolved imported global. The
-     * global must have been previously allocated.
-     */
-    void trackUnresolvedGlobal(int globalIndex, int dependentGlobal) {
-        checkNotLinked();
-        assertGlobalAllocated(globalIndex);
-        long encoding = ((long) dependentGlobal << 32) | globalIndex;
-        addUnresolvedGlobal(encoding);
-    }
-
-    private void assertGlobalAllocated(int globalIndex) {
-        if (globalIndex >= maxGlobalIndex || globalTypes[globalIndex] == 0) {
-            throw new RuntimeException("Cannot track non-allocated global: " + globalIndex);
-        }
     }
 
     Map<String, Integer> exportedGlobals() {
@@ -631,20 +606,20 @@ public class SymbolTable {
         return null;
     }
 
-    void exportGlobal(String name, int index) {
+    void exportGlobal(WasmContext context, String name, int index) {
         checkNotLinked();
         if (globalExported(index)) {
-            throw new WasmMemoryException("Global " + index + " already exported under the name: " + nameOfExportedGlobal(index));
+            throw new WasmMemoryException("Global " + index + " already exported with the name: " + nameOfExportedGlobal(index));
         }
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
-        // TODO: Invoke Linker to link together any modules with pending unresolved globals.
         exportedGlobals.put(name, index);
+        context.linker().resolveGlobalExport(module, name, index);
     }
 
-    public int declareExportedGlobal(WasmContext context, String name, int index, int valueType, int mutability, GlobalResolution resolution) {
+    public int declareExportedGlobal(WasmContext context, String name, int index, byte valueType, byte mutability) {
         checkNotLinked();
-        int address = declareGlobal(context, index, valueType, mutability, resolution);
-        exportGlobal(name, index);
+        int address = declareGlobal(context, index, valueType, mutability);
+        exportGlobal(context, name, index);
         return address;
     }
 

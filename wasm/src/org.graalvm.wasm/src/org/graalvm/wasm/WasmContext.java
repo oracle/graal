@@ -55,7 +55,7 @@ public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
     private final MemoryRegistry memoryRegistry;
-    private final Globals globals;
+    private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private Map<String, WasmModule> modules;
@@ -67,7 +67,7 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
-        this.globals = new Globals();
+        this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.modules = new HashMap<>();
@@ -92,7 +92,7 @@ public final class WasmContext {
         return memoryRegistry;
     }
 
-    public Globals globals() {
+    public GlobalRegistry globals() {
         return globals;
     }
 

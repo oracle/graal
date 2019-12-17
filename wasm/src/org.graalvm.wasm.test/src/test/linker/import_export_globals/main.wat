@@ -40,7 +40,7 @@
 ;;
 (module
   (type (;0;) (func (result i32)))
-  (import "man-in-the-middle" "stack_pointer" (global (;0;) (mut i32)))
+  (import "man-in-the-middle" "stack_pointer" (global (;0;) i32))
   (func (export "_main") (type 0)
     global.get 0
   )

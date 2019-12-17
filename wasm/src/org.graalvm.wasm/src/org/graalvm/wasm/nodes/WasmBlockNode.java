@@ -236,7 +236,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.constants.TargetOffset;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
@@ -816,12 +815,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
 
-                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
-                    if (!resolution.isResolved()) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
-                    }
-
                     byte type = module().symbolTable().globalValueType(index);
                     switch (type) {
                         case ValueTypes.I32_TYPE: {
@@ -868,12 +861,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
-
-                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
-                    if (!resolution.isResolved()) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
-                    }
 
                     byte type = module().symbolTable().globalValueType(index);
                     // For global.set, we don't need to make sure that the referenced global is

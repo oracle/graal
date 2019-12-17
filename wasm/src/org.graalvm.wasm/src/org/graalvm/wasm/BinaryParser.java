@@ -51,7 +51,6 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.exception.WasmException;
@@ -123,7 +122,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readTypeSection();
                     break;
                 case Section.IMPORT:
-                    readImportSection();
+                    readImportSection(context);
                     break;
                 case Section.FUNCTION:
                     readFunctionSection();
@@ -179,10 +178,9 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readImportSection() {
+    private void readImportSection(WasmContext context) {
         Assert.assertIntEqual(module.symbolTable().maxGlobalIndex(), -1,
                         "The global index should be -1 when the import section is first read.");
-        final WasmContext context = WasmLanguage.getCurrentContext();
         int numImports = readVectorLength();
         for (int i = 0; i != numImports; ++i) {
             String moduleName = readName();
@@ -243,10 +241,9 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ImportIdentifier.GLOBAL: {
                     byte type = readValueType();
-                    // See GlobalModifier.
-                    byte mutability = read1();
+                    byte mutability = readMutability();
                     int index = module.symbolTable().maxGlobalIndex() + 1;
-                    context.linker().importGlobal(module, index, moduleName, memberName, type, mutability);
+                    module.symbolTable().importGlobal(context, moduleName, memberName, index, type, mutability);
                     break;
                 }
                 default: {
@@ -1103,7 +1100,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ExportIdentifier.GLOBAL: {
                     int index = readGlobalIndex();
-                    module.symbolTable().exportGlobal(exportName, index);
+                    module.symbolTable().exportGlobal(context, exportName, index);
                     break;
                 }
                 default: {
@@ -1114,66 +1111,52 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readGlobalSection() {
-        final Globals globals = WasmLanguage.getCurrentContext().globals();
+        final GlobalRegistry globals = WasmLanguage.getCurrentContext().globals();
         int numGlobals = readVectorLength();
         int startingGlobalIndex = module.symbolTable().maxGlobalIndex() + 1;
         for (int i = startingGlobalIndex; i != startingGlobalIndex + numGlobals; i++) {
             byte type = readValueType();
             // 0x00 means const, 0x01 means var
-            byte mutability = read1();
+            byte mutability = readMutability();
             long value = 0;
-            GlobalResolution resolution;
             int existingIndex = -1;
             byte instruction = read1();
+            boolean isInitialized;
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
             switch (instruction) {
                 case Instructions.I32_CONST:
                     value = readSignedInt32();
-                    resolution = GlobalResolution.DECLARED;
+                    isInitialized = true;
                     break;
                 case Instructions.I64_CONST:
                     value = readSignedInt64();
-                    resolution = GlobalResolution.DECLARED;
+                    isInitialized = true;
                     break;
                 case Instructions.F32_CONST:
                     value = readFloatAsInt32();
-                    resolution = GlobalResolution.DECLARED;
+                    isInitialized = true;
                     break;
                 case Instructions.F64_CONST:
                     value = readFloatAsInt64();
-                    resolution = GlobalResolution.DECLARED;
+                    isInitialized = true;
                     break;
                 case Instructions.GLOBAL_GET:
                     existingIndex = readGlobalIndex();
-                    final GlobalResolution existingResolution = module.symbolTable().globalResolution(existingIndex);
-                    Assert.assertTrue(existingResolution.isImported(),
-                                    String.format("Global %d is not initialized with an imported global.", i));
-                    if (existingResolution.isResolved()) {
-                        final byte existingType = module.symbolTable().globalValueType(existingIndex);
-                        Assert.assertByteEqual(type, existingType,
-                                        String.format("The types of the globals must be consistent: 0x%02X vs 0x%02X", type, existingType));
-                        final int existingAddress = module.symbolTable().globalAddress(existingIndex);
-                        value = globals.loadAsLong(existingAddress);
-                        resolution = GlobalResolution.DECLARED;
-                    } else {
-                        // The imported module with the referenced global was not yet parsed and
-                        // resolved,
-                        // so it is not possible to initialize the current global.
-                        // The resolution state is set accordingly, until it gets resolved later.
-                        resolution = GlobalResolution.UNRESOLVED_GET;
-                    }
-                    break;
+                    isInitialized = false;
+                    // TODO: Implement this.
+                    throw Assert.fail("Global initialization case not yet handled.");
                 default:
                     throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
             }
             instruction = read1();
             Assert.assertByteEqual(instruction, (byte) Instructions.END, "Global initialization must end with END");
-            final int address = module.symbolTable().declareGlobal(WasmLanguage.getCurrentContext(), i, type, mutability, resolution);
-            if (resolution.isResolved()) {
+            final int address = module.symbolTable().declareGlobal(WasmLanguage.getCurrentContext(), i, type, mutability);
+            if (isInitialized) {
                 globals.storeLong(address, value);
             } else {
-                module.symbolTable().trackUnresolvedGlobal(i, existingIndex);
+                // TODO: Implement this.
+                Assert.fail("Case not yet implemented.");
             }
         }
     }
@@ -1414,7 +1397,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.GLOBAL: {
                         readValueType();
-                        byte mutability = read1();
+                        byte mutability = readMutability();
                         if (mutability == GlobalModifier.MUTABLE) {
                             throw new WasmLinkerException("Cannot reset imports of mutable global variables (not implemented).");
                         }
@@ -1428,7 +1411,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         if (tryJumpToSection(Section.GLOBAL)) {
-            final Globals globals = WasmLanguage.getCurrentContext().globals();
+            final GlobalRegistry globals = WasmLanguage.getCurrentContext().globals();
             int numGlobals = readVectorLength();
             int startingGlobalIndex = globalIndex;
             for (; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {

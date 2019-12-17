@@ -52,7 +52,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
@@ -92,9 +91,9 @@ public abstract class BuiltinModule {
         return function;
     }
 
-    protected int defineGlobal(WasmContext context, WasmModule module, String name, int valueType, int mutability, long value) {
+    protected int defineGlobal(WasmContext context, WasmModule module, String name, byte valueType, byte mutability, long value) {
         int index = module.symbolTable().maxGlobalIndex() + 1;
-        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability, GlobalResolution.DECLARED);
+        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability);
         context.globals().storeLong(address, value);
         return index;
     }

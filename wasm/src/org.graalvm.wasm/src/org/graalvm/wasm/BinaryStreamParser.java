@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.constants.GlobalModifier;
 
 public abstract class BinaryStreamParser {
     @CompilationFinal(dimensions = 1) protected byte[] data;
@@ -193,6 +194,23 @@ public abstract class BinaryStreamParser {
 
     protected long readFloatAsInt64() {
         return read8();
+    }
+
+    protected byte readMutability() {
+        final byte mut = peekMutability();
+        offset++;
+        return mut;
+    }
+
+    protected byte peekMutability() {
+        final byte mut = peek1();
+        if (mut == GlobalModifier.CONSTANT) {
+            return mut;
+        } else if (mut == GlobalModifier.MUTABLE) {
+            return mut;
+        } else {
+            throw Assert.fail("Invalid mutability flag: " + mut);
+        }
     }
 
     protected byte read1() {

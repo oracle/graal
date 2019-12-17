@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.Globals;
+import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -74,7 +74,7 @@ public class SaveContextNode extends WasmBuiltinRootNode {
         final WasmContext context = contextReference().get();
         Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final Globals globals = context.globals().duplicate();
+        final GlobalRegistry globals = context.globals().duplicate();
         final ContextState state = new ContextState(currentMemory, globals);
 
         return state;
@@ -82,9 +82,9 @@ public class SaveContextNode extends WasmBuiltinRootNode {
 
     static final class ContextState implements TruffleObject {
         private final WasmMemory memory;
-        private final Globals globals;
+        private final GlobalRegistry globals;
 
-        private ContextState(WasmMemory memory, Globals globals) {
+        private ContextState(WasmMemory memory, GlobalRegistry globals) {
             this.memory = memory;
             this.globals = globals;
         }
@@ -93,7 +93,7 @@ public class SaveContextNode extends WasmBuiltinRootNode {
             return memory;
         }
 
-        public Globals globals() {
+        public GlobalRegistry globals() {
             return globals;
         }
     }

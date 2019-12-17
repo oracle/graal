@@ -40,6 +40,6 @@
 ;;
 (module
   (type (;0;) (func))
-  (import "runtime" "sp" (global (;0;) (mut i32)))
+  (import "runtime" "sp" (global (;0;) i32))
   (export "stack_pointer" (global 0))
 )

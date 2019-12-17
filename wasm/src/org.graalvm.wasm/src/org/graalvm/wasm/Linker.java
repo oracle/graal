@@ -49,7 +49,6 @@ import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.SymbolTable.FunctionType;
 import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
@@ -163,23 +162,22 @@ public class Linker {
         reader.resetMemoryState(context, zeroMemory);
     }
 
-    int importGlobal(WasmModule module, int index, String importedModuleName, String importedGlobalName, int valueType, int mutability) {
-        GlobalResolution resolution = GlobalResolution.UNRESOLVED_IMPORT;
-        final WasmContext context = WasmLanguage.getCurrentContext();
-        final WasmModule importedModule = context.modules().get(importedModuleName);
-        int address = -1;
+    void resolveGlobalImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability) {
+        final String importedGlobalName = importDescriptor.memberName;
+        final String importedModuleName = importDescriptor.moduleName;
+        final Runnable resolveAction = () -> {
+            final WasmModule importedModule = context.modules().get(importedModuleName);
 
-        // Check that the imported module is available.
-        if (importedModule != null) {
+            if (importedModule == null) {
+                throw new WasmLinkerException("Module '" + importedModuleName + "', referenced in the import of global variable '" +
+                                importedGlobalName + "' into module '" + module.name() + "', does not exist.");
+            }
+
             // Check that the imported global is resolved in the imported module.
             Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(importedGlobalName);
             if (exportedGlobalIndex == null) {
                 throw new WasmLinkerException("Global variable '" + importedGlobalName + "', imported into module '" + module.name() +
                                 "', was not exported in the module '" + importedModuleName + "'.");
-            }
-            GlobalResolution exportedResolution = importedModule.symbolTable().globalResolution(exportedGlobalIndex);
-            if (!exportedResolution.isResolved()) {
-                // TODO: Wait until the exported global is resolved.
             }
             int exportedValueType = importedModule.symbolTable().globalValueType(exportedGlobalIndex);
             if (exportedValueType != valueType) {
@@ -193,18 +191,26 @@ public class Linker {
                                 "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(exportedMutability) + ".");
             }
-            if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
-                resolution = GlobalResolution.IMPORTED;
-                address = importedModule.symbolTable().globalAddress(exportedGlobalIndex);
-            }
+
+            int address = importedModule.symbolTable().globalAddress(exportedGlobalIndex);
+            module.symbolTable().setGlobalAddress(globalIndex, address);
+        };
+        final Sym[] dependencies = new Sym[]{new ExportGlobalSym(importedModuleName, importedGlobalName)};
+        resolutionDag.resolveLater(new ImportGlobalSym(module.name(), importDescriptor), dependencies, resolveAction);
+    }
+
+    void resolveGlobalExport(WasmModule module, String globalName, int globalIndex) {
+        final Runnable resolveAction = () -> {
+        };
+        final Sym[] dependencies;
+        final ImportDescriptor importDescriptor = module.symbolTable().importedGlobals().get(globalIndex);
+        if (importDescriptor != null) {
+            dependencies = new Sym[]{new ImportGlobalSym(module.name(), importDescriptor)};
+        } else {
+            // TODO: Handle the case in which the exported global's initializing expression is unresolved.
+            dependencies = new Sym[]{};
         }
-
-        // TODO: Once we support asynchronous parsing, we will need to record the dependency on the
-        // global.
-
-        module.symbolTable().importGlobal(importedModuleName, importedGlobalName, index, valueType, mutability, resolution, address);
-
-        return address;
+        resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, resolveAction);
     }
 
     void resolveFunctionImport(WasmContext context, WasmModule module, WasmFunction function) {
@@ -226,7 +232,7 @@ public class Linker {
             }
             function.setCallTarget(importedFunction.resolveCallTarget());
         };
-        Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
+        final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
         resolutionDag.resolveLater(new ImportFunctionSym(module.name(), function.importDescriptor()), dependencies, resolveAction);
     }
 
@@ -242,7 +248,7 @@ public class Linker {
         final Runnable resolveAction = () -> {
             block.resolveCallNode(controlTableOffset);
         };
-        Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(module.name(), function.importDescriptor()) : new CodeEntrySym(module.name(), function.index())};
+        final Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(module.name(), function.importDescriptor()) : new CodeEntrySym(module.name(), function.index())};
         resolutionDag.resolveLater(new CallsiteSym(module.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
     }
 
@@ -421,11 +427,11 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportFunctionSym)) {
+                if (!(object instanceof ExportGlobalSym)) {
                     return false;
                 }
-                final ExportFunctionSym that = (ExportFunctionSym) object;
-                return this.moduleName.equals(that.moduleName) && this.globalName.equals(that.functionName);
+                final ExportGlobalSym that = (ExportGlobalSym) object;
+                return this.moduleName.equals(that.moduleName) && this.globalName.equals(that.globalName);
             }
         }
 
