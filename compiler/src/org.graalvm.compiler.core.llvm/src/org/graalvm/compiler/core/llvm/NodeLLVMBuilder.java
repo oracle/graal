@@ -532,7 +532,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
             state = ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
         }
         assert state != null;
-        return debugInfoBuilder.build(state, null);
+        return debugInfoBuilder.build(deopt, state, null);
     }
 
     @Override

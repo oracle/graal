@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
@@ -80,7 +81,7 @@ public class DebugInfoBuilder {
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
-    public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
+    public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
         assert pendingVirtualObjects.size() == 0;
@@ -100,6 +101,7 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
+        assert verifyFrameState(node, topState);
         BytecodeFrame frame = computeFrameForState(topState);
 
         VirtualObject[] virtualObjectsArray = null;
@@ -221,6 +223,11 @@ public class DebugInfoBuilder {
 
     protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
         return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean verifyFrameState(NodeWithState node, FrameState topState) {
+        return true;
     }
 
     protected BytecodeFrame computeFrameForState(FrameState state) {
