@@ -1173,7 +1173,7 @@ public class BinaryParser extends BinaryStreamParser {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
             // memory index is 0.
-            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported");
+            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported.");
             long dataOffset = 0;
             byte instruction = read1();
 
