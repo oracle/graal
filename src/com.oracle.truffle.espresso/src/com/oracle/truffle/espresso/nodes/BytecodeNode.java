@@ -372,7 +372,11 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (s == null) {
             return null;
         }
-        int line = getMethod().getLineNumberTable().getLineNumber(bci);
+        LineNumberTable table = getMethod().getLineNumberTable();
+        if (table == LineNumberTable.EMPTY) {
+            return null;
+        }
+        int line = table.getLineNumber(bci);
         return s.createSection(line);
     }
 
