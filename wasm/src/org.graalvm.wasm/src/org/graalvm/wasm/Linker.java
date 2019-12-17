@@ -208,7 +208,7 @@ public class Linker {
             dependencies = new Sym[]{new ImportGlobalSym(module.name(), importDescriptor)};
         } else {
             // TODO: Handle the case in which the exported global's initializing expression is unresolved.
-            dependencies = new Sym[]{};
+            dependencies = ResolutionDag.NO_DEPENDENCIES;
         }
         resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, resolveAction);
     }
@@ -234,6 +234,31 @@ public class Linker {
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
         resolutionDag.resolveLater(new ImportFunctionSym(module.name(), function.importDescriptor()), dependencies, resolveAction);
+    }
+
+    void resolveGlobalInitialization(WasmModule module, int globalIndex) {
+        final Runnable resolveAction = () -> {
+        };
+        final Sym[] dependencies = ResolutionDag.NO_DEPENDENCIES;
+        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, resolveAction);
+    }
+
+    void resolveGlobalInitialization(WasmContext context, WasmModule module, int globalIndex, int sourceGlobalIndex) {
+        final Runnable resolveAction = () -> {
+            final int sourceAddress = module.symbolTable().globalAddress(sourceGlobalIndex);
+            final long sourceValue = context.globals().loadAsLong(sourceAddress);
+            final int address = module.symbolTable().globalAddress(globalIndex);
+            context.globals().storeLong(address, sourceValue);
+        };
+        final SymbolTable symtab = module.symbolTable();
+        final Sym[] dependencies;
+        final ImportDescriptor importDescriptor = symtab.importedGlobals().get(sourceGlobalIndex);
+        if (importDescriptor != null) {
+            dependencies = new Sym[]{new ImportGlobalSym(module.name(), importDescriptor)};
+        } else {
+            dependencies = new Sym[]{new InitializeGlobalSym(module.name(), sourceGlobalIndex)};
+        }
+        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, resolveAction);
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
@@ -432,6 +457,35 @@ public class Linker {
                 }
                 final ExportGlobalSym that = (ExportGlobalSym) object;
                 return this.moduleName.equals(that.moduleName) && this.globalName.equals(that.globalName);
+            }
+        }
+
+        static class InitializeGlobalSym extends Sym {
+            final String moduleName;
+            final int globalIndex;
+
+            InitializeGlobalSym(String moduleName, int globalIndex) {
+                this.moduleName = moduleName;
+                this.globalIndex = globalIndex;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(init global %d in %d)", globalIndex, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return Integer.hashCode(globalIndex) ^ moduleName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof InitializeGlobalSym)) {
+                    return false;
+                }
+                final InitializeGlobalSym that = (InitializeGlobalSym) object;
+                return this.globalIndex == that.globalIndex && this.moduleName.equals(that.moduleName);
             }
         }
 

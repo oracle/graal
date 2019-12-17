@@ -134,7 +134,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readMemorySection();
                     break;
                 case Section.GLOBAL:
-                    readGlobalSection();
+                    readGlobalSection(context);
                     break;
                 case Section.EXPORT:
                     readExportSection(context);
@@ -1110,11 +1110,11 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readGlobalSection() {
-        final GlobalRegistry globals = WasmLanguage.getCurrentContext().globals();
+    private void readGlobalSection(WasmContext context) {
+        final GlobalRegistry globals = context.globals();
         int numGlobals = readVectorLength();
         int startingGlobalIndex = module.symbolTable().maxGlobalIndex() + 1;
-        for (int i = startingGlobalIndex; i != startingGlobalIndex + numGlobals; i++) {
+        for (int globalIndex = startingGlobalIndex; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {
             byte type = readValueType();
             // 0x00 means const, 0x01 means var
             byte mutability = readMutability();
@@ -1144,19 +1144,18 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.GLOBAL_GET:
                     existingIndex = readGlobalIndex();
                     isInitialized = false;
-                    // TODO: Implement this.
-                    throw Assert.fail("Global initialization case not yet handled.");
+                    break;
                 default:
                     throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
             }
             instruction = read1();
             Assert.assertByteEqual(instruction, (byte) Instructions.END, "Global initialization must end with END");
-            final int address = module.symbolTable().declareGlobal(WasmLanguage.getCurrentContext(), i, type, mutability);
+            final int address = module.symbolTable().declareGlobal(WasmLanguage.getCurrentContext(), globalIndex, type, mutability);
             if (isInitialized) {
                 globals.storeLong(address, value);
+                context.linker().resolveGlobalInitialization(module, globalIndex);
             } else {
-                // TODO: Implement this.
-                Assert.fail("Case not yet implemented.");
+                context.linker().resolveGlobalInitialization(context, module, globalIndex, existingIndex);
             }
         }
     }
