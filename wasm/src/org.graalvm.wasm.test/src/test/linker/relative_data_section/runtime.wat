@@ -39,8 +39,8 @@
 ;; SOFTWARE.
 ;;
 (module
-  (memory 4 4)
+  (import "memory" "memory" (memory (;0;) 4))
   (global (;0;) i32 (i32.const 1096))
-  (export "memory" (memory 0))
+  (export "heap" (memory 0))
   (export "heap_base" (global 0))
 )

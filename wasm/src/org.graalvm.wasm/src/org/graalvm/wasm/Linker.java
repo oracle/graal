@@ -195,22 +195,36 @@ public class Linker {
             int address = importedModule.symbolTable().globalAddress(exportedGlobalIndex);
             module.symbolTable().setGlobalAddress(globalIndex, address);
         };
+        final ImportGlobalSym importGlobalSym = new ImportGlobalSym(module.name(), importDescriptor);
         final Sym[] dependencies = new Sym[]{new ExportGlobalSym(importedModuleName, importedGlobalName)};
-        resolutionDag.resolveLater(new ImportGlobalSym(module.name(), importDescriptor), dependencies, resolveAction);
+        resolutionDag.resolveLater(importGlobalSym, dependencies, resolveAction);
+        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), new Sym[]{importGlobalSym}, () -> {
+            module.symbolTable().initializeGlobal(globalIndex);
+        });
     }
 
     void resolveGlobalExport(WasmModule module, String globalName, int globalIndex) {
-        final Runnable resolveAction = () -> {
-        };
         final Sym[] dependencies;
-        final ImportDescriptor importDescriptor = module.symbolTable().importedGlobals().get(globalIndex);
-        if (importDescriptor != null) {
-            dependencies = new Sym[]{new ImportGlobalSym(module.name(), importDescriptor)};
-        } else {
-            // TODO: Handle the case in which the exported global's initializing expression is unresolved.
-            dependencies = ResolutionDag.NO_DEPENDENCIES;
-        }
-        resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, resolveAction);
+        dependencies = new Sym[]{new InitializeGlobalSym(module.name(), globalIndex)};
+        resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, ResolutionDag.NO_RESOLVE_ACTION);
+    }
+
+    void resolveGlobalInitialization(WasmModule module, int globalIndex) {
+        module.symbolTable().initializeGlobal(globalIndex);
+        final Sym[] dependencies = ResolutionDag.NO_DEPENDENCIES;
+        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, NO_RESOLVE_ACTION);
+    }
+
+    void resolveGlobalInitialization(WasmContext context, WasmModule module, int globalIndex, int sourceGlobalIndex) {
+        final Runnable resolveAction = () -> {
+            final int sourceAddress = module.symbolTable().globalAddress(sourceGlobalIndex);
+            final long sourceValue = context.globals().loadAsLong(sourceAddress);
+            final int address = module.symbolTable().globalAddress(globalIndex);
+            context.globals().storeLong(address, sourceValue);
+            module.symbolTable().initializeGlobal(globalIndex);
+        };
+        final Sym[] dependencies = new Sym[]{new InitializeGlobalSym(module.name(), sourceGlobalIndex)};
+        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, resolveAction);
     }
 
     void resolveFunctionImport(WasmContext context, WasmModule module, WasmFunction function) {
@@ -236,37 +250,10 @@ public class Linker {
         resolutionDag.resolveLater(new ImportFunctionSym(module.name(), function.importDescriptor()), dependencies, resolveAction);
     }
 
-    void resolveGlobalInitialization(WasmModule module, int globalIndex) {
-        final Runnable resolveAction = () -> {
-        };
-        final Sym[] dependencies = ResolutionDag.NO_DEPENDENCIES;
-        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, resolveAction);
-    }
-
-    void resolveGlobalInitialization(WasmContext context, WasmModule module, int globalIndex, int sourceGlobalIndex) {
-        final Runnable resolveAction = () -> {
-            final int sourceAddress = module.symbolTable().globalAddress(sourceGlobalIndex);
-            final long sourceValue = context.globals().loadAsLong(sourceAddress);
-            final int address = module.symbolTable().globalAddress(globalIndex);
-            context.globals().storeLong(address, sourceValue);
-        };
-        final SymbolTable symtab = module.symbolTable();
-        final Sym[] dependencies;
-        final ImportDescriptor importDescriptor = symtab.importedGlobals().get(sourceGlobalIndex);
-        if (importDescriptor != null) {
-            dependencies = new Sym[]{new ImportGlobalSym(module.name(), importDescriptor)};
-        } else {
-            dependencies = new Sym[]{new InitializeGlobalSym(module.name(), sourceGlobalIndex)};
-        }
-        resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, resolveAction);
-    }
-
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
-        final Runnable resolveAction = () -> {
-        };
         final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
         final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
-        resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, resolveAction);
+        resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
     void resolveCallsite(WasmModule module, WasmBlockNode block, int controlTableOffset, WasmFunction function) {
@@ -278,9 +265,7 @@ public class Linker {
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {
-        final Runnable resolveAction = () -> {
-        };
-        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, resolveAction);
+        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
     void resolveMemoryImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize) {
@@ -316,27 +301,40 @@ public class Linker {
     }
 
     void resolveMemoryExport(WasmModule module, String exportedMemoryName) {
-        final Runnable resolveAction = () -> {
-        };
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
-        resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, resolveAction);
+        resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveDataSegment(WasmModule module, int dataSegmentId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
+    void resolveDataSegment(WasmContext context, WasmModule module, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
         Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
+            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = module.symbolTable().memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", module.name()));
+            long baseAddress;
+            if (offsetGlobalIndex != -1) {
+                baseAddress = context.globals().loadAsInt(offsetGlobalIndex);
+            } else {
+                baseAddress = offsetAddress;
+            }
             memory.validateAddress(null, baseAddress, byteLength);
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
                 memory.store_i32_8(baseAddress + writeOffset, b);
             }
         };
-        final ImportMemorySym importMemorySym = new ImportMemorySym(module.name(), module.symbolTable().importedMemory());
-        final Sym[] dependencies = priorDataSectionsResolved ? new Sym[]{importMemorySym} : new Sym[]{importMemorySym, new DataSym(module.name(), dataSegmentId - 1)};
-        resolutionDag.resolveLater(new DataSym(module.name(), dataSegmentId), dependencies, resolveAction);
+        final ArrayList<Sym> dependencies = new ArrayList<>();
+        if (module.symbolTable().importedMemory() != null) {
+            dependencies.add(new ImportMemorySym(module.name(), module.symbolTable().importedMemory()));
+        }
+        if (!priorDataSectionsResolved) {
+            dependencies.add(new DataSym(module.name(), dataSegmentId - 1));
+        }
+        if (offsetGlobalIndex != -1) {
+            dependencies.add(new InitializeGlobalSym(module.name(), offsetGlobalIndex));
+        }
+        resolutionDag.resolveLater(new DataSym(module.name(), dataSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
     }
 
     void resolveTableImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize) {
@@ -375,11 +373,9 @@ public class Linker {
     }
 
     void resolveTableExport(WasmModule module, String exportedTableName) {
-        final Runnable resolveAction = () -> {
-        };
         final ImportDescriptor importDescriptor = module.symbolTable().importedTable();
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportTableSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
-        resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, resolveAction);
+        resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
     void resolveElemSegment(WasmModule module, int elemSegmentId, int elemOffset, int segmentLength, WasmFunction[] functions) {
@@ -397,6 +393,8 @@ public class Linker {
     }
 
     static class ResolutionDag {
+        public static final Runnable NO_RESOLVE_ACTION = () -> {
+        };
         private static final Sym[] NO_DEPENDENCIES = new Sym[0];
 
         abstract static class Sym {
@@ -471,7 +469,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(init global %d in %d)", globalIndex, moduleName);
+                return String.format("(init global %d in %s)", globalIndex, moduleName);
             }
 
             @Override

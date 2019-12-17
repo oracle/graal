@@ -40,7 +40,7 @@
 ;;
 (module
   (type (;0;) (func (result i32)))
-  (import "memory" "memory" (memory (;0;) 4))
+  (import "runtime" "heap" (memory (;0;) 4))
   (import "constant-pools" "string_constants_base" (global (;0;) i32))
   (func (export "_main") (type 0)
     (local i32)

@@ -40,7 +40,7 @@
 ;;
 (module
   (type (;0;) (func))
-  (import "runtime" "memory" (memory (;0;) 4))
+  (import "runtime" "heap" (memory (;0;) 4))
   (import "runtime" "heap_base" (global (;0;) i32))
   (global (;1;) i32 (global.get 0))
   (export "string_constants_base" (global 1))

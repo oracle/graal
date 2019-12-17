@@ -41,7 +41,7 @@
 package org.graalvm.wasm;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
@@ -70,7 +70,7 @@ public final class WasmContext {
         this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
-        this.modules = new HashMap<>();
+        this.modules = new LinkedHashMap<>();
         this.linker = new Linker(language);
         initializeBuiltinModules();
     }

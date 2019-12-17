@@ -68,6 +68,7 @@ public class SymbolTable {
     private static final int UNINITIALIZED_GLOBAL_ADDRESS = -1;
     private static final int GLOBAL_MUTABLE_BIT = 0x0100;
     private static final int GLOBAL_EXPORT_BIT = 0x0200;
+    private static final int GLOBAL_INITIALIZED_BIT = 0x0400;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
@@ -196,7 +197,7 @@ public class SymbolTable {
      * The 1st byte is organized like this:
      *
      * <code>
-     * | . | . | . | . | . | . | exported flag | mutable flag |
+     * | . | . | . | . | . | initialized flag | exported flag | mutable flag |
      * </code>
      */
     @CompilationFinal(dimensions = 1) short[] globalTypes;
@@ -590,6 +591,15 @@ public class SymbolTable {
 
     public byte globalValueType(int index) {
         return (byte) (globalTypes[index] & 0xff);
+    }
+
+    void initializeGlobal(int index) {
+        checkNotLinked();
+        globalTypes[index] |= GLOBAL_INITIALIZED_BIT;
+    }
+
+    boolean isGlobalInitialized(int index) {
+        return (globalTypes[index] & GLOBAL_INITIALIZED_BIT) != 0;
     }
 
     Map<String, Integer> exportedGlobals() {

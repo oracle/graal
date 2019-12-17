@@ -71,11 +71,13 @@ public class ResetContextNode extends WasmBuiltinRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void resetModuleState(boolean zeroMemory) {
+        boolean first = true;
         WasmContext context = contextReference().get();
-        for (WasmModule m : contextReference().get().modules().values()) {
+        for (WasmModule m : context.modules().values()) {
             if (!m.isBuiltin()) {
-                contextReference().get().linker().resetModuleState(context, m, m.data(), zeroMemory);
+                context.linker().resetModuleState(context, m, m.data(), first && zeroMemory);
             }
+            first = false;
         }
     }
 }
