@@ -377,15 +377,18 @@ public final class DebuggerController implements ContextsListener {
         return eventListener;
     }
 
-    public void enterTruffleContext() {
+    public boolean enterTruffleContext() {
         if (previous == null && truffleContext != null) {
             previous = truffleContext.enter();
+            return true;
         }
+        return false;
     }
 
     public void leaveTruffleContext() {
-        if (previous != null && truffleContext != null) {
+        if (truffleContext != null) {
             truffleContext.leave(previous);
+            previous = null;
         }
     }
 
@@ -687,6 +690,11 @@ public final class DebuggerController implements ContextsListener {
         private void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs) {
             JDWPLogger.log("suspending from callback in thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
 
+            // before sending any events to debugger, make sure to mark
+            // the thread lock as locked, in case a resume command happens
+            // shortly thereafter, with the risk of a race (lost notify)
+            getSuspendLock(thread).acquire();
+
             switch (suspendPolicy) {
                 case SuspendStrategy.NONE:
                     runJobs(jobs);
@@ -763,7 +771,6 @@ public final class DebuggerController implements ContextsListener {
 
         synchronized (lock) {
             try {
-                lock.acquire();
                 // in case a thread job is already posted on this thread
                 checkThreadJobsAndRun(thread);
                 while (lock.isLocked()) {
