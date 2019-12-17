@@ -24,13 +24,18 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.heap.GCCause;
+import java.util.function.BooleanSupplier;
 
-public final class GenScavengeGCCause extends GCCause {
-    public static final GCCause OnAllocationAlways = new GenScavengeGCCause("CollectOnAllocation.Always", 10);
-    public static final GCCause OnAllocationSometimes = new GenScavengeGCCause("CollectOnAllocation.Sometimes", 11);
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    private GenScavengeGCCause(String name, int id) {
-        super(name, id);
+@Platforms(Platform.HOSTED_ONLY.class)
+class UseCardRememberedSetHeap implements BooleanSupplier {
+    UseCardRememberedSetHeap() {
+    }
+
+    @Override
+    public boolean getAsBoolean() {
+        return HeapOptions.UseCardRememberedSetHeap.getValue();
     }
 }

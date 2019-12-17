@@ -63,12 +63,19 @@ public final class CFunctionLinkages {
     }
 
     private static String linkageName(ResolvedJavaMethod method) {
-        CFunction functionAnnotation = method.getAnnotation(CFunction.class);
-        if (functionAnnotation != null && functionAnnotation.value().length() > 0) {
-            return functionAnnotation.value();
-        } else {
-            return method.getName();
+        String annotationLinkageName = getLinkageNameFromAnnotation(method);
+        if (annotationLinkageName != null && !annotationLinkageName.isEmpty()) {
+            return annotationLinkageName;
         }
+        return method.getName();
+    }
+
+    private static String getLinkageNameFromAnnotation(ResolvedJavaMethod method) {
+        CFunction cFunctionAnnotation = method.getAnnotation(CFunction.class);
+        if (cFunctionAnnotation != null) {
+            return cFunctionAnnotation.value();
+        }
+        return null;
     }
 }
 

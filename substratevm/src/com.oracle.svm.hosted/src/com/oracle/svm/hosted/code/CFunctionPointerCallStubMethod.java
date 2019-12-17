@@ -31,11 +31,11 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -55,12 +55,12 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
     static CFunctionPointerCallStubMethod create(AnalysisMethod aMethod) {
         assert !aMethod.isSynthetic() : "Creating a stub for a stub? " + aMethod;
         ResolvedJavaMethod method = aMethod.getWrapped();
-        boolean needsTransition = (aMethod.getAnnotation(InvokeCFunctionPointer.class).transition() != CFunction.Transition.NO_TRANSITION);
-        return new CFunctionPointerCallStubMethod(method, needsTransition);
+        int newThreadStatus = StatusSupport.getNewThreadStatus(aMethod.getAnnotation(InvokeCFunctionPointer.class).transition());
+        return new CFunctionPointerCallStubMethod(method, newThreadStatus);
     }
 
-    private CFunctionPointerCallStubMethod(ResolvedJavaMethod original, boolean needsTransition) {
-        super(original, needsTransition);
+    private CFunctionPointerCallStubMethod(ResolvedJavaMethod original, int newThreadStatus) {
+        super(original, newThreadStatus);
     }
 
     @Override
@@ -115,6 +115,7 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
          * native code, which means the deoptimization stub would need to do the native-to-Java
          * transition.
          */
+        boolean needsTransition = StatusSupport.isValidStatus(newThreadStatus);
         return !needsTransition;
     }
 

@@ -40,7 +40,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
+import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -89,15 +90,29 @@ public abstract class SubstrateBackend extends Backend {
     }
 
     public static boolean hasJavaFrameAnchor(CallTargetNode callTarget) {
-        return getJavaFrameAnchor(callTarget) != null;
+        return getPrologueData(callTarget) != null;
+    }
+
+    public static ValueNode getJavaFrameAnchor(CallTargetNode callTarget) {
+        ValueNode frameAnchor = getPrologueData(callTarget).frameAnchor();
+        assert frameAnchor != null;
+        return frameAnchor;
     }
 
     /**
-     * We are re-using the field {InvokeNode#classInit()} to store the {@link JavaFrameAnchor}, see
+     * We are re-using the field {InvokeNode#classInit()} to store the prologue data, see
      * {@link CFunctionSnippets#matchCallStructure}.
      */
-    public static ValueNode getJavaFrameAnchor(CallTargetNode callTarget) {
-        return callTarget.invoke().classInit();
+    private static CFunctionPrologueDataNode getPrologueData(CallTargetNode callTarget) {
+        return (CFunctionPrologueDataNode) callTarget.invoke().classInit();
+    }
+
+    public static int getNewThreadStatus(CallTargetNode callTarget) {
+        CFunctionPrologueDataNode prologueData = getPrologueData(callTarget);
+        if (prologueData != null) {
+            return prologueData.getNewThreadStatus();
+        }
+        return StatusSupport.STATUS_ILLEGAL;
     }
 
     public abstract Phase newAddressLoweringPhase(CodeCacheProvider codeCache);

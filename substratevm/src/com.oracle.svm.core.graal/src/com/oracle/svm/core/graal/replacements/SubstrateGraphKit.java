@@ -67,6 +67,7 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -160,16 +161,17 @@ public class SubstrateGraphKit extends GraphKit {
         return ConstantNode.forConstant(StampFactory.forKind(kind), value, getMetaAccess(), getGraph());
     }
 
-    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, boolean emitTransition, boolean emitDeoptTarget) {
+    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
+        boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
-            append(new CFunctionPrologueNode());
+            append(new CFunctionPrologueNode(newThreadStatus));
         }
 
         InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            append(new CFunctionEpilogueNode());
+            append(new CFunctionEpilogueNode(newThreadStatus));
         } else if (emitDeoptTarget) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(invoke.stateAfter());

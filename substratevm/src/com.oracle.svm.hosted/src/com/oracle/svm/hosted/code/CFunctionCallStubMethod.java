@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,8 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -44,14 +46,22 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class CFunctionCallStubMethod extends CCallStubMethod {
     private final CGlobalDataInfo linkage;
 
-    CFunctionCallStubMethod(ResolvedJavaMethod original, CGlobalDataInfo linkage, boolean needsTransition) {
-        super(original, needsTransition);
+    CFunctionCallStubMethod(ResolvedJavaMethod original, CGlobalDataInfo linkage, int newThreadStatus) {
+        super(original, newThreadStatus);
         this.linkage = linkage;
     }
 
     @Override
     protected String getCorrespondingAnnotationName() {
-        return CFunction.class.getSimpleName();
+        return getAnnotationClass().getSimpleName();
+    }
+
+    private Class<?> getAnnotationClass() {
+        if (original.getAnnotation(CFunction.class) != null) {
+            return CFunction.class;
+        } else {
+            throw VMError.shouldNotReachHere("Method is not annotated with @" + CFunction.class.getSimpleName());
+        }
     }
 
     @Override
@@ -62,6 +72,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
          * native code, which means the deoptimization stub would need to do the native-to-Java
          * transition.
          */
+        boolean needsTransition = StatusSupport.isValidStatus(newThreadStatus);
         return !needsTransition;
     }
 
