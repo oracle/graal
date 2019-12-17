@@ -124,11 +124,10 @@ _env_tests = []
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
-            child_env = {}
-            for env_var_k in ['MX_URLREWRITES', 'SSH_AUTH_SOCK']:
-                env_var_v = mx.get_env(env_var_k)
-                if env_var_v:
-                    child_env[env_var_k] = env_var_v
+            child_env = os.environ.copy()
+            for env_var in ['DYNAMIC_IMPORTS', 'DEFAULT_DYNAMIC_IMPORTS', 'COMPONENTS', 'EXCLUDE_COMPONENTS', 'SKIP_LIBRARIES', 'NATIVE_IMAGES', 'FORCE_BASH_LAUNCHERS', 'DISABLE_POLYGLOT', 'DISABLE_LIBPOLYGLOT']:
+                if env_var in child_env:
+                    del child_env[env_var]
             for dist_name, _, components, suite, env_file in mx_sdk_vm._vm_configs:
                 if env_file is not False:
                     _env_file = env_file or dist_name
@@ -141,7 +140,7 @@ def gate_body(args, tasks):
                         mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
                     if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
                         out2 = mx.LinesOutputCapture()
-                        retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env={}, nonZeroIsFatal=False)
+                        retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env=child_env, nonZeroIsFatal=False)
                         got_components = '<error>' if retcode2 or len(out2.lines) != 1 else out2.lines[0]
                         mx.abort("""\
 Unexpected GraalVM dist name for env file '{}' in suite '{}'.
