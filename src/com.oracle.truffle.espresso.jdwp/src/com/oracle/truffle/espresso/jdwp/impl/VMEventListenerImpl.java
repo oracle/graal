@@ -107,7 +107,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             public Void call() throws Exception {
                 Object thread = klass.getPrepareThread();
                 if (request.getThread() == null || request.getThread() == thread) {
-                    classPrepared(klass, thread);
+                    classPrepared(klass, thread, true);
                 }
                 return null;
             }
@@ -212,7 +212,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public void classPrepared(KlassRef klass, Object guestThread) {
+    public void classPrepared(KlassRef klass, Object prepareThread, boolean preparedEarlier) {
         if (connection == null) {
             return;
         }
@@ -223,6 +223,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         String dotName = klass.getNameAsString().replace('/', '.');
         ClassPrepareRequest[] allClassPrepareRequests = getAllClassPrepareRequests();
         ArrayList<ClassPrepareRequest> toSend = new ArrayList<>();
+        byte suspendPolicy = SuspendStrategy.NONE;
 
         for (ClassPrepareRequest cpr : allClassPrepareRequests) {
             Pattern[] patterns = cpr.getPatterns();
@@ -231,20 +232,28 @@ public final class VMEventListenerImpl implements VMEventListener {
 
                 if (matcher.matches()) {
                     toSend.add(cpr);
+                    byte cprPolicy = cpr.getSuspendPolicy();
+                    if (cprPolicy == SuspendStrategy.ALL) {
+                        suspendPolicy = SuspendStrategy.ALL;
+                    } else if (cprPolicy == SuspendStrategy.EVENT_THREAD && suspendPolicy != SuspendStrategy.ALL) {
+                        suspendPolicy = SuspendStrategy.EVENT_THREAD;
+                    }
                 }
             }
         }
 
         if (!toSend.isEmpty()) {
-            // TODO(Gregersen) - we should suspend the event thread to be correct
-            // tracked by /browse/GR-19816
-            stream.writeByte(SuspendStrategy.NONE);
+            if (preparedEarlier) {
+                stream.writeByte(SuspendStrategy.NONE);
+            } else {
+                stream.writeByte(suspendPolicy);
+            }
             stream.writeInt(toSend.size());
 
             for (ClassPrepareRequest cpr : toSend) {
                 stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
                 stream.writeInt(cpr.getRequestId());
-                stream.writeLong(ids.getIdAsLong(guestThread));
+                stream.writeLong(ids.getIdAsLong(prepareThread));
                 stream.writeByte(TypeTag.CLASS);
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
@@ -254,12 +263,18 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeInt(ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
-            connection.queuePacket(stream);
-            // give the debugger a little time to send breakpoint requests
-            try {
-                Thread.sleep(50);
-            } catch (Exception e) {
-                // ignore
+            if (!preparedEarlier && suspendPolicy != SuspendStrategy.NONE) {
+                // the current thread has just prepared the class
+                // so we must suspend according to suspend policy
+                debuggerController.immediateSuspend(prepareThread, suspendPolicy, new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        connection.queuePacket(stream);
+                        return null;
+                    }
+                });
+            } else {
+                connection.queuePacket(stream);
             }
         }
     }

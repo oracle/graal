@@ -268,7 +268,7 @@ public final class ObjectKlass extends Klass {
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().getJDWPListener() != null) {
                             prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                            getContext().getJDWPListener().classPrepared(this, prepareThread);
+                            getContext().getJDWPListener().classPrepared(this, prepareThread, false);
                         }
                     }
                     if (getSuperKlass() != null) {

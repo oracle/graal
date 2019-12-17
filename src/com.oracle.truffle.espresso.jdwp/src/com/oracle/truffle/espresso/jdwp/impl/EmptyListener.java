@@ -34,7 +34,7 @@ public final class EmptyListener implements VMListener {
     }
 
     @Override
-    public void classPrepared(KlassRef klass, Object currentThread) {
+    public void classPrepared(KlassRef klass, Object prepareThread, boolean alreadyPrepared) {
 
     }
 

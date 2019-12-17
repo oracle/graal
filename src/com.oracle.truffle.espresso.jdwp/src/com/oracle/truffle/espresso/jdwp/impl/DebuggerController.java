@@ -50,6 +50,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -312,6 +313,36 @@ public final class DebuggerController implements ContextsListener {
             suspendedInfos.put(thread, new UnknownSuspendedInfo(thread, getContext()));
         } catch (Exception e) {
             JDWPLogger.log("not able to suspend thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+        }
+    }
+
+    /**
+     * Immediately suspend the current guest thread at its current location. Typically, this method
+     * is used in response to class prepare events.
+     * 
+     * @param eventThread the guest thread which must correspond to the current host thread
+     * @param suspendPolicy the policy for which threads to suspend
+     * @param callBack a callback that is to be run when threads have been marked as suspended
+     */
+    public void immediateSuspend(Object eventThread, byte suspendPolicy, Callable<Void> callBack) {
+        assert eventThread == context.asGuestThread(Thread.currentThread());
+
+        switch (suspendPolicy) {
+            case SuspendStrategy.ALL:
+                // suspend all but the current thread
+                // at next execution point
+                for (Object thread : getContext().getAllGuestThreads()) {
+                    if (context.asGuestThread(Thread.currentThread()) != thread) {
+                        suspend(thread);
+                    }
+                }
+                // immediately suspend the event thread
+                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack));
+                break;
+            case SuspendStrategy.EVENT_THREAD:
+                // immediately suspend the event thread
+                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack));
+                break;
         }
     }
 
