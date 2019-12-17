@@ -151,8 +151,11 @@ public final class JNIHandles {
 }
 
 /**
- * Global handles can be shared between threads, access and creation must be thread-safe.
- * TODO(peterssen): Use a free list to reclaim global unused slots, instead of growing forever.
+ * Implementation of JNI local handles. Global handles can be shared between threads, access and
+ * creation must be thread-safe.
+ *
+ * TODO(peterssen): Use a free list to reclaim global unused slots, instead of growing without
+ * limit.
  */
 final class GlobalHandles {
 
@@ -233,9 +236,9 @@ final class GlobalHandles {
 }
 
 /**
- * Manages local handles and frames. Local handles are accessible by a single thread, they are
- * grouped in frames. Every native method call will push a new frame with at least 16 handles where
- * all (reference) arguments are pushed.
+ * Implementation of JNI local handles. Local handles are bound to a specific thread, they are
+ * further grouped in frames. This implements a stack of frames where handles can be pushed to the
+ * top frame.
  *
  * TODO(peterssen): Add mechanism to "validate" local handles are not consumed by different threads.
  * e.g. taint handle upper bits with thread id/hashcode.
