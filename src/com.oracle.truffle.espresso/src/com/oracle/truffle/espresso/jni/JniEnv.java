@@ -82,10 +82,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static final int JNI_FALSE = 0;
 
     // enum jobjectRefType
-    static final int JNIInvalidRefType = 0;
-    static final int JNILocalRefType = 1;
-    static final int JNIGlobalRefType = 2;
-    static final int JNIWeakGlobalRefType = 3;
+    public static final int JNIInvalidRefType = 0;
+    public static final int JNILocalRefType = 1;
+    public static final int JNIGlobalRefType = 2;
+    public static final int JNIWeakGlobalRefType = 3;
 
     // This is an arbitrary constant. The hard limit is defined by the host VM.
     private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): User-configurable

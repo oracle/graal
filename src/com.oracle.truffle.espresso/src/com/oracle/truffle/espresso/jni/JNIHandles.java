@@ -3,10 +3,17 @@ package com.oracle.truffle.espresso.jni;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * JNI handles are divided in two categories: local and global.
@@ -20,15 +27,24 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 public final class JNIHandles {
 
-    JNIHandles() {
-        globals = new GlobalHandles();
-    }
-
     /**
      * Minimum available local handles according to specification: "Before it enters a native
      * method, the VM automatically ensures that at least 16 local references can be created".
      */
     static final int NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY = 16;
+
+    private final ThreadLocal<LocalHandles> locals;
+    private final GlobalHandles globals;
+
+    public JNIHandles() {
+        this.globals = new GlobalHandles();
+        this.locals = ThreadLocal.withInitial(new Supplier<LocalHandles>() {
+            @Override
+            public LocalHandles get() {
+                return new LocalHandles();
+            }
+        });
+    }
 
     public int nativeCallPrologue() {
         return getLocals().pushFrame(NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
@@ -37,15 +53,6 @@ public final class JNIHandles {
     public void nativeCallEpilogue(int handleFrame) {
         getLocals().popFramesIncluding(handleFrame);
     }
-
-    private final ThreadLocal<LocalHandles> locals = ThreadLocal.withInitial(new Supplier<LocalHandles>() {
-        @Override
-        public LocalHandles get() {
-            return new LocalHandles();
-        }
-    });
-
-    private final GlobalHandles globals;
 
     @TruffleBoundary
     LocalHandles getLocals() {
@@ -125,7 +132,7 @@ public final class JNIHandles {
         getGlobals().destroy(-handle);
     }
 
-    int getObjectRefType(int handle) {
+    public int getObjectRefType(int handle) {
         if (handle > 0) {
             assert getLocals().validHandle(handle);
             return JniEnv.JNILocalRefType;
@@ -160,9 +167,8 @@ public final class JNIHandles {
 final class GlobalHandles {
 
     static final int NATIVE_MIN_GLOBAL_HANDLES = 8; // Minimum to run HelloWorld.
-
-    private Object[] objects = new Object[NATIVE_MIN_GLOBAL_HANDLES];
     int top = 1;
+    private Object[] objects = new Object[NATIVE_MIN_GLOBAL_HANDLES];
 
     public synchronized boolean destroy(int index) {
         if (index == 0) { // NULL
