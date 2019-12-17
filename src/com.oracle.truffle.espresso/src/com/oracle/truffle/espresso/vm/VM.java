@@ -50,10 +50,8 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.jni.JNIHandles;
-import com.oracle.truffle.espresso.jni.Word;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -61,6 +59,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -93,10 +92,12 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jni.Callback;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
+import com.oracle.truffle.espresso.jni.Word;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -119,6 +120,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
  * Espresso implementation of the VM interface (libjvm).
  */
 public final class VM extends NativeEnv implements ContextAccess {
+
+    private static final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, "VM");
 
     private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
@@ -234,13 +237,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                // System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
+                VMLogger.fine("Fetching unknown/unimplemented VM method: " + methodName);
                 return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
                                         CompilerDirectives.transferToInterpreter();
-                                        System.err.println("Calling unimplemented VM method: " + methodName);
+                                        VMLogger.log(Level.SEVERE, "Calling unimplemented VM method: {0}", methodName);
                                         throw EspressoError.unimplemented("VM method: " + methodName);
                                     }
                                 }));
@@ -356,10 +359,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             public Object call(Object... args) {
                 boolean isJni = m.isJni();
                 try {
-
-                    // Substitute raw pointer by proper `this` reference.
-                    // System.err.print("Call DEFINED method: " + m.getName() +
-                    // Arrays.toString(shiftedArgs));
                     return m.invoke(VM.this, args);
                 } catch (EspressoException e) {
                     if (isJni) {
@@ -461,14 +460,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unused")
     @VmImpl
     public static int AttachCurrentThread(@Word long penvPtr, @Word long argsPtr) {
-        System.err.println("AttachCurrentThread!!! " + penvPtr + " " + Thread.currentThread());
+        VMLogger.warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
         EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
         return JniEnv.JNI_OK;
     }
 
     @VmImpl
     public static int DetachCurrentThread() {
-        System.err.println("DetachCurrentThread!!!" + Thread.currentThread());
+        VMLogger.warning("DetachCurrentThread!!!" + Thread.currentThread());
         EspressoLanguage.getCurrentContext().disposeThread(Thread.currentThread());
         return JniEnv.JNI_OK;
     }
@@ -596,6 +595,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    // region ConstantPool
+
     @VmImpl
     @JniImpl
     public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") StaticObject unused, StaticObject jcpool) {
@@ -650,6 +651,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.LONG);
         return jcpool.getMirrorKlass().getConstantPool().longAt(index);
     }
+
+    // endregion ConstantPool
 
     @VmImpl
     @JniImpl
@@ -720,18 +723,18 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public static void JVM_UnloadLibrary(@SuppressWarnings("unused") @Word long handle) {
         // TODO(peterssen): Do unload the library.
-        System.err.println("JVM_UnloadLibrary called but library was not unloaded!");
+        VMLogger.severe("JVM_UnloadLibrary called but library was not unloaded!");
     }
 
     @VmImpl
     public @Word long JVM_FindLibraryEntry(@Word long libHandle, String name) {
         if (libHandle == 0) {
-            System.err.println("JVM_FindLibraryEntry from default/global namespace (0): " + name);
+            VMLogger.warning("JVM_FindLibraryEntry from default/global namespace (0): " + name);
             return 0L;
         }
         // TODO(peterssen): Workaround for MacOS flags: RTLD_DEFAULT...
         if (-6 < libHandle && libHandle < 0) {
-            System.err.println("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libHandle + "): " + name);
+            VMLogger.warning("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libHandle + "): " + name);
             return 0L;
         }
         try {
