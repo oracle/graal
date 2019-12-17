@@ -1278,7 +1278,10 @@ public class StandardGraphBuilderPlugins {
                         return true;
                     }
                 }
-                throw GraalError.shouldNotReachHere("Illegal usage of stable array intrinsic");
+                throw GraalError.shouldNotReachHere("Illegal usage of stable array intrinsic assumeStableDimension(array, dimension): " +
+                                "This compiler intrinsic can only be used iff array is a constant node (i.e., constant field) and iff " +
+                                "dimension is a constant int. It will replace the constant array with a new constant that additionally sets the stable" +
+                                "dimensions to the int parameter supplied.");
             }
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {

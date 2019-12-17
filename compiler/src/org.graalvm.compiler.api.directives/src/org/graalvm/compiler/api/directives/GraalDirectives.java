@@ -72,8 +72,8 @@ public final class GraalDirectives {
     }
 
     /**
-     * A call to this method will assume a stable dimension array if t is a constant array and i a
-     * constant integer.
+     * A call to this method will assume a stable dimension array if {@code t} is a constant array
+     * and {@code i} a constant integer.
      */
     public static <T> T assumeStableDimension(T t, @SuppressWarnings("unused") int i) {
         return t;
