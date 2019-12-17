@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.GuestToHostRootNode.createGuestToHost;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
@@ -56,7 +54,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -169,14 +166,15 @@ abstract class HostExecuteNode extends Node {
     static Object doSingleUncached(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Shared("toHost") @Cached ToHostNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException {
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile,
+                    @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile) throws ArityException {
         int parameterCount = method.getParameterCount();
         int minArity = method.isVarArgs() ? parameterCount - 1 : parameterCount;
         if (args.length < minArity) {
             throw ArityException.create(minArity, args.length);
         }
         Object[] convertedArguments = prepareArgumentsUncached(method, args, languageContext, toJavaNode, isVarArgsProfile);
-        return doInvoke(method, obj, convertedArguments, languageContext, toGuest);
+        return doInvoke(methodProfile.execute(method), obj, convertedArguments, languageContext, toGuest);
     }
 
     // Note: checkArgTypes must be evaluated after selectOverload.
@@ -217,10 +215,11 @@ abstract class HostExecuteNode extends Node {
     static Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Shared("toHost") @Cached ToHostNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException, UnsupportedTypeException {
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile,
+                    @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile) throws ArityException, UnsupportedTypeException {
         SingleMethod overload = selectOverload(method, args, languageContext);
         Object[] convertedArguments = prepareArgumentsUncached(overload, args, languageContext, toJavaNode, isVarArgsProfile);
-        return doInvoke(overload, obj, convertedArguments, languageContext, toGuest);
+        return doInvoke(methodProfile.execute(overload), obj, convertedArguments, languageContext, toGuest);
     }
 
     private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, PolyglotLanguageContext languageContext, ToHostNode toJavaNode, ConditionProfile isVarArgsProfile) {
@@ -764,24 +763,9 @@ abstract class HostExecuteNode extends Node {
         return arguments;
     }
 
-    private static final CallTarget INVOKE = createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
-        @Override
-        protected Object executeImpl(Object obj, Object[] callArguments) {
-            SingleMethod method = (SingleMethod) callArguments[ARGUMENT_OFFSET];
-            Object[] arguments = (Object[]) callArguments[ARGUMENT_OFFSET + 1];
-            Object ret;
-            try {
-                ret = method.invoke(obj, arguments);
-            } catch (Throwable e) {
-                throw HostInteropReflect.rethrow(e);
-            }
-            return ret;
-        }
-    });
-
     private static Object doInvoke(SingleMethod method, Object obj, Object[] arguments, PolyglotLanguageContext languageContext, ToGuestValueNode toGuest) {
         assert arguments.length == method.getParameterCount();
-        Object ret = GuestToHostRootNode.guestToHostCall(toGuest, INVOKE, languageContext, obj, method, arguments);
+        Object ret = method.invokeGuestToHost(obj, arguments, languageContext, toGuest);
         return toGuest.execute(languageContext, ret);
     }
 
@@ -988,6 +972,26 @@ abstract class HostExecuteNode extends Node {
                 }
             }
             return ToHostNode.canConvertToPrimitive(value, targetType, interop);
+        }
+    }
+
+    @GenerateUncached
+    abstract static class HostMethodProfileNode extends Node {
+        public abstract SingleMethod execute(SingleMethod method);
+
+        @Specialization
+        static SingleMethod mono(SingleMethod.MHBase method) {
+            return method;
+        }
+
+        @Specialization
+        static SingleMethod mono(SingleMethod.ReflectBase method) {
+            return method;
+        }
+
+        @Specialization(replaces = "mono")
+        static SingleMethod poly(SingleMethod method) {
+            return method;
         }
     }
 }
