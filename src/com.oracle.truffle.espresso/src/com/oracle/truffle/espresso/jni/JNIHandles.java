@@ -1,5 +1,7 @@
 package com.oracle.truffle.espresso.jni;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.function.Supplier;
@@ -190,6 +192,7 @@ public final class JNIHandles {
 
     private final GlobalHandles globals;
 
+    @TruffleBoundary
     LocalHandles getLocals() {
         return locals.get();
     }

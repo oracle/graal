@@ -389,7 +389,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
-    public final JNIHandles getHandles() {
+    public JNIHandles getHandles() {
         return handles;
     }
 
