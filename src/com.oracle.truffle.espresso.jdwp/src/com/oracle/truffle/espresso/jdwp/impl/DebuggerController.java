@@ -502,8 +502,6 @@ public final class DebuggerController implements ContextsListener {
         threadSuspension.removeHardSuspendedThread(thread);
 
         lockThread(thread);
-
-        JDWPLogger.log("lock wakeup for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
     }
 
     private void lockThread(Object thread) {
@@ -532,6 +530,9 @@ public final class DebuggerController implements ContextsListener {
             // only wake up to perform the job a go back to sleep
             ThreadJob job = threadJobs.remove(thread);
             job.runJob();
+            // re-acquire the thread lock after completing
+            // the job, to avoid the thread resuming.
+            getSuspendLock(thread).acquire();
             lockThread(thread);
         }
     }
