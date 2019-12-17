@@ -242,8 +242,10 @@ final class WindowsVMCondition extends VMCondition {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
+        mutex.clearCurrentThreadOwner();
         WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
+        mutex.setOwnerToCurrentThread();
     }
 
     @Override
