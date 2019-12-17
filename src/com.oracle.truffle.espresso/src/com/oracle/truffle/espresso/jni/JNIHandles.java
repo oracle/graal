@@ -155,7 +155,10 @@ public final class JNIHandles {
  * TODO(peterssen): Use a free list to reclaim global unused slots, instead of growing forever.
  */
 final class GlobalHandles {
-    private Object[] objects = new Object[2];
+
+    static final int NATIVE_MIN_GLOBAL_HANDLES = 8; // Minimum to run HelloWorld.
+
+    private Object[] objects = new Object[NATIVE_MIN_GLOBAL_HANDLES];
     int top = 1;
 
     public synchronized boolean destroy(int index) {
@@ -240,7 +243,7 @@ final class GlobalHandles {
 final class LocalHandles {
     private static final int INITIAL_NUMBER_OF_FRAMES = 8; // Minimum to run HelloWorld.
 
-    private StaticObject[] objects = new StaticObject[JNIHandles.NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY];
+    private StaticObject[] objects = new StaticObject[JNIHandles.NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY * INITIAL_NUMBER_OF_FRAMES];
     private int top = 1;
 
     private int[] frameStack = new int[INITIAL_NUMBER_OF_FRAMES];
