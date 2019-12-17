@@ -54,9 +54,8 @@ import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.collection.LongArrayList;
 
-import static org.graalvm.wasm.TableRegistry.*;
+import static org.graalvm.wasm.TableRegistry.Table;
 
 /**
  * Contains the symbol information of a module.

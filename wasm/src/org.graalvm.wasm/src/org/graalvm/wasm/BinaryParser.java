@@ -1155,6 +1155,12 @@ public class BinaryParser extends BinaryStreamParser {
                 globals.storeLong(address, value);
                 context.linker().resolveGlobalInitialization(module, globalIndex);
             } else {
+                if (!module.symbolTable().importedGlobals().containsKey(existingIndex)) {
+                    // The current WebAssembly spec says constant expressions can only refer to
+                    // imported globals. We can easily remove this restriction in the future.
+                    Assert.fail("The initializer for global " + globalIndex + " in module '" + module.name() +
+                                    "' refers to a non-imported global.");
+                }
                 context.linker().resolveGlobalInitialization(context, module, globalIndex, existingIndex);
             }
         }
