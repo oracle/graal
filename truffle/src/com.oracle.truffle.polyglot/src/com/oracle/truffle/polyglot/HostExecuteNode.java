@@ -166,14 +166,15 @@ abstract class HostExecuteNode extends Node {
     static Object doSingleUncached(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Shared("toHost") @Cached ToHostNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException {
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile,
+                    @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile) throws ArityException {
         int parameterCount = method.getParameterCount();
         int minArity = method.isVarArgs() ? parameterCount - 1 : parameterCount;
         if (args.length < minArity) {
             throw ArityException.create(minArity, args.length);
         }
         Object[] convertedArguments = prepareArgumentsUncached(method, args, languageContext, toJavaNode, isVarArgsProfile);
-        return doInvoke(method, obj, convertedArguments, languageContext, toGuest);
+        return doInvoke(methodProfile.execute(method), obj, convertedArguments, languageContext, toGuest);
     }
 
     // Note: checkArgTypes must be evaluated after selectOverload.
@@ -214,10 +215,11 @@ abstract class HostExecuteNode extends Node {
     static Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Shared("toHost") @Cached ToHostNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
-                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException, UnsupportedTypeException {
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile,
+                    @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile) throws ArityException, UnsupportedTypeException {
         SingleMethod overload = selectOverload(method, args, languageContext);
         Object[] convertedArguments = prepareArgumentsUncached(overload, args, languageContext, toJavaNode, isVarArgsProfile);
-        return doInvoke(overload, obj, convertedArguments, languageContext, toGuest);
+        return doInvoke(methodProfile.execute(overload), obj, convertedArguments, languageContext, toGuest);
     }
 
     private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, PolyglotLanguageContext languageContext, ToHostNode toJavaNode, ConditionProfile isVarArgsProfile) {
@@ -970,6 +972,26 @@ abstract class HostExecuteNode extends Node {
                 }
             }
             return ToHostNode.canConvertToPrimitive(value, targetType, interop);
+        }
+    }
+
+    @GenerateUncached
+    abstract static class HostMethodProfileNode extends Node {
+        public abstract SingleMethod execute(SingleMethod method);
+
+        @Specialization
+        static SingleMethod mono(SingleMethod.MHBase method) {
+            return method;
+        }
+
+        @Specialization
+        static SingleMethod mono(SingleMethod.ReflectBase method) {
+            return method;
+        }
+
+        @Specialization(replaces = "mono")
+        static SingleMethod poly(SingleMethod method) {
+            return method;
         }
     }
 }
