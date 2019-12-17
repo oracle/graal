@@ -46,6 +46,10 @@ public abstract class NativeEnv {
 
     static final Map<Class<?>, NativeSimpleType> classToNative = buildClassToNative();
 
+    public static NativeSimpleType word() {
+        return NativeSimpleType.SINT64; // or SINT32
+    }
+
     static Map<Class<?>, NativeSimpleType> buildClassToNative() {
         Map<Class<?>, NativeSimpleType> map = new HashMap<>();
         map.put(boolean.class, NativeSimpleType.SINT8);

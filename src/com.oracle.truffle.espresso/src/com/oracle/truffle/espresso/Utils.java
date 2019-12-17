@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
@@ -59,7 +60,7 @@ public final class Utils {
             case Object:
                 // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
                 // NULL instead.
-                return Method.word();
+                return NativeEnv.word();
             default:
                 throw EspressoError.shouldNotReachHere();
         }

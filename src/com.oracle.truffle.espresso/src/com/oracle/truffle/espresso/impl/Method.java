@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterfac
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.jni.NativeEnv.word;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -86,7 +87,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess, MethodRef {
 
@@ -323,10 +323,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             res[pos++] = i;
         }
         return res;
-    }
-
-    public static NativeSimpleType word() {
-        return NativeSimpleType.SINT64; // or SINT32
     }
 
     private static String buildJniNativeSignature(Method method) {
