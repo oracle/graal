@@ -162,8 +162,7 @@ class EspressoThreadManager implements ContextAccess {
             return null;
         }
         int index = id - (int) threads[0];
-        assert index > 0;
-        if (index >= guestThreads.length) {
+        if (index < 0 || index >= guestThreads.length) {
             // no guest thread created for this host thread
             return null;
         }
