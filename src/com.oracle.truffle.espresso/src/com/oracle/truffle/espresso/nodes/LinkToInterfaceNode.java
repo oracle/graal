@@ -33,7 +33,6 @@ public class LinkToInterfaceNode implements Linker {
     public final Method linkTo(Method target, Object[] args) {
         StaticObject receiver = (StaticObject) args[0];
         assert !receiver.getKlass().isArray();
-        Method resolved = ((ObjectKlass) receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
-        return resolved;
+        return ((ObjectKlass) receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
     }
 }

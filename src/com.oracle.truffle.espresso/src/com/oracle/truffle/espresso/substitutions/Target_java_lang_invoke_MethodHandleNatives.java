@@ -224,7 +224,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * 
      * @param self The memberName to resolve
      * @param caller the class that commands the resolution
-     * @return The resolved memberName. Note that it should be the same reference as @self
+     * @return The resolved memberName. Note that it should be the same reference as self
      */
     @Substitution
     public static @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject resolve(

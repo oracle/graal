@@ -37,14 +37,32 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.HandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.MHInvokeBasicNodeGen;
 import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.MHLinkToNodeGen;
+import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
 
+/**
+ * This class manages the instances of polymorphic methods we need to create to manage the method
+ * handle polymorphic signature method dispatch.
+ * 
+ * Since the whole method handle machinery is a pretty opaque black box, here is a quick summary of
+ * what's happening under espresso's hood.
+ * 
+ * <li>Each time a {@link java.lang.invoke.MethodHandle} PolymorphicSignature method is resolved
+ * with a signature that was never seen before by the context, espresso creates a dummy placeholder
+ * method and keeps track of it.
+ * <li>When a call site needs to link against a polymorphic signatures, it obtains the dummy method.
+ * It then calls {@link Method#spawnIntrinsicNode(Klass, Symbol, Symbol)} which gives a truffle node
+ * implementing the behavior of the MethodHandle intrinsics (ie: extracting the call target from the
+ * arguments, appending an appendix to the erguments, etc...)
+ * <li>This node is then fed to a {@link InvokeHandleNode} whose role is exactly like the other
+ * invoke nodes: extracting arguments from the stack and passing it to its child.
+ */
 public final class MethodHandleIntrinsics implements ContextAccess {
 
-    public HandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
+    public MethodHandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
         PolySigIntrinsics id = getId(method);
         switch (id) {
             case InvokeBasic:

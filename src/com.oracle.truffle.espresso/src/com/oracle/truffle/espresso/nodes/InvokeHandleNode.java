@@ -31,20 +31,20 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
-public class MethodHandleInvokeNode extends QuickNode {
+public class InvokeHandleNode extends QuickNode {
 
     private final Method method;
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
 
-    @Child private HandleIntrinsicNode intrinsic;
+    @Child private MethodHandleIntrinsicNode intrinsic;
     private final boolean hasReceiver;
     private final int argCount;
     private final int parameterCount;
     private final JavaKind rKind;
 
-    public MethodHandleInvokeNode(Method method, Klass accessingKlass, int top, int curBCI) {
+    public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
         super(top, curBCI);
         this.method = method;
         this.parsedSignature = method.getParsedSignature();

@@ -28,13 +28,18 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-public abstract class HandleIntrinsicNode extends Node implements ContextAccess {
+public abstract class MethodHandleIntrinsicNode extends Node implements ContextAccess {
+    static final boolean USE_CACHE = false;
+
     protected final Method method;
 
-    public HandleIntrinsicNode(Method method) {
+    public MethodHandleIntrinsicNode(Method method) {
         this.method = method;
     }
 
+    /**
+     * The dummy polymorphic signature method object.
+     */
     public Method getMethod() {
         return method;
     }

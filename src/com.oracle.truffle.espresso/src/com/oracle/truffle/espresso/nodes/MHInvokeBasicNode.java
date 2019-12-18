@@ -30,7 +30,11 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class MHInvokeBasicNode extends HandleIntrinsicNode {
+/**
+ * This method is usually responsible for invoking the type-checking lambda forms. As such, its job
+ * it to extract the method handle (given as receiver), and find a way to the payload.
+ */
+public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
 
     private final int form;
     private final int vmentry;
@@ -45,7 +49,7 @@ public abstract class MHInvokeBasicNode extends HandleIntrinsicNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "canInline(target, cachedTarget)")
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"USE_CACHE", "canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {
