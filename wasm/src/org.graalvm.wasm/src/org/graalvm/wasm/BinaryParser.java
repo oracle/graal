@@ -1012,11 +1012,11 @@ public class BinaryParser extends BinaryStreamParser {
 
             // Read the offset expression.
             byte instruction = read1();
-            int offset = -1;
+            int offsetAddress = -1;
             int offsetGlobalIndex = -1;
             switch (instruction) {
                 case Instructions.I32_CONST: {
-                    offset = readSignedInt32();
+                    offsetAddress = readSignedInt32();
                     readEnd();
                     break;
                 }
@@ -1034,15 +1034,7 @@ public class BinaryParser extends BinaryStreamParser {
             int segmentLength = readVectorLength();
             final SymbolTable symbolTable = module.symbolTable();
             final Table table = symbolTable.table();
-            if (table == null) {
-                WasmFunction[] elements = new WasmFunction[segmentLength];
-                for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = readFunctionIndex();
-                    final WasmFunction function = symbolTable.function(functionIndex);
-                    elements[index] = function;
-                }
-                context.linker().resolveElemSegment(module, elemSegmentId, offset, segmentLength, elements);
-            } else {
+            if (table == null || offsetGlobalIndex == -1) {
                 // Note: we do not check if the earlier element segments were executed,
                 // and we do not try to execute the element segments in order,
                 // as we do with data sections and the memory.
@@ -1050,11 +1042,19 @@ public class BinaryParser extends BinaryStreamParser {
                 // Thus, the order in which the element sections are loaded is not important
                 // (also, I did not notice the toolchains overriding the same element slots,
                 // or anything in the spec about that).
-                table.ensureSizeAtLeast(offset + segmentLength);
+                WasmFunction[] elements = new WasmFunction[segmentLength];
                 for (int index = 0; index != segmentLength; ++index) {
                     final int functionIndex = readFunctionIndex();
                     final WasmFunction function = symbolTable.function(functionIndex);
-                    table.set(offset + index, function);
+                    elements[index] = function;
+                }
+                context.linker().resolveElemSegment(context, module, elemSegmentId, offsetAddress, offsetGlobalIndex, segmentLength, elements);
+            } else {
+                table.ensureSizeAtLeast(offsetAddress + segmentLength);
+                for (int index = 0; index != segmentLength; ++index) {
+                    final int functionIndex = readFunctionIndex();
+                    final WasmFunction function = symbolTable.function(functionIndex);
+                    table.set(offsetAddress + index, function);
                 }
             }
         }

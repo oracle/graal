@@ -307,14 +307,17 @@ public class Linker {
     }
 
     void resolveDataSegment(WasmContext context, WasmModule module, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
-        Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
+        Assert.assertTrue(module.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = module.symbolTable().memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", module.name()));
             long baseAddress;
             if (offsetGlobalIndex != -1) {
-                baseAddress = context.globals().loadAsInt(offsetGlobalIndex);
+                final int offsetGlobalAddress = module.symbolTable().globalAddress(offsetGlobalIndex);
+                Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
+                                dataSegmentId + " in module '" + module.name() + "' was not initialized.");
+                baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
             } else {
                 baseAddress = offsetAddress;
             }
@@ -378,18 +381,35 @@ public class Linker {
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveElemSegment(WasmModule module, int elemSegmentId, int elemOffset, int segmentLength, WasmFunction[] functions) {
-        Assert.assertNotNull(module.symbolTable().importedTable(), String.format("No memory declared or imported in the module '%s'.", module.name()));
+    void resolveElemSegment(WasmContext context, WasmModule module, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
+        Assert.assertTrue(module.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
+            assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";
             final Table table = module.symbolTable().table();
-            table.ensureSizeAtLeast(elemOffset + segmentLength);
+            Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", module.name()));
+            int baseAddress;
+            if (offsetGlobalIndex != -1) {
+                final int offsetGlobalAddress = module.symbolTable().globalAddress(offsetGlobalIndex);
+                Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the elem segment " +
+                                elemSegmentId + " in module '" + module.name() + "' was not initialized.");
+                baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
+            } else {
+                baseAddress = offsetAddress;
+            }
+            table.ensureSizeAtLeast(baseAddress + segmentLength);
             for (int index = 0; index != segmentLength; ++index) {
                 final WasmFunction function = functions[index];
-                table.set(elemOffset + index, function);
+                table.set(baseAddress + index, function);
             }
         };
-        final Sym[] dependencies = new Sym[]{new ImportTableSym(module.name(), module.symbolTable().importedTable())};
-        resolutionDag.resolveLater(new ElemSym(module.name(), elemSegmentId), dependencies, resolveAction);
+        final ArrayList<Sym> dependencies = new ArrayList<>();
+        if (module.symbolTable().importedTable() != null) {
+            dependencies.add(new ImportTableSym(module.name(), module.symbolTable().importedTable()));
+        }
+        if (offsetGlobalIndex != -1) {
+            dependencies.add(new InitializeGlobalSym(module.name(), offsetGlobalIndex));
+        }
+        resolutionDag.resolveLater(new ElemSym(module.name(), elemSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
     }
 
     static class ResolutionDag {
