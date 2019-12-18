@@ -84,7 +84,8 @@ public final class SulongEngineOption {
 
     @Option(name = "llvm.debugSysCalls",
             category = OptionCategory.INTERNAL,
-            help = "Turns syscall debugging on/off. Can be \'stdout\' or \'stderr\'.")
+            help = "Turns syscall debugging on/off. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
 
     @Option(name = "llvm.printNativeCallStats",

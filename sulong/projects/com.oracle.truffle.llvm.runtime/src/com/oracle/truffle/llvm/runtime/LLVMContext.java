@@ -474,6 +474,10 @@ public final class LLVMContext {
         if (loaderTraceStream != null) {
             loaderTraceStream.dispose();
         }
+
+        if (syscallTraceStream != null) {
+            syscallTraceStream.dispose();
+        }
     }
 
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
@@ -975,6 +979,24 @@ public final class LLVMContext {
             loaderTraceStreamInitialized = true;
         }
         return loaderTraceStream;
+    }
+
+    @CompilationFinal private TargetStream syscallTraceStream;
+    @CompilationFinal private boolean syscallTraceStreamInitialized = false;
+
+    public TargetStream syscallTraceStream() {
+        if (!syscallTraceStreamInitialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            final String debugSyscallsOption = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+            if (SulongEngineOption.optionEnabled(debugSyscallsOption)) {
+                syscallTraceStream = new TargetStream(env, debugSyscallsOption);
+            }
+
+            syscallTraceStreamInitialized = true;
+        }
+
+        return syscallTraceStream;
     }
 
 }

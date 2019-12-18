@@ -29,19 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import java.io.PrintStream;
-
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @NodeChild("rax")
 @NodeChild("rdi")
@@ -60,13 +58,14 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
     protected long cachedSyscall(@SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
                     @Cached("rax") @SuppressWarnings("unused") long cachedRax,
-                    @Cached("createNode(rax)") LLVMSyscallOperationNode node) {
-        if (traceEnabled()) {
-            trace("[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), rdi, rsi, rdx, r10, r8, r9);
+                    @Cached("createNode(rax)") LLVMSyscallOperationNode node,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        if (context.syscallTraceStream() != null) {
+            trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), rdi, rsi, rdx, r10, r8, r9);
         }
         long result = node.execute(rdi, rsi, rdx, r10, r8, r9);
-        if (traceEnabled()) {
-            trace("         result: %d\n", result);
+        if (context.syscallTraceStream() != null) {
+            trace(context, "         result: %d\n", result);
         }
         return result;
     }
@@ -83,29 +82,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
         return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);
     }
 
-    @CompilationFinal private boolean traceEnabledFlag;
-    @CompilationFinal private PrintStream traceStream;
-
-    private void cacheTrace() {
-        if (traceStream == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceStream = SulongEngineOption.getStream(lookupContextReference(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
-            traceEnabledFlag = SulongEngineOption.isTrue(lookupContextReference(LLVMLanguage.class).get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
-        }
-    }
-
-    private boolean traceEnabled() {
-        cacheTrace();
-        return traceEnabledFlag;
-    }
-
-    private PrintStream traceStream() {
-        cacheTrace();
-        return traceStream;
-    }
-
     @TruffleBoundary
-    private void trace(String format, Object... args) {
-        traceStream().printf(format, args);
+    private static void trace(LLVMContext context, String format, Object... args) {
+        context.syscallTraceStream().printf(format, args);
     }
 }
