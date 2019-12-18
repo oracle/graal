@@ -274,11 +274,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return System.nanoTime();
     }
 
-    /**
-     * (Identity) hash code must be respected for wrappers. The same object could be wrapped by two
-     * different instances of StaticObjectWrapper. Wrappers are transparent, it's identity comes
-     * from the wrapped object.
-     */
     @VmImpl
     @JniImpl
     public static int JVM_IHashCode(@Host(Object.class) StaticObject object) {
