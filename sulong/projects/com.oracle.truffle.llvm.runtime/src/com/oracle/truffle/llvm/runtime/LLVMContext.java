@@ -180,7 +180,7 @@ public final class LLVMContext {
         this.initialized = false;
         this.cleanupNecessary = false;
         this.destructorFunctions = new ArrayList<>();
-        this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = SulongEngineOption.optionEnabled(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
@@ -213,7 +213,7 @@ public final class LLVMContext {
             return false;
         }
         this.env = newEnv;
-        this.nativeCallStatistics = SulongEngineOption.isTrue(newEnv.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = SulongEngineOption.optionEnabled(this.env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.mainArguments = getMainArguments(newEnv);
         return true;
     }
@@ -446,7 +446,7 @@ public final class LLVMContext {
     }
 
     void dispose(LLVMMemory memory) {
-        printNativeCallStatistic();
+        printNativeCallStatistics();
 
         if (isInitialized()) {
             threadingStack.freeMainStack(memory);
@@ -477,6 +477,11 @@ public final class LLVMContext {
 
         if (syscallTraceStream != null) {
             syscallTraceStream.dispose();
+        }
+
+        if (nativeCallStatsStream != null) {
+            assert nativeCallStatistics != null;
+            nativeCallStatsStream.dispose();
         }
     }
 
@@ -798,15 +803,16 @@ public final class LLVMContext {
         return interopTypeRegistry.get(sourceType);
     }
 
-    private void printNativeCallStatistic() {
+    private void printNativeCallStatistics() {
         if (nativeCallStatistics != null) {
             LinkedHashMap<String, Integer> sorted = nativeCallStatistics.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,
                             (e1, e2) -> e1,
                             LinkedHashMap::new));
+            TargetStream stream = nativeCallStatsStream();
             for (String s : sorted.keySet()) {
-                System.err.println(String.format("Function %s \t count: %d", s, sorted.get(s)));
+                stream.printf("Function %s \t count: %d\n", s, sorted.get(s));
             }
         }
     }
@@ -971,9 +977,9 @@ public final class LLVMContext {
         if (!loaderTraceStreamInitialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
-            final String loaderDebugOption = env.getOptions().get(SulongEngineOption.LD_DEBUG);
-            if (SulongEngineOption.optionEnabled(loaderDebugOption)) {
-                loaderTraceStream = new TargetStream(env, loaderDebugOption);
+            final String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
+            if (SulongEngineOption.optionEnabled(opt)) {
+                loaderTraceStream = new TargetStream(env, opt);
             }
 
             loaderTraceStreamInitialized = true;
@@ -988,15 +994,33 @@ public final class LLVMContext {
         if (!syscallTraceStreamInitialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
-            final String debugSyscallsOption = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
-            if (SulongEngineOption.optionEnabled(debugSyscallsOption)) {
-                syscallTraceStream = new TargetStream(env, debugSyscallsOption);
+            final String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+            if (SulongEngineOption.optionEnabled(opt)) {
+                syscallTraceStream = new TargetStream(env, opt);
             }
 
             syscallTraceStreamInitialized = true;
         }
 
         return syscallTraceStream;
+    }
+
+    @CompilationFinal private TargetStream nativeCallStatsStream;
+    @CompilationFinal private boolean nativeCallStatsStreamInitialized = false;
+
+    public TargetStream nativeCallStatsStream() {
+        if (!nativeCallStatsStreamInitialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            final String opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
+            if (SulongEngineOption.optionEnabled(opt)) {
+                nativeCallStatsStream = new TargetStream(env, opt);
+            }
+
+            nativeCallStatsStreamInitialized = true;
+        }
+
+        return nativeCallStatsStream;
     }
 
 }

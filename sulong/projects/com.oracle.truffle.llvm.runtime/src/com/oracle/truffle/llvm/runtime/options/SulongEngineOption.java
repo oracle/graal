@@ -90,7 +90,8 @@ public final class SulongEngineOption {
 
     @Option(name = "llvm.printNativeCallStats",
             category = OptionCategory.INTERNAL,
-            help = "Outputs stats about native call site frequencies. Can be \'stdout\' or \'stderr\'.")
+            help = "Outputs stats about native call site frequencies." +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
 
     @Option(name = "llvm.printLifetimeAnalysisStats",
