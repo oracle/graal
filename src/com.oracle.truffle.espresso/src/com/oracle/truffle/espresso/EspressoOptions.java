@@ -120,8 +120,8 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
     public enum SpecCompliancyMode {
-        Strict,
-        HotSpot
+        STRICT,
+        HOTSPOT
     }
 
     private static final OptionType<SpecCompliancyMode> SPEC_COMPLIANCY_OPTION_TYPE = new OptionType<>("SpecCompliancy",
@@ -131,14 +131,14 @@ public final class EspressoOptions {
                             try {
                                 return SpecCompliancyMode.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("-Xverify: Mode can be 'none', 'remote' or 'all'.");
+                                throw new IllegalArgumentException("--SpecCompliancy: Mode can be 'strict' or 'hotspot'.");
                             }
                         }
                     });
 
     @Option(help = "Force mimicing of hotspot behavior on unrespected specs points", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<SpecCompliancyMode> SpecCompliancy = new OptionKey<>(SpecCompliancyMode.Strict, SPEC_COMPLIANCY_OPTION_TYPE);
+    public static final OptionKey<SpecCompliancyMode> SpecCompliancy = new OptionKey<>(SpecCompliancyMode.HOTSPOT, SPEC_COMPLIANCY_OPTION_TYPE);
 
     public enum VerifyMode {
         NONE,
