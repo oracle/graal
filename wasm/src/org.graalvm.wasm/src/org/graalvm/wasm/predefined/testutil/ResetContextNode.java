@@ -74,10 +74,13 @@ public class ResetContextNode extends WasmBuiltinRootNode {
         boolean first = true;
         WasmContext context = contextReference().get();
         for (WasmModule m : context.modules().values()) {
+            // TODO: Note that this approach assumes that there is only one memory per context.
+            // If we want to support multiple memories _in a context_ in our tests,
+            // and we want to reset them, this code will have to be changed.
             if (!m.isBuiltin()) {
                 context.linker().resetModuleState(context, m, m.data(), first && zeroMemory);
+                first = false;
             }
-            first = false;
         }
     }
 }
