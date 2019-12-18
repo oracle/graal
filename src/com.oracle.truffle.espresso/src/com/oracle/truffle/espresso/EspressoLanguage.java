@@ -61,7 +61,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
-@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
+@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
@@ -69,7 +69,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String ID = "java";
     public static final String NAME = "Java";
     public static final String VERSION = "1.8";
-    public static final String MIME_TYPE = "application/x-java";
 
     // Espresso VM info
     public static final String VM_SPECIFICATION_VERSION = "1.8";
@@ -93,13 +92,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private long startupClock = 0;
 
     public EspressoLanguage() {
-        // Initialize statically defined symbols ans substitutions.
+        // Initialize statically defined symbols and substitutions.
         Name.init();
         Type.init();
         Signature.init();
         Substitutions.init();
 
-        // Raw symbols are not exposed directly, use the typed interfaces: Names, Types,
+        // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
         // Signatures instead.
         Symbols symbols = new Symbols(StaticSymbols.freeze());
         this.utf8Constants = new Utf8ConstantTable(symbols);
