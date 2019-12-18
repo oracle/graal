@@ -84,7 +84,7 @@ bin/%.noopt.bc: src/%.c deps/%.d
 	${POSTCOMPILE}
 
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi/include -I${VPATH}/libcxxabi -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 deps/%.d: ;
