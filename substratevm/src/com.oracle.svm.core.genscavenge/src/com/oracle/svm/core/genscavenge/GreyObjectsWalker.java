@@ -78,7 +78,7 @@ public final class GreyObjectsWalker {
      *
      * @return True if the snapshot updated, false otherwise.
      */
-    private boolean haveGreyObjects() {
+    protected boolean haveGreyObjects() {
         final Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.haveGreyObjects:");
         /* Any difference is a difference. */
         boolean result = false;

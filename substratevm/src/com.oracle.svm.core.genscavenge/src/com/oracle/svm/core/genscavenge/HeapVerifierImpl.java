@@ -241,6 +241,11 @@ public class HeapVerifierImpl implements HeapVerifier {
         return result;
     }
 
+    void verifyDirtyCard(boolean isTo) {
+        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+        oldGen.verifyDirtyCards(isTo);
+    }
+
     @Override
     public Log getTraceLog() {
         return (HeapOptions.TraceHeapVerification.getValue() ? Log.log() : Log.noopLog());

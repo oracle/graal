@@ -187,6 +187,12 @@ public class HeapPolicy {
         return WordFactory.unsigned(HeapPolicyOptions.AllocationBeforePhysicalMemorySize.getValue());
     }
 
+    /* Survivor space configuration */
+
+    public static int getMaxSurvivorSpaces() {
+        return HeapPolicyOptions.MaxSurvivorSpaces.getValue();
+    }
+
     /* Memory configuration */
 
     private static UnsignedWord maximumYoungGenerationSize;
@@ -364,16 +370,16 @@ public class HeapPolicy {
     private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(0xdeadbeef);
     private static final UnsignedWord consumedHeapChunkZapWord = consumedHeapChunkZapInt.shiftLeft(32).or(consumedHeapChunkZapInt);
 
-    static final AtomicUnsigned bytesAllocatedSinceLastCollection = new AtomicUnsigned();
+    static final AtomicUnsigned youngUsedBytes = new AtomicUnsigned();
 
-    static UnsignedWord getBytesAllocatedSinceLastCollection() {
-        return bytesAllocatedSinceLastCollection.get();
+    static UnsignedWord getYoungUsedBytes() {
+        return youngUsedBytes.get();
     }
 
     /** Sample the physical memory size, before the first collection but after some allocation. */
     static void samplePhysicalMemorySize() {
         if (HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
-                        getBytesAllocatedSinceLastCollection().aboveThan(getAllocationBeforePhysicalMemorySize())) {
+                        getYoungUsedBytes().aboveThan(getAllocationBeforePhysicalMemorySize())) {
             PhysicalMemory.size();
         }
     }
@@ -456,7 +462,7 @@ public class HeapPolicy {
             public void maybeCauseCollection() {
                 final HeapImpl heap = HeapImpl.getHeapImpl();
                 /* Has there been enough allocation to provoke a collection? */
-                if (bytesAllocatedSinceLastCollection.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
+                if (youngUsedBytes.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
                     heap.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationSometimes);
                 }
             }
@@ -486,7 +492,7 @@ public class HeapPolicy {
     public static class ScepticallyCollect implements HeapPolicy.HintGCPolicy {
         @Override
         public void maybeCauseCollection(GCCause cause) {
-            if (bytesAllocatedSinceLastCollection.get().aboveOrEqual(collectScepticallyThreshold())) {
+            if (youngUsedBytes.get().aboveOrEqual(collectScepticallyThreshold())) {
                 HeapImpl.getHeapImpl().getGCImpl().collect(cause);
             }
         }

@@ -59,7 +59,24 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(final Pointer objRef, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed);
+        return visitObjectReferenceInline(objRef, 0, compressed, null);
+    }
+
+    @Override
+    public boolean visitObjectReference(final Pointer objRef, boolean compressed, Object holderObject) {
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    public boolean visitObjectReferenceInline(final Pointer objRef, boolean compressed, Object holderObject) {
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
+        return visitObjectReferenceInline(objRef, 0, compressed, null);
     }
 
     /**
@@ -68,11 +85,12 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
      */
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
 
         getCounters().noteObjRef();
-        final Log trace = Log.noopLog().string("[GreyToBlackObjRefVisitor.visitObjectReferenceInline:").string("  objRef: ").hex(objRef);
+        final Log trace = Log.noopLog().string("[GreyToBlackObjRefVisitor.visitObjectReferenceInline:")
+                        .string("  objRef: ").hex(objRef).string("  holderObject: ").object(holderObject);
         if (objRef.isNull()) {
             getCounters().noteNullObjRef();
             trace.string(" null objRef ").hex(objRef).string("]").newline();
@@ -100,7 +118,9 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             // Update the reference to point to the forwarded Object.
             final Object obj = ohi.getForwardedObject(p);
             final Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
+            trace.string(" updating objRef: ").hex(objRef).string(" with forwarded obj: ").object(obj);
             ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, objRef, obj);
             trace.object(obj);
             if (trace.isEnabled()) {
                 trace.string("  objectHeader: ").string(ohi.toStringFromObject(obj)).string("]").newline();
@@ -140,6 +160,9 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         } else {
             getCounters().noteUnmodifiedReference();
         }
+        // If promote unaligned object, the reference will not update, but still need dirty the card
+        // if necessary
+        HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, objRef, copy);
         trace.string("]").newline();
         return true;
     }

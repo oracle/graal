@@ -248,7 +248,7 @@ public class GCImpl implements GC {
         /* Run any collection watchers after the collection. */
         visitWatchersAfter();
         /* Reset for the next collection. */
-        HeapPolicy.bytesAllocatedSinceLastCollection.set(WordFactory.zero());
+        HeapPolicy.youngUsedBytes.set(getAccounting().getYoungChunkBytesAfter());
         /* Print the heap after the collection. */
         printGCAfter(cause.getName());
         /* Note that the collection is finished. */
@@ -420,7 +420,7 @@ public class GCImpl implements GC {
         final YoungGeneration youngGen = heap.getYoungGeneration();
         final OldGeneration oldGen = heap.getOldGeneration();
         verbosePostCondition();
-        assert youngGen.getSpace().isEmpty() : "youngGen.getSpace() should be empty after a collection.";
+        assert youngGen.getEden().isEmpty() : "youngGen.getEden() should be empty after a collection.";
         assert oldGen.getToSpace().isEmpty() : "oldGen.getToSpace() should be empty after a collection.";
     }
 
@@ -435,18 +435,33 @@ public class GCImpl implements GC {
         final boolean forceForTesting = false;
         if (runtimeAssertions() || forceForTesting) {
             final Log witness = Log.log();
-            if ((!youngGen.getSpace().isEmpty()) || forceForTesting) {
-                witness.string("[GCImpl.postcondition: youngGen space should be empty after a collection.").newline();
+            if ((!youngGen.getEden().isEmpty()) || forceForTesting) {
+                witness.string("[GCImpl.postcondition: Eden space should be empty after a collection.").newline();
                 /* Print raw fields before trying to walk the chunk lists. */
                 witness.string("  These should all be 0:").newline();
-                witness.string("    youngGen space first AlignedChunk:   ").hex(youngGen.getSpace().getFirstAlignedHeapChunk()).newline();
-                witness.string("    youngGen space last  AlignedChunk:   ").hex(youngGen.getSpace().getLastAlignedHeapChunk()).newline();
-                witness.string("    youngGen space first UnalignedChunk: ").hex(youngGen.getSpace().getFirstUnalignedHeapChunk()).newline();
-                witness.string("    youngGen space last  UnalignedChunk: ").hex(youngGen.getSpace().getLastUnalignedHeapChunk()).newline();
-                youngGen.getSpace().report(witness, true).newline();
+                witness.string("    Eden space first AlignedChunk:   ").hex(youngGen.getEden().getFirstAlignedHeapChunk()).newline();
+                witness.string("    Eden space last  AlignedChunk:   ").hex(youngGen.getEden().getLastAlignedHeapChunk()).newline();
+                witness.string("    Eden space first UnalignedChunk: ").hex(youngGen.getEden().getFirstUnalignedHeapChunk()).newline();
+                witness.string("    Eden space last  UnalignedChunk: ").hex(youngGen.getEden().getLastUnalignedHeapChunk()).newline();
+                youngGen.getEden().report(witness, true).newline();
                 witness.string("  verifying the heap:");
-                heap.verifyAfterGC("because youngGen space is not empty", getCollectionEpoch());
+                heap.verifyAfterGC("because Eden space is not empty", getCollectionEpoch());
                 witness.string("]").newline();
+            }
+            for (int i = 0; i < HeapPolicy.getMaxSurvivorSpaces(); i++) {
+                if ((!youngGen.getSurvivorToSpaceAt(i).isEmpty()) || forceForTesting) {
+                    witness.string("[GCImpl.postcondition: Survivor toSpace should be empty after a collection.").newline();
+                    /* Print raw fields before trying to walk the chunk lists. */
+                    witness.string("  These should all be 0:").newline();
+                    witness.string("    Survivor space " + i + " first AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstAlignedHeapChunk()).newline();
+                    witness.string("    Survivor space " + i + " last  AlignedChunk:   ").hex(youngGen.getSurvivorToSpaceAt(i).getLastAlignedHeapChunk()).newline();
+                    witness.string("    Survivor space " + i + " first UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getFirstUnalignedHeapChunk()).newline();
+                    witness.string("    Survivor space " + i + " last  UnalignedChunk: ").hex(youngGen.getSurvivorToSpaceAt(i).getLastUnalignedHeapChunk()).newline();
+                    youngGen.getSurvivorToSpaceAt(i).report(witness, true).newline();
+                    witness.string("  verifying the heap:");
+                    heap.verifyAfterGC("because Survivor toSpace is not empty", getCollectionEpoch());
+                    witness.string("]").newline();
+                }
             }
             if ((!oldGen.getToSpace().isEmpty()) || forceForTesting) {
                 witness.string("[GCImpl.postcondition: oldGen toSpace should be empty after a collection.").newline();
@@ -467,14 +482,25 @@ public class GCImpl implements GC {
 
     private boolean checkIfOutOfMemory() {
         final UnsignedWord allowed = HeapPolicy.getMaximumHeapSize();
-        /* Only the old generation has objects in it because the young generation is empty. */
+        /* The old generation and the survivor spaces have objects */
         final UnsignedWord inUse = getAccounting().getOldGenerationAfterChunkBytes();
+        final HeapImpl heap = HeapImpl.getHeapImpl();
+        final YoungGeneration youngGen = heap.getYoungGeneration();
+        final UnsignedWord survivorUsedBytes = youngGen.getSurvivorChunkUsedBytes();
+        inUse.add(survivorUsedBytes);
         return allowed.belowThan(inUse);
     }
 
     @Fold
     static boolean runtimeAssertions() {
         return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
+    }
+
+    @Fold
+    public static GCImpl getGCImpl() {
+        final GCImpl gcImpl = HeapImpl.getHeapImpl().getGCImpl();
+        assert gcImpl != null;
+        return gcImpl;
     }
 
     @Override
@@ -486,6 +512,10 @@ public class GCImpl implements GC {
         } finally {
             setPolicy(oldPolicy);
         }
+    }
+
+    boolean isCompleteCollection() {
+        return completeCollection;
     }
 
     /**
@@ -558,7 +588,7 @@ public class GCImpl implements GC {
              * Objects into each of the blackening methods, or even put them around individual
              * Object reference visits.
              */
-            prepareForPromotion();
+            prepareForPromotion(false);
 
             /*
              * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
@@ -582,14 +612,14 @@ public class GCImpl implements GC {
             blackenBootImageRoots();
 
             /* Visit all the Objects promoted since the snapshot. */
-            scanGreyObjects();
+            scanGreyObjects(false);
 
             if (DeoptimizationSupport.enabled()) {
                 /* Visit the runtime compiled code, now that we know all the reachable objects. */
                 walkRuntimeCodeCache();
 
                 /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects();
+                scanGreyObjects(false);
 
                 /* Clean the code cache, now that all live objects were visited. */
                 cleanRuntimeCodeCache();
@@ -622,7 +652,7 @@ public class GCImpl implements GC {
              * Objects into each of the blackening methods, or even put them around individual
              * Object reference visits.
              */
-            prepareForPromotion();
+            prepareForPromotion(true);
 
             /*
              * Make sure any released objects are in toSpace (because this is an incremental
@@ -655,14 +685,14 @@ public class GCImpl implements GC {
             blackenBootImageRoots();
 
             /* Visit all the Objects promoted since the snapshot, transitively. */
-            scanGreyObjects();
+            scanGreyObjects(true);
 
             if (DeoptimizationSupport.enabled()) {
                 /* Visit the runtime compiled code, now that we know all the reachable objects. */
                 walkRuntimeCodeCache();
 
                 /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects();
+                scanGreyObjects(true);
 
                 /* Clean the code cache, now that all live objects were visited. */
                 cleanRuntimeCodeCache();
@@ -794,19 +824,43 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private static void prepareForPromotion() {
+    private static void prepareForPromotion(boolean isIncremental) {
+        final Log trace = Log.noopLog().string("[GCImpl.prepareForPromotion:").newline();
+
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGen = heap.getOldGeneration();
         oldGen.prepareForPromotion();
+        if (isIncremental) {
+            heap.getYoungGeneration().prepareForPromotion();
+        }
+        trace.string("]").newline();
+
     }
 
     @SuppressWarnings("try")
-    private void scanGreyObjects() {
+    private void scanGreyObjects(boolean isIncremental) {
         final Log trace = Log.noopLog().string("[GCImpl.scanGreyObjects").newline();
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGen = heap.getOldGeneration();
         try (Timer sgot = scanGreyObjectsTimer.open()) {
-            oldGen.scanGreyObjects();
+            if (isIncremental) {
+                scanGreyObjectsLoop();
+            } else {
+                oldGen.scanGreyObjects();
+            }
+        }
+        trace.string("]").newline();
+    }
+
+    private static void scanGreyObjectsLoop() {
+        final Log trace = Log.noopLog().string("[GCImpl.scanGreyObjectsLoop").newline();
+        final HeapImpl heap = HeapImpl.getHeapImpl();
+        final YoungGeneration youngGen = heap.getYoungGeneration();
+        final OldGeneration oldGen = heap.getOldGeneration();
+        boolean hasGrey = true;
+        while (hasGrey) {
+            hasGrey = youngGen.scanGreyObjects();
+            hasGrey |= oldGen.scanGreyObjects();
         }
         trace.string("]").newline();
     }
@@ -833,6 +887,7 @@ public class GCImpl implements GC {
         final Log trace = Log.noopLog().string("[GCImpl.swapSpaces:");
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGen = heap.getOldGeneration();
+        heap.getYoungGeneration().swapSpaces();
         oldGen.swapSpaces();
         trace.string("]").newline();
     }
@@ -1139,6 +1194,7 @@ public class GCImpl implements GC {
         private UnsignedWord copiedTotalChunkBytes;
         /* Before and after measures. */
         private UnsignedWord youngChunkBytesBefore;
+        private UnsignedWord youngChunkBytesAfter;
         private UnsignedWord oldChunkBytesBefore;
         private UnsignedWord oldChunkBytesAfter;
         /* History of promotions and copies. */
@@ -1151,6 +1207,7 @@ public class GCImpl implements GC {
          */
         private UnsignedWord collectedTotalObjectBytes;
         private UnsignedWord youngObjectBytesBefore;
+        private UnsignedWord youngObjectBytesAfter;
         private UnsignedWord oldObjectBytesBefore;
         private UnsignedWord oldObjectBytesAfter;
         private UnsignedWord normalObjectBytes;
@@ -1167,6 +1224,7 @@ public class GCImpl implements GC {
             this.copiedTotalChunkBytes = WordFactory.zero();
             this.history = 0;
             this.youngChunkBytesBefore = WordFactory.zero();
+            this.youngChunkBytesAfter = WordFactory.zero();
             this.oldChunkBytesBefore = WordFactory.zero();
             this.oldChunkBytesAfter = WordFactory.zero();
             /* Initialize histories. */
@@ -1175,6 +1233,7 @@ public class GCImpl implements GC {
             /* Object bytes, if requested. */
             this.collectedTotalObjectBytes = WordFactory.zero();
             this.youngObjectBytesBefore = WordFactory.zero();
+            this.youngObjectBytesAfter = WordFactory.zero();
             this.oldObjectBytesBefore = WordFactory.zero();
             this.oldObjectBytesAfter = WordFactory.zero();
             this.normalObjectBytes = WordFactory.zero();
@@ -1232,6 +1291,11 @@ public class GCImpl implements GC {
         /** Bytes held in the old generation. */
         UnsignedWord getOldGenerationAfterChunkBytes() {
             return oldChunkBytesAfter;
+        }
+
+        /** Bytes held in the young generation. */
+        UnsignedWord getYoungChunkBytesAfter() {
+            return youngChunkBytesAfter;
         }
 
         /** Average promoted unpinned chunk bytes. */
@@ -1310,8 +1374,8 @@ public class GCImpl implements GC {
             /* Gather some space statistics. */
             incrementHistory();
             final HeapImpl heap = HeapImpl.getHeapImpl();
-            final Space youngSpace = heap.getYoungGeneration().getSpace();
-            youngChunkBytesBefore = youngSpace.getChunkBytes();
+            final YoungGeneration youngGen = heap.getYoungGeneration();
+            youngChunkBytesBefore = youngGen.getChunkUsedBytes();
             /* This is called before the collection, so OldSpace is FromSpace. */
             final Space oldSpace = heap.getOldGeneration().getFromSpace();
             oldChunkBytesBefore = oldSpace.getChunkBytes();
@@ -1319,7 +1383,7 @@ public class GCImpl implements GC {
             normalChunkBytes = normalChunkBytes.add(youngChunkBytesBefore);
             /* Keep some aggregate metrics. */
             if (HeapOptions.PrintGCSummary.getValue()) {
-                youngObjectBytesBefore = youngSpace.getObjectBytes();
+                youngObjectBytesBefore = youngGen.getObjectBytes();
                 oldObjectBytesBefore = oldSpace.getObjectBytes();
                 normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
             }
@@ -1375,17 +1439,19 @@ public class GCImpl implements GC {
             /*
              * This is called after the collection, after the space flip, so OldSpace is FromSpace.
              */
+            final YoungGeneration youngGen = heap.getYoungGeneration();
+            youngChunkBytesAfter = youngGen.getChunkUsedBytes();
             final Space oldSpace = heap.getOldGeneration().getFromSpace();
             oldChunkBytesAfter = oldSpace.getChunkBytes();
             final UnsignedWord beforeChunkBytes = youngChunkBytesBefore.add(oldChunkBytesBefore);
-            final UnsignedWord afterChunkBytes = oldChunkBytesAfter;
+            final UnsignedWord afterChunkBytes = oldChunkBytesAfter.add(youngChunkBytesAfter);
             final UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
             collectedTotalChunkBytes = collectedTotalChunkBytes.add(collectedChunkBytes);
             if (HeapOptions.PrintGCSummary.getValue()) {
-                /* The young generation is empty after the collection. */
+                youngObjectBytesAfter = youngGen.getObjectBytes();
                 oldObjectBytesAfter = oldSpace.getObjectBytes();
                 final UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
-                final UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter);
+                final UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
                 collectedTotalObjectBytes = collectedTotalObjectBytes.add(collectedObjectBytes);
             }
         }
@@ -1606,9 +1672,9 @@ public class GCImpl implements GC {
         /* Add in any young objects allocated since the last collection. */
         JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
         final HeapImpl heap = HeapImpl.getHeapImpl();
-        final Space youngSpace = heap.getYoungGeneration().getSpace();
-        final UnsignedWord youngChunkBytes = youngSpace.getChunkBytes();
-        final UnsignedWord youngObjectBytes = youngSpace.getObjectBytes();
+        final Space edenSpace = heap.getYoungGeneration().getEden();
+        final UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();
+        final UnsignedWord youngObjectBytes = edenSpace.getObjectBytes();
 
         /* Compute updated values. */
         final UnsignedWord allocatedNormalChunkBytes = accounting.getNormalChunkBytes().add(youngChunkBytes);

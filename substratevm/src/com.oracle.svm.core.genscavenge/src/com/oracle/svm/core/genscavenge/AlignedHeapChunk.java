@@ -258,7 +258,7 @@ public class AlignedHeapChunk extends HeapChunk {
         final Pointer cardTableStart = getCardTableStart(chunk);
         final UnsignedWord index = getObjectIndex(chunk, objectPointer);
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty");
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty", "", "");
         } else {
             CardTable.dirtyEntryAtIndex(cardTableStart, index);
         }
@@ -454,6 +454,9 @@ public class AlignedHeapChunk extends HeapChunk {
             trace.newline().string("  ").string("  index: ").unsigned(index);
             /* If the card is dirty, visit the objects it covers. */
             if (CardTable.isDirtyEntryAtIndex(cardTableStart, index)) {
+                if (clean) {
+                    CardTable.cleanEntryAtIndex(cardTableStart, index);
+                }
                 final Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
                 final Pointer crossingOntoPointer = FirstObjectTable.getPreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
                 final Object crossingOntoObject = crossingOntoPointer.toObject();
@@ -496,9 +499,6 @@ public class AlignedHeapChunk extends HeapChunk {
                         return false;
                     }
                     ptr = objEnd;
-                }
-                if (clean) {
-                    CardTable.cleanEntryAtIndex(cardTableStart, index);
                 }
             }
         }

@@ -118,6 +118,7 @@ public class DiscoverableReferenceProcessing {
                 /* The referent will not survive the collection: put it on the new list. */
                 trace.string("  unpromoted current: ").object(current).newline();
                 newList = current.prependToDiscoveredReference(newList);
+                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, current.getNextRefPointer(), newList);
             } else {
                 /* Referent will survive the collection: don't add it to the new list. */
                 trace.string("  promoted current: ").object(current).newline();
@@ -149,6 +150,7 @@ public class DiscoverableReferenceProcessing {
             final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(refPointer);
             dr.setReferentPointer(forwardedPointer);
             trace.string("  forwarded header: updated referent: ").hex(forwardedPointer).string("]").newline();
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refPointer, forwardedPointer.toObject());
             return true;
         }
         /*
@@ -158,6 +160,7 @@ public class DiscoverableReferenceProcessing {
         if (HeapImpl.getHeapImpl().hasSurvivedThisCollection(refObject)) {
             /* The referent has survived, it does not need to be updated. */
             trace.string("  referent will survive: not updated").string("]").newline();
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refPointer, refObject);
             return true;
         }
         /*
