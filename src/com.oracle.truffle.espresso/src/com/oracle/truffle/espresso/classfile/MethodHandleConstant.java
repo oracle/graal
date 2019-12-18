@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -117,7 +118,7 @@ public interface MethodHandleConstant extends PoolConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             Meta meta = pool.getContext().getMeta();
-            if (meta.getContext().isForceHotpotNonSpecCompliancyEnabled()) {
+            if (meta.getContext().specCompliancyMode() == EspressoOptions.SpecCompliancyMode.HotSpot) {
                 return hotspotResolutionBehavior(pool, accessingKlass, meta);
             } else {
                 return specCompliantResolution(pool, accessingKlass, meta);
