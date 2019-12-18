@@ -93,7 +93,7 @@ public class TableRegistry {
         public void ensureSizeAtLeast(int targetSize) {
             if (maxSize >= 0 && targetSize > maxSize) {
                 throw new WasmException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
-                        "declared maximum size is " + maxSize);
+                                "declared maximum size is " + maxSize);
             }
             if (elements.length < targetSize) {
                 Object[] newElements = new Object[targetSize];

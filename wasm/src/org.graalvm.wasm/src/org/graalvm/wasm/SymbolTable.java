@@ -111,8 +111,8 @@ public class SymbolTable {
     /**
      * Encodes the arguments and return types of each function type.
      *
-     * Given a function type index, the {@link #typeOffsets} array indicates where the encoding for that
-     * function type begins in this array.
+     * Given a function type index, the {@link #typeOffsets} array indicates where the encoding for
+     * that function type begins in this array.
      *
      * For a function type starting at index i, the encoding is the following
      *
@@ -141,8 +141,8 @@ public class SymbolTable {
     /**
      * Stores the type equivalence class.
      *
-     * Since multiple types have the same shape, each type is mapped to an equivalence class,
-     * so that two types can be quickly compared.
+     * Since multiple types have the same shape, each type is mapped to an equivalence class, so
+     * that two types can be quickly compared.
      *
      * The equivalence classes are computed globally for all the modules, during linking.
      */
@@ -193,8 +193,7 @@ public class SymbolTable {
 
     /**
      * A global type is the value type of the global, followed by its mutability. This is encoded as
-     * two bytes -- the lowest (0th) byte is the value type.
-     * The 1st byte is organized like this:
+     * two bytes -- the lowest (0th) byte is the value type. The 1st byte is organized like this:
      *
      * <code>
      * | . | . | . | . | . | initialized flag | exported flag | mutable flag |
@@ -313,10 +312,9 @@ public class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have
-     * enough space to store the data for the type at {@code index}.
-     * If there is not enough space, then a reallocation of the array takes place, doubling its
-     * capacity.
+     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have enough
+     * space to store the data for the type at {@code index}. If there is not enough space, then a
+     * reallocation of the array takes place, doubling its capacity.
      *
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.

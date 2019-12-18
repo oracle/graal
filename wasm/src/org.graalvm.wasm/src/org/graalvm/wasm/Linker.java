@@ -351,20 +351,21 @@ public class Linker {
                 final String exportedTableName = importedModule.symbolTable().exportedTable();
                 if (exportedTableName == null) {
                     throw new WasmLinkerException(String.format("The imported module '%s' does not export any tables, so cannot resolve table '%s' imported in module '%s'.",
-                            importedModuleName, importedTableName, module.name()));
+                                    importedModuleName, importedTableName, module.name()));
                 }
                 if (!exportedTableName.equals(importedTableName)) {
                     throw new WasmLinkerException(String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
-                            importedModuleName, exportedTableName, module.name(), importedTableName));
+                                    importedModuleName, exportedTableName, module.name(), importedTableName));
                 }
                 final Table table = importedModule.symbolTable().table();
                 final int declaredMaxSize = table.maxSize();
                 if (declaredMaxSize >= 0 && (initSize > declaredMaxSize || maxSize > declaredMaxSize)) {
-                    // This requirement does not seem to be mentioned in the WebAssembly specification.
+                    // This requirement does not seem to be mentioned in the WebAssembly
+                    // specification.
                     // It might be necessary to refine what maximum size means in the import-table
                     // declaration (and in particular what it means that it's unlimited).
                     throw new WasmLinkerException(String.format("The table '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
-                            importedTableName, importedModuleName, declaredMaxSize, module.name(), maxSize));
+                                    importedTableName, importedModuleName, declaredMaxSize, module.name(), maxSize));
                 }
                 table.ensureSizeAtLeast(initSize);
                 module.symbolTable().setImportedTable(new ImportDescriptor(importedModuleName, importedTableName));
