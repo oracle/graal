@@ -40,19 +40,19 @@
  */
 package org.graalvm.wasm;
 
+import static org.graalvm.wasm.TableRegistry.Table;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
+import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
+import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
@@ -62,10 +62,11 @@ import org.graalvm.wasm.nodes.WasmIfNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
-import org.graalvm.wasm.constants.Instructions;
-import org.graalvm.wasm.constants.Section;
 
-import static org.graalvm.wasm.TableRegistry.*;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.

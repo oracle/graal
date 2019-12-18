@@ -40,26 +40,37 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
-import org.graalvm.wasm.Linker.ResolutionDag.Sym;
-import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
-import org.graalvm.wasm.SymbolTable.FunctionType;
-import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.exception.WasmLinkerException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmBlockNode;
+import static org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ExportGlobalSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ExportTableSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ImportFunctionSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
+import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
+import static org.graalvm.wasm.TableRegistry.Table;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.graalvm.wasm.Linker.ResolutionDag.*;
-import static org.graalvm.wasm.TableRegistry.*;
+import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
+import org.graalvm.wasm.Linker.ResolutionDag.Sym;
+import org.graalvm.wasm.SymbolTable.FunctionType;
+import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.WasmLinkerException;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.nodes.WasmBlockNode;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
 public class Linker {
     private enum LinkState {
