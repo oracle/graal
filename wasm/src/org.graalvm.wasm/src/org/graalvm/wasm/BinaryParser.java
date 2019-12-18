@@ -1012,20 +1012,18 @@ public class BinaryParser extends BinaryStreamParser {
 
             // Read the offset expression.
             byte instruction = read1();
-            int elemOffset = 0;
+            int offset = -1;
+            int offsetGlobalIndex = -1;
             switch (instruction) {
                 case Instructions.I32_CONST: {
-                    elemOffset = readSignedInt32();
+                    offset = readSignedInt32();
                     readEnd();
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
-                    int globalIndex = readGlobalIndex();
+                    offsetGlobalIndex = readGlobalIndex();
                     readEnd();
-                    throw new RuntimeException("Global get in element section not supported.");
-                    // int[] contents = readElemContents();
-                    // final Linker linker = context.linker();
-                    // linker.tryInitializeElements(context, module, index, contents);
+                    break;
                 }
                 default: {
                     Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
@@ -1036,7 +1034,15 @@ public class BinaryParser extends BinaryStreamParser {
             int segmentLength = readVectorLength();
             final SymbolTable symbolTable = module.symbolTable();
             final Table table = symbolTable.table();
-            if (table != null) {
+            if (table == null) {
+                WasmFunction[] elements = new WasmFunction[segmentLength];
+                for (int index = 0; index != segmentLength; ++index) {
+                    final int functionIndex = readFunctionIndex();
+                    final WasmFunction function = symbolTable.function(functionIndex);
+                    elements[index] = function;
+                }
+                context.linker().resolveElemSegment(module, elemSegmentId, offset, segmentLength, elements);
+            } else {
                 // Note: we do not check if the earlier element segments were executed,
                 // and we do not try to execute the element segments in order,
                 // as we do with data sections and the memory.
@@ -1044,20 +1050,12 @@ public class BinaryParser extends BinaryStreamParser {
                 // Thus, the order in which the element sections are loaded is not important
                 // (also, I did not notice the toolchains overriding the same element slots,
                 // or anything in the spec about that).
-                table.ensureSizeAtLeast(elemOffset + segmentLength);
+                table.ensureSizeAtLeast(offset + segmentLength);
                 for (int index = 0; index != segmentLength; ++index) {
                     final int functionIndex = readFunctionIndex();
                     final WasmFunction function = symbolTable.function(functionIndex);
-                    table.set(elemOffset + index, function);
+                    table.set(offset + index, function);
                 }
-            } else {
-                WasmFunction[] elements = new WasmFunction[segmentLength];
-                for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = readFunctionIndex();
-                    final WasmFunction function = symbolTable.function(functionIndex);
-                    elements[index] = function;
-                }
-                context.linker().resolveElemSegment(module, elemSegmentId, elemOffset, segmentLength, elements);
             }
         }
     }
