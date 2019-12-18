@@ -283,11 +283,12 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     static String extractSimpleType(String arg) {
         // The argument can be a fully qualified type e.g. java.lang.String, int, long...
-        // Or an annotated type "(@com.example.Annotation :: long)", (@com.example.Annotation :: java.lang.String)
+        // Or an annotated type e.g. "(@com.example.Annotation :: long)",
+        // "(@com.example.Annotation :: java.lang.String)".
         // javac always includes annotations, ecj does not.
 
         // Purge enclosing parentheses.
-        String result= arg;
+        String result = arg;
         if (result.startsWith("(")) {
             result = result.substring(1, result.length() - 1);
         }
