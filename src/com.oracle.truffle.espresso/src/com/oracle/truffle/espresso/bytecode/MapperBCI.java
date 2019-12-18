@@ -27,7 +27,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -48,13 +48,13 @@ public class MapperBCI extends Node {
 
     private final boolean wasSorted;
 
-    public MapperBCI(LineNumberTable lineNumberTable) {
+    public MapperBCI(LineNumberTableAttribute lineNumberTable) {
         this.length = lineNumberTable.getEntries().length;
         this.bcis = new int[length];
         int i = 0;
         int prev = 0;
         boolean sort = false;
-        for (LineNumberTable.Entry entry : lineNumberTable.getEntries()) {
+        for (LineNumberTableAttribute.Entry entry : lineNumberTable.getEntries()) {
             int bci = entry.getBCI();
             if (i > 0 && bci < prev) {
                 sort = true;

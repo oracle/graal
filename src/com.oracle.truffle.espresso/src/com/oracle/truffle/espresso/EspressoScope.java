@@ -40,7 +40,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
 
 public class EspressoScope {
 

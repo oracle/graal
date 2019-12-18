@@ -20,34 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
+package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
-
-/**
- * Global Utf8Constant table.
- */
-public final class Utf8ConstantTable {
-    private final Symbols symbols;
-
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
-
-    public Utf8ConstantTable(Symbols symbols) {
-        this.symbols = symbols;
+public interface MethodRefConstant extends MemberRefConstant {
+    /**
+     * Gets the signature descriptor of the method represented by this constant.
+     *
+     * @param pool container of this constant
+     */
+    @SuppressWarnings("unchecked")
+    default Symbol<Signature> getSignature(ConstantPool pool) {
+        return (Symbol<Signature>) getDescriptor(pool);
     }
 
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
-            }
-        });
+    abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {
+        Indexes(int classIndex, int nameAndTypeIndex) {
+            super(classIndex, nameAndTypeIndex);
+        }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            super.validate(pool);
+            // <clinit> method name is allowed here.
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+        }
     }
 }

@@ -20,34 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
+package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
 
 /**
- * Global Utf8Constant table.
+ * #4.4.4.
  */
-public final class Utf8ConstantTable {
-    private final Symbols symbols;
+public final class IntegerConstant implements PoolConstant {
 
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
-
-    public Utf8ConstantTable(Symbols symbols) {
-        this.symbols = symbols;
+    @Override
+    public Tag tag() {
+        return Tag.INTEGER;
     }
 
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
-            }
-        });
+    private final int value;
+
+    IntegerConstant(int value) {
+        this.value = value;
+    }
+
+    public int value() {
+        return value;
+    }
+
+    @Override
+    public String toString(ConstantPool pool) {
+        return String.valueOf(value);
     }
 }

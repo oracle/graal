@@ -20,34 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
+package com.oracle.truffle.espresso.classfile.attributes;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+public final class SourceFileAttribute extends Attribute {
 
-/**
- * Global Utf8Constant table.
- */
-public final class Utf8ConstantTable {
-    private final Symbols symbols;
+    public static final Symbol<Name> NAME = Name.SourceFile;
 
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
+    private final int sourceFileIndex;
 
-    public Utf8ConstantTable(Symbols symbols) {
-        this.symbols = symbols;
+    public SourceFileAttribute(Symbol<Name> name, int sourceFileIndex) {
+        super(name, null);
+        this.sourceFileIndex = sourceFileIndex;
     }
 
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
-            }
-        });
+    public int getSourceFileIndex() {
+        return sourceFileIndex;
     }
 }

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.classFormatError;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
@@ -58,9 +57,27 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
@@ -74,8 +91,6 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Local;
-import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -138,6 +153,26 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
+    public static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, Tag tag, String description, Tag... expected) {
+        CompilerDirectives.transferToInterpreter();
+        throw classFormatError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
+    }
+
+    public static @Host(VerifyError.class) EspressoException verifyError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(VerifyError.class, message);
+    }
+
+    public static @Host(ClassFormatError.class) EspressoException classFormatError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassFormatError.class, message);
+    }
+
+    public static @Host(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(NoClassDefFoundError.class, message);
+    }
+
     @SuppressWarnings("unused")
     public Klass getHostClass() {
         return hostClass;
@@ -157,7 +192,7 @@ public final class ClassfileParser {
         this.constantPoolPatches = constantPoolPatches;
     }
 
-    void handleBadConstant(Tag tag, ClassfileStream s) {
+    public void handleBadConstant(Tag tag, ClassfileStream s) {
         if (tag == Tag.MODULE || tag == Tag.PACKAGE) {
             if (majorVersion >= JAVA_9_VERSION) {
                 s.readU2();
@@ -168,19 +203,19 @@ public final class ClassfileParser {
         throw stream.classFormatError("Unknown constant tag %d", tag.getValue());
     }
 
-    void updateMaxBootstrapMethodAttrIndex(int bsmAttrIndex) {
+    public void updateMaxBootstrapMethodAttrIndex(int bsmAttrIndex) {
         if (maxBootstrapMethodAttrIndex < bsmAttrIndex) {
             maxBootstrapMethodAttrIndex = bsmAttrIndex;
         }
     }
 
-    void checkInvokeDynamicSupport(Tag tag) {
+    public void checkInvokeDynamicSupport(Tag tag) {
         if (majorVersion < INVOKEDYNAMIC_MAJOR_VERSION) {
             stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 
-    void checkDynamicConstantSupport(Tag tag) {
+    public void checkDynamicConstantSupport(Tag tag) {
         if (majorVersion < DYNAMICCONSTANT_MAJOR_VERSION) {
             stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
@@ -280,7 +315,7 @@ public final class ClassfileParser {
 
         boolean isModule = (classFlags & ACC_MODULE) != 0;
         if (isModule) {
-            throw ConstantPool.noClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
+            throw noClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
         }
 
         if (badConstantSeen != null) {
@@ -311,7 +346,7 @@ public final class ClassfileParser {
 
         // Checks if name in class file matches requested name
         if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
-            throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
+            throw noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
         Symbol<Type> superKlass = parseSuperKlass();
@@ -712,19 +747,19 @@ public final class ClassfileParser {
         return new SourceFileAttribute(name, sourceFileIndex);
     }
 
-    private LineNumberTable parseLineNumberTable(Symbol<Name> name) {
+    private LineNumberTableAttribute parseLineNumberTable(Symbol<Name> name) {
         assert Name.LineNumberTable.equals(name);
         int entryCount = stream.readU2();
         if (entryCount == 0) {
-            return LineNumberTable.EMPTY;
+            return LineNumberTableAttribute.EMPTY;
         }
-        LineNumberTable.Entry[] entries = new LineNumberTable.Entry[entryCount];
+        LineNumberTableAttribute.Entry[] entries = new LineNumberTableAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; i++) {
             int bci = stream.readU2();
             int lineNumber = stream.readU2();
-            entries[i] = new LineNumberTable.Entry(bci, lineNumber);
+            entries[i] = new LineNumberTableAttribute.Entry(bci, lineNumber);
         }
-        return new LineNumberTable(name, entries);
+        return new LineNumberTableAttribute(name, entries);
     }
 
     private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
@@ -1269,7 +1304,7 @@ public final class ClassfileParser {
         return interfaces;
     }
 
-    int getMajorVersion() {
+    public int getMajorVersion() {
         assert majorVersion != 0;
         return majorVersion;
     }

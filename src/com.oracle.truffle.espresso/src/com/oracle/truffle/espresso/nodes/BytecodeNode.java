@@ -259,22 +259,22 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.bytecode.MapperBCI;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.FloatConstant;
-import com.oracle.truffle.espresso.classfile.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
-import com.oracle.truffle.espresso.classfile.LongConstant;
-import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.PoolConstant;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -372,8 +372,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (s == null) {
             return null;
         }
-        LineNumberTable table = getMethod().getLineNumberTable();
-        if (table == LineNumberTable.EMPTY) {
+        LineNumberTableAttribute table = getMethod().getLineNumberTable();
+        if (table == LineNumberTableAttribute.EMPTY) {
             return null;
         }
         int line = table.getLineNumber(bci);
@@ -2385,16 +2385,16 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         InstrumentationSupport(Method method) {
             this.context = method.getContext();
+            LineNumberTableAttribute table = method.getLineNumberTable();
             this.method = method;
-            LineNumberTable table = method.getLineNumberTable();
 
-            if (table != LineNumberTable.EMPTY) {
-                LineNumberTable.Entry[] entries = table.getEntries();
+            if (table != LineNumberTableAttribute.EMPTY) {
+                LineNumberTableAttribute.Entry[] entries = table.getEntries();
                 this.statementNodes = new EspressoInstrumentableNode[entries.length];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.length; i++) {
-                    LineNumberTable.Entry entry = entries[i];
+                    LineNumberTableAttribute.Entry entry = entries[i];
                     statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), entry.getLineNumber());
                 }
             } else {

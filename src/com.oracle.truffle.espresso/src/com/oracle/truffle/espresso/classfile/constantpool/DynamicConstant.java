@@ -20,34 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
+package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+public interface DynamicConstant extends BootstrapMethodConstant {
 
-/**
- * Global Utf8Constant table.
- */
-public final class Utf8ConstantTable {
-    private final Symbols symbols;
-
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
-
-    public Utf8ConstantTable(Symbols symbols) {
-        this.symbols = symbols;
+    default Tag tag() {
+        return Tag.DYNAMIC;
     }
 
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
-            }
-        });
+    final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant {
+        Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
+            super(bootstrapMethodAttrIndex, nameAndTypeIndex);
+        }
     }
 }

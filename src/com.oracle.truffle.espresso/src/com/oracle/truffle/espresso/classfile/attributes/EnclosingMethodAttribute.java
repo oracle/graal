@@ -20,34 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+package com.oracle.truffle.espresso.classfile.attributes;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-/**
- * Global Utf8Constant table.
- */
-public final class Utf8ConstantTable {
-    private final Symbols symbols;
+public final class EnclosingMethodAttribute extends Attribute {
 
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
+    public static final Symbol<Name> NAME = Name.EnclosingMethod;
 
-    public Utf8ConstantTable(Symbols symbols) {
-        this.symbols = symbols;
+    private final int classIndex;
+    private final int methodIndex;
+
+    public EnclosingMethodAttribute(Symbol<Name> name, int classIndex, int methodIndex) {
+        super(name, null);
+        this.classIndex = classIndex;
+        this.methodIndex = methodIndex;
     }
 
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
-        CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
-            }
-        });
+    public int getMethodIndex() {
+        return methodIndex;
+    }
+
+    public int getClassIndex() {
+        return classIndex;
     }
 }

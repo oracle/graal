@@ -56,15 +56,16 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.CodeAttribute;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -77,7 +78,6 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -834,12 +834,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         new BytecodeStream(getCode()).printBytecode(declaringKlass);
     }
 
-    public LineNumberTable getLineNumberTable() {
+    public LineNumberTableAttribute getLineNumberTable() {
         CodeAttribute attribute = getCodeAttribute();
         if (attribute != null) {
             return attribute.getLineNumberTableAttribute();
         }
-        return LineNumberTable.EMPTY;
+        return LineNumberTableAttribute.EMPTY;
     }
 
     public LocalVariableTable getLocalVariableTable() {
@@ -970,7 +970,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public boolean isLastLine(long codeIndex) {
-        LineNumberTable table = getLineNumberTable();
+        LineNumberTableAttribute table = getLineNumberTable();
         int lastLine = table.getLastLine();
         int lineAt = table.getLineNumber((int) codeIndex);
         return lastLine == lineAt;
