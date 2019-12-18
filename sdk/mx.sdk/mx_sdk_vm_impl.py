@@ -631,7 +631,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             graalvm_dists.difference_update(_component.jar_distributions)
             graalvm_dists.difference_update(_component.jvmci_parent_jars)
             graalvm_dists.difference_update(_component.builder_jar_distributions)
-            _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
+            _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
                 _provided_executable = mx_subst.results_substitutions.substitute(_provided_executable)
@@ -1778,7 +1778,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         if not with_boot_jars and (graalvm_location.startswith(boot_jars_directory) or _cp_entry.isJreLibrary()):
             continue
         _cp.add(relpath(graalvm_location, start))
-    return os.pathsep.join(_cp)
+    return os.pathsep.join(sorted(_cp))
 
 
 class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
