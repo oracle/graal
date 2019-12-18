@@ -526,13 +526,13 @@ public final class DebuggerController implements ContextsListener {
 
     private void checkThreadJobsAndRun(Object thread) {
         if (threadJobs.containsKey(thread)) {
+            // re-acquire the thread lock after completing
+            // the job, to avoid the thread resuming.
+            getSuspendLock(thread).acquire();
             // a thread job was posted on this thread
             // only wake up to perform the job a go back to sleep
             ThreadJob job = threadJobs.remove(thread);
             job.runJob();
-            // re-acquire the thread lock after completing
-            // the job, to avoid the thread resuming.
-            getSuspendLock(thread).acquire();
             lockThread(thread);
         }
     }
