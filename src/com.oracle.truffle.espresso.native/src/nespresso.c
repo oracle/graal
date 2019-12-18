@@ -287,7 +287,7 @@ static void* valist_pop_word(struct Varargs* varargs) {
 
 static jboolean jvalues_pop_boolean(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->z;    
+    return a->args++->z;
 }
 
 static jbyte jvalues_pop_byte(struct Varargs* varargs) {
@@ -317,7 +317,7 @@ static jfloat jvalues_pop_float(struct Varargs* varargs) {
 
 static jdouble jvalues_pop_double(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->d;    
+    return a->args++->d;
 }
 
 static jlong jvalues_pop_long(struct Varargs* varargs) {
@@ -348,27 +348,27 @@ jboolean pop_boolean(struct Varargs* varargs) {
   return varargs->functions->pop_boolean(varargs);
 }
 
-jbyte pop_byte(struct Varargs* varargs) {  
+jbyte pop_byte(struct Varargs* varargs) {
   return varargs->functions->pop_byte(varargs);
 }
 
-jchar pop_char(struct Varargs* varargs) {  
+jchar pop_char(struct Varargs* varargs) {
   return varargs->functions->pop_char(varargs);
 }
 
-jshort pop_short(struct Varargs* varargs) {  
+jshort pop_short(struct Varargs* varargs) {
   return varargs->functions->pop_short(varargs);
 }
 
-jint pop_int(struct Varargs* varargs) {  
+jint pop_int(struct Varargs* varargs) {
   return varargs->functions->pop_int(varargs);
 }
 
-jfloat pop_float(struct Varargs* varargs) {  
+jfloat pop_float(struct Varargs* varargs) {
   return varargs->functions->pop_float(varargs);
 }
 
-jdouble pop_double(struct Varargs* varargs) {  
+jdouble pop_double(struct Varargs* varargs) {
   return varargs->functions->pop_double(varargs);
 }
 
@@ -592,7 +592,7 @@ void* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
   return env;
 }
 
-void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
+void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
