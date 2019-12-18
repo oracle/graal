@@ -50,7 +50,9 @@ public final class RemoteObjectsHandler {
             if (remote == null) {
                 remote = new RemoteObject(value, false, context);
                 remotesByValue.put(value, remote);
-                remotesByIDs.put(remote.getId(), remote);
+                if (remote.getId() != null) {
+                    remotesByIDs.put(remote.getId(), remote);
+                }
             }
         }
         return remote;
@@ -63,8 +65,10 @@ public final class RemoteObjectsHandler {
     }
 
     void register(RemoteObject remote) {
-        synchronized (remotesByIDs) {
-            remotesByIDs.put(remote.getId(), remote);
+        if (remote.getId() != null) {
+            synchronized (remotesByIDs) {
+                remotesByIDs.put(remote.getId(), remote);
+            }
         }
     }
 

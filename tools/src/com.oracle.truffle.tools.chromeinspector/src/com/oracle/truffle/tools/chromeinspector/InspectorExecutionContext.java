@@ -291,6 +291,14 @@ public final class InspectorExecutionContext {
 
     void setSuspendedInfo(DebuggerSuspendedInfo suspendedInfo) {
         this.suspendedInfo = suspendedInfo;
+        if (suspendedInfo == null) {
+            // not suspended, clear variables
+            synchronized (this) {
+                if (roh != null) {
+                    roh.reset();
+                }
+            }
+        }
     }
 
     DebuggerSuspendedInfo getSuspendedInfo() {
