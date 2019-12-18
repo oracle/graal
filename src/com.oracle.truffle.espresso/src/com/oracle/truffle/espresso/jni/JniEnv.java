@@ -101,13 +101,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private @Word long jniEnvPtr;
 
-    // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
+    // Native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
     private final TruffleObject nespressoLibrary;
 
+    // Native methods in libenespresso.
     private final TruffleObject initializeNativeContext;
     private final TruffleObject disposeNativeContext;
     private final TruffleObject dupClosureRef;
-
     private final TruffleObject popBoolean;
     private final TruffleObject popByte;
     private final TruffleObject popChar;
@@ -340,15 +340,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     private JniEnv(EspressoContext context) {
+        EspressoProperties props = context.getVmProperties();
+        this.context = context;
         try {
-            EspressoProperties props = context.getVmProperties();
-            this.context = context;
             nespressoLibrary = loadLibrary(props.espressoLibraryPath(), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
-
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (string): pointer): sint64");
-
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
                             "(env, sint64): void");
 

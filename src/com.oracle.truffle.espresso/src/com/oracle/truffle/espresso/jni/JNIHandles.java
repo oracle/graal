@@ -3,17 +3,10 @@ package com.oracle.truffle.espresso.jni;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
  * JNI handles are divided in two categories: local and global.
