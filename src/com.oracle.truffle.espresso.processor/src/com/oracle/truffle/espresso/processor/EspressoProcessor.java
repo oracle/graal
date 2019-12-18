@@ -131,12 +131,12 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String INSTANCE_NAME = "theInstance";
     private static final String GETTER = "getInstance";
 
-    private static final String COPYRIGHT = "/* Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.\n" +
+    private static final String COPYRIGHT = "/* Copyright (c) 2019, 2019 Oracle and/or its affiliates. All rights reserved.\n" +
                     " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
                     " *\n" +
                     " * This code is free software; you can redistribute it and/or modify it\n" +
                     " * under the terms of the GNU General Public License version 2 only, as\n" +
- * published by the Free Software Foundation.
+                    " * published by the Free Software Foundation.\n" +
                     " *\n" +
                     " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
                     " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
@@ -191,7 +191,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return Collections.unmodifiableMap(map);
     }
 
-    public static NativeSimpleType classToType(String clazz, boolean javaToNative) {
+    public static NativeSimpleType classToType(String clazz) {
         // TODO(peterssen): Allow native-sized words.
         return classToNative.getOrDefault(clazz, NativeSimpleType.SINT64);
     }
@@ -282,16 +282,24 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     static String extractSimpleType(String arg) {
-        int beginIndex = arg.lastIndexOf('.');
-        String result;
+        // The argument can be a fully qualified type e.g. java.lang.String, int, long...
+        // Or an annotated type "(@com.example.Annotation :: long)", (@com.example.Annotation :: java.lang.String)
+        // javac always includes annotations, ecj does not.
+
+        // Purge enclosing parentheses.
+        String result= arg;
+        if (result.startsWith("(")) {
+            result = result.substring(1, result.length() - 1);
+        }
+
+        // Purge leading annotations.
+        String[] parts = result.split("::");
+        result = parts[parts.length - 1].trim();
+
+        // Get unqualified name.
+        int beginIndex = result.lastIndexOf('.');
         if (beginIndex >= 0) {
-            if (arg.charAt(arg.length() - 1) == ')') {
-                result = arg.substring(beginIndex + 1, arg.length() - 1);
-            } else {
-                result = arg.substring(beginIndex + 1);
-            }
-        } else {
-            result = arg;
+            result = result.substring(beginIndex + 1);
         }
         return result;
     }

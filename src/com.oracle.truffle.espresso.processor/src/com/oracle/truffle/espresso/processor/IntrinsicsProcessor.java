@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import java.util.List;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -29,8 +31,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ReferenceType;
-import java.util.List;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
@@ -64,7 +64,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             String arg = parameter.asType().toString();
             String result = extractSimpleType(arg);
             parameterTypeNames.add(result);
-            referenceTypes.add((parameter.asType() instanceof ReferenceType));
+            referenceTypes.add((!parameter.asType().getKind().isPrimitive()));
         }
     }
 
@@ -90,13 +90,13 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
                 if (value != null) {
                     sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
                 } else {
-                    sb.append(classToType(param.asType().toString(), false));
+                    sb.append(classToType(param.asType().toString()));
                 }
             } else {
-                sb.append(classToType(param.asType().toString(), false));
+                sb.append(classToType(param.asType().toString()));
             }
         }
-        sb.append("): ").append(classToType(returnType, true));
+        sb.append("): ").append(classToType(returnType));
         return sb.toString();
     }
 
