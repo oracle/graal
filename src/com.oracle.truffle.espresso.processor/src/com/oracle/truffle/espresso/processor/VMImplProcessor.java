@@ -142,7 +142,7 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         StringBuilder str = new StringBuilder();
         VMHelper h = (VMHelper) helper;
         str.append(IMPORT_VM);
-        if (h.referenceTypes.contains(true)) {
+        if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("void")) {

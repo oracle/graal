@@ -105,9 +105,9 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
         if (isNonPrimitive) {
             if (!clazz.equals("StaticObject")) {
-                return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
+                return decl + genIsNull(obj) + " ? " + "null" + " : " + castTo(obj, clazz) + ";\n";
             }
-            return decl + castTo("env.getHandles().get(Math.toIntExact((long) " + obj + "))", clazz) + ";\n";
+            return decl + "env.getHandles().get(Math.toIntExact((long) " + obj + "))" + ";\n";
         }
         switch (clazz) {
             case "boolean":

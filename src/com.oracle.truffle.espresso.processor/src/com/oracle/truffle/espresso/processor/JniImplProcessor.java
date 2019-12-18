@@ -139,7 +139,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(IMPORT_JNI_ENV);
-        if (h.referenceTypes.contains(true)) {
+        if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("void")) {
