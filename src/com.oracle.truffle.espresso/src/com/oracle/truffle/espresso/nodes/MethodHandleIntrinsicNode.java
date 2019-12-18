@@ -27,9 +27,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.object.DebugCounter;
 
+/**
+ * Top of the method handle intrinsic behavior implementation hierarchy.
+ */
 public abstract class MethodHandleIntrinsicNode extends Node implements ContextAccess {
-    static final boolean USE_CACHE = false;
+    protected static final DebugCounter hits = DebugCounter.create("MH cache hits");
+    protected static final DebugCounter miss = DebugCounter.create("MH cache miss");
 
     protected final Method method;
 

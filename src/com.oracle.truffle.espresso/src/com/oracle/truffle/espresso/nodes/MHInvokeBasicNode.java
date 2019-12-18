@@ -49,7 +49,7 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"USE_CACHE", "canInline(target, cachedTarget)"})
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {

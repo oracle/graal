@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,16 +88,18 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"USE_CACHE", "canInline(target, cachedTarget)"})
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {
+        hits.inc();
         return directCallNode.call(args);
     }
 
     @Specialization(replaces = "executeCallDirect")
     Object executeCallIndirect(Object[] args, Method target,
                     @Cached("create()") IndirectCallNode callNode) {
+        miss.inc();
         return callNode.call(target.getCallTarget(), args);
     }
 
