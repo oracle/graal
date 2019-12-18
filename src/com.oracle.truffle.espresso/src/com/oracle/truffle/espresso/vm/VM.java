@@ -121,7 +121,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
  */
 public final class VM extends NativeEnv implements ContextAccess {
 
-    private static final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, "VM");
+    private static final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
 
     private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
@@ -237,7 +237,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                VMLogger.fine("Fetching unknown/unimplemented VM method: " + methodName);
+                VMLogger.log(Level.FINER, "Fetching unknown/unimplemented VM method: {0}", methodName);
                 return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override

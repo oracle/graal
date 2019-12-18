@@ -26,7 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Types;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -90,6 +94,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * and so on so forth.
  */
 public final class Substitutions implements ContextAccess {
+
+    private static final TruffleLogger SubstitutionsLogger = TruffleLogger.getLogger(EspressoLanguage.ID, Substitutions.class);
 
     public static void init() {
         /* nop */
@@ -164,7 +170,7 @@ public final class Substitutions implements ContextAccess {
 
         @Override
         public String toString() {
-            return "MethodKey<" + clazz + "." + methodName + " -> " + signature + ">";
+            return Types.binaryName(clazz) + "#" + methodName + signature;
         }
     }
 
@@ -200,7 +206,9 @@ public final class Substitutions implements ContextAccess {
     public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
 
-        EspressoError.warnIf(STATIC_SUBSTITUTIONS.containsKey(key), "Runtime substitution shadowed by static one " + key);
+        if (STATIC_SUBSTITUTIONS.containsKey(key)) {
+            SubstitutionsLogger.log(Level.FINE, "Runtime substitution shadowed by static one: {0}", key);
+        }
 
         if (throwIfPresent && runtimeSubstitutions.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);

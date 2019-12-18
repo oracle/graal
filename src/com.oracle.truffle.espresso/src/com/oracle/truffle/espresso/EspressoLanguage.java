@@ -23,8 +23,8 @@
 package com.oracle.truffle.espresso;
 
 import java.util.Collections;
+import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -64,7 +65,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
-    private static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
+    public static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     public static final String ID = "java";
     public static final String NAME = "Java";
@@ -192,10 +193,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void finalizeContext(EspressoContext context) {
         long totalTime = System.currentTimeMillis() - startupClock;
-        if (totalTime > 5000) {
-            EspressoLogger.fine("Time spent in Espresso: " + (totalTime / 1000) + "s");
+        if (totalTime > 10000) {
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
         } else {
-            EspressoLogger.fine("Time spent in Espresso: " + (totalTime) + "ms");
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
         }
 
         context.prepareDispose();

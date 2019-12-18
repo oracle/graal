@@ -75,7 +75,7 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
-    private static final TruffleLogger JNILogger = TruffleLogger.getLogger(EspressoLanguage.ID, "JNI");
+    private static final TruffleLogger JNILogger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
 
     public static final int JNI_OK = 0; /* success */
     public static final int JNI_ERR = -1; /* unknown error */
@@ -181,7 +181,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                JNILogger.fine("Fetching unknown/unimplemented JNI method: " + methodName);
+                JNILogger.log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
                 return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
