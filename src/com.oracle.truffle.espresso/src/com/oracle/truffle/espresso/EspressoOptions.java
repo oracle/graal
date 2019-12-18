@@ -131,12 +131,12 @@ public final class EspressoOptions {
                             try {
                                 return SpecCompliancyMode.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("--SpecCompliancy: Mode can be 'strict' or 'hotspot'.");
+                                throw new IllegalArgumentException("--java.SpecCompliancy: Mode can be 'strict' or 'hotspot'.");
                             }
                         }
                     });
 
-    @Option(help = "Force mimicing of hotspot behavior on unrespected specs points", //
+    @Option(help = "Force mimicking of hotspot behavior on unrespected specs points", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<SpecCompliancyMode> SpecCompliancy = new OptionKey<>(SpecCompliancyMode.HOTSPOT, SPEC_COMPLIANCY_OPTION_TYPE);
 
