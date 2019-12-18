@@ -79,7 +79,7 @@ public final class RequestedJDWPEvents {
         byte suspendPolicy = input.readByte();
         int modifiers = input.readInt();
 
-        RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
+        RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers, suspendPolicy);
         JDWPLogger.log("New event request with ID: %d with kind: %d and %d modifiers", JDWPLogger.LogLevel.STEPPING, packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
