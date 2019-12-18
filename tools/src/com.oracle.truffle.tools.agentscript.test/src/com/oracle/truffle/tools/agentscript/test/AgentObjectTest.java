@@ -281,6 +281,44 @@ public class AgentObjectTest {
     }
 
     @Test
+    public void internalScriptsAreIgnored() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).internal(true).build();
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+                if (ev.name().equals(sampleScript.getName())) {
+                    Assert.fail("Don't load internal scripts: " + ev.uri());
+                }
+            };
+            agentAPI.on("source", listener);
+
+
+            int[] expressionCounter = {0};
+            agentAPI.on("enter", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+
+            // @formatter:on
+            c.eval(sampleScript);
+
+            assertEquals("No expressions", 0, expressionCounter[0]);
+        }
+    }
+
+    @Test
     public void onEnterAndReturn() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
