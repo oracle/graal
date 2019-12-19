@@ -596,7 +596,7 @@ public final class DebuggerController implements ContextsListener {
                     }
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
-                    KlassRef klass = info.getKlass();
+                    KlassRef klass = info.getKlass(); // null means no filtering
                     Throwable exception = getRawException(event.getException());
                     if (exception == null) {
                         JDWPLogger.log("Unable to retrieve raw exception for %s", JDWPLogger.LogLevel.ALL, event.getException());
@@ -615,7 +615,10 @@ public final class DebuggerController implements ContextsListener {
                     // properly due to this.
                     // we need to do a real type check here, since subclasses
                     // of the specified exception should also hit.
-                    if (getContext().isInstanceOf(guestException, klass)) {
+                    if (klass == null) {
+                        // always hit when broad exception filter is used
+                        hit = true;
+                    } else if (klass == null || getContext().isInstanceOf(guestException, klass)) {
                         JDWPLogger.log("Exception type matched the klass type: %s", JDWPLogger.LogLevel.STEPPING, klass.getNameAsString());
                         // check filters if we should not suspend
                         Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
