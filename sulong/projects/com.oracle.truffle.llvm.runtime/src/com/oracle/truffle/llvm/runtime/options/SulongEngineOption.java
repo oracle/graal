@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -180,18 +179,6 @@ public final class SulongEngineOption {
 
     public static OptionDescriptors createDescriptors() {
         return new SulongEngineOptionOptionDescriptors();
-    }
-
-    public static PrintStream getStream(String name) {
-        if ("stderr".equals(name)) {
-            return System.err;
-        } else {
-            return System.out;
-        }
-    }
-
-    public static boolean isTrue(String option) {
-        return "true".equalsIgnoreCase(option) || "stdout".equalsIgnoreCase(option) || "stderr".equalsIgnoreCase(option);
     }
 
     public static boolean optionEnabled(String option) {
