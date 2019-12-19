@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -98,6 +99,8 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
+    private String genericSignature;
+
     // Stores the VTable for classes, holds public non-static methods for interfaces.
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
 
@@ -112,6 +115,7 @@ public final class ObjectKlass extends Klass {
     boolean hasDeclaredDefaultMethods = false;
 
     @CompilationFinal private int computedModifiers = -1;
+
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -884,5 +888,18 @@ public final class ObjectKlass extends Klass {
     private boolean hasDeclaredDefaultMethods() {
         assert !hasDeclaredDefaultMethods || isInterface();
         return hasDeclaredDefaultMethods;
+    }
+
+    @Override
+    public String getGenericTypeAsString() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedKlass.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = ""; // if no generics, the generic signature is empty
+            } else {
+                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
     }
 }

@@ -751,6 +751,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
+    public String getGenericTypeAsString() {
+        // only ObjectKlass(es) can have a generic signature
+        return "";
+    }
+
+    @Override
     public Klass[] getImplementedInterfaces() {
         return getInterfaces();
     }
