@@ -89,10 +89,10 @@ int main() {
 
   // Execute the benchmark itself.
   gettimeofday(&start, NULL);
+  int result = runIteration();
   gettimeofday(&end, NULL);
 
   long start_t = start.tv_sec * 1000000 + start.tv_usec;
-  int result = runIteration();
   long end_t = end.tv_sec * 1000000 + end.tv_usec;
   double time = (end_t - start_t) / 1000000.0;
   printf("time = %.2f\n", time);

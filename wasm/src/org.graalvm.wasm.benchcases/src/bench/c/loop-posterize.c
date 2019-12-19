@@ -78,5 +78,6 @@ int benchmarkRun() {
     result[pixel % IMAGE_SIZE] = luminance > 127 ? UINT32_MAX : 0xFF;
     black_pixels += luminance > 127 ? 0 : 1;
   }
-  return black_pixels / (double) ITERATIONS;
+  return black_pixels / ITERATIONS;
 }
+

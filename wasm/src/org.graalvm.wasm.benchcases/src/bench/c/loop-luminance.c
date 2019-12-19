@@ -75,5 +75,5 @@ int benchmarkRun() {
     uint8_t B = (color & 0x0000FF00) >> 8;
     total_luminance += (0.2126 * R + 0.7152 * G + 0.0722 * B);
   }
-  return total_luminance / (double) ITERATIONS;
+  return (int) (total_luminance * 1000 / ITERATIONS);
 }
