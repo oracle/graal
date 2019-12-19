@@ -38,8 +38,8 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -61,6 +61,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -89,7 +90,7 @@ public class HeapImpl extends Heap {
     final HeapChunkProvider chunkProvider;
 
     // Singleton instances, created during image generation.
-    private final BarrierSet barrierSet;
+    private final PlatformConfigurationProvider platformConfigurationProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
 
@@ -119,7 +120,7 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.barrierSet = new CardTableBarrierSet();
+        this.platformConfigurationProvider = new SubstratePlatformConfigurationProvider(new CardTableBarrierSet());
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
         this.readOnlyPrimitiveWalker = new ReadOnlyPrimitiveMemoryWalkerAccess();
@@ -684,8 +685,8 @@ public class HeapImpl extends Heap {
     }
 
     @Override
-    public BarrierSet getBarrierSet() {
-        return barrierSet;
+    public PlatformConfigurationProvider getPlatformConfigurationProvider() {
+        return platformConfigurationProvider;
     }
 }
 

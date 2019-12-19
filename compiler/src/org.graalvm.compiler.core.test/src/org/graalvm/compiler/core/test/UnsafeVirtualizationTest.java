@@ -25,11 +25,14 @@
 package org.graalvm.compiler.core.test;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.ea.EATestBase.TestClassInt;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -302,155 +305,109 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
 
     @Test
     public void testUnsafePEA01() {
-        performTest("unsafeSnippet1", 1.0);
+        performTest("unsafeSnippet1", false, true, 1.0);
     }
 
     @Test
     public void testUnsafePEA02() {
-        performTest("unsafeSnippet2a", 1);
+        performTest("unsafeSnippet2a", false, true, 1);
 
-        performTest("unsafeSnippet2b", 1);
+        performTest("unsafeSnippet2b", false, true, 1);
     }
 
     @Test
     public void testUnsafePEA03() {
-        performTest("unsafeSnippet3a", 1);
+        performTest("unsafeSnippet3a", false, true, 1);
 
-        performTest("unsafeSnippet3b", 1);
+        performTest("unsafeSnippet3b", false, true, 1);
     }
 
     @Test
     public void testUnsafePEA04() {
-        performTest("unsafeSnippet4", 1.0);
+        performTest("unsafeSnippet4", false, true, 1.0);
     }
 
     @Test
     public void testUnsafePEA05() {
-        performTest("unsafeSnippet5", 0x0102030405060708L);
+        performTest("unsafeSnippet5", false, true, 0x0102030405060708L);
     }
 
     @Test
     public void testUnsafePEA06() {
-        performTest("unsafeSnippet6", 0x0102030405060708L);
+        performTest("unsafeSnippet6", false, true, 0x0102030405060708L);
     }
 
     @Test
     public void testUnsafePEA07() {
-        performTest("unsafeSnippet7", 0x01020304);
+        performTest("unsafeSnippet7", false, true, 0x01020304);
     }
 
     @Test
     public void testUnsafePEA08() {
-        performTest("unsafeSnippet8", 0x0102030405060708L, 0x01020304);
+        performTest("unsafeSnippet8", false, true, 0x0102030405060708L, 0x01020304);
     }
 
     @Test
     public void testUnsafePEA09() {
-        performTest("unsafeSnippet9", 0x0102030405060708L, (short) 0x0102);
+        performTest("unsafeSnippet9", false, true, 0x0102030405060708L, (short) 0x0102);
     }
 
     @Test
     public void testUnsafePEA10() {
-        performTest("unsafeSnippet10", Double.longBitsToDouble(0x0102030405060708L));
+        performTest("unsafeSnippet10", false, true, Double.longBitsToDouble(0x0102030405060708L));
     }
 
     @Test
     public void testUnsafePEA11() {
-        performTest("unsafeSnippet11", Double.longBitsToDouble(0x0102030405060708L));
+        performTest("unsafeSnippet11", false, true, Double.longBitsToDouble(0x0102030405060708L));
     }
 
     @Test
     public void testUnsafePEA12() {
-        performTest("unsafeSnippet12", Double.longBitsToDouble(0x0102030405060708L));
+        performTest("unsafeSnippet12", false, true, Double.longBitsToDouble(0x0102030405060708L));
     }
 
     @Test
     public void testUnsafePEA13() {
-        performTest("unsafeSnippet13", (short) 0x0102);
+        performTest("unsafeSnippet13", true, true, (short) 0x0102);
     }
 
     @Test
     public void testUnsafePEA14() {
-        performTest("unsafeSnippet14", 0x0102030405060708L, 0x01020304);
+        performTest("unsafeSnippet14", false, true, 0x0102030405060708L, 0x01020304);
     }
 
     @Test
     public void testUnsafePEA15() {
-        performTest("unsafeSnippet15", 0x0102030405060708L);
+        performTest("unsafeSnippet15", false, true, 0x0102030405060708L);
     }
 
     @Test
     public void testUnsafePEA16() {
-        performTest("unsafeSnippet16", 0x0102030405060708L, 0x01020304, (short) 0x0102, Double.longBitsToDouble(0x0102030405060708L), Float.intBitsToFloat(0x01020304));
+        performTest("unsafeSnippet16", false, true, 0x0102030405060708L, 0x01020304, (short) 0x0102, Double.longBitsToDouble(0x0102030405060708L), Float.intBitsToFloat(0x01020304));
     }
 
     @Test
     public void testUnsafePEA17() {
-        performTest("unsafeSnippet17", 0x0102030405060708L);
+        performTest("unsafeSnippet17", true, true, 0x0102030405060708L);
     }
 
     @Test
     public void testUnsafePEA18() {
-        performTest("unsafeSnippet18", 0x01020304);
+        performTest("unsafeSnippet18", false, false, 0x01020304);
     }
 
-    private void performTest(String snippet, int arg) {
+    private void performTest(String snippet, boolean shouldEscapeRead, boolean shouldEscapeWrite, Object... args) {
+        Object[] boolArgs = Arrays.copyOf(args, args.length + 1);
         for (boolean b1 : FT) {
             for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg, b2);
+                boolArgs[args.length] = b2;
+                testPartialEscapeReadElimination(snippet, b1, shouldEscapeRead, shouldEscapeWrite, boolArgs);
             }
         }
     }
 
-    private void performTest(String snippet, long arg) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg, b2);
-            }
-        }
-    }
-
-    private void performTest(String snippet, double arg) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg, b2);
-            }
-        }
-    }
-
-    private void performTest(String snippet, long arg1, int arg2) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg1, arg2, b2);
-            }
-        }
-    }
-
-    private void performTest(String snippet, long arg1, short arg2) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg1, arg2, b2);
-            }
-        }
-    }
-
-    private void performTest(String snippet, short arg1) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, arg1, b2);
-            }
-        }
-    }
-
-    private void performTest(String snippet, long l, int i, short s, double d, float f) {
-        for (boolean b1 : FT) {
-            for (boolean b2 : FT) {
-                testPartialEscapeReadElimination(snippet, b1, l, i, s, d, f, b2);
-            }
-        }
-    }
-
-    public void testPartialEscapeReadElimination(String snippet, boolean canonicalizeBefore, Object... args) {
+    public void testPartialEscapeReadElimination(String snippet, boolean canonicalizeBefore, boolean shouldEscapeRead, boolean shouldEscapeWrite, Object... args) {
         assert TestClassInt.fieldOffset1 % 8 == 0 : "First of the two int-fields must be 8-byte aligned";
 
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
@@ -462,7 +419,22 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
             canonicalizer.apply(graph, context);
         }
         Result r = executeExpected(method, null, args);
+        int readCount = 0;
+        if (shouldEscapeRead) {
+            readCount = graph.getNodes().filter(RawLoadNode.class).count();
+        }
+        int writeCount = 0;
+        if (shouldEscapeWrite) {
+            writeCount = graph.getNodes().filter(RawStoreNode.class).count();
+        }
         new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
+        if (shouldEscapeRead) {
+            assertTrue(readCount > graph.getNodes().filter(RawLoadNode.class).count(), "PEA did not escape.");
+        }
+        if (shouldEscapeWrite) {
+            int newCount = graph.getNodes().filter(RawStoreNode.class).count();
+            assertTrue(writeCount > newCount, "PEA did not escape, before: " + writeCount + ", after: " + newCount);
+        }
         try {
             InstalledCode code = getCode(method, graph);
             Object result = code.executeVarargs(args);

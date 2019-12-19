@@ -29,12 +29,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.EnumMap;
 import java.util.function.Function;
 
-import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -107,7 +106,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, null);
         Replacements replacements = createReplacements(p, snippetReflection);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, null);
-        PlatformConfigurationProvider platformConfigurationProvider = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
+        PlatformConfigurationProvider platformConfigurationProvider = ImageSingletons.lookup(Heap.class).getPlatformConfigurationProvider();
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfigurationProvider);
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);

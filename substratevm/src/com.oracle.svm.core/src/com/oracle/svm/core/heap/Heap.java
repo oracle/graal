@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -120,7 +121,7 @@ public abstract class Heap {
     /**
      * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
      */
-    public abstract BarrierSet getBarrierSet();
+    public abstract PlatformConfigurationProvider getPlatformConfigurationProvider();
 
     /**
      * Returns the offset that the image heap should have when mapping the native image file to the

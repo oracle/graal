@@ -160,7 +160,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     assert nextIndex == index + 1 : "expected to be sequential";
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
-            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind)) {
+            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind, offset)) {
                 /*
                  * Special case: Allow storing any primitive inside a byte array, as long as there
                  * is enough room left, and all accesses and subsequent writes are on the exact
@@ -191,7 +191,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 }
-            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind)) {
+            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind, offset)) {
                 for (int i = index + 1; i < index + accessKind.getByteCount(); i++) {
                     state.setEntry(virtual.getObjectId(), i, getIllegalConstant());
                 }
@@ -223,8 +223,15 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         return accessKind.getByteCount() == virtual.byteArrayEntryByteCount(index, this);
     }
 
-    private boolean canVirtualizeLargeByteArrayUnsafeWrite(VirtualObjectNode virtual, JavaKind accessKind) {
-        return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isVirtualByteArrayAccess(accessKind);
+    private boolean canVirtualizeLargeByteArrayUnsafeWrite(VirtualObjectNode virtual, JavaKind accessKind, long offset) {
+        return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isVirtualByteArrayAccess(accessKind) &&
+                        /*
+                         * Require aligned writes. Some architectures do not support recovering
+                         * writes to unaligned offsets. Since most use cases for this optimization
+                         * will write to reasonable offsets, disabling the optimization for
+                         * unreasonable ones is not that big an issue.
+                         */
+                        ((offset % accessKind.getByteCount()) == 0);
     }
 
     private boolean isEntryDefaults(VirtualArrayNode virtual, JavaKind accessKind, int index) {
