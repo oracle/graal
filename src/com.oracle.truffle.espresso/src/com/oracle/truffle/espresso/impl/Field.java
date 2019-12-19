@@ -268,6 +268,7 @@ public final class Field extends Member<Type> implements FieldRef {
     public void addFieldBreakpointInfo(FieldBreakpoint info) {
         if (infos == null) {
             infos = new FieldBreakpoint[]{info};
+            hasActiveBreakpoints.set(true);
             return;
         }
 
