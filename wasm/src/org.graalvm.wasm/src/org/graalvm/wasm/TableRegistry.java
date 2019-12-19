@@ -43,27 +43,22 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.exception.WasmException;
 
-public class Tables {
+public class TableRegistry {
     private static final int INITIAL_TABLES_SIZE = 8;
 
-    @CompilationFinal(dimensions = 2) private Object[][] tables;
-    @CompilationFinal(dimensions = 1) private int[] maxSizes;
+    @CompilationFinal(dimensions = 1) private Table[] tables;
     private int numTables;
 
-    public Tables() {
-        this.tables = new Object[INITIAL_TABLES_SIZE][];
-        this.maxSizes = new int[INITIAL_TABLES_SIZE];
+    public TableRegistry() {
+        this.tables = new Table[INITIAL_TABLES_SIZE];
         this.numTables = 0;
     }
 
     private void ensureCapacity() {
         if (numTables == tables.length) {
-            final Object[][] updatedGlobals = new Object[tables.length * 2][];
-            System.arraycopy(tables, 0, updatedGlobals, 0, tables.length);
-            tables = updatedGlobals;
-            final int[] updatedMaxSizes = new int[maxSizes.length * 2];
-            System.arraycopy(maxSizes, 0, updatedMaxSizes, 0, maxSizes.length);
-            maxSizes = updatedMaxSizes;
+            final Table[] updatedTables = new Table[tables.length * 2];
+            System.arraycopy(tables, 0, updatedTables, 0, tables.length);
+            tables = updatedTables;
         }
     }
 
@@ -71,36 +66,59 @@ public class Tables {
         return numTables;
     }
 
-    public int allocateTable(int initSize, int maxSize) {
+    public Table allocateTable(int initSize, int maxSize) {
         ensureCapacity();
-        tables[numTables] = new Object[initSize];
-        maxSizes[numTables] = maxSize;
-        int idx = numTables;
+        int index = numTables;
+        tables[numTables] = new Table(index, initSize, maxSize);
         numTables++;
-        return idx;
+        return tables[index];
     }
 
-    public Object[] table(int index) {
+    public Table table(int index) {
         assert index < numTables;
         return tables[index];
     }
 
-    public int maxSizeOf(int index) {
-        assert index < numTables;
-        return maxSizes[index];
-    }
+    public static final class Table {
+        private final int tableIndex;
+        private final int maxSize;
+        @CompilationFinal(dimensions = 1) private Object[] elements;
 
-    public void ensureSizeAtLeast(int index, int targetSize) {
-        final int maxSize = maxSizeOf(index);
-        if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmException("Table " + index + " cannot be resized to " + targetSize + ", " +
-                            "declared maximum size is " + maxSize);
+        public Table(int tableIndex, int initSize, int maxSize) {
+            this.tableIndex = tableIndex;
+            this.elements = new Object[initSize];
+            this.maxSize = maxSize;
         }
-        Object[] table = tables[index];
-        if (table.length < targetSize) {
-            Object[] ntable = new Object[targetSize];
-            System.arraycopy(table, 0, ntable, 0, table.length);
-            tables[index] = ntable;
+
+        public void ensureSizeAtLeast(int targetSize) {
+            if (maxSize >= 0 && targetSize > maxSize) {
+                throw new WasmException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
+                                "declared maximum size is " + maxSize);
+            }
+            if (elements.length < targetSize) {
+                Object[] newElements = new Object[targetSize];
+                System.arraycopy(elements, 0, newElements, 0, elements.length);
+                elements = newElements;
+            }
+        }
+
+        public int tableIndex() {
+            return tableIndex;
+        }
+
+        public int maxSize() {
+            return maxSize;
+        }
+
+        public Object[] elements() {
+            return elements;
+        }
+
+        public void set(int i, WasmFunction function) {
+            if (elements[i] != null) {
+                throw new WasmException("Table " + tableIndex + " already has an element at index " + i + ".");
+            }
+            elements[i] = function;
         }
     }
 }

@@ -173,7 +173,7 @@ public final class WasmModule implements TruffleObject {
 
     private static Object readGlobal(SymbolTable symbolTable, int globalIndex) {
         final int address = symbolTable.globalAddress(globalIndex);
-        final Globals globals = WasmContext.getCurrent().globals();
+        final GlobalRegistry globals = WasmContext.getCurrent().globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
             case ValueTypes.I32_TYPE:

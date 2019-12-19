@@ -85,11 +85,11 @@ public class WasmBinaryTools {
         return binary;
     }
 
-    public static byte[] compileWat(String program) throws IOException, InterruptedException {
+    public static byte[] compileWat(String name, String program) throws IOException, InterruptedException {
         // create two temporary files for the text and the binary, write the given program to the
         // first one
-        File watFile = File.createTempFile("wasm-text-", ".wat");
-        File wasmFile = File.createTempFile("wasm-bin-", ".wasm");
+        File watFile = File.createTempFile(name + "-wasm-text-", ".wat");
+        File wasmFile = File.createTempFile(name + "-wasm-bin-", ".wasm");
         Files.write(watFile.toPath(), program.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
         // read the resulting binary, delete the temporary files and return
         byte[] binary = wat2wasm(watFile, wasmFile);

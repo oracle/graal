@@ -229,13 +229,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.ValueTypes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.constants.TargetOffset;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
@@ -331,6 +331,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     int branchTableLength() {
         return branchTableLength;
+    }
+
+    public int startOfset() {
+        return startOffset;
+    }
+
+    public Node[] callNodeTable() {
+        return callNodeTable;
     }
 
     @Override
@@ -522,12 +530,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
-                    if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
-                        // Lazily create the direct call node at this code position, and recompile
-                        // to eliminate this check.
-                        resolveCallNode(callNodeOffset);
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                    }
                     DirectCallNode callNode = (DirectCallNode) callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
@@ -575,18 +577,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final int tableIndex = module().symbolTable().tableIndex();
-                    final Object[] table = context.tables().table(tableIndex);
+                    final SymbolTable symtab = module().symbolTable();
+                    final Object[] elements = symtab.table().elements();
                     final int elementIndex = popInt(frame, stackPointer);
-                    if (elementIndex < 0 || elementIndex >= table.length) {
-                        throw new WasmTrap(this, "Element index out of table bounds.");
+                    if (elementIndex < 0 || elementIndex >= elements.length) {
+                        throw new WasmTrap(this, "Element index '" + elementIndex + "' out of table bounds.");
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
-                    final WasmFunction function = (WasmFunction) table[elementIndex];
+                    final WasmFunction function = (WasmFunction) elements[elementIndex];
+                    if (function == null) {
+                        throw new WasmTrap(this, "Table element at index " + elementIndex + " is uninitialized.");
+                    }
 
                     // Extract the function type index.
                     int expectedFunctionTypeIndex = codeEntry().longConstantAsInt(longConstantOffset);
+                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
                     longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -595,14 +601,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    if (expectedFunctionTypeIndex != function.typeIndex()) {
+                    if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                         // TODO: This check may be too rigorous, as the WebAssembly specification
                         // seems to allow multiple definitions of the same type.
                         // We should refine the check.
-                        // Alternatively, we should maybe refine our modules to avoid function type
-                        // redefinition -- the predefined modules may currently redefine a type.
-                        throw new WasmTrap(this, Assert.format("Actual (%d) and expected (%d) function types differ in the indirect call.",
-                                        function.typeIndex(), expectedFunctionTypeIndex));
+                        throw new WasmTrap(this, Assert.format("Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, module().name()));
                     }
 
                     // Invoke the resolved function.
@@ -811,12 +815,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
 
-                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
-                    if (!resolution.isResolved()) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
-                    }
-
                     byte type = module().symbolTable().globalValueType(index);
                     switch (type) {
                         case ValueTypes.I32_TYPE: {
@@ -863,12 +861,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
-
-                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
-                    if (!resolution.isResolved()) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
-                    }
 
                     byte type = module().symbolTable().globalValueType(index);
                     // For global.set, we don't need to make sure that the referenced global is
@@ -2386,7 +2378,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @TruffleBoundary
-    private void resolveCallNode(int callNodeOffset) {
+    public void resolveCallNode(int callNodeOffset) {
         final CallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
     }
@@ -2471,5 +2463,4 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     public int continuationTypeLength() {
         return typeLength(continuationTypeId);
     }
-
 }

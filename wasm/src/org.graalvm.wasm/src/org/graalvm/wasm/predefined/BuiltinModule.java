@@ -52,7 +52,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
@@ -81,20 +80,20 @@ public abstract class BuiltinModule {
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmFunction defineFunction(WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+    protected WasmFunction defineFunction(WasmContext context, WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
-        final WasmFunction function = module.symbolTable().declareExportedFunction(typeIdx, name);
+        final WasmFunction function = module.symbolTable().declareExportedFunction(context, typeIdx, name);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         return function;
     }
 
-    protected int defineGlobal(WasmContext context, WasmModule module, String name, int valueType, int mutability, long value) {
+    protected int defineGlobal(WasmContext context, WasmModule module, String name, byte valueType, byte mutability, long value) {
         int index = module.symbolTable().maxGlobalIndex() + 1;
-        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability, GlobalResolution.DECLARED);
+        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability);
         context.globals().storeLong(address, value);
         return index;
     }
@@ -102,7 +101,7 @@ public abstract class BuiltinModule {
     protected int defineTable(WasmContext context, WasmModule module, String tableName, int initSize, int maxSize, byte type) {
         Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
         module.symbolTable().allocateTable(context, initSize, maxSize);
-        module.symbolTable().exportTable(tableName);
+        module.symbolTable().exportTable(context, tableName);
         return 0;
     }
 

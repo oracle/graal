@@ -42,7 +42,7 @@ package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public class Globals {
+public class GlobalRegistry {
     private static final int INITIAL_GLOBALS_SIZE = 2048;
 
     // If we support late linking, we need to ensure that methods accessing the global array
@@ -52,7 +52,7 @@ public class Globals {
     @CompilationFinal(dimensions = 0) private long[] globals;
     private int numGlobals;
 
-    public Globals() {
+    public GlobalRegistry() {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
         this.numGlobals = 0;
     }
@@ -117,8 +117,8 @@ public class Globals {
         globals[address] = value;
     }
 
-    public Globals duplicate() {
-        final Globals other = new Globals();
+    public GlobalRegistry duplicate() {
+        final GlobalRegistry other = new GlobalRegistry();
         for (int i = 0; i < numGlobals; i++) {
             final int address = other.allocateGlobal();
             final long value = this.loadAsLong(address);
