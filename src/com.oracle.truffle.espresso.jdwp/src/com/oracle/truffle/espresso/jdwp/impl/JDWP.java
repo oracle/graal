@@ -1761,7 +1761,8 @@ final class JDWP {
                 reply.writeInt(length);
                 for (int i = index; i < index + length; i++) {
                     Object theValue = context.getArrayValue(array, i);
-                    writeValue(tag, theValue, reply, !isPrimitive, context);
+                    byte valueTag = context.getTag(theValue);
+                    writeValue(valueTag, theValue, reply, !isPrimitive, context);
                 }
                 return new CommandResult(reply);
             }
