@@ -596,9 +596,7 @@ final class JDWP {
                 }
 
                 reply.writeString(klass.getTypeAsString());
-                // TODO(Gregersen) - generic signature
-                // tracked by /browse/GR-19818
-                reply.writeString("");
+                reply.writeString(klass.getGenericTypeAsString());
                 return new CommandResult(reply);
             }
         }
