@@ -115,6 +115,10 @@ public final class RequestedJDWPEvents {
                 break;
             case EXCEPTION:
                 info = filter.getBreakpointInfo();
+                if (info == null) {
+                    // no filtering then, so setup a report all info
+                    info = new ExceptionBreakpointInfo(filter, null, true, true);
+                }
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 futures.add(callback.createExceptionBreakpoint(info));
