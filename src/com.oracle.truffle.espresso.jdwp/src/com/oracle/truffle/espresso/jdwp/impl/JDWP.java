@@ -672,9 +672,7 @@ final class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(method));
                     reply.writeString(method.getNameAsString());
                     reply.writeString(method.getSignatureAsString());
-                    // TODO(Gregersen) - get the generic signature
-                    // tracked by /browse/GR-19818
-                    reply.writeString("");
+                    reply.writeString(method.getGenericSignatureAsString());
                     int modBits = checkSyntheticFlag(method.getModifiers());
                     reply.writeInt(modBits);
                 }
