@@ -133,6 +133,11 @@ public final class VMEventListenerImpl implements VMEventListener {
         breakpoint.dispose();
     }
 
+    @Override
+    public void clearAllBreakpointRequests() {
+        breakpointRequests.clear();
+    }
+
     private static volatile int fieldBreakpointCount;
 
     @Override

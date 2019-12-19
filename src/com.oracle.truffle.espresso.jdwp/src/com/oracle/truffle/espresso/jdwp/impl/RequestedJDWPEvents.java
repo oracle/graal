@@ -345,4 +345,12 @@ public final class RequestedJDWPEvents {
 
         return new CommandResult(reply);
     }
+
+    public CommandResult clearAllRequests(Packet packet) {
+        PacketStream reply = new PacketStream().id(packet.id).replyPacket();
+
+        eventListener.clearAllBreakpointRequests();
+        controller.clearBreakpoints();
+        return new CommandResult(reply);
+    }
 }

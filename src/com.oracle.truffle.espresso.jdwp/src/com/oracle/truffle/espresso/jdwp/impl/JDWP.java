@@ -1897,6 +1897,10 @@ final class JDWP {
         static class CLEAR {
             public static final int ID = 2;
         }
+
+        static class CLEAR_ALL_BREAKPOINTS {
+            public static final int ID = 3;
+        }
     }
 
     static class StackFrame {
