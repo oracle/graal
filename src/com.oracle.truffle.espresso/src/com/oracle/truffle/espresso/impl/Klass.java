@@ -779,14 +779,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     return ClassStatusConstants.VERIFIED;
                 case ObjectKlass.PREPARED:
                 case ObjectKlass.LINKED:
-                    return ClassStatusConstants.PREPARED;
+                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED;
                 case ObjectKlass.INITIALIZED:
-                    return ClassStatusConstants.INITIALIZED;
+                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
                 default:
                     return ClassStatusConstants.ERROR;
             }
         } else {
-            return ClassStatusConstants.INITIALIZED;
+            return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
         }
     }
 
