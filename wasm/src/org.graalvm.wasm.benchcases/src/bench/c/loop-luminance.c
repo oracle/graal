@@ -62,6 +62,9 @@ void benchmarkSetupOnce() {
   }
 }
 
+void benchmarkSetupEach() {
+}
+
 int benchmarkRun() {
   double total_luminance;
   total_luminance = 0.0;

@@ -68,6 +68,9 @@ void benchmarkSetupOnce() {
   }
 }
 
+void benchmarkSetupEach() {
+}
+
 int benchmarkRun() {
   uint32_t sum = 0;
   for (uint32_t l = 1; l <= N; l++) {

@@ -63,6 +63,9 @@ void benchmarkSetupOnce() {
   }
 }
 
+void benchmarkSetupEach() {
+}
+
 int benchmarkRun() {
   int black_pixels;
   black_pixels = 0;
