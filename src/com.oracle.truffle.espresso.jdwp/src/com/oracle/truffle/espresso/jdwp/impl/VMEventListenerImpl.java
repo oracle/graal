@@ -343,7 +343,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // tagged refType
         KlassRef klass = info.getKlass();
-        stream.writeByte(klass.getTagConstant());
+        stream.writeByte(TypeTag.getKind(klass));
         stream.writeLong(context.getIds().getIdAsLong(klass));
 
         // fieldID
