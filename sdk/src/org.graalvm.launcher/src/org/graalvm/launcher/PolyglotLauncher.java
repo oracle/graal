@@ -332,7 +332,35 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
                                 AOT_LAUNCHER_CLASSES.keySet().stream().sorted().map(s -> " - " + s).collect(Collectors.joining("\n")));
             }
         } else {
-            launcherClass = getLauncherClass(launcherName);
+            String macrosPathsPorperty = System.getProperty("com.oracle.graalvm.launcher.macrospaths");
+            if (macrosPathsPorperty != null && !macrosPathsPorperty.isEmpty()) {
+                Path macrosDir = Paths.get(macrosPathsPorperty);
+                if (!Files.isDirectory(macrosDir)) {
+                    throw new RuntimeException("Expected " + macrosDir + " to be a directory");
+                }
+                try {
+                    List<URL> classpath = new ArrayList<>();
+                    Files.list(macrosDir).flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> launcherName.endsWith(c.launcher)).forEach(c -> {
+                        c.classpath.stream().map(c.dir::resolve).map(p -> {
+                            if (!Files.exists(p)) {
+                                throw new RuntimeException(p + " does not exist");
+                            }
+                            try {
+                                return p.normalize().toUri().toURL();
+                            } catch (MalformedURLException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }).forEach(classpath::add);
+                    });
+                    URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
+                    launcherClass = getLauncherClass(launcherName, loader);
+                } catch (IOException e) {
+                    throw abort(e);
+                }
+            } else {
+                throw abort("com.oracle.graalvm.launcher.macrospaths was not provided");
+            }
+
             if (launcherClass == null) {
                 throw abort("Could not find class '" + launcherName + "'.");
             }

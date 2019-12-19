@@ -72,6 +72,12 @@ if not "%~1"=="" (
     set "jvm_arg=-!u_arg:~5!"
   ) else if "!u_arg:~0,6!"=="--jvm." (
     set "jvm_arg=-!u_arg:~6!"
+  ) else if "!u_arg:~0,9!"=="--native." (
+    echo "The native version of this launcher does not exist: cannot use '--native.*'."
+    exit /b 1
+  ) else if "!u_arg!"=="--native" (
+    echo "The native version of this launcher does not exist: cannot use '--native'."
+    exit /b 1
   )
 
   if not "!jvm_arg!"=="" (

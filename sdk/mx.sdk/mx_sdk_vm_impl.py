@@ -220,6 +220,7 @@ def _get_component_type_base(c, apply_substitutions=False):
         result = get_final_graalvm_distribution().path_substitutions.substitute(result)
     return result
 
+
 def _get_jdk_base(jdk):
     jdk_dir = jdk.home
     if jdk_dir.endswith(os.path.sep):
@@ -230,6 +231,14 @@ def _get_jdk_base(jdk):
     else:
         jdk_base = '.'
     return jdk_dir, jdk_base
+
+
+def _get_macros_dir():
+    svm_component = get_component('svm', stage1=True)
+    if not svm_component:
+        return None
+    return _get_component_type_base(svm_component) + svm_component.dir_name + '/macros'
+
 
 _src_jdk = mx_sdk_vm.base_jdk()
 _src_jdk_version = mx_sdk_vm.base_jdk_version()
@@ -242,6 +251,7 @@ _src_jdk_version = mx_sdk_vm.base_jdk_version()
 #     _src_jdk_dir  = $JAVA_HOME (e.g. /usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19.2-b01)
 #     _src_jdk_base = .
 _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
+
 
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
@@ -366,7 +376,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
             if svm_component and (component is None or has_component(component.short_name, stage1=False)):
                 # create macro to build this launcher
-                _macro_dir = _get_component_type_base(svm_component) + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
+                _macro_dir = _get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(image_config) + '/'
                 _project_name = GraalVmNativeProperties.project_name(image_config)
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
                 if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
@@ -1666,13 +1676,24 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return self.subject.native_image_config.main_class
 
         def _get_extra_jvm_args():
-            return mx.list_to_cmd_line(self.subject.native_image_config.extra_jvm_args)
+            image_config = self.subject.native_image_config
+            args = mx.list_to_cmd_line(image_config.extra_jvm_args)
+            if isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
+                macros_dir = graal_vm.path_substitutions.substitute(_get_macros_dir())
+                macros_relpath = relpath(macros_dir, script_destination_directory)
+                extra = '-Dcom.oracle.graalvm.launcher.macrospaths=${location}/' + macros_relpath
+                if args:
+                    args += ' ' + extra
+                else:
+                    args = extra
+            return args
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
+        _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
