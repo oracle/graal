@@ -2,7 +2,7 @@ function log(msg) {
     if (msg === 'bad') {
         throw 'bad is not allowed';
     }
-    print(msg);
+    console.warn(msg);
 }
 
 function howAreYou() {
