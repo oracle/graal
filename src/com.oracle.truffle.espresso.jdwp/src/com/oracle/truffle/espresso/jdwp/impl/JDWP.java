@@ -395,9 +395,22 @@ final class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(field));
                     reply.writeString(field.getNameAsString());
                     reply.writeString(field.getTypeAsString());
-                    reply.writeInt(field.getModifiers());
+                    int modBits = field.getModifiers();
+                    if (isSynthetic(modBits)) {
+                        // JDWP has a different bit for synthetic
+                        modBits &= ~ACC_SYNTHETIC;
+                        modBits |= JDWP_SYNTHETIC;
+                    }
+
+                    reply.writeInt(modBits);
                 }
                 return new CommandResult(reply);
+            }
+
+            private static final int ACC_SYNTHETIC = 0x00001000;
+            private static final int JDWP_SYNTHETIC = 0xF0000000;
+            static boolean isSynthetic(int mod) {
+                return (mod & ACC_SYNTHETIC) != 0;
             }
         }
 
