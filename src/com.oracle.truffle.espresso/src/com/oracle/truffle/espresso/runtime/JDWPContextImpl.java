@@ -211,13 +211,13 @@ public final class JDWPContextImpl implements JDWPContext {
                     tag = TagConstants.STRING;
                 } else if (staticObject.getKlass().isArray()) {
                     tag = TagConstants.ARRAY;
-                } else if (JAVA_LANG_THREAD.equals(staticObject.getKlass().getType().toString())) {
+                } else if (context.getMeta().Thread.isAssignableFrom(staticObject.getKlass())) {
                     tag = TagConstants.THREAD;
-                } else if (JAVA_LANG_THREAD_GROUP.equals(staticObject.getKlass().getType().toString())) {
+                } else if (context.getMeta().ThreadGroup.isAssignableFrom(staticObject.getKlass())) {
                     tag = TagConstants.THREAD_GROUP;
                 } else if (staticObject.getKlass() == context.getMeta().Class) {
                     tag = TagConstants.CLASS_OBJECT;
-                } else if (JAVA_LANG_CLASS_LOADER.equals(staticObject.getKlass().getType().toString())) {
+                } else if (context.getMeta().ClassLoader.isAssignableFrom(staticObject.getKlass())) {
                     tag = TagConstants.CLASS_LOADER;
                 }
             }
