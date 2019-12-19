@@ -140,14 +140,16 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * the default system class loader as its parent
      *
      * @param classpath
-     * @return
+     * @return the native image class loader
      */
     public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
+        if (!(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader)) {
+            String badCustomClassLoaderError = "SystemClassLoader is the default system class loader. This might create problems when using reflection " +
+                            "during class initialization at build-time. " +
+                            "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
+            UserError.abort(badCustomClassLoaderError);
+        }
         // Acquire the custom system class loader
-        String badCustomClassLoaderError = "SystemClassLoader is the default system class loader. This might create problems when using reflection " +
-                        "during class initialization at build-time. " +
-                        "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
-        UserError.guarantee(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader, badCustomClassLoaderError);
         NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
 
         // To avoid class loading cycles we make the parent of NativeImageClass the default class
