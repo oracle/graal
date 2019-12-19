@@ -629,8 +629,15 @@ final class JDWP {
                 for (FieldRef field : declaredFields) {
                     reply.writeLong(context.getIds().getIdAsLong(field));
                     reply.writeString(field.getNameAsString());
-                    reply.writeString(field.getTypeAsString());
-                    reply.writeString(field.getGenericSignatureAsString());
+                    String signature = field.getTypeAsString();
+                    reply.writeString(signature);
+                    String genericSignature = field.getGenericSignatureAsString();
+                    // only return a generic signature if the type has generics
+                    if (genericSignature.equals(signature)) {
+                        reply.writeString("");
+                    } else {
+                        reply.writeString(field.getGenericSignatureAsString());
+                    }
                     int modBits = checkSyntheticFlag(field.getModifiers());
                     reply.writeInt(modBits);
                 }
