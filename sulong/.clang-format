@@ -46,4 +46,5 @@ SpaceAfterControlStatementKeyword: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 ContinuationIndentWidth: 4
+ReflowComments: false
 ...
