@@ -66,14 +66,19 @@ final class JDWP {
             public static final int ID = 2;
 
             static CommandResult createReply(Packet packet, JDWPContext context) {
-                // get the requested classes
                 PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
                 String signature = input.readString();
-                // we know it's a class type in the format Lsomething;
-                String slashName = signature.substring(1, signature.length() - 1);
+                String slashName = signature;
+
+                if (!signature.startsWith("[") && signature.length() != 1) {
+                    // we know it's a class type in the format Lsomething;
+                    slashName = signature.substring(1, signature.length() - 1);
+                }
+
                 KlassRef[] loaded = context.findLoadedClass(slashName);
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(loaded.length);
                 for (KlassRef klass : loaded) {
                     reply.writeByte(TypeTag.getKind(klass));

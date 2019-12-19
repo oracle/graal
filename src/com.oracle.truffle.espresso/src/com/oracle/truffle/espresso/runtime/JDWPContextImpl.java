@@ -110,8 +110,76 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public KlassRef[] findLoadedClass(String slashName) {
-        Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(slashName);
-        return context.getRegistries().findLoadedClassAny(type);
+        if (slashName.length() == 1) {
+            switch (slashName) {
+                case "I":
+                    return new KlassRef[]{context.getMeta()._int.getArrayClass()};
+                case "Z":
+                    return new KlassRef[]{context.getMeta()._boolean.getArrayClass()};
+                case "S":
+                    return new KlassRef[]{context.getMeta()._short.getArrayClass()};
+                case "C":
+                    return new KlassRef[]{context.getMeta()._char.getArrayClass()};
+                case "B":
+                    return new KlassRef[]{context.getMeta()._byte.getArrayClass()};
+                case "J":
+                    return new KlassRef[]{context.getMeta()._long.getArrayClass()};
+                case "D":
+                    return new KlassRef[]{context.getMeta()._double.getArrayClass()};
+                case "F":
+                    return new KlassRef[]{context.getMeta()._float.getArrayClass()};
+                default:
+                    throw new RuntimeException("invalid primitive component type " + slashName);
+            }
+        } else if (slashName.startsWith("[")) {
+            // array type
+            int dimensions = 0;
+            for (char c : slashName.toCharArray()) {
+                if ('[' == c) {
+                    dimensions++;
+                } else {
+                    break;
+                }
+            }
+            String componentRawName = slashName.substring(dimensions);
+            if (componentRawName.length() == 1) {
+                // primitive
+                switch (componentRawName) {
+                    case "I":
+                        return new KlassRef[]{context.getMeta()._int.getArrayClass(dimensions)};
+                    case "Z":
+                        return new KlassRef[]{context.getMeta()._boolean.getArrayClass(dimensions)};
+                    case "S":
+                        return new KlassRef[]{context.getMeta()._short.getArrayClass(dimensions)};
+                    case "C":
+                        return new KlassRef[]{context.getMeta()._char.getArrayClass(dimensions)};
+                    case "B":
+                        return new KlassRef[]{context.getMeta()._byte.getArrayClass(dimensions)};
+                    case "J":
+                        return new KlassRef[]{context.getMeta()._long.getArrayClass(dimensions)};
+                    case "D":
+                        return new KlassRef[]{context.getMeta()._double.getArrayClass(dimensions)};
+                    case "F":
+                        return new KlassRef[]{context.getMeta()._float.getArrayClass(dimensions)};
+                    default:
+                        throw new RuntimeException("invalid primitive component type " + componentRawName);
+                }
+            } else {
+                // object type
+                String componentType = componentRawName.substring(1, componentRawName.length() - 1);
+                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(componentType);
+                KlassRef[] klassRefs = context.getRegistries().findLoadedClassAny(type);
+                KlassRef[] result = new KlassRef[klassRefs.length];
+                for (int i = 0; i < klassRefs.length; i++) {
+                    result[i] = klassRefs[i].getArrayClass(dimensions);
+                }
+                return result;
+            }
+        } else {
+            // regular type
+            Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(slashName);
+            return context.getRegistries().findLoadedClassAny(type);
+        }
     }
 
     @Override
