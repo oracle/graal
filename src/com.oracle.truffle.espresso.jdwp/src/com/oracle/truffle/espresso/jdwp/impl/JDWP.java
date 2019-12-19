@@ -363,6 +363,72 @@ final class JDWP {
             }
         }
 
+        static class FIELDS {
+            public static final int ID = 4;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                // check if class has been prepared
+                if (klass.getStatus() < ClassStatusConstants.PREPARED) {
+                    reply.errorCode(ErrorCodes.CLASS_NOT_PREPARED);
+                    return new CommandResult(reply);
+                }
+
+                FieldRef[] declaredFields = klass.getDeclaredFields();
+                int numDeclaredFields = declaredFields.length;
+                reply.writeInt(numDeclaredFields);
+                for (FieldRef field : declaredFields) {
+                    reply.writeLong(context.getIds().getIdAsLong(field));
+                    reply.writeString(field.getNameAsString());
+                    reply.writeString(field.getTypeAsString());
+                    reply.writeInt(field.getModifiers());
+                }
+                return new CommandResult(reply);
+            }
+        }
+
+        static class METHODS {
+            public static final int ID = 5;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                // check if class has been prepared
+                if (klass.getStatus() < ClassStatusConstants.PREPARED) {
+                    reply.errorCode(ErrorCodes.CLASS_NOT_PREPARED);
+                    return new CommandResult(reply);
+                }
+
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
+                int numDeclaredMethods = declaredMethods.length;
+                reply.writeInt(numDeclaredMethods);
+                for (MethodRef method : declaredMethods) {
+                    reply.writeLong(context.getIds().getIdAsLong(method));
+                    reply.writeString(method.getNameAsString());
+                    reply.writeString(method.getSignatureAsString());
+                    reply.writeInt(method.getModifiers());
+                }
+                return new CommandResult(reply);
+            }
+        }
+
         static class GET_VALUES {
             public static final int ID = 6;
 

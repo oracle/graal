@@ -304,6 +304,12 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.MODIFIERS.ID:
                                     result = JDWP.ReferenceType.MODIFIERS.createReply(packet, context);
                                     break;
+                                case JDWP.ReferenceType.FIELDS.ID:
+                                    result = JDWP.ReferenceType.FIELDS.createReply(packet, context);
+                                    break;
+                                case JDWP.ReferenceType.METHODS.ID:
+                                    result = JDWP.ReferenceType.METHODS.createReply(packet, context);
+                                    break;
                                 case JDWP.ReferenceType.GET_VALUES.ID:
                                     result = JDWP.ReferenceType.GET_VALUES.createReply(packet, context);
                                     break;
