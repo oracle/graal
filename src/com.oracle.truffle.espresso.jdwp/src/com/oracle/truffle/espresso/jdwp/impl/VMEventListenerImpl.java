@@ -417,7 +417,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void threadStarted(Object thread) {
-        if (connection == null) {
+        if (connection == null || threadStartedRequestId == 0) {
             return;
         }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
@@ -432,7 +432,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void threadDied(Object thread) {
-        if (connection == null) {
+        if (connection == null || threadDeathRequestId == 0) {
             return;
         }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
