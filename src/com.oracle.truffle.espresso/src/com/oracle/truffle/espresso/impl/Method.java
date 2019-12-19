@@ -877,7 +877,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
             Object theCallee = InterpreterToVM.newObject(getDeclaringKlass());
-            invokeWithConversions(callee, args);
+            invokeWithConversions(theCallee, args);
             return theCallee;
         }
         return invokeWithConversions(callee, args);
