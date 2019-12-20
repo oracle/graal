@@ -381,6 +381,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.Methods.BYTECODES.ID:
                                     result = JDWP.Methods.BYTECODES.createReply(packet, context);
                                     break;
+                                case JDWP.Methods.IS_OBSOLETE.ID:
+                                    result = JDWP.Methods.IS_OBSOLETE.createReply(packet);
+                                    break;
                                 case JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.ID:
                                     result = JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.createReply(packet, context);
                                     break;
