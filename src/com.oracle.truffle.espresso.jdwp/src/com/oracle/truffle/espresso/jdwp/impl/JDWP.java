@@ -43,6 +43,7 @@ final class JDWP {
     public static final Object INVALID_VALUE = new Object();
 
     private static final boolean CAN_REDEFINE_CLASSES = false;
+    private static final boolean CAN_GET_INSTANCE_INFO = false;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
@@ -247,7 +248,7 @@ final class JDWP {
                 reply.writeBoolean(false); // canGetSourceDebugExtension
                 reply.writeBoolean(true); // canRequestVMDeathEvent
                 reply.writeBoolean(false); // canSetDefaultStratum
-                reply.writeBoolean(false); // canGetInstanceInfo
+                reply.writeBoolean(CAN_GET_INSTANCE_INFO); // canGetInstanceInfo
                 reply.writeBoolean(false); // canRequestMonitorEvents
                 reply.writeBoolean(false); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
@@ -1420,6 +1421,21 @@ final class JDWP {
 
                 reply.writeBoolean(object == context.getNullObject());
                 return new CommandResult(reply);
+            }
+        }
+
+        static class REFERRING_OBJECTS {
+            public static final int ID = 10;
+
+            static CommandResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                if (!CAN_GET_INSTANCE_INFO) {
+                    // tracked by: /browse/GR-20325
+                    reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                    return new CommandResult(reply);
+                } else {
+                    throw new RuntimeException("Not implemented!");
+                }
             }
         }
     }
