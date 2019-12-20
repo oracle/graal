@@ -2216,12 +2216,13 @@ final class JDWP {
     }
 
     private static int checkSyntheticFlag(int modBits) {
+        int mod = modBits;
         if (isSynthetic(modBits)) {
             // JDWP has a different bit for synthetic
-            modBits &= ~ACC_SYNTHETIC;
-            modBits |= JDWP_SYNTHETIC;
+            mod &= ~ACC_SYNTHETIC;
+            mod |= JDWP_SYNTHETIC;
         }
-        return modBits;
+        return mod;
     }
 
     private static KlassRef verifyRefType(long refTypeId, PacketStream reply, JDWPContext context) {
