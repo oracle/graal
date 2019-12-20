@@ -1048,6 +1048,51 @@ final class JDWP {
             }
         }
 
+        static class VARIABLE_TABLE {
+            public static final int ID = 2;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                KlassRef klassRef = verifyRefType(input.readLong(), reply, context); // ref type
+                if (klassRef == null) {
+                    return new CommandResult(reply);
+                }
+
+                long methodId = input.readLong();
+                MethodRef method = verifyMethodRef(methodId, reply, context);
+                if (method == null) {
+                    return new CommandResult(reply);
+                }
+
+                KlassRef[] params = method.getParameters();
+                int argCnt = 0; // the number of words in the frame used by the arguments
+                for (KlassRef klass : params) {
+                    if (klass.isPrimitive()) {
+                        byte tag = klass.getTagConstant();
+                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
+                            argCnt += 2;
+                        } else {
+                            argCnt++;
+                        }
+                    }
+                }
+                LocalRef[] locals = method.getLocalVariableTable().getLocals();
+
+                reply.writeInt(argCnt);
+                reply.writeInt(locals.length);
+                for (LocalRef local : locals) {
+                    reply.writeLong(local.getStartBCI());
+                    reply.writeString(local.getNameAsString());
+                    reply.writeString(local.getTypeAsString());
+                    reply.writeInt(local.getEndBCI() - local.getStartBCI());
+                    reply.writeInt(local.getSlot());
+                }
+                return new CommandResult(reply);
+            }
+        }
+
         // TODO(Gregersen) - current disabled by Capabilities.
         // tracked by /browse/GR-19817
         // Enabling causes the NetBeans debugger to send wrong stepping
