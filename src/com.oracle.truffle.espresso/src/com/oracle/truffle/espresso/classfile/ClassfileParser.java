@@ -726,9 +726,17 @@ public final class ClassfileParser {
         return new LineNumberTable(name, entries);
     }
 
-    private LocalVariableTable parseLocalVariableAtttribute(Symbol<Name> name) {
+    private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
         assert Name.LocalVariableTable.equals(name);
+        return parseLocalVariableTable(name);
+    }
 
+    private LocalVariableTable parseLocalVariableTypeAttribute(Symbol<Name> name) {
+        assert Name.LocalVariableTypeTable.equals(name);
+        return parseLocalVariableTable(name);
+    }
+
+    private LocalVariableTable parseLocalVariableTable(Symbol<Name> name) {
         int entryCount = stream.readU2();
         if (entryCount == 0) {
             return LocalVariableTable.EMPTY;
@@ -746,7 +754,7 @@ public final class ClassfileParser {
             locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
 
         }
-        return new LocalVariableTable(locals);
+        return new LocalVariableTable(name, locals);
     }
 
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {
@@ -998,7 +1006,9 @@ public final class ClassfileParser {
             if (attributeName.equals(Name.LineNumberTable)) {
                 codeAttributes[i] = parseLineNumberTable(attributeName);
             } else if (attributeName.equals(Name.LocalVariableTable)) {
-                codeAttributes[i] = parseLocalVariableAtttribute(attributeName);
+                codeAttributes[i] = parseLocalVariableAttribute(attributeName);
+            } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
+                codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName);
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
                     throw classFormatError("Duplicate StackMapTable attribute");

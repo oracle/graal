@@ -825,6 +825,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return LocalVariableTable.EMPTY;
     }
 
+    public LocalVariableTable getLocalVariableTypeTable() {
+        CodeAttribute attribute = getCodeAttribute();
+        if (attribute != null) {
+            return attribute.getLocalvariableTypeTable();
+        }
+        return LocalVariableTable.EMPTY;
+    }
+
     /**
      * @return the source object associated with this method
      */

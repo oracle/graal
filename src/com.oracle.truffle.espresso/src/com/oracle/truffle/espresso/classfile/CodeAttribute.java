@@ -109,6 +109,15 @@ public final class CodeAttribute extends Attribute {
         return LocalVariableTable.EMPTY;
     }
 
+    public LocalVariableTable getLocalvariableTypeTable() {
+        for (Attribute attr : attributes) {
+            if (attr.getName() == Name.LocalVariableTypeTable) {
+                return (LocalVariableTable) attr;
+            }
+        }
+        return LocalVariableTable.EMPTY;
+    }
+
     public int bciToLineNumber(int bci) {
         LineNumberTable lnt = getLineNumberTableAttribute();
         if (lnt == LineNumberTable.EMPTY) {
