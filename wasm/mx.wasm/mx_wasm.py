@@ -97,6 +97,7 @@ add_gate_runner(_suite, graal_wasm_gate_runner)
 benchmark_methods = [
     "_benchmarkWarmupCount",
     "_benchmarkSetupOnce",
+    "_benchmarkSetupEach",
     "_benchmarkRun",
     "_main",
 ]
