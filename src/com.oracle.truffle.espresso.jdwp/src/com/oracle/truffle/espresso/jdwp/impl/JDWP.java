@@ -680,6 +680,21 @@ final class JDWP {
                 return new CommandResult(reply);
             }
         }
+
+        static class INSTANCES {
+            public static final int ID = 16;
+
+            static CommandResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                if (!CAN_GET_INSTANCE_INFO) {
+                    // tracked by: /browse/GR-20325
+                    reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                    return new CommandResult(reply);
+                } else {
+                    throw new RuntimeException("Not implemented!");
+                }
+            }
+        }
     }
 
     static class ClassType {
