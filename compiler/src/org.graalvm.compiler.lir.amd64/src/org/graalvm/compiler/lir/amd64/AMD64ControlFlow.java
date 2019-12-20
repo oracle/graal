@@ -29,6 +29,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
@@ -199,7 +200,7 @@ public class AMD64ControlFlow {
 
         public TestBranchOp(OperandSize size, AllocatableValue x, AllocatableValue y, Condition cond, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
-            assert size == QWORD || size == DWORD;
+            assert size == WORD || size == DWORD || size == QWORD;
             this.size = size;
 
             this.x = x;

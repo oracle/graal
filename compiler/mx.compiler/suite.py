@@ -1082,7 +1082,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.lir",
         "org.graalvm.compiler.asm.amd64",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
