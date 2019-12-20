@@ -1222,7 +1222,7 @@ public class BinaryParser extends BinaryStreamParser {
                 memory.validateAddress(null, offsetAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
-                    memory.store_i32_8(offsetAddress + writeOffset, b);
+                    memory.store_i32_8(null, offsetAddress + writeOffset, b);
                 }
             }
         }

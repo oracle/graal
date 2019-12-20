@@ -67,8 +67,8 @@ public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
             argvBufSize += argument.length() + 1;
         }
 
-        memory.store_i32(argcAddress, argc);
-        memory.store_i32(argvBufSizeAddress, argvBufSize);
+        memory.store_i32(this, argcAddress, argc);
+        memory.store_i32(this, argvBufSizeAddress, argvBufSize);
 
         return WasmVoidResult.getInstance();
     }

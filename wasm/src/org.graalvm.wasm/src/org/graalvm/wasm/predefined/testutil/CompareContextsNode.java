@@ -109,8 +109,8 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
                             lastMemory.byteSize());
         }
         for (int ptr = 0; ptr < firstMemory.byteSize(); ptr++) {
-            byte first = (byte) firstMemory.load_i32_8s(ptr);
-            byte last = (byte) lastMemory.load_i32_8s(ptr);
+            byte first = (byte) firstMemory.load_i32_8s(this, ptr);
+            byte last = (byte) lastMemory.load_i32_8s(this, ptr);
             if (first != last) {
                 long from = (ptr - 100) / 8 * 8;
                 throw new WasmExecutionException(this, "Memory mismatch.\n" +
