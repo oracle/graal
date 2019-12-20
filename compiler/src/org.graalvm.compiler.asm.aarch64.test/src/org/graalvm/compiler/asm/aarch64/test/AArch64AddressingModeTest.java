@@ -46,7 +46,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
-public class AArch64MacroAssemblerTest extends GraalTest {
+public class AArch64AddressingModeTest extends GraalTest {
 
     private AArch64MacroAssembler masm;
     private TestProtectedAssembler asm;
