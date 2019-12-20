@@ -1637,6 +1637,49 @@ final class JDWP {
             }
         }
 
+        static class STOP {
+            public static final int ID = 10;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadId = input.readLong();
+                Object thread = verifyThread(threadId, reply, context);
+
+                if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                long throwableId = input.readLong();
+                Object throwable = context.getIds().fromId((int) throwableId);
+
+                context.stopThread(thread, throwable);
+
+                return new CommandResult(reply);
+            }
+        }
+
+        static class INTERRUPT {
+            public static final int ID = 11;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadId = input.readLong();
+                Object thread = verifyThread(threadId, reply, context);
+
+                if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                context.interruptThread(thread);
+
+                return new CommandResult(reply);
+            }
+        }
+
         static class SUSPEND_COUNT {
             public static final int ID = 12;
 

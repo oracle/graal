@@ -311,4 +311,20 @@ public interface JDWPContext {
      * @return guest language object representing the new array
      */
     Object newArray(KlassRef klass, int length);
+
+    /**
+     * Stops the thread with an asynchronous exception, as if done by java.lang.Thread.stop
+     *
+     * @param guestThread the thread to stop
+     * @param guestThrowable the exception to use
+     */
+    void stopThread(Object guestThread, Object guestThrowable);
+
+    /**
+     * Interrupt the thread, as if done by java.lang.Thread.interrupt
+     *
+     * @param thread the thread to interrupt
+     */
+    void interruptThread(Object thread);
+
 }
