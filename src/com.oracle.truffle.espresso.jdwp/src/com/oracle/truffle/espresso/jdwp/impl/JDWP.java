@@ -467,7 +467,7 @@ final class JDWP {
                     // if not, we're probably suspended in <clinit>
                     // and should not try to read static field values
                     Object value;
-                    if (field.getDeclaringKlass().getStatus() != ClassStatusConstants.INITIALIZED) {
+                    if (field.getDeclaringKlass().getStatus() == ClassStatusConstants.ERROR || field.getDeclaringKlass().getStatus() < ClassStatusConstants.INITIALIZED) {
                         value = null;
                     } else {
                         value = context.getStaticFieldValue(field);
