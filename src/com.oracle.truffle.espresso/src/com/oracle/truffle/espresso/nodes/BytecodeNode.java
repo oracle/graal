@@ -1797,8 +1797,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         // Bootstrap method resolution
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
 
-        Klass declaringKlass = getMethod().getDeclaringKlass();
-        StaticObject bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
+        Klass accessingKlass = getMethod().getDeclaringKlass();
+        StaticObject bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(accessingKlass, bsEntry.getBootstrapMethodRef());
 
         StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
         // @formatter:off
@@ -1806,9 +1806,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
             PoolConstant pc = pool.at(bsEntry.argAt(i));
             switch (pc.tag()) {
-                case METHODHANDLE : args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));    break;
-                case METHODTYPE   : args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));      break;
-                case CLASS        : args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();  break;
+                case METHODHANDLE : args[i] = pool.resolvedMethodHandleAt(accessingKlass, bsEntry.argAt(i));    break;
+                case METHODTYPE   : args[i] = pool.resolvedMethodTypeAt(accessingKlass, bsEntry.argAt(i));      break;
+                case CLASS        : args[i] = pool.resolvedKlassAt(accessingKlass, bsEntry.argAt(i)).mirror();  break;
                 case STRING       : args[i] = pool.resolvedStringAt(bsEntry.argAt(i));                          break;
                 case INTEGER      : args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));                    break;
                 case LONG         : args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));                      break;
@@ -1824,12 +1824,12 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         StaticObject name = meta.toGuestString(specifier.getName(pool));
         Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
-        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
+        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
 
         StaticObject memberName = (StaticObject) meta.MethodHandleNatives_linkCallSite.invokeDirect(
                         null,
-                        declaringKlass.mirror(),
+                        accessingKlass.mirror(),
                         bootstrapmethodMethodHandle,
                         name, methodType,
                         StaticObject.createArray(meta.Object_array, args),
@@ -1850,7 +1850,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
-    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass accessingKlass, Meta meta) {
         Symbol<Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature, false);
 
@@ -1858,14 +1858,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbol(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbol(paramType, accessingKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
             throw meta.throwEx(NoClassDefFoundError.class);
         }
         StaticObject rtype;
         try {
-            rtype = meta.resolveSymbol(rt, declaringKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbol(rt, accessingKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
             throw meta.throwEx(BootstrapMethodError.class);
         }

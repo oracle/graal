@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -99,25 +101,70 @@ public interface MethodHandleConstant extends PoolConstant {
             return refIndex;
         }
 
+        private static StaticObject[] resolveSignatureParameters(Klass accessingKlass, Symbol<Symbol.Type>[] signature, Meta meta) {
+            int paramCount = Signatures.parameterCount(signature, false);
+            StaticObject[] paramsKlasses = paramCount > 0 ? new StaticObject[paramCount] : StaticObject.EMPTY_ARRAY;
+            for (int i = 0; i < paramCount; ++i) {
+                Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
+                paramsKlasses[i] = meta.resolveSymbol(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+            }
+            return paramsKlasses;
+        }
+
+        private static StaticObject resolveReturnType(Klass accessingKlass, Symbol<Symbol.Type>[] signature, Meta meta) {
+            return meta.resolveSymbol(Signatures.returnType(signature), accessingKlass.getDefiningClassLoader()).mirror();
+        }
+
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-
             Meta meta = pool.getContext().getMeta();
-            Method payload = pool.resolvedMethodAt(accessingKlass, getRefIndex());
-            StaticObject mname = meta.toGuestString(payload.getName().toString());
-
-            StaticObject[] ptypes = new StaticObject[payload.getParameterCount()];
-            int i = 0;
-            for (Klass k : payload.resolveParameterKlasses()) {
-                ptypes[i] = k.mirror();
-                i++;
+            if (meta.getContext().specCompliancyMode() == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
+                return hotspotResolutionBehavior(pool, accessingKlass, meta);
+            } else {
+                return specCompliantResolution(pool, accessingKlass, meta);
             }
-            StaticObject rtype = payload.resolveReturnKlass().mirror();
+        }
+
+        private ResolvedConstant specCompliantResolution(RuntimeConstantPool pool, Klass accessingKlass, Meta meta) {
+            Method target = pool.resolvedMethodAt(accessingKlass, refIndex);
+
+            Symbol<Symbol.Type>[] parsed = target.getParsedSignature();
+            StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
+            StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
+
             StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
                             rtype, StaticObject.createArray(meta.Class_Array, ptypes));
 
-            Klass mklass = payload.getDeclaringKlass();
+            Klass mklass = target.getDeclaringKlass();
+            StaticObject mname = meta.toGuestString(target.getName());
+
+            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
+                            null,
+                            accessingKlass.mirror(), (int) refKind,
+                            mklass.mirror(), mname, mtype));
+        }
+
+        /**
+         * Resolves a method handle without resolving the method reference, which is not the
+         * behavior described in the specs {5.4.3.5. Method Type and Method Handle Resolution }
+         */
+        private ResolvedConstant hotspotResolutionBehavior(RuntimeConstantPool pool, Klass accessingKlass, Meta meta) {
+            MethodRefConstant ref = pool.methodAt(getRefIndex());
+            Symbol<Symbol.Signature> signature = ref.getSignature(pool);
+
+            Symbol<Symbol.Type>[] parsed = meta.getSignatures().parsed(signature);
+
+            StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
+            StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
+
+            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+                            null,
+                            rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+
+            Klass mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).classIndex);
+
+            StaticObject mname = meta.toGuestString(ref.getName(pool));
             return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
