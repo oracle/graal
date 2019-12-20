@@ -27,105 +27,72 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.instruments.trace;
+package com.oracle.truffle.llvm.runtime.options;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.file.StandardOpenOption;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.util.Locale;
 
-public final class LLVMTracerInstrument {
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 
-    private PrintStream targetStream;
-    private String targetOptionString;
+public class TargetStream extends PrintStream {
 
-    public LLVMTracerInstrument() {
-        targetStream = null;
-        targetOptionString = null;
+    private boolean needsDisposal = false;
+
+    public TargetStream(TruffleLanguage.Env env, String target) {
+        super(makeStream(env, target));
+        needsDisposal = needsDisposal(target);
     }
 
-    @TruffleBoundary
-    public void initialize(TruffleLanguage.Env env, String optionString) {
-        env.registerService(this);
-
-        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
-        builder.mimeTypeIs("text/x-llvmir");
-        builder.tagIs(StandardTags.StatementTag.class, StandardTags.RootTag.class);
-        final SourceSectionFilter filter = builder.build();
-
-        final Instrumenter instrumenter = env.lookup(Instrumenter.class);
-        if (instrumenter == null) {
-            throw new IllegalStateException("Could not find Instrumenter");
-        }
-        targetOptionString = optionString;
-        targetStream = createTargetStream(env, optionString);
-        instrumenter.attachExecutionEventFactory(filter, new LLVMTraceNodeFactory(targetStream));
-    }
-
-    @TruffleBoundary
     public void dispose() {
-        targetStream.flush();
+        flush();
+        if (needsDisposal) {
+            close();
+        }
+    }
 
-        final String target = targetOptionString;
-        assert target != null : "Invalid modification of tracing target!";
-
+    private static boolean needsDisposal(String target) {
         switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
-            case "out":
             case "stdout":
-            case "err":
             case "stderr":
-                break;
+                return false;
             default:
-                targetStream.close();
-                break;
+                return true;
         }
     }
 
     private static final String FILE_TARGET_PREFIX = "file://";
 
-    @TruffleBoundary
-    private static PrintStream createTargetStream(TruffleLanguage.Env env, String target) {
+    private static OutputStream makeStream(TruffleLanguage.Env env, String target) {
         if (target == null) {
-            throw new IllegalArgumentException("Target for trace unspecified!");
+            throw new IllegalArgumentException("Target unspecified!");
         }
 
-        final OutputStream targetStream;
         switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
-            case "out":
             case "stdout":
-                targetStream = env.out();
-                break;
+                return env.out();
 
-            case "err":
             case "stderr":
-                targetStream = env.err();
-                break;
+                return env.err();
 
             default:
                 if (target.startsWith(FILE_TARGET_PREFIX)) {
                     final String fileName = target.substring(FILE_TARGET_PREFIX.length());
                     try {
                         final TruffleFile file = env.getPublicTruffleFile(fileName);
-                        targetStream = new BufferedOutputStream(file.newOutputStream(StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+                        return new BufferedOutputStream(file.newOutputStream(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));
                     } catch (IOException e) {
                         throw new IllegalArgumentException("Invalid file: " + fileName, e);
                     }
                 } else {
-                    throw new IllegalArgumentException("Invalid target for tracing: " + target);
+                    throw new IllegalArgumentException("Invalid target: " + target);
                 }
         }
-
-        return new PrintStream(targetStream);
     }
 }
