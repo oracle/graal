@@ -327,4 +327,11 @@ public interface JDWPContext {
      */
     void interruptThread(Object thread);
 
+    /**
+     * Returns all active child threads within the thread group.
+     *
+     * @param threadGroup the thread group that threads must belong to
+     * @return all active threads in the group
+     */
+    Object[] getChildrenThreds(Object threadGroup);
 }

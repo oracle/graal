@@ -1769,6 +1769,30 @@ final class JDWP {
                 return new CommandResult(reply);
             }
         }
+
+        static class CHILDREN {
+            public static final int ID = 3;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadGroupId = input.readLong();
+                Object threadGroup = verifyThreadGroup(threadGroupId, reply, context);
+
+                if (threadGroup == null) {
+                    return new CommandResult(reply);
+                }
+
+                Object[] children = context.getChildrenThreds(threadGroup);
+                reply.writeInt(children.length);
+                for (Object child : children) {
+                    reply.writeLong(context.getIds().getIdAsLong(child));
+                }
+                reply.writeInt(0); // no children thread groups
+                return new CommandResult(reply);
+            }
+        }
     }
 
     static class ArrayReference {

@@ -320,6 +320,17 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public Object[] getChildrenThreds(Object threadGroup) {
+        ArrayList<Object> result = new ArrayList<>();
+        for (Object thread : getAllGuestThreads()) {
+            if (getThreadGroup(thread) == threadGroup) {
+                result.add(thread);
+            }
+        }
+        return result.toArray();
+    }
+
+    @Override
     public int getArrayLength(Object array) {
         StaticObject staticObject = (StaticObject) array;
         return staticObject.length();
