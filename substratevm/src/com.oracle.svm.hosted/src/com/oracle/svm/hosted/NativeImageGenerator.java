@@ -1094,7 +1094,7 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
-        plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(providers, aUniverse, hUniverse));
+        plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(analysis, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(classInitializationSupport));
