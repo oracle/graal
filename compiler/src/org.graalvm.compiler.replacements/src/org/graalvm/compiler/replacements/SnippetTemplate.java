@@ -929,7 +929,9 @@ public class SnippetTemplate {
 
             assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-            new FloatingReadPhase(true, true).apply(snippetCopy);
+            if (((StructuredGraph) replacee.graph()).isAfterFloatingReadPhase()) {
+                new FloatingReadPhase(true, true).apply(snippetCopy);
+            }
 
             if (!guardsStage.requiresValueProxies()) {
                 new RemoveValueProxyPhase().apply(snippetCopy);
