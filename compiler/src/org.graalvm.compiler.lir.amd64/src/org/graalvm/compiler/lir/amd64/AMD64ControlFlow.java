@@ -249,7 +249,7 @@ public class AMD64ControlFlow {
 
         public TestConstBranchOp(OperandSize size, AllocatableValue x, int y, Condition cond, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
-            assert size == QWORD || size == DWORD;
+            assert size == DWORD || size == QWORD;
             this.size = size;
 
             this.x = x;

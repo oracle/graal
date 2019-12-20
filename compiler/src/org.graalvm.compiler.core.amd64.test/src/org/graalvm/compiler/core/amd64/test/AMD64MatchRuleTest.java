@@ -31,10 +31,11 @@ import org.graalvm.compiler.core.test.MatchRuleTest;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
-import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.ConstOp;
+import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -119,6 +120,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         return 0;
     }
 
+    @Ignore("GR-20304 merges fused-pair into one single LIR.")
     @Test
     public void testLoadTestNoMatch() {
         compile(getResolvedJavaMethod("testLoadTestNoMatchSnippet"), null);
