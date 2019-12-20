@@ -1118,8 +1118,12 @@ suite = {
             "dependencies" : ["com.oracle.svm.core.graal.llvm"],
             "distDependencies" : [
                 "SVM",
-                "compiler:GRAAL_LLVM"
+                "compiler:GRAAL_LLVM",
+                "sdk:LLVM_TOOLCHAIN"
             ],
+            "javaProperties": {
+                "llvm.bin.dir": "<path:LLVM_TOOLCHAIN>/bin/",
+            },
             "maven" : False,
         },
 

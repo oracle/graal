@@ -39,6 +39,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -238,7 +239,7 @@ public class LLVMFeature implements Feature, GraalFeature {
         String output = null;
         try (OutputStream os = new ByteArrayOutputStream()) {
             List<String> cmd = new ArrayList<>();
-            cmd.add("llvm-config");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llvm-config").toString());
             cmd.add("--version");
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
