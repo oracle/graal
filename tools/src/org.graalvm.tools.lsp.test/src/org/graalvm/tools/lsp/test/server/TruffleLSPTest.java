@@ -88,11 +88,11 @@ public abstract class TruffleLSPTest {
 
     @Before
     public void setup() {
-        engine = Engine.newBuilder().option("lsp.DeveloperMode", "true").allowExperimentalOptions(true).build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).build();
         Instrument instrument = engine.getInstruments().get("lsp");
         EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
 
-        truffleAdapter = new TruffleAdapter();
+        truffleAdapter = new TruffleAdapter(true);
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);

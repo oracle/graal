@@ -31,12 +31,11 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.Hover;
 import org.graalvm.tools.lsp.server.types.MarkupContent;
 import org.graalvm.tools.lsp.server.types.MarkupKind;
-import org.graalvm.tools.lsp.server.ContextAwareExecutor;
-import org.graalvm.tools.lsp.instrument.LSOptions;
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -70,10 +69,12 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, HoverRequestHandler.class);
 
     private final CompletionRequestHandler completionHandler;
+    private final boolean developerMode;
 
-    public HoverRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler) {
+    public HoverRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler, boolean developerMode) {
         super(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = completionHandler;
+        this.developerMode = developerMode;
     }
 
     public Hover hoverWithEnteredContext(URI uri, int line, int column) {
@@ -87,7 +88,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
                 if (coverages != null) {
                     return evalHoverInfos(coverages, hoverSection, surrogate.getLanguageInfo());
                 }
-            } else if (env.getOptions().get(LSOptions.DeveloperMode)) {
+            } else if (developerMode) {
                 String sourceText = hoverSection.getCharacters().toString();
                 MarkupContent content = MarkupContent.create(MarkupKind.PlainText,
                                 "Language: " + surrogate.getLanguageId() + ", Section: " + sourceText + "\n" +

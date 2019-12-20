@@ -82,6 +82,7 @@ import java.util.function.Function;
 public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, TruffleAdapter.class);
 
+    private final boolean developerMode;
     private TruffleInstrument.Env env;
     ContextAwareExecutor contextAwareExecutor;
     private SourceCodeEvaluator sourceCodeEvaluator;
@@ -92,7 +93,8 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private HighlightRequestHandler highlightHandler;
     private TextDocumentSurrogateMap surrogateMap;
 
-    public TruffleAdapter() {
+    public TruffleAdapter(boolean developerMode) {
+        this.developerMode = developerMode;
     }
 
     public void register(Env environment, ContextAwareExecutor executor) {
@@ -108,7 +110,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private void createLSPRequestHandlers() {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
-        this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler);
+        this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler, developerMode);
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor);

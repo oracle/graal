@@ -30,6 +30,10 @@ import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -73,8 +77,9 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
     @Override
     protected void onCreate(Env env) {
         env.registerService(this);
+        this.environment = env;
         options = env.getOptions();
-        if (options.hasBeenSet(LSOptions.Lsp)) {
+        if (options.hasSetOptions()) {
             final TruffleAdapter truffleAdapter = launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
             SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().includeInternal(options.get(LSOptions.Internal)).build();
             eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(eventFilter, new ExecutionEventNodeFactory() {
@@ -91,8 +96,6 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                     }
                 }
             });
-        } else {
-            this.environment = env;
         }
     }
 
@@ -148,7 +151,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
         setWaitForClose();
 
-        TruffleAdapter truffleAdapter = new TruffleAdapter();
+        TruffleAdapter truffleAdapter = new TruffleAdapter(options.get(LSOptions.DeveloperMode));
 
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
@@ -171,7 +174,8 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                 Integer backlog = options.get(LSOptions.SocketBacklogSize);
                 InetAddress address = socketAddress.getAddress();
                 ServerSocket serverSocket = new ServerSocket(port, backlog, address);
-                LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket).thenRun(() -> {
+                List<SocketAddress> delegates = createDelegateSockets(options.get(LSOptions.Delegates));
+                LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket, delegates).thenRun(() -> {
                     try {
                         executorWrapper.executeWithDefaultContext(() -> {
                             context.leave();
@@ -190,6 +194,17 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             return null;
         });
         return truffleAdapter;
+    }
+
+    private static List<SocketAddress> createDelegateSockets(List<HostAndPort> hostPorts) {
+        if (hostPorts.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<SocketAddress> sockets = new ArrayList<>(hostPorts.size());
+        for (HostAndPort hostPort : hostPorts) {
+            sockets.add(hostPort.createSocket());
+        }
+        return sockets;
     }
 
     private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {

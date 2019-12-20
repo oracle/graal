@@ -25,10 +25,13 @@
 package org.graalvm.tools.lsp.server;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -91,6 +94,7 @@ import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
  * A LSP4J {@link LanguageServer} implementation using TCP sockets as transportation layer for the
@@ -115,6 +119,7 @@ public final class LanguageServerImpl extends LanguageServer {
 
     private final Hover emptyHover = Hover.create(Collections.emptyList());
     private final SignatureHelp emptySignatureHelp = SignatureHelp.create(Collections.emptyList(), null, null);
+    private ServerCapabilities serverCapabilities;
 
     private LanguageServerImpl(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         this.truffleAdapter = adapter;
@@ -149,9 +154,15 @@ public final class LanguageServerImpl extends LanguageServer {
         capabilities.setReferencesProvider(false);
         capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
+        this.serverCapabilities = capabilities;
         CompletableFuture.runAsync(() -> parseWorkspace(params.getRootUri()));
 
         return CompletableFuture.completedFuture(InitializeResult.create(capabilities));
+    }
+
+    @Override
+    protected boolean supportsMethod(String method, JSONObject params) {
+        return DelegateServers.supportsMethod(method, params, serverCapabilities);
     }
 
     @Override
@@ -443,7 +454,7 @@ public final class LanguageServerImpl extends LanguageServer {
         return resultOnError;
     }
 
-    public CompletableFuture<?> start(final ServerSocket serverSocket) {
+    public CompletableFuture<?> start(final ServerSocket serverSocket, final List<SocketAddress> delegateAddresses) {
         clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
@@ -478,7 +489,9 @@ public final class LanguageServerImpl extends LanguageServer {
                         }
                     });
 
-                    Future<?> listenFuture = Session.connect(LanguageServerImpl.this, clientSocket.getInputStream(), clientSocket.getOutputStream(), lspRequestExecutor);
+                    OutputStream serverOutput = clientSocket.getOutputStream();
+                    DelegateServers delegateServers = createDelegateServers(serverOutput);
+                    Future<?> listenFuture = Session.connect(LanguageServerImpl.this, clientSocket.getInputStream(), serverOutput, lspRequestExecutor, delegateServers);
                     try {
                         listenFuture.get();
                     } catch (InterruptedException | ExecutionException e) {
@@ -489,6 +502,23 @@ public final class LanguageServerImpl extends LanguageServer {
                 } catch (IOException e) {
                     err.println("[Graal LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
+            }
+
+            private DelegateServers createDelegateServers(OutputStream serverOutput) {
+                List<DelegateServer> delegateServersList;
+                if (delegateAddresses.isEmpty()) {
+                    delegateServersList = Collections.emptyList();
+                } else {
+                    delegateServersList = new ArrayList<>(delegateAddresses.size());
+                    for (SocketAddress address : delegateAddresses) {
+                        try {
+                            delegateServersList.add(new DelegateServer(address, serverOutput, getLogger()));
+                        } catch (IOException ex) {
+                            err.println("[Graal LSP] Error while connecting to delegate server at " + address + " : " + ex.getLocalizedMessage());
+                        }
+                    }
+                }
+                return new DelegateServers(delegateServersList);
             }
         }, clientConnectionExecutor);
         return future;

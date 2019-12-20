@@ -27,6 +27,9 @@ package org.graalvm.tools.lsp.instrument;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.options.OptionCategory;
@@ -55,25 +58,30 @@ public final class LSOptions {
         if (address.isEmpty() || address.equals("true")) {
             return DEFAULT_ADDRESS;
         } else {
-            int colon = address.indexOf(':');
-            String port;
-            String host;
-            if (colon >= 0) {
-                port = address.substring(colon + 1);
-                host = address.substring(0, colon);
-            } else {
-                port = address;
-                host = null;
-            }
-            return new HostAndPort(host, port);
+            return HostAndPort.parse(address);
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
+
+    static final OptionType<List<HostAndPort>> DELEGATES = new OptionType<>("[[host:]port],...", (addresses) -> {
+        if (addresses.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String[] array = addresses.split(",");
+        List<HostAndPort> hostPorts = new ArrayList<>(array.length);
+        for (String address : array) {
+            hostPorts.add(HostAndPort.parse(address));
+        }
+        return hostPorts;
+    }, (Consumer<List<HostAndPort>>) (addresses) -> addresses.forEach((address) -> address.verify()));
 
     @Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
     @Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
+
+    @Option(help = "Delegate language servers", category = OptionCategory.USER) //
+    static final OptionKey<List<HostAndPort>> Delegates = new OptionKey<>(Collections.emptyList(), DELEGATES);
 
     static final class HostAndPort {
 
@@ -90,6 +98,20 @@ public final class LSOptions {
         HostAndPort(String host, String portStr) {
             this.host = host;
             this.portStr = portStr;
+        }
+
+        static HostAndPort parse(String address) {
+            int colon = address.indexOf(':');
+            String port;
+            String host;
+            if (colon >= 0) {
+                port = address.substring(colon + 1);
+                host = address.substring(0, colon);
+            } else {
+                port = address;
+                host = null;
+            }
+            return new HostAndPort(host, port);
         }
 
         void verify() {
