@@ -413,6 +413,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.IS_COLLECTED.ID:
                                     result = JDWP.ObjectReference.IS_COLLECTED.createReply(packet, context);
                                     break;
+                                case JDWP.ObjectReference.REFERRING_OBJECTS.ID:
+                                    result = JDWP.ObjectReference.REFERRING_OBJECTS.createReply(packet);
+                                    break;
                             }
                             break;
                         }
