@@ -441,4 +441,14 @@ public final class JDWPContextImpl implements JDWPContext {
         StaticObject staticObject = (StaticObject) object;
         return klass.isAssignable(staticObject.getKlass());
     }
+
+    @Override
+    public void stopThread(Object guestThread, Object guestThrowable) {
+        Target_java_lang_Thread.stop0((StaticObject) guestThread, guestThrowable);
+    }
+
+    @Override
+    public void interruptThread(Object thread) {
+        Target_java_lang_Thread.interrupt0((StaticObject) thread);
+    }
 }
