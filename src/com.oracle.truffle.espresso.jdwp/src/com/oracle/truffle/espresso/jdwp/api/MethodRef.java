@@ -120,6 +120,11 @@ public interface MethodRef {
     LocalVariableTableRef getLocalVariableTable();
 
     /**
+     * @return the local generic variable table of the method
+     */
+    LocalVariableTableRef getLocalVariableTypeTable();
+
+    /**
      * @return the line number table of the method
      */
     LineNumberTableRef getLineNumberTable();

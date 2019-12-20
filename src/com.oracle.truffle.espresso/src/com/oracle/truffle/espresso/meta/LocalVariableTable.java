@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -37,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
  */
 public final class LocalVariableTable extends Attribute implements LocalVariableTableRef {
 
-    public static final LocalVariableTable EMPTY = new LocalVariableTable(Local.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY = new LocalVariableTable(Name.LocalVariableTable, Local.EMPTY_ARRAY);
 
     @CompilationFinal(dimensions = 1) //
     private final Local[] locals;
@@ -50,8 +51,8 @@ public final class LocalVariableTable extends Attribute implements LocalVariable
      */
     // @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "caller transfers ownership of
     // `locals`")
-    public LocalVariableTable(Local[] locals) {
-        super(Name.LocalVariableTable, null);
+    public LocalVariableTable(Symbol<Name> name, Local[] locals) {
+        super(name, null);
         this.locals = locals;
     }
 
