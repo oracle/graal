@@ -66,7 +66,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
-                if (cn.hasUsages() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
+                if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     /*
                      * Constants that are embedded into graphs via constant folding of static fields
                      * have already been replaced. But constants embedded manually by graph builder

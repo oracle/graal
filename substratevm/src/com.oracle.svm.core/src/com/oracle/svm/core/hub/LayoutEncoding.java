@@ -34,6 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -55,6 +56,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * size based on the array length</li>
  * </ul>
  */
+@DuplicatedInNativeCode
 public class LayoutEncoding {
 
     private static final int NEUTRAL_VALUE = 0;

@@ -45,6 +45,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -449,9 +450,9 @@ public final class Safepoint {
 
     /** Methods for the thread that brings the system to a safepoint. */
     public static final class Master {
-        private static final int NOT_AT_SAFEPOINT = 0;
-        private static final int SYNCHRONIZING = 1;
-        private static final int AT_SAFEPOINT = 2;
+        @DuplicatedInNativeCode private static final int NOT_AT_SAFEPOINT = 0;
+        @DuplicatedInNativeCode private static final int SYNCHRONIZING = 1;
+        @DuplicatedInNativeCode private static final int AT_SAFEPOINT = 2;
 
         static void initialize() {
             ImageSingletons.add(Master.class, new Master());

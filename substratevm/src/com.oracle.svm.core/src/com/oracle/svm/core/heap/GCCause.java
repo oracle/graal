@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -40,9 +41,9 @@ import com.oracle.svm.core.util.VMError;
 public class GCCause {
     @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCCause> HostedGCCauseList = new ArrayList<>();
 
-    public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
-    public static final GCCause UnitTest = new GCCause("UnitTest", 1);
-    public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
+    @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
+    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
+    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
 
     protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer};
 
