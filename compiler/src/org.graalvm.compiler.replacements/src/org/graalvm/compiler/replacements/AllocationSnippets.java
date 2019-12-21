@@ -66,12 +66,12 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
-    protected Object allocateArrayImpl(Word hub, Word prototypeMarkWord, int length, int headerSize, int log2ElementSize, boolean fillContents, boolean emitMemoryBarrier, boolean maybeUnroll,
-                    boolean supportsBulkZeroing, AllocationProfilingData profilingData) {
-        Object result;
+    protected Object allocateArrayImpl(Word hub, Word prototypeMarkWord, int length, int headerSize, int log2ElementSize, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
+                    boolean maybeUnroll, boolean supportsBulkZeroing, AllocationProfilingData profilingData) {
         Word thread = getTLABInfo();
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
+        ReplacementsUtil.runtimeAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // We do an unsigned multiplication so that a negative array length will result in an array
         // size greater than Integer.MAX_VALUE, which is larger than the largest possible TLAB. So,
@@ -79,11 +79,12 @@ public abstract class AllocationSnippets implements Snippets {
         UnsignedWord allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
         Word newTop = top.add(allocationSize);
 
-        ReplacementsUtil.runtimeAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+        Object result;
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, prototypeMarkWord, allocationSize, length, headerSize, top, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData.snippetCounters);
+            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+                            profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
             result = callNewArrayStub(hub, length);
@@ -213,17 +214,16 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatArray(Word hub, Word prototypeMarkWord, UnsignedWord allocationSize, int length, int headerSize, Word memory, boolean fillContents, boolean emitMemoryBarrier,
-                    boolean maybeUnroll,
-                    boolean supportsBulkZeroing, AllocationSnippetCounters snippetCounters) {
+    protected Object formatArray(Word hub, Word prototypeMarkWord, UnsignedWord allocationSize, int length, Word memory, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
+                    boolean maybeUnroll, boolean supportsBulkZeroing, AllocationSnippetCounters snippetCounters) {
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
         initializeObjectHeader(memory, hub, prototypeMarkWord, true);
         if (fillContents) {
-            zeroMemory(memory, headerSize, allocationSize, false, maybeUnroll, supportsBulkZeroing, snippetCounters);
+            zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, headerSize, allocationSize, false, maybeUnroll, snippetCounters);
+            fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, snippetCounters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());

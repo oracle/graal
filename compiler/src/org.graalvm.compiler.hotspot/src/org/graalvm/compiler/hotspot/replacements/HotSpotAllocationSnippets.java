@@ -162,7 +162,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Object result = allocateArrayImpl(hub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
+        Object result = allocateArrayImpl(hub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, headerSize, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+                        profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -237,7 +238,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter AllocationProfilingData profilingData) {
         // Primitive array types are eagerly pre-resolved. We can use a floating load.
         KlassPointer picHub = LoadConstantIndirectlyNode.loadKlass(hub);
-        return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
+        return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, headerSize, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
     }
 
     @Snippet
@@ -253,7 +254,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter AllocationProfilingData profilingData) {
         // Array type would be resolved by dominating resolution.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
+        return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, headerSize, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
     }
 
     @Snippet
@@ -308,7 +309,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
-        Object result = allocateArrayImpl(nonNullKlass.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, profilingData);
+        Object result = allocateArrayImpl(nonNullKlass.asWord(), prototypeMarkWord, length, headerSize, log2ElementSize, fillContents, headerSize, emitMemoryBarrier, false, supportsBulkZeroing,
+                        profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 

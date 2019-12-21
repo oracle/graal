@@ -95,10 +95,10 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        int headerSize = getArrayHeaderSize(layoutEncoding);
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, headerSize, memory, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, snippetCounters);
+        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getFillStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
+                        snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
