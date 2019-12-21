@@ -64,6 +64,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -270,7 +271,7 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        final DynamicHub dynamicHub = new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -333,6 +334,21 @@ public final class SVMHost implements HostVM {
 
     public UnsafeAutomaticSubstitutionProcessor getAutomaticSubstitutionProcessor() {
         return automaticSubstitutions;
+    }
+
+    private static HubType computeHubType(AnalysisType type) {
+        if (type.isArray()) {
+            if (type.getComponentType().isPrimitive() || type.getComponentType().isWordType()) {
+                return HubType.TypeArray;
+            } else {
+                return HubType.ObjectArray;
+            }
+        } else if (type.isInstanceClass()) {
+            // in the future, we will need to distinguish references as well
+            return HubType.Instance;
+        } else {
+            return HubType.Other;
+        }
     }
 
     @Override
