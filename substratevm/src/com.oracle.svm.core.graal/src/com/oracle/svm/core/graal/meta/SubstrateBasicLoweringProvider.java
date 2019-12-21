@@ -178,15 +178,15 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         AddressNode headerAddress = graph.unique(new OffsetAddressNode(object, headerOffset));
         ValueNode headerBits = graph.unique(new FloatingReadNode(headerAddress, NamedLocationIdentity.FINAL_LOCATION, null, headerBitsStamp, null, BarrierType.NONE));
         ValueNode hubBits;
-        int reservedBits = Heap.getHeap().getObjectHeader().getReservedBits();
-        if (reservedBits != 0) {
+        int reservedBitsMask = Heap.getHeap().getObjectHeader().getReservedBitsMask();
+        if (reservedBitsMask != 0) {
             // get rid of the reserved header bits and extract the actual pointer to the hub
             int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
             if (encodingShift != 0) {
-                assert (reservedBits >>> encodingShift) == 0 : "Compression shift must mask object header bits";
+                assert (reservedBitsMask >>> encodingShift) == 0 : "Compression shift must mask object header bits";
                 hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
             } else {
-                hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBits, graph)));
+                hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBitsMask, graph)));
             }
         } else {
             hubBits = headerBits;

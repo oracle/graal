@@ -164,7 +164,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public int getReservedBits() {
+    public int getReservedBitsMask() {
         assert MASK_HEADER_BITS.rawValue() == ALL_RESERVED_BITS;
         assert CLEAR_HEADER_BITS.rawValue() == ~ALL_RESERVED_BITS;
         return ALL_RESERVED_BITS;
@@ -229,8 +229,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return KnownIntrinsics.readHub(o);
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
+    public DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;
@@ -322,9 +323,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public long getHeaderForImageHeapObject(long value) {
-        assert (value & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
-        return (value | BOOT_IMAGE.rawValue());
+    public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
+        assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
+        return (heapBaseRelativeAddress | BOOT_IMAGE.rawValue());
     }
 
     public boolean isBootImageCarefully(Object o) {
@@ -676,7 +677,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         } else {
             headerBitsClassification = -1;
         }
-        final DynamicHub hub = dynamicHubFromObjectHeader(header);
+        final DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header);
         final int hubClassification = HeapVerifierImpl.classifyObject(hub);
         return ((1000 * hubClassification) + headerBitsClassification);
     }
