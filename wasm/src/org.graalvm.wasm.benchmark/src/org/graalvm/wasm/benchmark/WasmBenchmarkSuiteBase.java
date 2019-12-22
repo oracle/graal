@@ -136,8 +136,6 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Iteration)
         public void setupIteration() {
-            benchmarkSetupEach.execute();
-
             // Reset result.
             result = null;
         }
@@ -156,6 +154,7 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Invocation)
         public void setupInvocation() {
+            benchmarkSetupEach.execute();
         }
 
         public Value benchmarkRun() {
