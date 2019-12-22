@@ -71,7 +71,13 @@ public abstract class WasmMemory implements TruffleObject {
      */
     public abstract long byteSize();
 
-    public abstract boolean grow(long extraSize);
+    public abstract boolean grow(long extraPageSize);
+
+    public boolean growToAddress(long address) {
+        final long requiredPageCount = address / PAGE_SIZE + 1;
+        final long extraPageCount = Math.max(0, requiredPageCount - pageSize());
+        return grow(extraPageCount);
+    }
 
     public abstract long maxPageSize();
 
