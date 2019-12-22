@@ -296,12 +296,11 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected static class AllocationSnippetCounters {
         public AllocationSnippetCounters(SnippetCounter.Group.Factory factory) {
-            Group newInstance = factory.createSnippetCounterGroup("NewInstance");
-            Group newArray = factory.createSnippetCounterGroup("NewArray");
-            unrolledInit = new SnippetCounter(newInstance, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
-            loopInit = new SnippetCounter(newInstance, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
-            bulkInit = new SnippetCounter(newArray, "tlabBulkInit", "TLAB alloc with bulk zeroing");
-            stub = new SnippetCounter(newInstance, "stub", "alloc and zeroing via stub");
+            Group allocations = factory.createSnippetCounterGroup("Allocations");
+            unrolledInit = new SnippetCounter(allocations, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
+            loopInit = new SnippetCounter(allocations, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+            bulkInit = new SnippetCounter(allocations, "tlabBulkInit", "TLAB alloc with bulk zeroing");
+            stub = new SnippetCounter(allocations, "stub", "alloc and zeroing via stub");
         }
 
         final SnippetCounter unrolledInit;
