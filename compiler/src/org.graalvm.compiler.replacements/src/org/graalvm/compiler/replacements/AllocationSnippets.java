@@ -286,7 +286,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int objectAlignment();
 
-    protected abstract static class AllocationProfilingData {
+    public static class AllocationProfilingData {
         final AllocationSnippetCounters snippetCounters;
 
         public AllocationProfilingData(AllocationSnippetCounters snippetCounters) {
