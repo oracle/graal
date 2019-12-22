@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -40,8 +41,8 @@ import com.oracle.svm.core.util.VMError;
 public class AllocationCounter {
     /** Name of the method that increments this counter. */
     private final String name;
-    /** Next allocation counter. */
-    private final AllocationCounter next;
+    /** Next allocation counter - this value is only written during compilation. */
+    @UnknownObjectField(types = AllocationCounter.class) private AllocationCounter next;
     /** Number of allocations. */
     private long count;
     /** Size of allocations in bytes. */
