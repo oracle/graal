@@ -55,7 +55,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(JNIRegistrationSupport.class, new JNIRegistrationSupport());
 
-        rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment");
+        rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory");
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             if (isPosix()) {
                 rerunClassInit(a, "java.lang.UNIXProcess");
