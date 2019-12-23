@@ -309,6 +309,17 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
 
+    // Disassembly
+
+    @Option(help = "Print machine code from compilation.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
+    public static final OptionKey<Boolean> PrintDisassembly = new OptionKey<>(false);
+
+    @Option(help = "Restrict disassembly, with the same format as CompileOnly.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
+    public static final OptionKey<String> DisassembleOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
+
+    @Option(help = "Format for disassembly.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
+    public static final OptionKey<DisassemblyFormatType> DisassemblyFormat = new OptionKey<>(DisassemblyFormatType.HEX, DisassemblyFormatType.OPTION_TYPE);
+
     // Inlining
 
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)

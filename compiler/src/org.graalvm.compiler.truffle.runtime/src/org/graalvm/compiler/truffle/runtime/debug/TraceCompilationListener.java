@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
@@ -122,48 +123,54 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
-            return;
-        }
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            long timeCompilationFinished = System.nanoTime();
+            int nodeCountLowered = graph.getNodeCount();
+            Times compilation = currentCompilation.get();
 
-        long timeCompilationFinished = System.nanoTime();
-        int nodeCountLowered = graph.getNodeCount();
-        Times compilation = currentCompilation.get();
+            int calls = 0;
+            int inlinedCalls;
+            if (inliningDecision == null) {
 
-        int calls = 0;
-        int inlinedCalls;
-        if (inliningDecision == null) {
-
-            for (Node node : target.nodeIterable(null)) {
-                if (node instanceof OptimizedDirectCallNode) {
-                    calls++;
+                for (Node node : target.nodeIterable(null)) {
+                    if (node instanceof OptimizedDirectCallNode) {
+                        calls++;
+                    }
                 }
+
+                inlinedCalls = 0;
+            } else {
+                calls = inliningDecision.countCalls();
+                inlinedCalls = inliningDecision.countInlinedCalls();
             }
 
-            inlinedCalls = 0;
-        } else {
-            calls = inliningDecision.countCalls();
-            inlinedCalls = inliningDecision.countInlinedCalls();
-        }
+            int dispatchedCalls = calls - inlinedCalls;
+            Map<String, Object> properties = new LinkedHashMap<>();
+            GraalTruffleRuntimeListener.addASTSizeProperty(target, inliningDecision, properties);
+            properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
+                    (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
+                    (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
+                    (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
+            properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
+            properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
+            properties.put("CodeSize", result.getTargetCodeSize());
+            if (target.getCodeAddress() != 0) {
+                properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+            } else {
+                properties.put("CodeAddress", "N/A");
+            }
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
-        int dispatchedCalls = calls - inlinedCalls;
-        Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(target, inliningDecision, properties);
-        properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
-                        (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
-                        (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
-                        (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
-        properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
-        properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
-        properties.put("CodeSize", result.getTargetCodeSize());
-        if (target.getCodeAddress() != 0) {
-            properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
-        } else {
-            properties.put("CodeAddress", "N/A");
+            runtime.logEvent(0, "opt done", target.toString(), properties);
+
+            currentCompilation.set(null);
         }
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
         runtime.logEvent(target, 0, "opt done", properties);
+        
+        if (target.engine.printDisassembly && target.engine.disassemblePredicate.test(target.getRootNode())) {
+            printDisassembly(target, result, target.engine.disassemblyFormat);
+        }
 
         currentCompilation.set(null);
     }
@@ -173,6 +180,17 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             return "n/a";
         }
         return String.format("%s:%d", sourceSection.getSource().getName(), sourceSection.getStartLine());
+    }
+
+    private void printDisassembly(OptimizedCallTarget target, CompilationResultInfo result, DisassemblyFormatType disassemblyFormat) {
+        try {
+            final long address = target.getCodeAddress();
+            final long size = result.getTargetCodeSize();
+            final String disassembled = Disassembler.disassemble(disassemblyFormat, address, size);
+            runtime.log(String.format("[truffle] disassembly of %s @ 0x%x for %s bytes%n%s", target.toString(), address, size, disassembled));
+        } catch (Exception e) {
+            runtime.log("Could not disassemble " + target.toString());
+        }
     }
 
     @Override

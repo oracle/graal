@@ -36,6 +36,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.DisassembleOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.DisassemblyFormat;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
@@ -44,6 +46,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintDisassembly;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
@@ -76,6 +79,7 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEn
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -131,6 +135,9 @@ public final class EngineData {
     @CompilationFinal public boolean argumentTypeSpeculation;
     @CompilationFinal public boolean traceCompilation;
     @CompilationFinal public boolean traceCompilationDetails;
+    @CompilationFinal public boolean printDisassembly;
+    @CompilationFinal public String disassembleOnly;
+    @CompilationFinal public DisassemblyFormatType disassemblyFormat;
     @CompilationFinal public boolean backgroundCompilation;
     @CompilationFinal public ExceptionAction compilationFailureAction;
     @CompilationFinal public String compileOnly;
@@ -144,6 +151,7 @@ public final class EngineData {
     @CompilationFinal public int firstTierCallAndLoopThreshold;
     @CompilationFinal public int lastTierCallThreshold;
     @CompilationFinal public Predicate<RootNode> compilationPredicate;
+    @CompilationFinal public Predicate<RootNode> disassemblePredicate;
 
     // Cached logger
     private volatile TruffleLogger logger;
@@ -201,6 +209,10 @@ public final class EngineData {
         this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
         this.compilationFailureAction = computeCompilationFailureAction(options);
         this.compilationPredicate = computeCompilationPredicate(compileOnly);
+        this.disassemblePredicate = computeCompilationPredicate(disassembleOnly);
+        this.printDisassembly = getPolyglotOptionValue(options, PrintDisassembly);
+        this.disassembleOnly = getPolyglotOptionValue(options, DisassembleOnly);
+        this.disassemblyFormat = getPolyglotOptionValue(options, DisassemblyFormat);
         validateOptions();
         parsedCompileOnly = null;
     }
