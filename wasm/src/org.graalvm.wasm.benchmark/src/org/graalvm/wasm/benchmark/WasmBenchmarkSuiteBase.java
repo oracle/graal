@@ -69,8 +69,8 @@ import org.graalvm.wasm.utils.WasmInitialization;
 @Fork(FORKS)
 public abstract class WasmBenchmarkSuiteBase {
     public static class Defaults {
-        public static final int MEASUREMENT_ITERATIONS = 10;
-        public static final int WARMUP_ITERATIONS = 10;
+        public static final int MEASUREMENT_ITERATIONS = 6;
+        public static final int WARMUP_ITERATIONS = 8;
         public static final int FORKS = 1;
     }
 
