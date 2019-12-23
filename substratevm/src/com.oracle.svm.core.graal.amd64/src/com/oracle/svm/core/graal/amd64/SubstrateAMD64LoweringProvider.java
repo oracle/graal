@@ -35,6 +35,7 @@ import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -54,6 +55,10 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             lowering.lower(n, tool);
         } else if (n instanceof RemNode) {
             /* No lowering necessary. */
+        } else if (n instanceof CodeSynchronizationNode) {
+            /* Remove node */
+            CodeSynchronizationNode syncNode = (CodeSynchronizationNode) n;
+            syncNode.graph().removeFixed(syncNode);
         } else if (n instanceof AMD64ArrayIndexOfDispatchNode) {
             lowerArrayIndexOf((AMD64ArrayIndexOfDispatchNode) n);
         } else {

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +23,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.graal.aarch64;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public interface SubstrateLIRGenerator {
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip);
+/**
+ * AArch64 instruction for {@link CodeSynchronizationNode}.
+ */
+public class AArch64InstructionSynchronizationBarrierOp extends AArch64LIRInstruction {
 
-    void emitDeadEnd();
+    public static final LIRInstructionClass<AArch64InstructionSynchronizationBarrierOp> TYPE = LIRInstructionClass.create(AArch64InstructionSynchronizationBarrierOp.class);
 
-    void emitVerificationMarker(Object marker);
+    protected AArch64InstructionSynchronizationBarrierOp() {
+        super(TYPE);
+    }
 
-    void emitInstructionSynchronizationBarrier();
+    @Override
+    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        masm.isb();
+    }
 }

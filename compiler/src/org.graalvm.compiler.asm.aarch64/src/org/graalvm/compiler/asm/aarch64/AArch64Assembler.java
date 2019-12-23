@@ -82,6 +82,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSQR
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.HINT;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.HLT;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ISB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDAR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDAXR;
@@ -676,6 +677,7 @@ public abstract class AArch64Assembler extends Assembler {
         MRS(0xD5300000),
         MSR(0xD5100000),
         DC(0xD5087000),
+        ISB(0xD5033FDF),
 
         BLR_NATIVE(0xc0000000),
 
@@ -3019,6 +3021,13 @@ public abstract class AArch64Assembler extends Assembler {
 
     public void dc(DataCacheOperationType type, Register src) {
         emitInt(DC.encoding | type.encoding() | rt(src));
+    }
+
+    /**
+     * Instruction Synchronization Barrier.
+     */
+    public void isb() {
+        emitInt(ISB.encoding);
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {

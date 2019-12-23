@@ -334,6 +334,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
+        public void emitInstructionSynchronizationBarrier() {
+            append(new AArch64InstructionSynchronizationBarrierOp());
+        }
+
+        @Override
         public void emitFarReturn(AllocatableValue result, Value stackPointer, Value ip) {
             append(new AArch64FarReturnOp(asAllocatable(result), asAllocatable(stackPointer), asAllocatable(ip)));
         }
