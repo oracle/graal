@@ -36,14 +36,22 @@ final class ConstantPoolImpl extends ConstantPool {
     @CompilationFinal(dimensions = 1) //
     private final PoolConstant[] constants;
 
-    ConstantPoolImpl(PoolConstant[] constants, int majorVersion) {
+    private final byte[] rawBytes;
+
+    ConstantPoolImpl(PoolConstant[] constants, int majorVersion, byte[] rawBytes) {
         this.constants = Objects.requireNonNull(constants);
         this.majorVersion = majorVersion;
+        this.rawBytes = rawBytes;
     }
 
     @Override
     public int length() {
         return constants.length;
+    }
+
+    @Override
+    public byte[] getRawBytes() {
+        return rawBytes;
     }
 
     @Override

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -252,7 +253,7 @@ final class JDWP {
                 reply.writeBoolean(false); // canRequestMonitorEvents
                 reply.writeBoolean(false); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
-                reply.writeBoolean(false); // canGetConstantPool
+                reply.writeBoolean(true); // canGetConstantPool
                 reply.writeBoolean(false); // canForceEarlyReturn
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
@@ -724,6 +725,46 @@ final class JDWP {
 
                 reply.writeInt(klassRef.getMajorVersion());
                 reply.writeInt(klassRef.getMinorVersion());
+
+                return new CommandResult(reply);
+            }
+        }
+
+        static class CONSTANT_POOL {
+
+            public static final int ID = 18;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long typeId = input.readLong();
+                KlassRef klass = verifyRefType(typeId, reply, context);
+
+                if (klass == null) {
+                    // input could be a classObjectId
+                    Object object = context.getIds().fromId((int) typeId);
+                    klass = context.getReflectedType(object);
+                }
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                if (klass.isPrimitive() || klass.isArray()) {
+                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
+                    return new CommandResult(reply);
+                }
+
+                JDWPConstantPool constantPool = klass.getJDWPConstantPool();
+
+                int count = constantPool.getCount() + 1;
+
+                reply.writeInt(count);
+
+                byte[] poolBytes = constantPool.getBytes();
+                reply.writeInt(poolBytes.length);
+                reply.writeByteArray(poolBytes);
 
                 return new CommandResult(reply);
             }
