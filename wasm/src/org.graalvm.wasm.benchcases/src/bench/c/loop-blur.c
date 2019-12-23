@@ -69,6 +69,9 @@ void benchmarkSetupOnce() {
 void benchmarkSetupEach() {
 }
 
+void benchmarkTeardownEach() {
+}
+
 int benchmarkRun() {
   uint32_t res = 0;
   for (uint32_t a = 0; a != X * N; ++a) {

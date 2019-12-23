@@ -98,6 +98,7 @@ benchmark_methods = [
     "_benchmarkWarmupCount",
     "_benchmarkSetupOnce",
     "_benchmarkSetupEach",
+    "_benchmarkTeardownEach",
     "_benchmarkRun",
     "_main",
 ]

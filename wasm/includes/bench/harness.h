@@ -48,6 +48,8 @@ void benchmarkSetupOnce();
 
 void benchmarkSetupEach();
 
+void benchmarkTeardownEach();
+
 int benchmarkRun();
 
 // -------------------------
@@ -63,6 +65,8 @@ int (*functionWarmupCount)() = benchmarkWarmupCount;
 void (*functionSetupOnce)() = benchmarkSetupOnce;
 
 void (*functionSetupEach)() = benchmarkSetupEach;
+
+void (*functionTeardownEach)() = benchmarkTeardownEach;
 
 int (*functionRun)() = benchmarkRun;
 
@@ -80,6 +84,7 @@ void runIteration(char* label, int i) {
   long end_t = end.tv_sec * 1000000 + end.tv_usec;
   double time = (end_t - start_t) / 1000000.0;
   printf("%s: %d, result = %d, sec = %.2f, ops / sec = %.2f\n", label, i, result, time, 1.0 / time);
+  functionTeardownEach();
 }
 
 int main() {

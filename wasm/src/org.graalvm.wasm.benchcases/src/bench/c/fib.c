@@ -50,6 +50,9 @@ void benchmarkSetupOnce() {
 void benchmarkSetupEach() {
 }
 
+void benchmarkTeardownEach() {
+}
+
 int fib(int n) {
   if (n <= 1) {
     return n;

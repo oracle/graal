@@ -79,6 +79,7 @@ public abstract class WasmBenchmarkSuiteBase {
 
         private Value benchmarkSetupOnce;
         private Value benchmarkSetupEach;
+        private Value benchmarkTeardownEach;
         private Value benchmarkRun;
         private Value resetContext;
         private Value customInitializer;
@@ -115,6 +116,7 @@ public abstract class WasmBenchmarkSuiteBase {
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
             benchmarkSetupEach = wasmBindings.getMember("_benchmarkSetupEach");
+            benchmarkTeardownEach = wasmBindings.getMember("_benchmarkTeardownEach");
             benchmarkRun = wasmBindings.getMember("_benchmarkRun");
             Assert.assertNotNull(String.format("No benchmarkRun method in %s.", wantedBenchmarkName), benchmarkRun);
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
@@ -155,6 +157,11 @@ public abstract class WasmBenchmarkSuiteBase {
             // level).
 
             benchmarkSetupEach.execute();
+        }
+
+        @TearDown(Level.Invocation)
+        public void teardownInvocation() {
+            benchmarkTeardownEach.execute();
         }
 
         public Value benchmarkRun() {
