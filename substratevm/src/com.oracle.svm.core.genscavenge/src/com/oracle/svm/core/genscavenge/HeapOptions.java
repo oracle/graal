@@ -33,6 +33,12 @@ public class HeapOptions {
     @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Print summary GC information after main completion")//
+    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
+    public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
+
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false);
 
