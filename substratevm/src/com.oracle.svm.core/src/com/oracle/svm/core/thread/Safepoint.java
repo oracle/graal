@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -202,6 +203,11 @@ public final class Safepoint {
             // Resetting the safepoint counter or executing the recurring callback must only be done
             // if the thread is in Java state.
             ThreadingSupportImpl.onSafepointCheckSlowpath();
+            if (ActionOnTransitionToJavaSupport.isActionPending()) {
+                assert ActionOnTransitionToJavaSupport.isSynchronizeCode() : "Unexpected action pending.";
+                // DO ACTION HERE
+                ActionOnTransitionToJavaSupport.clearActions();
+            }
         }
     }
 
