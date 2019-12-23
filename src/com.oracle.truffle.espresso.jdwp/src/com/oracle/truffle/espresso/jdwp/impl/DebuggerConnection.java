@@ -316,6 +316,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.SOURCE_FILE.ID:
                                     result = JDWP.ReferenceType.SOURCE_FILE.createReply(packet, context);
                                     break;
+                                case JDWP.ReferenceType.NESTED_TYPES.ID:
+                                    result = JDWP.ReferenceType.NESTED_TYPES.createReply(packet, context);
+                                    break;
                                 case JDWP.ReferenceType.STATUS.ID:
                                     result = JDWP.ReferenceType.STATUS.createReply(packet, context);
                                     break;

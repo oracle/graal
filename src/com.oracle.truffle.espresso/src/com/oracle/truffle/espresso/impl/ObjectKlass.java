@@ -855,6 +855,20 @@ public final class ObjectKlass extends Klass {
     }
 
     @TruffleBoundary
+    public List<Symbol<Name>> getNestedTypeNames() {
+        ArrayList<Symbol<Name>> result = new ArrayList<>(innerClasses.entries().size());
+        if (innerClasses != null) {
+            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                if (entry.innerClassIndex != 0) {
+                    result.add(pool.classAt(entry.innerClassIndex).getName(pool));
+
+                }
+            }
+        }
+        return result;
+    }
+
+    @TruffleBoundary
     private int computeModifiers() {
         int modifiers = getModifiers();
         if (innerClasses != null) {
