@@ -831,7 +831,7 @@ class ToolchainConfig(object):
         main = self._tool_to_main(self.exe_map[parsed_args.command])
         if "JACOCO" in os.environ:
             mx_gate._jacoco = os.environ["JACOCO"]
-        return mx.run_java(mx.get_runtime_jvm_args([self.dist]) + [main] + tool_args, out=out)
+        return mx.run_java(mx.get_runtime_jvm_args([self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
 
     def _supported_exes(self):
         return [exe for tool in self._supported_tools() for exe in self._tool_to_aliases(tool)]
@@ -931,8 +931,9 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         java = mx.get_jdk().java
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
         jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        extra_props = ['-Dorg.graalvm.launcher.executablename="$0"']
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
-        command = [java] + jvm_args + [main_class, '"$@"']
+        command = [java] + jvm_args + extra_props + [main_class, '"$@"']
         return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
