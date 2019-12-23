@@ -130,7 +130,7 @@ public final class Target_java_lang_Thread {
                     }
                     // check if death cause throwable is set, if not throw ThreadDeath
                     StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
-                    throw deathThrowable != null ? meta.throwEx(deathThrowable) : meta.throwEx(ThreadDeath.class);
+                    throw deathThrowable != null ? Meta.throwEx(deathThrowable) : meta.throwEx(ThreadDeath.class);
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);

@@ -753,7 +753,7 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
-    public EspressoException throwEx(StaticObject throwable) {
+    public static EspressoException throwEx(StaticObject throwable) {
         throw new EspressoException(throwable);
     }
 
