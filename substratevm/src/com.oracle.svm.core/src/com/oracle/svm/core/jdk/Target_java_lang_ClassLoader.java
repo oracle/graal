@@ -39,6 +39,9 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
@@ -48,7 +51,9 @@ import com.oracle.svm.core.util.VMError;
 @Substitute
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
-
+    /* The original locations of the .jar files are no longer available at run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
+    private ArrayList<URL> path;
     @Substitute //
     private Target_java_lang_ClassLoader parent;
 
