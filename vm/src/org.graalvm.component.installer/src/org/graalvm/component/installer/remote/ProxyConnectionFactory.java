@@ -26,9 +26,11 @@ package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Authenticator;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -312,6 +314,16 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                     }
                     InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
                     proxy = new Proxy(Proxy.Type.HTTP, address);
+                    String userInfo = uri.getUserInfo();
+                    if (userInfo != null) {
+                        String[] auth = uri.getUserInfo().split(":");
+                        Authenticator.setDefault(new Authenticator() {
+                            @Override
+                            public PasswordAuthentication getPasswordAuthentication() {
+                                return new PasswordAuthentication(auth[0], auth[1].toCharArray());
+                            }
+                        });
+                    }
                 } catch (URISyntaxException ex) {
                     ctx.setOutcome(false, new IOException(ex.getLocalizedMessage(), ex));
                     return;
