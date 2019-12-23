@@ -60,6 +60,9 @@ public final class ParserKlass {
 
     private final int thisKlassIndex;
 
+    private final int majorVersion;
+    private final int minorVersion;
+
     public ParserKlass(ConstantPool pool,
                     int flags,
                     Symbol<Name> name,
@@ -69,7 +72,9 @@ public final class ParserKlass {
                     final ParserMethod[] methods,
                     final ParserField[] fields,
                     Attribute[] attributes,
-                    int thisKlassIndex) {
+                    int thisKlassIndex,
+                    int majorVersion,
+                    int minorVersion) {
         this.pool = pool;
         this.flags = flags;
         this.name = name;
@@ -80,6 +85,8 @@ public final class ParserKlass {
         this.fields = fields;
         this.attributes = attributes;
         this.thisKlassIndex = thisKlassIndex;
+        this.majorVersion = majorVersion;
+        this.minorVersion = minorVersion;
     }
 
     /**
@@ -133,5 +140,13 @@ public final class ParserKlass {
 
     public int getThisKlassIndex() {
         return thisKlassIndex;
+    }
+
+    public int getMajorVersion() {
+        return majorVersion;
+    }
+
+    public int getMinorVersion() {
+        return minorVersion;
     }
 }

@@ -902,4 +902,14 @@ public final class ObjectKlass extends Klass {
         }
         return genericSignature;
     }
+
+    @Override
+    public int getMajorVersion() {
+        return linkedKlass.getMajorVersion();
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return linkedKlass.getMinorVersion();
+    }
 }

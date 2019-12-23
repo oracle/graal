@@ -810,6 +810,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return mirror();
     }
 
-    // endregion jdwp-specific
+    @Override
+    public int getMajorVersion() {
+        return 0;
+    }
 
+    @Override
+    public int getMinorVersion() {
+        return 0;
+    }
+
+    // endregion jdwp-specific
 }

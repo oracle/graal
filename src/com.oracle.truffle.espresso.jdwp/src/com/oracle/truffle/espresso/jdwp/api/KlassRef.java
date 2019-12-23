@@ -154,4 +154,18 @@ public interface KlassRef {
      */
     KlassRef getArrayClass(int dimensions);
 
+    /**
+     * Returns the major version of the corresponding class file for this klass.
+     * 
+     * @return the major class file version
+     */
+    int getMajorVersion();
+
+    /**
+     * Returns the minor version of the corresponding class file for this klass.
+     *
+     * @return the minor class file version
+     */
+    int getMinorVersion();
+
 }
