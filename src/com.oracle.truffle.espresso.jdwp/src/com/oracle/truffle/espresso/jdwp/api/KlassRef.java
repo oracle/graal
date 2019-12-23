@@ -168,4 +168,11 @@ public interface KlassRef {
      */
     int getMinorVersion();
 
+    /**
+     * Returns the constant pool as specified in the Class File Format.
+     *
+     * @return a representation of the constant pool
+     */
+    JDWPConstantPool getJDWPConstantPool();
+
 }
