@@ -54,6 +54,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -205,7 +206,7 @@ public final class Safepoint {
             ThreadingSupportImpl.onSafepointCheckSlowpath();
             if (ActionOnTransitionToJavaSupport.isActionPending()) {
                 assert ActionOnTransitionToJavaSupport.isSynchronizeCode() : "Unexpected action pending.";
-                // DO ACTION HERE
+                CodeSynchronizationNode.synchronizeCode();
                 ActionOnTransitionToJavaSupport.clearActions();
             }
         }

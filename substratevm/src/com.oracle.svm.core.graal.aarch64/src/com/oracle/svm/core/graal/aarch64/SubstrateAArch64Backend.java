@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -331,6 +331,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public void emitVerificationMarker(Object marker) {
             append(new VerificationMarkerOp(marker));
+        }
+
+        @Override
+        public void emitInstructionSynchronizationBarrier() {
+            append(new AArch64InstructionSynchronizationBarrierOp());
         }
 
         @Override

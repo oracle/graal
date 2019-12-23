@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,6 +149,13 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     public void emitVerificationMarker(Object marker) {
         /*
          * No-op, for now we do not have any verification of the LLVM IR that requires the markers.
+         */
+    }
+
+    @Override
+    public void emitInstructionSynchronizationBarrier() {
+        /*
+         * No-op - for now this is not needed for LLVM backend.
          */
     }
 
