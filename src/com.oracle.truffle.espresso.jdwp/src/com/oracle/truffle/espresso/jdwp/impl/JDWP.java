@@ -520,6 +520,33 @@ final class JDWP {
             }
         }
 
+        static class NESTED_TYPES {
+            public static final int ID = 8;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long klassRef = input.readLong();
+                KlassRef klass = verifyRefType(klassRef, reply, context);
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                KlassRef[] nestedTypes = context.getNestedTypes(klass);
+
+                reply.writeInt(nestedTypes.length);
+                for (KlassRef nestedType : nestedTypes) {
+                    reply.writeByte(TypeTag.getKind(nestedType));
+                    reply.writeLong(context.getIds().getIdAsLong(nestedType));
+                }
+
+                return new CommandResult(reply);
+            }
+
+        }
+
         static class STATUS {
             public static final int ID = 9;
 

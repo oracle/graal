@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
@@ -259,6 +260,26 @@ public final class JDWPContextImpl implements JDWPContext {
             if (staticObject.getKlass().getType() == Symbol.Type.Class) {
                 return (KlassRef) staticObject.getHiddenField(context.getMeta().HIDDEN_MIRROR_KLASS);
             }
+        }
+        return null;
+    }
+
+    @Override
+    public KlassRef[] getNestedTypes(KlassRef klass) {
+        if (klass instanceof ObjectKlass) {
+            ArrayList<KlassRef> result = new ArrayList<>();
+            ObjectKlass objectKlass = (ObjectKlass) klass;
+            List<Symbol<Symbol.Name>> nestedTypeNames = objectKlass.getNestedTypeNames();
+
+            StaticObject classLoader = objectKlass.getDefiningClassLoader();
+            for (Symbol<Symbol.Name> nestedType : nestedTypeNames) {
+                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(nestedType.toString());
+                KlassRef loadedKlass = context.getRegistries().findLoadedClass(type, classLoader);
+                if (loadedKlass != null && loadedKlass != klass) {
+                    result.add(loadedKlass);
+                }
+            }
+            return result.toArray(new KlassRef[0]);
         }
         return null;
     }
