@@ -797,10 +797,13 @@ def create_toolchain_root_provider(name, dist):
 
 
 class ToolchainConfig(object):
+    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
+    _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
         "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "ld64"],
+        "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
@@ -944,6 +947,7 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
                                        "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
                                        "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
                                        "LD": "com.oracle.truffle.llvm.toolchain.launchers.Linker",
+                                       "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
                                    suite=_suite)
 
