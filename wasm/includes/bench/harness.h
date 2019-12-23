@@ -70,34 +70,29 @@ int (*functionRun)() = benchmarkRun;
 // End of the function pointer list.
 // -------------------------
 
-int runIteration() {
+void runIteration(char* label, int i) {
   functionSetupEach();
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
   int result = functionRun();
-  return result;
+  gettimeofday(&end, NULL);
+  long start_t = start.tv_sec * 1000000 + start.tv_usec;
+  long end_t = end.tv_sec * 1000000 + end.tv_usec;
+  double time = (end_t - start_t) / 1000000.0;
+  printf("%s: %d, result = %d, sec = %.2f, ops / sec = %.2f\n", label, i, result, time, 1.0 / time);
 }
 
 int main() {
-  struct timeval start, end;
-
   functionSetupOnce();
 
   // Execute warmup.
   for (int i = 0; i != functionWarmupCount(); ++i) {
-    int result = runIteration();
-    printf("Warmup iteration %d, result = %d\n", i + 1, result);
+    runIteration("warmup", i);
   }
 
   // Execute the benchmark itself.
-  gettimeofday(&start, NULL);
-  int result = runIteration();
-  gettimeofday(&end, NULL);
+  runIteration("final run", 0);
 
-  long start_t = start.tv_sec * 1000000 + start.tv_usec;
-  long end_t = end.tv_sec * 1000000 + end.tv_usec;
-  double time = (end_t - start_t) / 1000000.0;
-  printf("time = %.2f\n", time);
-  printf("ops / sec = %.2f\n", 1.0 / time);
-  printf("result = %d\n", result);
   return 0;
 }
 

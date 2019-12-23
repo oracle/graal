@@ -144,16 +144,16 @@ public abstract class WasmBenchmarkSuiteBase {
         public void teardownIteration() {
             // Validate result.
             WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
+        }
 
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
             // Note: we deliberately not reset the context here.
             // It would be slow, and the invariant we expect from the benchmarks
             // is that they can handle VM-state side-effects.
             // We may support benchmark-specific teardown actions in the future (at the invocation
             // level).
-        }
 
-        @Setup(Level.Invocation)
-        public void setupInvocation() {
             benchmarkSetupEach.execute();
         }
 
