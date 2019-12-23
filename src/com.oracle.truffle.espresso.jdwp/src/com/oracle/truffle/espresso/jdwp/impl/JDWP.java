@@ -695,6 +695,39 @@ final class JDWP {
                 }
             }
         }
+
+        static class CLASS_FILE_VERSION {
+            public static final int ID = 17;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long typeId = input.readLong();
+
+                KlassRef klassRef = verifyRefType(typeId, reply, context);
+
+                if (klassRef == null) {
+                    // input could be a classObjectId
+                    Object object = context.getIds().fromId((int) typeId);
+                    klassRef = context.getReflectedType(object);
+                }
+
+                if (klassRef == null) {
+                    return new CommandResult(reply);
+                }
+
+                if (klassRef.isArray() || klassRef.isPrimitive()) {
+                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
+                    return new CommandResult(reply);
+                }
+
+                reply.writeInt(klassRef.getMajorVersion());
+                reply.writeInt(klassRef.getMinorVersion());
+
+                return new CommandResult(reply);
+            }
+        }
     }
 
     static class ClassType {
