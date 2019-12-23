@@ -66,6 +66,15 @@ public final class ToolchainImpl implements Toolchain {
                 return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
             case "LD":
                 return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-ld");
+            case "AR":
+            case "NM":
+            case "OBJCOPY":
+            case "OBJDUMP":
+            case "RANLIB":
+            case "READELF":
+            case "READOBJ":
+            case "STRIP":
+                return binPrefix.resolve(tool.toLowerCase());
             default:
                 return null;
         }
