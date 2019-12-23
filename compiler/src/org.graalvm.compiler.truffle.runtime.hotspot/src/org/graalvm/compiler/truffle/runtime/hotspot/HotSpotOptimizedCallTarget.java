@@ -123,6 +123,11 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
+    public InstalledCode getInstalledCode() {
+        return installedCode;
+    }
+
+    @Override
     public void invalidate() {
         invalidate(null, null);
     }
