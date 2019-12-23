@@ -30,7 +30,8 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public enum DisassemblyFormatType {
-    HEX;
+    HEX,
+    RAW;
 
     public static final OptionType<DisassemblyFormatType> OPTION_TYPE = new OptionType<>(
             Arrays.stream(DisassemblyFormatType.values()).map(Enum<DisassemblyFormatType>::toString).map(String::toLowerCase).collect(Collectors.joining("|")),

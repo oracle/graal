@@ -27,14 +27,20 @@ package org.graalvm.compiler.truffle.runtime.debug;
 import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
 import sun.misc.Unsafe;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public class Disassembler {
 
-    public static String disassemble(DisassemblyFormatType disassemblyFormat, long address, long size) {
+    public static String disassemble(DisassemblyFormatType disassemblyFormat, long address, long size) throws IOException {
         switch (disassemblyFormat) {
             case HEX:
                 return disassembleHex(address, size);
+            case RAW:
+                return disassembleRaw(address, size);
             default:
                 throw new UnsupportedOperationException();
         }
@@ -70,6 +76,13 @@ public class Disassembler {
         return builder.toString();
     }
 
+    private static String disassembleRaw(long address, long size) throws IOException {
+        final String rawFile = String.format("truffle_compiled_code_%d_0x%x.raw", getPid(), address);
+        final byte[] code = readMemory(address, size);
+        Files.write(Paths.get(rawFile), code, StandardOpenOption.CREATE_NEW);
+        return String.format("written to %s - load or disassemble at 0x%x", rawFile, address);
+    }
+
     private static byte[] readMemory(long address, long size) {
         if (size > Integer.MAX_VALUE) {
             throw new UnsupportedOperationException();
@@ -82,6 +95,11 @@ public class Disassembler {
         }
 
         return bytes;
+    }
+
+    private static long getPid() {
+        final String info = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+        return Long.parseLong(info.split("@")[0]);
     }
 
     private static final Unsafe UNSAFE = getUnsafe();
