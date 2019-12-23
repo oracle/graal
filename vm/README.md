@@ -43,6 +43,31 @@ In our CI, we build it using:
 - `binutils`: `2.23.2`
 - `llvm`: `3.8` on linux; `4.0.1` on darwin
 
+---
+**NOTE:**
+
+On MacOS 10.15 (Catalina) you might run into build errors of the form:
+
+```
+'stdlib.h' file not found
+
+#include <stdlib.h>
+
+         ^~~~~~~~~~
+
+1 error generated.
+```
+
+Make sure you have installed `Xcode` and `CommandLineTools` on your MacOS and then set the following environment variable to point to the `/usr/include` directory within the `Xcode` installation:
+
+```
+export CPATH=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/
+```
+Rebuilding after setting this environment variable will pick the system header files from this location.
+
+
+---
+
 Newer versions might also work. For more details, please check the README file of each component.
 
 To start the build, you can either run:
