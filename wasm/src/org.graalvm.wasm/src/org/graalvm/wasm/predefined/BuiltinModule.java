@@ -111,6 +111,12 @@ public abstract class BuiltinModule {
         return memory;
     }
 
+    protected void importFunction(WasmContext context, WasmModule module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
+        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final WasmFunction function = module.symbolTable().importFunction(context, importModuleName, importFunctionName, typeIdx);
+        module.symbolTable().exportFunction(context, function.index(), exportName);
+    }
+
     protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, int maxSize) {
         module.symbolTable().importMemory(context, importModuleName, memoryName, initSize, maxSize);
     }

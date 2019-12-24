@@ -45,6 +45,7 @@ import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.MEASURE
 import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_ITERATIONS;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 

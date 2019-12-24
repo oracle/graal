@@ -486,7 +486,7 @@ public class SymbolTable {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 
-    void exportFunction(WasmContext context, int functionIndex, String exportName) {
+    public void exportFunction(WasmContext context, int functionIndex, String exportName) {
         checkNotLinked();
         exportedFunctions.put(exportName, functions[functionIndex]);
         exportedFunctionsByIndex.put(functionIndex, exportName);
@@ -497,7 +497,7 @@ public class SymbolTable {
         return exportedFunctions;
     }
 
-    WasmFunction importFunction(WasmContext context, String moduleName, String functionName, int typeIndex) {
+    public WasmFunction importFunction(WasmContext context, String moduleName, String functionName, int typeIndex) {
         checkNotLinked();
         final ImportDescriptor importDescriptor = new ImportDescriptor(moduleName, functionName);
         WasmFunction function = allocateFunction(typeIndex, importDescriptor);

@@ -42,6 +42,7 @@ package org.graalvm.wasm.utils.cases;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -58,7 +59,7 @@ public class WasmMultiCase extends WasmCase {
 
     @Override
     public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
-        HashMap<String, byte[]> binaries = new HashMap<>();
+        HashMap<String, byte[]> binaries = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
             String filename = entry.getKey();
             Object content = entry.getValue();

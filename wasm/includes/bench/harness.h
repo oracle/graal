@@ -42,6 +42,25 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+// ------------------------
+// The following methods
+// can be called inside
+// the benchmarks.
+// ------------------------
+
+#ifdef DISABLE_TEST_API
+void __testutil_save_binary_file(char* filename, unsigned char* data, int size) {
+}
+#else
+extern void __testutil_save_binary_file(char* filename, unsigned char* data, int size);
+#endif
+
+// ------------------------
+// The following methods
+// must be implemented
+// by the benchmarks.
+// ------------------------
+
 int benchmarkWarmupCount();
 
 void benchmarkSetupOnce();

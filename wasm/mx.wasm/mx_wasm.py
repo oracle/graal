@@ -220,6 +220,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         mx.log("Building files from the source dir: " + source_dir)
         cc_flags = ["-O3", "-g2"]
         include_flags = []
+        disable_test_api_flags = ["-DDISABLE_TEST_API"]
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
         emcc_flags = cc_flags
@@ -242,7 +243,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 if filename.endswith(".c"):
                     # Step 1a: compile with the JS file, and store as files for running Node, if necessary.
                     output_js_path = os.path.join(output_dir, subdir, basename + ".js")
-                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_js_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + disable_test_api_flags + [source_path, "-o", output_js_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the JS output of " + filename + " with emcc.")
                     if self.subject.isBenchmarkProject():
@@ -257,7 +258,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                         f.write(init_info)
 
                     # Step 1c: compile to just a .wasm file, to avoid name mangling.
-                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_wasm_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + ["-s", "ERROR_ON_UNDEFINED_SYMBOLS=0"] + [source_path, "-o", output_wasm_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
@@ -299,7 +300,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 if filename.endswith(".c"):
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
                     link_flags = ["-lm"]
-                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
+                    gcc_cmd_line = [gcc_cmd] + cc_flags + disable_test_api_flags + [source_path, "-o", output_path] + include_flags + link_flags
                     if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the native binary of " + filename + ".")
                     os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
