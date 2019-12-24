@@ -89,7 +89,9 @@ public class SaveBinaryFile extends WasmBuiltinRootNode  {
         // Read the file name.
         String filename = readFileName(memory, filenamePtr);
         final Path temporaryFile = temporaryDirectory.resolve(filename);
-        temporaryFile.toFile().deleteOnExit();
+        if (!TestutilModule.Options.KEEP_TEMP_FILES.equals("true")) {
+            temporaryFile.toFile().deleteOnExit();
+        }
 
         // Read the byte array.
         byte[] bytes = new byte[size];
@@ -111,6 +113,7 @@ public class SaveBinaryFile extends WasmBuiltinRootNode  {
         byte current;
         while ((current = (byte) memory.load_i32_8u(this, currentPtr)) != 0) {
             sb.append((char) current);
+            currentPtr++;
         }
         return sb.toString();
     }

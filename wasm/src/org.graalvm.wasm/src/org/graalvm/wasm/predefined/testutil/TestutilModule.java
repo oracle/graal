@@ -48,10 +48,15 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.graalvm.wasm.ValueTypes.I32_TYPE;
 
 public class TestutilModule extends BuiltinModule {
+    public static class Options {
+        public static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
+    }
+
     public static class Names {
         public static final String RESET_CONTEXT = "__testutil_reset_context";
         public static final String SAVE_CONTEXT = "__testutil_save_context";
@@ -62,9 +67,13 @@ public class TestutilModule extends BuiltinModule {
 
     private static Path createTemporaryDirectory() {
         try {
-            final Path tempDirectory = Files.createTempDirectory("temp-dir-");
-            tempDirectory.toFile().deleteOnExit();
-            return tempDirectory;
+            if (Options.KEEP_TEMP_FILES.equals("true")) {
+                return Paths.get(".");
+            } else {
+                final Path tempDirectory = Files.createTempDirectory("temp-dir-");
+                tempDirectory.toFile().deleteOnExit();
+                return tempDirectory;
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
