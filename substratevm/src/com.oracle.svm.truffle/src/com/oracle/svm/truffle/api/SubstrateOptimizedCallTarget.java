@@ -115,9 +115,15 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
+    public long getCodeEntryPointAddress() {
+        return getAddress();
+    }
+
+    @Override
     public long getCodeAddress() {
         return getAddress();
     }
+
 
     @Override
     public void setAddress(long address, ResolvedJavaMethod method) {

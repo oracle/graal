@@ -123,8 +123,8 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    public InstalledCode getInstalledCode() {
-        return installedCode;
+    public long getCodeEntryPointAddress() {
+        return installedCode.getEntryPoint();
     }
 
     @Override

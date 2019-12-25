@@ -599,7 +599,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     public abstract long getCodeAddress();
 
-    public abstract InstalledCode getInstalledCode();
+    /**
+     * Gets the address of the machine code entry point for this call target. This value
+     * is only for informational purposes (e.g., use in a log message).
+     */
+    public abstract long getCodeEntryPointAddress();
 
     /**
      * Determines if this call target has valid machine code attached to it.
