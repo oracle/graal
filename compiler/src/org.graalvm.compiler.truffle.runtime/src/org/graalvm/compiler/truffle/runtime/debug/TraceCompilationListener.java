@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationCompact;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
 
@@ -84,7 +85,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+        if (target.engine.traceCompilationCompact || target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
             }
@@ -98,21 +99,25 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             runtime.logEvent(0, "opt start", target.toString(), defaultProperties(target));
         }
 
-        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+        if (target.engine.traceCompilationCompact || target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             currentCompilation.set(new Times());
         }
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
-            runtime.logEvent(0, "opt deopt", target.toString(), defaultProperties(target));
+        if (target.engine.traceCompilationCompact || target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+                properties.putAll(defaultProperties(target));
+            }
+            runtime.logEvent(0, "opt deopt", target.toString(), properties);
         }
     }
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+        if (target.engine.traceCompilationCompact || target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             final Times current = currentCompilation.get();
             current.timePartialEvaluationFinished = System.nanoTime();
             current.nodeCountPartialEval = graph.getNodeCount();
@@ -121,7 +126,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
+        if (!target.engine.traceCompilationCompact && !target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
 
@@ -132,7 +137,6 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         int calls = 0;
         int inlinedCalls;
         if (inliningDecision == null) {
-
             for (Node node : target.nodeIterable(null)) {
                 if (node instanceof OptimizedDirectCallNode) {
                     calls++;
@@ -147,20 +151,22 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(target, inliningDecision, properties);
-        properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
-                        (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
-                        (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
-                        (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
-        properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
-        properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
-        properties.put("CodeSize", result.getTargetCodeSize());
-        if (target.getCodeAddress() != 0) {
-            properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
-        } else {
-            properties.put("CodeAddress", "N/A");
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            GraalTruffleRuntimeListener.addASTSizeProperty(target, inliningDecision, properties);
+            properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
+                            (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
+                            (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
+                            (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
+            properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
+            properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
+            properties.put("CodeSize", result.getTargetCodeSize());
+            if (target.getCodeAddress() != 0) {
+                properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+            } else {
+                properties.put("CodeAddress", "N/A");
+            }
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
         }
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
         runtime.logEvent(0, "opt done", target.toString(), properties);
 
@@ -176,8 +182,11 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
-            Map<String, Object> properties = defaultProperties(target);
+        if (target.getOptionValue(TraceCompilationCompact) || target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+                properties.putAll(defaultProperties(target));
+            }
             properties.put("Reason", reason);
             runtime.logEvent(0, "opt invalidated", target.toString(), properties);
         }

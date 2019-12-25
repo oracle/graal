@@ -44,6 +44,8 @@ for more details about instrumenting branches and boundaries.
 
 `--engine.TraceCompilation` prints a line each time a method is compiled.
 
+`--engine.TraceCompilationCompact` prints a line each time a method is compiled but more compact.
+
 `--engine.TraceCompilationDetail` also prints a line when compilation is queued, starts or completes.
 
 `--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
