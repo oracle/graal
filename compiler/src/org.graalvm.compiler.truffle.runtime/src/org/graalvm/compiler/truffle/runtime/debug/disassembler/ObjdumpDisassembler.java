@@ -46,7 +46,7 @@ public class ObjdumpDisassembler implements Disassembler {
         final OutputStream objdumpInputStream = process.getOutputStream();
         final InputStream objdumpErrorStream = process.getErrorStream();
         final InputStream objdumpOutputStream = process.getInputStream();
-        objdumpInputStream.write(ElfWriter.writeElf(machineCode));
+        objdumpInputStream.write(ElfCoreWriter.writeElf(machineCode));
         objdumpInputStream.close();
         final ByteArrayOutputStream objdumpError = new ByteArrayOutputStream();
         final ByteArrayOutputStream objdumpOutput = new ByteArrayOutputStream();

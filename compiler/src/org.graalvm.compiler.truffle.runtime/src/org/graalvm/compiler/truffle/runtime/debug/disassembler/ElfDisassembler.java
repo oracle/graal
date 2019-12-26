@@ -36,7 +36,7 @@ public class ElfDisassembler implements Disassembler {
 
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final String elfFile = machineCode.fileName(".elf");
-        Files.write(Paths.get(elfFile), ElfWriter.writeElf(machineCode), StandardOpenOption.CREATE_NEW);
+        Files.write(Paths.get(elfFile), ElfCoreWriter.writeElf(machineCode), StandardOpenOption.CREATE_NEW);
         return String.format("written to %s", elfFile, machineCode.getAddress());
     }
 

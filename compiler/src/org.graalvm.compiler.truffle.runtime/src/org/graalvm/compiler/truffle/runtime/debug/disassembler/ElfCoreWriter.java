@@ -29,9 +29,9 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Writes machine code into a simple ELF format.
+ * Writes machine code into a simple ELF core format.
  */
-public class ElfWriter {
+public class ElfCoreWriter {
 
     private static final short FILE_HEADER_LENGTH = 64;
     private static final short PROGRAM_HEADER_LENGTH = 56;
@@ -68,7 +68,7 @@ public class ElfWriter {
         buffer.put((byte) 0);                           // ABI left blank
         buffer.put((byte) 0);                           // ABI version
         buffer.put(new byte[]{0, 0, 0, 0, 0, 0, 0});    // padding
-        buffer.putShort((short) 2);                     // executable
+        buffer.putShort((short) 4);                     // core
         buffer.putShort(getArchCode());
         buffer.putInt(1);                               // version
         buffer.putLong(machineCode.getAddress());       // entry point
