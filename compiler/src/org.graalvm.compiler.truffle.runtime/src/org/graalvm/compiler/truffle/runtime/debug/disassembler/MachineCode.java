@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
 import sun.misc.Unsafe;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
@@ -51,12 +53,59 @@ public class MachineCode {
         return code.length;
     }
 
-    public byte getByte(int n) {
-        return code[n];
+    public String disassemble(DisassemblyFormatType disassemblyFormat) throws IOException {
+        return createDisassembler(disassemblyFormat).disassemble(new MachineCodeAccessor() {
+
+            @Override
+            public long getAddress() {
+                return address;
+            }
+
+            @Override
+            public int getLength() {
+                return code.length;
+            }
+
+            @Override
+            public byte getByte(int n) {
+                return code[n];
+            }
+
+            @Override
+            public byte[] getBytes() {
+                return Arrays.copyOf(code, code.length);
+            }
+
+            @Override
+            public String fileName(String extension) {
+                return String.format("truffle_compiled_code_%d_0x%x_%d%s", getPid(), address, System.nanoTime(), extension);
+            }
+
+        });
     }
 
-    public byte[] getBytes() {
-        return Arrays.copyOf(code, code.length);
+    private Disassembler createDisassembler(DisassemblyFormatType disassemblyFormat) {
+        switch (disassemblyFormat) {
+            case HEX:
+                return new HexDisassembler();
+            case RAW:
+                return new RawDisassembler();
+            case ELF:
+                return new ElfDisassembler();
+            case OBJDUMP:
+                return new ObjdumpDisassembler();
+            default:
+                throw new UnsupportedOperationException();
+        }
+    }
+
+    private static long getPid() {
+        try {
+            final String info = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            return Long.parseLong(info.split("@")[0]);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static byte[] readCode(long address, int size) {

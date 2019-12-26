@@ -25,9 +25,16 @@
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
-public interface Disassembler {
+public class RawDisassembler implements Disassembler {
 
-    String disassemble(MachineCodeAccessor machineCodeAccessor) throws IOException;
+    public String disassemble(MachineCodeAccessor machineCode) throws IOException {
+        final String rawFile = machineCode.fileName(".raw");
+        Files.write(Paths.get(rawFile), machineCode.getBytes(), StandardOpenOption.CREATE_NEW);
+        return String.format("written to %s - load or disassemble at 0x%x", rawFile, machineCode.getAddress());
+    }
 
 }

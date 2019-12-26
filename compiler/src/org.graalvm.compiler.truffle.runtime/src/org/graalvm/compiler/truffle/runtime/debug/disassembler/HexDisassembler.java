@@ -24,10 +24,34 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
-import java.io.IOException;
+public class HexDisassembler implements Disassembler {
 
-public interface Disassembler {
+    public String disassemble(MachineCodeAccessor machineCodeAccessor) {
+        final StringBuilder builder = new StringBuilder();
 
-    String disassemble(MachineCodeAccessor machineCodeAccessor) throws IOException;
+        final int bytesPerLine = 32;
+
+        int p = 0;
+
+        while (p < machineCodeAccessor.getLength()) {
+            builder.append(String.format("0x%016x ", machineCodeAccessor.getAddress() + p));
+
+            for (int n = 0; n < bytesPerLine && p + n < machineCodeAccessor.getLength(); n++) {
+                if (n % 8 == 0) {
+                    builder.append(' ');
+                }
+
+                builder.append(String.format("%02x", Byte.toUnsignedInt(machineCodeAccessor.getByte(p + n))));
+            }
+
+            p += bytesPerLine;
+
+            if (p < machineCodeAccessor.getLength()) {
+                builder.append(System.lineSeparator());
+            }
+        }
+
+        return builder.toString();
+    }
 
 }

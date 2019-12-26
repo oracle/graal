@@ -191,7 +191,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             final long address = target.getCodeEntryPointAddress();
             final int size = result.getTargetCodeSize();
             final MachineCode machineCode = MachineCode.read(address, size);
-            final String disassembled = Disassembler.disassemble(disassemblyFormat, machineCode);
+            final String disassembled = machineCode.disassemble(disassemblyFormat);
             runtime.log(String.format("[truffle] disassembly of %s @ 0x%x for %s bytes%n%s", target.toString(), address, size, disassembled));
         } catch (Exception e) {
             runtime.log("Could not disassemble " + target.toString());
