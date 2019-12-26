@@ -321,7 +321,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> DisassembleOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
 
     @Option(help = "Format for disassembly.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
-    public static final OptionKey<DisassemblyFormatType> DisassemblyFormat = new OptionKey<>(DisassemblyFormatType.HEX, DisassemblyFormatType.OPTION_TYPE);
+    public static final OptionKey<DisassemblyFormatType> DisassemblyFormat = new OptionKey<>(DisassemblyFormatType.OBJDUMP, DisassemblyFormatType.OPTION_TYPE);
 
     // Inlining
 
