@@ -114,12 +114,9 @@ directory which you should then open in the C1 Visualizer.
 
 ## Disassembler
 
-`--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+PrintAssembly` prints assembly
-code. You will need to install `hsdis` using `mx hsdis` in `graal/compiler`,
-or manually into the current directory from
-https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel/.
+`--engine.PrintDisassembly` will disassemble Truffle-compiled methods using
+your system `objdump`. You can use it with `--engine.DisassembleOnly=foo` to
+see only that method. Remember to think about
+[controlling what is compiled](#controlling-what-is-compiled).
 
-Combine with `--vm.XX:TieredStopAtLevel=0` to disable compilation of runtime
-routines so that it's easier to find your guest-language method.
-
-Note that you can also look at assembly code in the C1 Visualizer.
+You can also look at assembly code in the C1 Visualizer.
