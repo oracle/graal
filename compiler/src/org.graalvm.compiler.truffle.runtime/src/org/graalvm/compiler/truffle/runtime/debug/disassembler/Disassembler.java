@@ -22,24 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.debug;
+package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
 import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
-import sun.misc.Unsafe;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.ByteChannel;
-import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -48,44 +43,42 @@ import java.nio.file.StandardOpenOption;
 
 public class Disassembler {
 
-    public static String disassemble(DisassemblyFormatType disassemblyFormat, long address, long size) throws IOException {
+    public static String disassemble(DisassemblyFormatType disassemblyFormat, MachineCode machineCode) throws IOException {
         switch (disassemblyFormat) {
             case HEX:
-                return disassembleHex(address, size);
+                return disassembleHex(machineCode);
             case RAW:
-                return disassembleRaw(address, size);
+                return disassembleRaw(machineCode);
             case ELF:
-                return disassembleElf(address, size);
+                return disassembleElf(machineCode);
             case OBJDUMP:
-                return disassembleObjdump(address, size);
+                return disassembleObjdump(machineCode);
             default:
                 throw new UnsupportedOperationException();
         }
     }
 
-    private static String disassembleHex(long address, long size) {
-        final byte[] code = readMemory(address, size);
-
+    private static String disassembleHex(MachineCode machineCode) {
         final StringBuilder builder = new StringBuilder();
 
         final int bytesPerLine = 32;
 
         int p = 0;
 
-        while (p < code.length) {
-            builder.append(String.format("0x%016x ", address + p));
+        while (p < machineCode.getLength()) {
+            builder.append(String.format("0x%016x ", machineCode.getAddress() + p));
 
-            for (int n = 0; n < bytesPerLine && p + n < code.length; n++) {
+            for (int n = 0; n < bytesPerLine && p + n < machineCode.getLength(); n++) {
                 if (n % 8 == 0) {
                     builder.append(' ');
                 }
 
-                builder.append(String.format("%02x", Byte.toUnsignedInt(code[p + n])));
+                builder.append(String.format("%02x", Byte.toUnsignedInt(machineCode.getByte(p + n))));
             }
 
             p += bytesPerLine;
 
-            if (p < code.length) {
+            if (p < machineCode.getLength()) {
                 builder.append(System.lineSeparator());
             }
         }
@@ -93,27 +86,26 @@ public class Disassembler {
         return builder.toString();
     }
 
-    private static String disassembleRaw(long address, long size) throws IOException {
-        final byte[] code = readMemory(address, size);
-        final String rawFile = String.format("truffle_compiled_code_%d_0x%x_%d.raw", getPid(), address, System.nanoTime());
-        Files.write(Paths.get(rawFile), code, StandardOpenOption.CREATE_NEW);
-        return String.format("written to %s - load or disassemble at 0x%x", rawFile, address);
+    private static String disassembleRaw(MachineCode machineCode) throws IOException {
+        final String rawFile = disassemblyName(machineCode, ".raw");
+        Files.write(Paths.get(rawFile), machineCode.getBytes(), StandardOpenOption.CREATE_NEW);
+        return String.format("written to %s - load or disassemble at 0x%x", rawFile, machineCode.getAddress());
     }
 
-    private static String disassembleElf(long address, long size) throws IOException {
-        final String rawFile = String.format("truffle_compiled_code_%d_0x%x_%d.elf", getPid(), address, System.nanoTime());
-        Files.write(Paths.get(rawFile), writeElf(address, size), StandardOpenOption.CREATE_NEW);
-        return String.format("written to %s", rawFile, address);
+    private static String disassembleElf(MachineCode machineCode) throws IOException {
+        final String elfFile = disassemblyName(machineCode, ".elf");
+        Files.write(Paths.get(elfFile), writeElf(machineCode), StandardOpenOption.CREATE_NEW);
+        return String.format("written to %s", elfFile, machineCode.getAddress());
     }
 
-    private static String disassembleObjdump(long address, long size) throws IOException {
+    private static String disassembleObjdump(MachineCode machineCode) throws IOException {
         final Process process = new ProcessBuilder()
                 .command("objdump", "--no-show-raw-insn", "-d", "/dev/stdin")
                 .start();
         final OutputStream objdumpInputStream = process.getOutputStream();
         final InputStream objdumpErrorStream = process.getErrorStream();
         final InputStream objdumpOutputStream = process.getInputStream();
-        objdumpInputStream.write(writeElf(address, size));
+        objdumpInputStream.write(writeElf(machineCode));
         objdumpInputStream.close();
         final ByteArrayOutputStream objdumpError = new ByteArrayOutputStream();
         final ByteArrayOutputStream objdumpOutput = new ByteArrayOutputStream();
@@ -157,14 +149,13 @@ public class Disassembler {
         }
     }
 
-    private static byte[] writeElf(long address, long size) {
-        final byte[] code = readMemory(address, size);
-        final int codePadding = code.length % 8;
+    private static byte[] writeElf(MachineCode machineCode) {
+        final int codePadding = machineCode.getLength() % 8;
         final short fileHeaderLength = 64;
         final short programHeaderLength = 56;
         final short sectionHeaderLength = 64;
         final byte[] sectionNames = "\0.shstrtab\0.text\0\0\0\0\0\0\0\0".getBytes(StandardCharsets.US_ASCII);
-        final ByteBuffer buffer = ByteBuffer.allocate(fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding + 3*sectionHeaderLength);
+        final ByteBuffer buffer = ByteBuffer.allocate(fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding + 3*sectionHeaderLength);
         buffer.order(ByteOrder.nativeOrder());
         // File header
         buffer.put(new byte[]{0x7f, 'E', 'L', 'F'});                                                    // magic
@@ -177,9 +168,9 @@ public class Disassembler {
         buffer.putShort((short) 2);                                                                     // executable
         buffer.putShort(getElfArch());                                                                  // architecture
         buffer.putInt(1);                                                                               // version
-        buffer.putLong(address);                                                                        // entry point
+        buffer.putLong(machineCode.getAddress());                                                       // entry point
         buffer.putLong(fileHeaderLength);                                                               // location of program header
-        buffer.putLong(fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding);     // location of section header table
+        buffer.putLong(fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding);     // location of section header table
         buffer.putInt(0);                                                                               // flags
         buffer.putShort(fileHeaderLength);                                                              // length of file header
         buffer.putShort(programHeaderLength);                                                           // length of program header
@@ -192,23 +183,23 @@ public class Disassembler {
         buffer.putInt(1);                                                                               // load
         buffer.putInt(0);                                                                               // flags
         buffer.putLong(fileHeaderLength + programHeaderLength + sectionNames.length);                   // location in image
-        buffer.putLong(address);                                                                        // virtual address
-        buffer.putLong(address);                                                                        // physical address
-        buffer.putLong(size);                                                                           // image size
-        buffer.putLong(size);                                                                           // memory size
+        buffer.putLong(machineCode.getAddress());                                                       // virtual address
+        buffer.putLong(machineCode.getAddress());                                                       // physical address
+        buffer.putLong(machineCode.getLength());                                                        // image size
+        buffer.putLong(machineCode.getLength());                                                        // memory size
         buffer.putLong(0);                                                                              // no alignment
         // Section names
         assert buffer.position() == fileHeaderLength + programHeaderLength;
         buffer.put(sectionNames);
         // Code
         assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length;
-        buffer.put(code);
+        buffer.put(machineCode.getBytes());
         buffer.put(new byte[codePadding]);
         // Null section header
-        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding;
+        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding;
         buffer.put(new byte[sectionHeaderLength]);
         // Section names section header table
-        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding + sectionHeaderLength;
+        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding + sectionHeaderLength;
         buffer.putInt(1);                                                                               // index 1 in section names
         buffer.putInt(3);                                                                               // string table
         buffer.putLong(0x20);                                                                           // null-terminated strings
@@ -220,41 +211,22 @@ public class Disassembler {
         buffer.putLong(8);                                                                              // alignment
         buffer.putLong(0);                                                                              // entry size
         // Text section header table
-        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding + 2*sectionHeaderLength;
+        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding + 2*sectionHeaderLength;
         buffer.putInt(11);                                                                              // index 11 in section names
         buffer.putInt(1);                                                                               // program data
         buffer.putLong(2 | 4);                                                                          // allocated and executable
-        buffer.putLong(address);                                                                        // virtual address
+        buffer.putLong(machineCode.getAddress());                                                       // virtual address
         buffer.putLong(fileHeaderLength + programHeaderLength + sectionNames.length);                   // image address
-        buffer.putLong(code.length + codePadding);                                                      // size
+        buffer.putLong(machineCode.getLength() + codePadding);                                          // size
         buffer.putInt(0);                                                                               // link
         buffer.putInt(0);                                                                               // extra
         buffer.putLong(8);                                                                              // alignment
         buffer.putLong(0);                                                                              // entry size
-        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding + 3*sectionHeaderLength;
+        assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + machineCode.getLength() + codePadding + 3*sectionHeaderLength;
         final byte[] bytes = new byte[buffer.position()];
         buffer.flip();
         buffer.get(bytes);
         return bytes;
-    }
-
-    private static byte[] readMemory(long address, long size) {
-        if (size > Integer.MAX_VALUE) {
-            throw new UnsupportedOperationException();
-        }
-
-        final byte[] bytes = new byte[(int) size];
-
-        for (int n = 0; n < bytes.length; n++) {
-            bytes[n] = UNSAFE.getByte(address + n);
-        }
-
-        return bytes;
-    }
-
-    private static long getPid() {
-        final String info = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-        return Long.parseLong(info.split("@")[0]);
     }
 
     private static short getElfArch() {
@@ -273,15 +245,16 @@ public class Disassembler {
         }
     }
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static String disassemblyName(MachineCode machineCode, String extension) {
+        return String.format("truffle_compiled_code_%d_0x%x_%d%s", getPid(), machineCode.getAddress(), System.nanoTime(), extension);
+    }
 
-    private static Unsafe getUnsafe() {
+    private static long getPid() {
         try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            return (Unsafe) f.get(null);
+            final String info = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            return Long.parseLong(info.split("@")[0]);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            return 0;
         }
     }
 

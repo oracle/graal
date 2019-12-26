@@ -40,6 +40,8 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.compiler.truffle.runtime.debug.disassembler.Disassembler;
+import org.graalvm.compiler.truffle.runtime.debug.disassembler.MachineCode;
 
 /**
  * Traces AST-level compilation events with a detailed log message sent to the Truffle log stream
@@ -187,8 +189,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private void printDisassembly(OptimizedCallTarget target, CompilationResultInfo result, DisassemblyFormatType disassemblyFormat) {
         try {
             final long address = target.getCodeEntryPointAddress();
-            final long size = result.getTargetCodeSize();
-            final String disassembled = Disassembler.disassemble(disassemblyFormat, address, size);
+            final int size = result.getTargetCodeSize();
+            final MachineCode machineCode = MachineCode.read(address, size);
+            final String disassembled = Disassembler.disassemble(disassemblyFormat, machineCode);
             runtime.log(String.format("[truffle] disassembly of %s @ 0x%x for %s bytes%n%s", target.toString(), address, size, disassembled));
         } catch (Exception e) {
             runtime.log("Could not disassemble " + target.toString());
