@@ -28,6 +28,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Writes machine code into a simple ELF format.
+ */
 public class ElfWriter {
 
     private static final short FILE_HEADER_LENGTH = 64;

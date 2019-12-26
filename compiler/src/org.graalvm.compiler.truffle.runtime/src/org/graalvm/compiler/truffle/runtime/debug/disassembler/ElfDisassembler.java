@@ -29,6 +29,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+/**
+ * Facilitates disassembling or other analysis of machine code by writing it to an ELF file.
+ */
 public class ElfDisassembler implements Disassembler {
 
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {

@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+/*
+ * Provides read-only low-level access to machine code.
+ */
 public interface MachineCodeAccessor {
 
     long getAddress();

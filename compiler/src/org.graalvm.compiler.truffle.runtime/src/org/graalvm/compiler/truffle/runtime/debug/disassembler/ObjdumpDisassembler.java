@@ -33,6 +33,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 
+/**
+ * Disassembles machine code by running it through objdump, which needs to be available on the path. Standard versions
+ * included in at least recent Linux distributions and macOS can be used.
+ */
 public class ObjdumpDisassembler implements Disassembler {
 
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {

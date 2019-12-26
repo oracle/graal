@@ -26,6 +26,11 @@ package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
 import java.io.IOException;
 
+/**
+ * A disassembler which can take {@link MachineCodeAccessor} and produce a string disassembly of it, or a reference
+ * to a file that it has output. This may not literally be a disassembly, but some useful format of the machine code
+ * for use in tooling.
+ */
 public interface Disassembler {
 
     String disassemble(MachineCodeAccessor machineCodeAccessor) throws IOException;

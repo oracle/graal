@@ -31,6 +31,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
+/**
+ * Represents machine code for disassembly purposes.
+ */
 public class MachineCode {
 
     private final long address;

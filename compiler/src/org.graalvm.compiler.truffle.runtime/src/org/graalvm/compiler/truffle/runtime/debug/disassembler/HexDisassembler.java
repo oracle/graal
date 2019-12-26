@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+/**
+ * Prints machine code as hexidecimal.
+ */
 public class HexDisassembler implements Disassembler {
 
     private static final int BYTES_PER_LINE = 32;
