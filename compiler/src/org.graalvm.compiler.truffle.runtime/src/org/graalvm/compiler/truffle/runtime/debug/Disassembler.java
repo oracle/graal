@@ -171,11 +171,11 @@ public class Disassembler {
         buffer.put((byte) 2);                                                                           // 64-bit
         buffer.put((byte) (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? 1 : 2));                // byte order
         buffer.put((byte) 1);                                                                           // version
-        buffer.put((byte) 0);                                                                           // ABI
+        buffer.put((byte) 0);                                                                           // ABI left blank
         buffer.put((byte) 0);                                                                           // ABI version
         buffer.put(new byte[]{0, 0, 0, 0, 0, 0, 0});                                                    // padding
         buffer.putShort((short) 2);                                                                     // executable
-        buffer.putShort((short) 0x3e);                                                                  // AMD64
+        buffer.putShort(getElfArch());                                                                  // architecture
         buffer.putInt(1);                                                                               // version
         buffer.putLong(address);                                                                        // entry point
         buffer.putLong(fileHeaderLength);                                                               // location of program header
@@ -211,7 +211,7 @@ public class Disassembler {
         assert buffer.position() == fileHeaderLength + programHeaderLength + sectionNames.length + code.length + codePadding + sectionHeaderLength;
         buffer.putInt(1);                                                                               // index 1 in section names
         buffer.putInt(3);                                                                               // string table
-        buffer.putLong(0x20);                                                                           // flags
+        buffer.putLong(0x20);                                                                           // null-terminated strings
         buffer.putLong(0);                                                                              // virtual address
         buffer.putLong(fileHeaderLength + programHeaderLength);                                         // image address
         buffer.putLong(sectionNames.length);                                                            // size
@@ -255,6 +255,22 @@ public class Disassembler {
     private static long getPid() {
         final String info = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
         return Long.parseLong(info.split("@")[0]);
+    }
+
+    private static short getElfArch() {
+        final String osArch = System.getProperty("os.arch");
+        switch (osArch) {
+            case "sparc":
+                return 0x02;
+            case "x86_64":
+                return 0x3e;
+             case "amd64":
+                return 0x3e;
+            case "aarch64":
+                return 0xb7;
+            default:
+                throw new UnsupportedOperationException("unknown architecture " + osArch + " for ELF");
+        }
     }
 
     private static final Unsafe UNSAFE = getUnsafe();
