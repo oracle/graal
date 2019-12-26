@@ -26,31 +26,24 @@ package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
 public class HexDisassembler implements Disassembler {
 
+    private static final int BYTES_PER_LINE = 32;
+
     public String disassemble(MachineCodeAccessor machineCodeAccessor) {
         final StringBuilder builder = new StringBuilder();
-
-        final int bytesPerLine = 32;
-
         int p = 0;
-
         while (p < machineCodeAccessor.getLength()) {
             builder.append(String.format("0x%016x ", machineCodeAccessor.getAddress() + p));
-
-            for (int n = 0; n < bytesPerLine && p + n < machineCodeAccessor.getLength(); n++) {
+            for (int n = 0; n < BYTES_PER_LINE && p + n < machineCodeAccessor.getLength(); n++) {
                 if (n % 8 == 0) {
                     builder.append(' ');
                 }
-
                 builder.append(String.format("%02x", Byte.toUnsignedInt(machineCodeAccessor.getByte(p + n))));
             }
-
-            p += bytesPerLine;
-
+            p += BYTES_PER_LINE;
             if (p < machineCodeAccessor.getLength()) {
                 builder.append(System.lineSeparator());
             }
         }
-
         return builder.toString();
     }
 
