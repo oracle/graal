@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
@@ -66,6 +67,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import sun.misc.Unsafe;
 
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
@@ -192,6 +194,21 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public FrameInstance getCurrentFrame() {
         return getThreadLocalStackTrace();
+    }
+
+    @Override
+    public void loadFence() {
+        UNSAFE.loadFence();
+    }
+
+    @Override
+    public void storeFence() {
+        UNSAFE.storeFence();
+    }
+
+    @Override
+    public void fullFence() {
+        UNSAFE.fullFence();
     }
 
     private DefaultFrameInstance getThreadLocalStackTrace() {
@@ -343,5 +360,18 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         }
 
     }
+
+    @SuppressWarnings("restriction")
+    private static Unsafe getUnsafe() {
+        try {
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (Unsafe) field.get(null);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new Error(e);
+        }
+    }
+
+    private static final Unsafe UNSAFE = getUnsafe();
 
 }

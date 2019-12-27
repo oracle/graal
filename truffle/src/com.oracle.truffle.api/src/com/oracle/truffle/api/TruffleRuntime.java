@@ -217,4 +217,22 @@ public interface TruffleRuntime {
      */
     boolean isProfilingEnabled();
 
+    /**
+     * Ensures lack of reordering of loads before the fence
+     * with loads or stores after the fence.
+     */
+    void loadFence();
+
+    /**
+     * Ensures lack of reordering of stores before the fence
+     * with loads or stores after the fence.
+     */
+    void storeFence();
+
+    /**
+     * Ensures lack of reordering of loads or stores before the fence
+     * with loads or stores after the fence.
+     */
+    void fullFence();
+
 }

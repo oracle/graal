@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.api.Truffle;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
@@ -525,7 +526,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     @Override
     public void fullFence() {
-        unsafe.fullFence();
+        Truffle.getRuntime().fullFence();
     }
 
     /**

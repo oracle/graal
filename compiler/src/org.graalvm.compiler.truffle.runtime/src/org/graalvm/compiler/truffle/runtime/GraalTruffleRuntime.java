@@ -35,6 +35,7 @@ import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -122,6 +123,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.truffle.runtime.debug.JFRListener;
+import sun.misc.Unsafe;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
@@ -1087,6 +1089,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return getAnnotation(TruffleBoundary.class, method) != null;
     }
 
+    @Override
+    public void loadFence() {
+        UNSAFE.loadFence();
+    }
+
+    @Override
+    public void storeFence() {
+        UNSAFE.storeFence();
+    }
+
+    @Override
+    public void fullFence() {
+        UNSAFE.fullFence();
+    }
+
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 
     private static BailoutException handleAnnotationFailure(NoClassDefFoundError e, String attemptedAction) {
@@ -1120,5 +1137,18 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", type.toJavaName(), annotationClass.getName()));
         }
     }
+
+    @SuppressWarnings("restriction")
+    private static Unsafe getUnsafe() {
+        try {
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (Unsafe) field.get(null);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new Error(e);
+        }
+    }
+
+    private static final Unsafe UNSAFE = getUnsafe();
 
 }
