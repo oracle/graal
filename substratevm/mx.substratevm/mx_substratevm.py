@@ -1192,7 +1192,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
-def helloworld(args):
+def helloworld(args, config=None):
     """
     builds a Hello, World! native image.
     """
@@ -1208,6 +1208,7 @@ def helloworld(args):
     native_image_context_run(
         lambda native_image, a:
             _helloworld(native_image, javac_command, output_path, a), unmask(parsed.image_args),
+        config=config,
         build_if_missing=True
     )
 
