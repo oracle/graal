@@ -110,4 +110,4 @@ if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
     set -x
 fi
 
-exec "${location}/<jre_bin>/java" "${jvm_args[@]}" <extra_jvm_args> -cp "${cp}" '<main_class>' "${launcher_args[@]}"
+exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" -cp "${cp}" '<main_class>' "${launcher_args[@]}"

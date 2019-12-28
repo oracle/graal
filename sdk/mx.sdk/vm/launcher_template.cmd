@@ -102,4 +102,4 @@ if not "%~1"=="" (
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" %jvm_args% <extra_jvm_args> -cp "%realcp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%realcp%" <main_class> %launcher_args%
