@@ -29,6 +29,7 @@
 from __future__ import print_function
 
 import os
+import copy
 import time
 import re
 import tempfile
@@ -1299,9 +1300,8 @@ def build(args, vm=None):
     orig_command_build(args, vm)
 
 
-def _ensure_vm_built():
+def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
-    config = graalvm_jvm_configs[-1]
     rebuild_vm = False
     mx.ensure_dir_exists(svmbuild_dir())
     if not mx.is_windows():
@@ -1325,12 +1325,16 @@ def _ensure_vm_built():
             f.write(rev_value)
         build_native_image_image(config)
 
+def graalvm_jvm_config():
+    config = copy.deepcopy(graalvm_jvm_configs[-1])
+    config.dynamicimports.extend([x for x, _ in mx.get_dynamic_imports()])
+    return config
 
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
-    _ensure_vm_built()
+    config = graalvm_jvm_config()
+    _ensure_vm_built(config)
     if mx.is_windows():
-        config = graalvm_jvm_configs[-1]
         executable = vm_native_image_path(config)
     else:
         vm_link = join(svmbuild_dir(), 'vm')
@@ -1350,12 +1354,11 @@ def native_image_on_jvm(args, **kwargs):
 
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 
-
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
-    _ensure_vm_built()
+    config = graalvm_jvm_config()
+    _ensure_vm_built(config)
     if mx.is_windows():
-        config = graalvm_jvm_configs[-1]
         executable = vm_executable_path('native-image-configure', config)
     else:
         vm_link = join(svmbuild_dir(), 'vm')
