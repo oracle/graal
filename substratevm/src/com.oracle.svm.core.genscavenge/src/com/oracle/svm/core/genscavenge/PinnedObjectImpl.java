@@ -25,14 +25,15 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -75,7 +76,7 @@ public class PinnedObjectImpl implements PinnedObject {
     static class PinnedObjectFeature implements Feature {
         @Override
         public boolean isInConfiguration(IsInConfigurationAccess access) {
-            return HeapOptions.UseCardRememberedSetHeap.getValue();
+            return SubstrateOptions.UseCardRememberedSetHeap.getValue();
         }
 
         @Override

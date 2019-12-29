@@ -38,6 +38,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -578,7 +579,7 @@ public class AlignedHeapChunk extends HeapChunk {
 class AlignedHeapChunkMemoryWalkerAccessFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return HeapOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 
     @Override

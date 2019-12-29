@@ -29,6 +29,8 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+
 @Platforms(Platform.HOSTED_ONLY.class)
 class UseCardRememberedSetHeap implements BooleanSupplier {
     UseCardRememberedSetHeap() {
@@ -36,6 +38,6 @@ class UseCardRememberedSetHeap implements BooleanSupplier {
 
     @Override
     public boolean getAsBoolean() {
-        return HeapOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 }
