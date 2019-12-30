@@ -384,11 +384,12 @@ public final class VMOperationControl {
             }
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public IsolateThread getIsolateThread() {
             return isolateThread;
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isRunning() {
             return running;
         }
