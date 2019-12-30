@@ -89,6 +89,23 @@ public abstract class TraceWriter implements Closeable {
      * @param args Arguments to the call, which may contain arrays (which can contain more arrays)
      */
     public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, Object... args) {
+        Map<String, Object> entry = createTraceEntry(tracer, function, clazz, declaringClass, callerClass, result,
+                        args);
+        traceEntry(entry);
+    }
+
+    public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass,
+                    Object result, boolean allowWrite, boolean unsafeAccess, String fieldName) {
+        Map<String, Object> entry = createTraceEntry(tracer, function, clazz, declaringClass, callerClass, result,
+                        fieldName);
+        entry.put("allowWrite", allowWrite);
+        entry.put("unsafeAccess", unsafeAccess);
+        traceEntry(entry);
+    }
+
+    @SuppressWarnings("static-method")
+    private Map<String, Object> createTraceEntry(String tracer, String function, Object clazz, Object declaringClass,
+                    Object callerClass, Object result, Object... args) {
         Map<String, Object> entry = new HashMap<>();
         entry.put("tracer", tracer);
         entry.put("function", function);
@@ -103,6 +120,19 @@ public abstract class TraceWriter implements Closeable {
         }
         if (result != null) {
             entry.put("result", handleSpecialValue(result));
+        }
+        if (args != null) {
+            entry.put("args", handleSpecialValue(args));
+        }
+        return entry;
+    }
+
+    public void traceCall(String tracer, String function, String clazz, Object... args) {
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("tracer", tracer);
+        entry.put("function", function);
+        if (clazz != null) {
+            entry.put("class", clazz);
         }
         if (args != null) {
             entry.put("args", handleSpecialValue(args));

@@ -44,6 +44,9 @@ import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
+import static com.oracle.svm.jvmtiagentbase.Support.getIntArgument;
+import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethodL;
+import static com.oracle.svm.jvmtiagentbase.Support.getMethodName;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
@@ -61,7 +64,10 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.core.jdk.serialize.MethodAccessorNameGenerator;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -84,6 +90,7 @@ import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
+
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
@@ -131,6 +138,7 @@ final class BreakpointInterceptor {
     private static ResourceAccessVerifier resourceVerifier;
     private static NativeImageAgent agent;
 
+    private static AccessAdvisor accessAdvisor = new AccessAdvisor();
     private static Map<Long, Breakpoint> installedBreakpoints;
 
     /**
@@ -162,7 +170,11 @@ final class BreakpointInterceptor {
 
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
-    private static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result, Object... args) {
+    static {
+        accessAdvisor.setInLivePhase(true);
+    }
+
+    static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result, Object... args) {
         if (traceWriter != null) {
             traceWriter.traceCall("reflect",
                             function,
@@ -171,6 +183,18 @@ final class BreakpointInterceptor {
                             getClassNameOr(env, callerClass, null, TraceWriter.UNKNOWN_VALUE),
                             result,
                             args);
+            guarantee(!testException(env));
+        }
+    }
+
+    static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass,
+                    JNIObjectHandle callerClass, String function, boolean allowWrite, boolean unsafeAccess, Object result,
+                    String fieldName) {
+        if (traceWriter != null) {
+            traceWriter.traceCall("reflect", function, getClassNameOr(env, clazz, null, TraceWriter.UNKNOWN_VALUE),
+                            getClassNameOr(env, declaringClass, null, TraceWriter.UNKNOWN_VALUE),
+                            getClassNameOr(env, callerClass, null, TraceWriter.UNKNOWN_VALUE), result, allowWrite, unsafeAccess,
+                            fieldName);
             guarantee(!testException(env));
         }
     }
@@ -507,6 +531,20 @@ final class BreakpointInterceptor {
         JNIMethodId result = nullPointer();
         String name = "<init>";
         String signature = "()V";
+        /*
+         * "sun.reflect.MethodAccessorGenerator$1" is added as Include in AccessAdvisor's
+         * internalsFilter in order to support serialization/deserialization. But newInstance call
+         * in sun.reflect.MethodAccessorGenerator$1 is invoked in 3 cases: 1. Reflection for method
+         * invoke 2. Reflection for newInstance invoke 3. Serialization/deserialization The first
+         * two cases are removed from native-image runtime. The third case is traced by
+         * com.oracle.svm.agent.SerializationSupport.traceReflects. Therefore don't trace the call
+         * here to avoid introducing unnecessary items in the reflection configuration file.
+         */
+        String callerClassName = getClassNameOrNull(jni, callerClass);
+        if (callerClassName != null && callerClassName.equals("sun.reflect.MethodAccessorGenerator$1")) {
+            return false;
+        }
+
         JNIObjectHandle self = getObjectArgument(0);
         if (self.notEqual(nullHandle())) {
             try (CCharPointerHolder ctorName = toCString(name); CCharPointerHolder ctorSignature = toCString(signature)) {
@@ -676,6 +714,172 @@ final class BreakpointInterceptor {
             forceGetResourceReturn(jni, returnsEnumeration);
         }
         return allowed;
+    }
+
+    /**
+     * Replace the returned value of method sun.reflect.MethodAccessorGenerator.generateName(). The
+     * returned generated name's postfix is changed from a counter value to the declaring class'
+     * name. So the generated serialization constructor support class' name shall be fixed name from
+     * different runs.
+     */
+    @SuppressWarnings("unused")
+    private static boolean generateName(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        boolean isConstructor = getIntArgument(0) == 0 ? false : true;
+        boolean forSerialization = getIntArgument(1) == 0 ? false : true;
+        // Get declaringClass from generate() method
+        String generatedClassName = getGeneratedClassName(jni, getObjectArgument(1, 1), isConstructor, forSerialization);
+        try (CCharPointerHolder name = toCString(generatedClassName)) {
+            JNIObjectHandle newRet = jniFunctions().getNewStringUTF().invoke(jni, name.get());
+            if (jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), newRet) == JvmtiError.JVMTI_ERROR_NONE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String getGeneratedClassName(JNIEnvironment jni, JNIObjectHandle declaringClass, boolean isConstructor, boolean forSerialization) {
+        String declaringClassName = getClassNameOrNull(jni, declaringClass);
+        if (declaringClassName == null) {
+            throw new RuntimeException("Cannot find class name");
+        }
+        return MethodAccessorNameGenerator.generateClassName(isConstructor, forSerialization, declaringClassName);
+    }
+
+    /**
+     * java.lang.ClassLoader.postDefineClass is always called in java.lang.ClassLoader.defineClass,
+     * so intercepting postDefineClass is equivalent to intercepting defineClass but with extra
+     * benefit of being always able to get defined class' name even if defineClass' classname
+     * parameter is null.
+     */
+    @SuppressWarnings("unused")
+    private static boolean postDefineClass(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        boolean isDynamicallyGenerated = false;
+        // Get class name from the argument "name" of
+        // defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain)
+        // The first argument is implicitly "this", so "name" is the 2nd parameter.
+        String nameFromDefineClassParam = fromJniString(jni, getObjectArgument(1, 1));
+        final String definedClassName;
+        // 1. Don't have a name for class before defining.
+        // The class is dynamically generated.
+        if (nameFromDefineClassParam == null) {
+            isDynamicallyGenerated = true;
+            definedClassName = getClassNameOrNull(jni, getObjectArgument(1));
+        } else {
+            definedClassName = nameFromDefineClassParam;
+            // Filter out internal classes which are definitely not dynamically generated
+            if (accessAdvisor.shouldIgnore(new LazyValue<>(() -> definedClassName), new LazyValue<>(() -> definedClassName))) {
+                return false;
+            }
+
+            // 2. Class with name starts with $ or contains $$ is usually dynamically generated
+            String className = definedClassName.substring(definedClassName.lastIndexOf('.') + 1);
+            if (className.startsWith("$") || className.contains("$$")) {
+                isDynamicallyGenerated = true;
+            } else {
+                // 3. A dynamically defined class always return null
+                // when call java.lang.ClassLoader.getResource(classname)
+                // This is the accurate but slow way.
+                JNIObjectHandle self = getObjectArgument(0);
+                String asResourceName = definedClassName.replace('.', '/') + ".class";
+                try (CCharPointerHolder resourceNameHolder = toCString(asResourceName);) {
+                    JNIObjectHandle resourceNameJString = jniFunctions().getNewStringUTF().invoke(jni, resourceNameHolder.get());
+                    JNIObjectHandle returnValue = callObjectMethodL(jni, self, agent.handles().javaLangClassLoaderGetResource, resourceNameJString);
+                    isDynamicallyGenerated = returnValue.equal(nullHandle());
+                }
+            }
+        }
+        if (isDynamicallyGenerated) {
+            DynamicClassGenerationSupport dynamicSupport = DynamicClassGenerationSupport.getDynamicClassGenerationSupport(jni, callerClass,
+                            definedClassName, traceWriter, agent);
+            if (!dynamicSupport.dumpDefinedClass()) {
+                return false;
+            }
+            return dynamicSupport.traceReflects();
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * Disable reflection inflation for 2 reasons:
+     * <li>1. Javassit and Spring use reflection to call java.lang.ClassLoader.defineClass. A fixed
+     * stacktrace would be easier to track to find out if the defineClass is called from reflection.
+     * </li>
+     * <li>2. native-image build time doesn't need any reflection inflation information so it's safe
+     * to disable it.</li>
+     */
+    @SuppressWarnings("unused")
+    private static boolean inflationThreshold(JNIEnvironment jni, Breakpoint bp) {
+        if (jvmtiFunctions().ForceEarlyReturnInt().invoke(jvmtiEnv(), nullHandle(), 10000) == JvmtiError.JVMTI_ERROR_NONE) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Handle Class<?> sun.reflect.ClassDefiner.defineClass(String name, byte[] bytes, int off, int
+     * len, ClassLoader parentClassLoader) Dump dynamic defined class to file.
+     */
+    @SuppressWarnings("unused")
+    private static boolean defineClass(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        JNIMethodId method = getCallerMethod(4);
+        String methodName = getMethodName(method);
+        JNIObjectHandle declaringClass = getMethodDeclaringClass(method);
+        String declaringClassName = getClassNameOr(jni, declaringClass, "null", "exception");
+
+        // Only dump dynamically defined class from sun.reflect.MethodAccessorGenerator.generate
+        if (methodName.equals("generate") && declaringClassName != null &&
+                        declaringClassName.equals("sun.reflect.MethodAccessorGenerator")) {
+            // isConstructor parameter of generate method
+            boolean isConstructor = getIntArgument(4, 7) == 0 ? false : true;
+            // forSerialization parameter of generate method
+            boolean forSerialization = getIntArgument(4, 8) == 0 ? false : true;
+            // The first method argument is class name
+            String generatedClassName = fromJniString(jni, getObjectArgument(0));
+            JNIObjectHandle class2Generate = getObjectArgument(4, 1);
+            JNIObjectHandle serializationTargetClass = getObjectArgument(4, 9);
+            DynamicClassGenerationSupport serializationSupport = DynamicClassGenerationSupport.getSerializeSupport(jni, callerClass,
+                            class2Generate, generatedClassName, serializationTargetClass, traceWriter, agent);
+
+            if (isConstructor && !forSerialization) {
+                int i = 0;
+                // Walk along the stack trace to find out if current method is
+                // called from serialization/deserialization
+                while (true) {
+                    JNIMethodId m = getCallerMethod(i);
+                    if (m == nullPointer()) {
+                        break;
+                    }
+                    String cName = getClassNameOrNull(jni, getMethodDeclaringClass(m));
+                    String mName = getMethodName(m);
+                    if (cName == null || mName == null) {
+                        break;
+                    }
+                    String fullName = cName + "." + mName;
+                    // Mark is from serialization/deserialization
+                    if (fullName.equals("java.io.ObjectInputStream.readObject") || fullName.equals("java.io.ObjectOutputStream.writeObject")) {
+                        forSerialization = true;
+                        break;
+                    }
+                    i++;
+                }
+            }
+            if (isConstructor && forSerialization) {
+                if (!serializationSupport.dumpDefinedClass()) {
+                    return false;
+                }
+                if (serializationSupport.traceReflects()) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean newProxyInstance(JNIEnvironment jni, Breakpoint bp) {
@@ -1217,6 +1421,13 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
+                    /*
+                     * For dumping dynamically generated classes
+                     */
+                    brk("java/lang/ClassLoader", "postDefineClass", "(Ljava/lang/Class;Ljava/security/ProtectionDomain;)V", BreakpointInterceptor::postDefineClass),
+                    brk("sun/reflect/ClassDefiner", "defineClass", "(Ljava/lang/String;[BIILjava/lang/ClassLoader;)Ljava/lang/Class;", BreakpointInterceptor::defineClass),
+                    brk("sun/reflect/MethodAccessorGenerator", "generateName", "(ZZ)Ljava/lang/String;", BreakpointInterceptor::generateName),
+                    brk("sun/reflect/ReflectionFactory", "inflationThreshold", "()I", BreakpointInterceptor::inflationThreshold),
 
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",

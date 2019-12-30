@@ -174,12 +174,29 @@ public final class Support {
         return nullPointer();
     }
 
-    public static JNIObjectHandle getObjectArgument(int slot) {
+    public static JNIObjectHandle getObjectArgument(int depth, int slot) {
         WordPointer handlePtr = StackValue.get(WordPointer.class);
-        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), depth, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
             return nullHandle();
         }
         return handlePtr.read();
+    }
+
+    public static JNIObjectHandle getObjectArgument(int slot) {
+        return getObjectArgument(0, slot);
+    }
+
+    public static int getIntArgument(int depth, int slot) {
+        CIntPointer handlePtr = StackValue.get(CIntPointer.class);
+        JvmtiError error = jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), depth, slot, handlePtr);
+        if (error != JvmtiError.JVMTI_ERROR_NONE) {
+            throw new RuntimeException(error.toString());
+        }
+        return handlePtr.read();
+    }
+
+    public static int getIntArgument(int slot) {
+        return getIntArgument(0, slot);
     }
 
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
@@ -214,6 +231,16 @@ public final class Support {
         return declaringClass.read();
     }
 
+    public static String getMethodName(JNIMethodId method) {
+        String name = null;
+        CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
+        if (jvmtiFunctions().GetMethodName().invoke(jvmtiEnv(), method, namePtr, nullPointer(), nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
+            name = fromCString(namePtr.read());
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
+        }
+        return name;
+    }
+
     public static String getFieldName(JNIObjectHandle clazz, JNIFieldId field) {
         String name = null;
         CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
@@ -222,6 +249,16 @@ public final class Support {
             jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
         }
         return name;
+    }
+
+    public static int getFieldModifiers(JNIObjectHandle clazz, JNIFieldId field) {
+        int modifier = -1;
+        CIntPointer modifiersPtr = StackValue.get(CIntPointer.class);
+        if (jvmtiFunctions().GetFieldModifiers().invoke(jvmtiEnv(), clazz, field,
+                        modifiersPtr) == JvmtiError.JVMTI_ERROR_NONE) {
+            modifier = modifiersPtr.read();
+        }
+        return modifier;
     }
 
     public static boolean clearException(JNIEnvironment localEnv) {

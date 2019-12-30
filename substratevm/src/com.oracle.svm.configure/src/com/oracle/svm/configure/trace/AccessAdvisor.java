@@ -51,6 +51,13 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
+        // For dynamically generated classes and serializations
+        internalCallerFilter.addOrGetChildren("sun.reflect.MethodAccessorGenerator$1", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.io.ObjectInputStream", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.io.ObjectOutputStream", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.io.ObjectStreamClass", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("com.sun.org.apache.**", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("javax.xml.**", RuleNode.Inclusion.Include);
         internalCallerFilter.removeRedundantNodes();
 
         accessWithoutCallerFilter = RuleNode.createRoot();

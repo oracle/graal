@@ -123,6 +123,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected int onLoadCallback(JNIJavaVM vm, JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, String options) {
         String traceOutputFile = null;
         String configOutputDir = null;
+        String dynclassDumpDir = null;
         ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean restrict = false;
@@ -154,6 +155,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (token.startsWith("config-merge-dir=")) {
                     mergeConfigs.addDirectory(Paths.get(configOutputDir));
                 }
+            } else if (token.startsWith("dynmaic-class-dump-dir=")) {
+                if (dynclassDumpDir != null) {
+                    System.err.println(MESSAGE_PREFIX + "cannot specify dynmaic-class-dump-dir= more than once.");
+                    return 1;
+                }
+                dynclassDumpDir = getTokenValue(token);
+                DynamicClassGenerationSupport.setDynClassDumpDir(dynclassDumpDir);
             } else if (token.startsWith("restrict-all-dir")) {
                 /* Used for testing */
                 restrictConfigs.addDirectory(Paths.get(getTokenValue(token)));

@@ -173,6 +173,22 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, WordPointer signaturePtr, WordPointer genericPtr);
     }
 
+    @CField("GetClassFields")
+    GetClassFieldsFunctionPointer GetClassFields();
+
+    interface GetClassFieldsFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer fieldCountPtr, WordPointer fieldsPtr);
+    }
+
+    @CField("GetClassMethods")
+    GetClassMethodsFunctionPointer GetClassMethods();
+
+    interface GetClassMethodsFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer methodCountPtr, WordPointer methodsPtr);
+    }
+
     @CField("GetMethodModifiers")
     GetMethodModifiersFunctionPointer GetMethodModifiers();
 
@@ -260,4 +276,13 @@ public interface JvmtiInterface extends PointerBase {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer classCountPtr, WordPointer classesPtr);
     }
+
+    @CField("ForceEarlyReturnInt")
+    ForceEarlyReturnIntFunctionPointer ForceEarlyReturnInt();
+
+    interface ForceEarlyReturnIntFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle thread, int value);
+    }
+
 }

@@ -143,7 +143,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 memberKind = ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false, unsafeAccess);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, entry.containsKey("allowWrite") ? (Boolean) entry.get("allowWrite") : false,
+                                entry.containsKey("unsafeAccess") ? (Boolean) entry.get("unsafeAccess") : unsafeAccess);
+                if (!clazzOrDeclaringClass.equals(clazz)) {
+                    configuration.getOrCreateType(clazz).setAllPublicFields();
+                }
                 break;
             }
 

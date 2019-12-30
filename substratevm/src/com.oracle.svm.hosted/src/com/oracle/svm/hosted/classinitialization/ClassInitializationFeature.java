@@ -187,8 +187,11 @@ public class ClassInitializationFeature implements Feature {
         classInitializationSupport.checkDelayedInitialization();
 
         for (AnalysisType type : access.getUniverse().getTypes()) {
+            DynamicHub hub = access.getHostVM().dynamicHub(type);
+            boolean hasCLinit = (type.isArray() || type.getClassInitializer() == null) ? false : true;
+            hub.setHasCLinit(hasCLinit);
+
             if (type.isInTypeCheck() || type.isInstantiated()) {
-                DynamicHub hub = access.getHostVM().dynamicHub(type);
                 if (hub.getClassInitializationInfo() == null) {
                     buildClassInitializationInfo(access, type, hub);
                     access.requireAnalysisIteration();

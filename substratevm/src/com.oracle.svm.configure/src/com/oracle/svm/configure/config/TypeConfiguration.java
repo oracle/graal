@@ -63,7 +63,12 @@ public class TypeConfiguration implements JsonPrintable {
         }
         if (n > 0) { // transform to Java source syntax
             StringBuilder sb = new StringBuilder(s.length() + n);
-            sb.append(s, n + 1, s.length() - 1); // cut off leading '[' and 'L' and trailing ';'
+            if (s.charAt(n) == 'L' && s.charAt(s.length() - 1) == ';') {
+                sb.append(s, n + 1, s.length() - 1); // cut off leading '[' and 'L' and trailing ';'
+            } else {
+                return types.computeIfAbsent(s, ConfigurationType::new);
+            }
+
             for (int i = 0; i < n; i++) {
                 sb.append("[]");
             }

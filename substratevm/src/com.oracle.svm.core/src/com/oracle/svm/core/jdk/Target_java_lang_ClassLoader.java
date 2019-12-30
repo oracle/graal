@@ -26,19 +26,21 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Enumeration;
+import java.util.Collections;
+import java.util.Vector;
+import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -219,6 +221,37 @@ final class Target_java_lang_ClassLoader {
             res.add(Resources.createURL(name, data));
         }
         return Collections.enumeration(res);
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain)
+                    throws ClassFormatError {
+        // 1. Get passed in class name
+        String className = name;
+        // 2. name is null indicates the class is generated at runtime.
+        // Try to retrieve the class name from bytes.
+        if (className == null) {
+            try {
+                className = ClassLoaderHelper.retrieveClassName(b);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return ClassLoaderHelper.doDefineClass(className);
+    }
+
+    @Substitute
+    Class<?> defineClass(String name, byte[] b, int off, int len)
+                    throws ClassFormatError {
+        return defineClass(name, b, off, len, null);
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    protected Class<?> defineClass(String name, java.nio.ByteBuffer b,
+                    ProtectionDomain protectionDomain) {
+        return ClassLoaderHelper.doDefineClass(name);
     }
 
     @Substitute
@@ -422,4 +455,83 @@ final class Target_java_lang_AssertionStatusDirectives {
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
 final class Target_java_lang_NamedPackage {
+}
+
+final class ClassLoaderHelper {
+
+    public static Class<?> doDefineClass(String name) {
+        try {
+            return ClassForNameSupport.forName(name, false);
+        } catch (ClassNotFoundException e) {
+            throw new ClassFormatError("class " + name + " has not been prepared.");
+        }
+    }
+
+    public static String retrieveClassName(byte[] classContents) throws IOException {
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(classContents));
+        in.readInt(); // magic
+        in.readUnsignedShort(); // minor_version
+        in.readUnsignedShort(); // major_version
+
+        Map<Integer, Object> pool = new HashMap<>();
+        int count = in.readUnsignedShort();
+        // Checkstyle: stop
+        for (int i = 1; i < count; i++) {
+            int tag = in.readUnsignedByte();
+            switch (tag) {
+                case 7: // CONSTANT_Class
+                    pool.putIfAbsent(i, in.readUnsignedShort());
+                    break;
+                case 8:// CONSTANT_String
+                case 16:// CONSTANT_MethodType
+                    in.readUnsignedShort();
+                    break;
+                case 6: // CONSTANT_Double
+                    in.readDouble();
+                    i++;
+                    break;
+                case 9:// CONSTANT_Fieldref
+                case 10:// CONSTANT_Methodref
+                case 11:// CONSTANT_InterfaceMethodref
+                case 12:// CONSTANT_NameAndType
+                case 18:// CONSTANT_InvokeDynamic
+                    in.readUnsignedShort();
+                    in.readUnsignedShort();
+                    break;
+                case 4:// CONSTANT_Float
+                    in.readFloat();
+                    break;
+                case 3:// CONSTANT_Integer
+                    in.readInt();
+                    break;
+                case 5:// CONSTANT_Long
+                    in.readLong();
+                    i++;
+                    break;
+                case 15:// CONSTANT_MethodHandle
+                    in.readUnsignedByte();
+                    in.readUnsignedShort();
+                    break;
+                case 1:// CONSTANT_Utf8
+                    pool.putIfAbsent(i, in.readUTF());
+                    break;
+                default:
+                    return null;
+            }
+        }
+        // Checkstyle: resume
+        in.readUnsignedShort(); // AccessFlags
+        int thisClass = in.readUnsignedShort();
+        Object indx = pool.get(thisClass);
+        if (indx instanceof Integer) {
+            Object ret = pool.get((int) indx);
+            if (ret instanceof String) {
+                return (String) ret;
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
 }

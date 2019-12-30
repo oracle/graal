@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
@@ -38,6 +40,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
     final JNIMethodId javaUtilEnumerationHasMoreElements;
     final JNIMethodId javaUtilMissingResourceExceptionCtor3;
+    public final JNIMethodId javaLangClassLoaderGetResource;
     final JNIObjectHandle javaLangClassLoader;
     public final JNIObjectHandle javaLangSecurityException;
     public final JNIObjectHandle javaLangNoClassDefFoundError;
@@ -65,6 +68,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
 
+        javaLangClassLoaderGetResource = getMethodId(env, findClass(env, "java/lang/ClassLoader"), "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
+
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
         javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
@@ -72,8 +77,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
 
-        javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
         javaLangSecurityException = newClassGlobalRef(env, "java/lang/SecurityException");
+        javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
         javaLangNoClassDefFoundError = newClassGlobalRef(env, "java/lang/NoClassDefFoundError");
         javaLangNoSuchMethodError = newClassGlobalRef(env, "java/lang/NoSuchMethodError");
         javaLangNoSuchMethodException = newClassGlobalRef(env, "java/lang/NoSuchMethodException");

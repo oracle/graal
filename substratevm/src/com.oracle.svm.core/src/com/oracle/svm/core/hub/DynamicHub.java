@@ -258,6 +258,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private ClassInitializationInfo classInitializationInfo;
 
+    public boolean isHasCLinit() {
+        return hasCLinit;
+    }
+
+    public void setHasCLinit(boolean hasCLinit) {
+        this.hasCLinit = hasCLinit;
+    }
+
+    /**
+     * Indicates if this class originally has a <clinit> method. It is used for serialization
+     * support.
+     */
+    private boolean hasCLinit;
+
     /**
      * Classloader used for loading this class during image-build time.
      */
