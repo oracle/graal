@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
@@ -78,4 +79,7 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
+
+    @NodeIntrinsic
+    public static native Object formatObject(Pointer memory, Class<?> hub, boolean rememberedSet, boolean fillContents, boolean emitMemoryBarrier);
 }

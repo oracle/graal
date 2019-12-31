@@ -48,7 +48,8 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.genscavenge.graal.AllocationIntrinsics;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -187,7 +188,7 @@ public final class ThreadLocalAllocation {
         assert memory.isNonNull();
 
         /* Install the DynamicHub and zero the fields. */
-        return AllocationIntrinsics.formatObject(memory, DynamicHub.toClass(hub), rememberedSet, true, true);
+        return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), rememberedSet, true, true);
     }
 
     /** Slow path of array allocation snippet. */
@@ -264,7 +265,7 @@ public final class ThreadLocalAllocation {
         Pointer memory = allocateMemory(tlab, size);
         assert memory.isNonNull();
         /* Install the DynamicHub and length, and zero the elements. */
-        return AllocationIntrinsics.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, false, true, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, false, true, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -278,7 +279,7 @@ public final class ThreadLocalAllocation {
         assert memory.isNonNull();
 
         /* Install the DynamicHub and length, and zero the elements. */
-        return AllocationIntrinsics.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, true, true, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, rememberedSet, true, true, true);
     }
 
     /**

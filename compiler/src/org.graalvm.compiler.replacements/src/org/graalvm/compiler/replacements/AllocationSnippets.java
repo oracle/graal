@@ -73,9 +73,8 @@ public abstract class AllocationSnippets implements Snippets {
         Word end = readTlabEnd(thread);
         ReplacementsUtil.runtimeAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
-        // We do an unsigned multiplication so that a negative array length will result in an array
-        // size greater than Integer.MAX_VALUE, which is larger than the largest possible TLAB. So,
-        // a negative array length will always end up in the stub call.
+        // A negative array length will result in an array size larger than the largest possible
+        // TLAB. Therefore, this case will always end up in the stub call.
         UnsignedWord allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
         Word newTop = top.add(allocationSize);
 
@@ -107,6 +106,10 @@ public abstract class AllocationSnippets implements Snippets {
         return WordFactory.unsigned(arrayAllocationSize(length, headerSize, log2ElementSize, alignment));
     }
 
+    /**
+     * We do an unsigned multiplication so that a negative array length will result in an array size
+     * greater than Integer.MAX_VALUE.
+     */
     public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
         long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + headerSize + (alignment - 1);
         long mask = ~(alignment - 1);
