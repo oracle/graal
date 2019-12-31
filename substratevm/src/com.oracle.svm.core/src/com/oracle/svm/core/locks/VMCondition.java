@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.locks;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -82,6 +83,15 @@ public class VMCondition {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(@SuppressWarnings("unused") long nanoseconds) {
+        throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
+    }
+
+    /**
+     * Like {@linkplain #blockNoTransition()}, but an unspecified lock owner is used. Only use this
+     * method in places where {@linkplain CurrentIsolate#getCurrentThread()} can return null.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void blockNoTransitionUnspecifiedOwner() {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }
 
