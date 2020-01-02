@@ -57,4 +57,14 @@ public final class EmptyListener implements VMListener {
     public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
         return false;
     }
+
+    @Override
+    public void holdEvents() {
+
+    }
+
+    @Override
+    public void releaseEvents() {
+
+    }
 }

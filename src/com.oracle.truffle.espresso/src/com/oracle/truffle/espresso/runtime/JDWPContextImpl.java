@@ -60,6 +60,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private final EspressoContext context;
     private final Ids<Object> ids;
     private JDWPSetup setup;
+    private VMListener eventListener = new EmptyListener();
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -73,9 +74,9 @@ public final class JDWPContextImpl implements JDWPContext {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
             DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
             setup.setup(debugger, control, context.JDWPOptions, this);
-            return control.getEventListener();
+            eventListener = control.getEventListener();
         }
-        return new EmptyListener();
+        return eventListener;
     }
 
     public void finalizeContext() {
@@ -495,5 +496,14 @@ public final class JDWPContextImpl implements JDWPContext {
     public void exit(int exitCode) {
         // TODO - implement proper system exit for Espresso
         // tracked here: /browse/GR-20496
+    }
+
+    public void holdEvents() {
+        eventListener.holdEvents();
+    }
+
+    @Override
+    public void releaseEvents() {
+        eventListener.releaseEvents();
     }
 }
