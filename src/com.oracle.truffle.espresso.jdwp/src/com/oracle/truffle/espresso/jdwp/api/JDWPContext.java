@@ -351,4 +351,14 @@ public interface JDWPContext {
      * exception is not thrown and finally blocks are not run.
      */
     void exit(int exitCode);
+
+     /**
+      *  This method is called when the VM should hold JDWP events.
+     */
+    void holdEvents();
+
+    /**
+     * This method is called when the VM should release all held JDWP events.
+     */
+    void releaseEvents();
 }

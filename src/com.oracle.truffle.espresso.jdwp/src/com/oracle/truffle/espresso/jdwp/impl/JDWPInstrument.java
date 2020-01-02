@@ -54,6 +54,9 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     public void reset(boolean prepareForReconnect) {
+        // close the connection to the debugger
+        connection.close();
+
         // stop all running jdwp threads in an orderly fashion
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
@@ -73,9 +76,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                 // ignore
             }
         }
-
-        // close the connection to the debugger
-        connection.close();
 
         // re-enable GC for all objects
         controller.getGCPrevention().clearAll();

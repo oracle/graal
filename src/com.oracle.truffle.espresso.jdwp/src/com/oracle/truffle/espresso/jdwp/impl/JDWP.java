@@ -152,13 +152,13 @@ final class JDWP {
             static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                return new CommandResult(reply, Collections.singletonList(new Callable<Void>() {
+                return new CommandResult(reply, null, Collections.singletonList(new Callable<Void>() {
                     @Override
                     public Void call() throws Exception {
                         controller.disposeDebugger(true);
                         return null;
                     }
-                }), null);
+                }));
             }
         }
 
@@ -263,6 +263,30 @@ final class JDWP {
                     /* long objectID = */ input.readLong();
                     /* int refCount = */ input.readInt();
                 }
+                return new CommandResult(reply);
+            }
+        }
+
+        static class HOLD_EVENTS {
+            public static final int ID = 15;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                context.holdEvents();
+
+                return new CommandResult(reply);
+            }
+        }
+
+        static class RELEASE_EVENTS {
+            public static final int ID = 16;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                context.releaseEvents();
+
                 return new CommandResult(reply);
             }
         }
