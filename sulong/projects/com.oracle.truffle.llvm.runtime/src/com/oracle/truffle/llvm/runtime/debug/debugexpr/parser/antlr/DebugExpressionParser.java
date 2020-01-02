@@ -60,7 +60,7 @@ import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class DebugExpressionParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.7.1", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -78,27 +78,37 @@ public class DebugExpressionParser extends Parser {
 		RULE_addExpr = 8, RULE_shiftExpr = 9, RULE_relExpr = 10, RULE_eqExpr = 11, 
 		RULE_andExpr = 12, RULE_xorExpr = 13, RULE_orExpr = 14, RULE_logAndExpr = 15, 
 		RULE_logOrExpr = 16, RULE_expr = 17, RULE_dType = 18, RULE_baseType = 19;
-	public static final String[] ruleNames = {
-		"debugExpr", "primExpr", "designator", "actPars", "unaryExpr", "unaryOP", 
-		"castExpr", "multExpr", "addExpr", "shiftExpr", "relExpr", "eqExpr", "andExpr", 
-		"xorExpr", "orExpr", "logAndExpr", "logOrExpr", "expr", "dType", "baseType"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"debugExpr", "primExpr", "designator", "actPars", "unaryExpr", "unaryOP", 
+			"castExpr", "multExpr", "addExpr", "shiftExpr", "relExpr", "eqExpr", 
+			"andExpr", "xorExpr", "orExpr", "logAndExpr", "logOrExpr", "expr", "dType", 
+			"baseType"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'['", "']'", "','", "'sizeof'", "'?'", "':'", "'void'", "'long'", 
-		"'('", "')'", "'*'", "'+'", "'-'", "'/'", "'||'", "'&&'", "'.'", "'->'", 
-		"'!'", "'~'", "'%'", "'>>'", "'<<'", "'>'", "'<'", "'>='", "'<='", "'=='", 
-		"'!='", "'&'", "'|'", "'^'", "'signed'", "'unsigned'", "'int'", "'LONG'", 
-		"'short'", "'float'", "'double'", "'char'", "'typeof'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, "LAPR", "RAPR", 
-		"ASTERISC", "PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", "POINTER", 
-		"EXCLAM", "TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", "GTE", "LTE", 
-		"EQ", "NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", "LONG", "SHORT", 
-		"FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", "FLOATNUMBER", 
-		"CHARCONST", "WS"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'['", "']'", "','", "'sizeof'", "'?'", "':'", "'void'", "'long'", 
+			"'('", "')'", "'*'", "'+'", "'-'", "'/'", "'||'", "'&&'", "'.'", "'->'", 
+			"'!'", "'~'", "'%'", "'>>'", "'<<'", "'>'", "'<'", "'>='", "'<='", "'=='", 
+			"'!='", "'&'", "'|'", "'^'", "'signed'", "'unsigned'", "'int'", "'LONG'", 
+			"'short'", "'float'", "'double'", "'char'", "'typeof'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, "LAPR", "RAPR", 
+			"ASTERISC", "PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", 
+			"POINTER", "EXCLAM", "TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", 
+			"GTE", "LTE", "EQ", "NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", 
+			"LONG", "SHORT", "FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", 
+			"FLOATNUMBER", "CHARCONST", "WS"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**
@@ -178,6 +188,7 @@ public class DebugExpressionParser extends Parser {
 		super(input);
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
+
 	public static class DebugExprContext extends ParserRuleContext {
 		public ExprContext expr;
 		public TerminalNode EOF() { return getToken(DebugExpressionParser.EOF, 0); }
@@ -230,6 +241,7 @@ public class DebugExpressionParser extends Parser {
 		public ExprContext expr() {
 			return getRuleContext(ExprContext.class,0);
 		}
+		public TerminalNode RAPR() { return getToken(DebugExpressionParser.RAPR, 0); }
 		public TerminalNode IDENT() { return getToken(DebugExpressionParser.IDENT, 0); }
 		public TerminalNode NUMBER() { return getToken(DebugExpressionParser.NUMBER, 0); }
 		public TerminalNode FLOATNUMBER() { return getToken(DebugExpressionParser.FLOATNUMBER, 0); }
@@ -336,6 +348,14 @@ public class DebugExpressionParser extends Parser {
 		public ActParsContext actPars(int i) {
 			return getRuleContext(ActParsContext.class,i);
 		}
+		public List<TerminalNode> DOT() { return getTokens(DebugExpressionParser.DOT); }
+		public TerminalNode DOT(int i) {
+			return getToken(DebugExpressionParser.DOT, i);
+		}
+		public List<TerminalNode> POINTER() { return getTokens(DebugExpressionParser.POINTER); }
+		public TerminalNode POINTER(int i) {
+			return getToken(DebugExpressionParser.POINTER, i);
+		}
 		public List<TerminalNode> IDENT() { return getTokens(DebugExpressionParser.IDENT); }
 		public TerminalNode IDENT(int i) {
 			return getToken(DebugExpressionParser.IDENT, i);
@@ -439,6 +459,7 @@ public class DebugExpressionParser extends Parser {
 		public List l;
 		public ExprContext expr;
 		public TerminalNode LAPR() { return getToken(DebugExpressionParser.LAPR, 0); }
+		public TerminalNode RAPR() { return getToken(DebugExpressionParser.RAPR, 0); }
 		public List<ExprContext> expr() {
 			return getRuleContexts(ExprContext.class);
 		}
@@ -527,6 +548,7 @@ public class DebugExpressionParser extends Parser {
 		public DTypeContext dType() {
 			return getRuleContext(DTypeContext.class,0);
 		}
+		public TerminalNode RAPR() { return getToken(DebugExpressionParser.RAPR, 0); }
 		public UnaryExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -598,6 +620,11 @@ public class DebugExpressionParser extends Parser {
 	public static class UnaryOPContext extends ParserRuleContext {
 		public char kind;
 		public Token t;
+		public TerminalNode ASTERISC() { return getToken(DebugExpressionParser.ASTERISC, 0); }
+		public TerminalNode PLUS() { return getToken(DebugExpressionParser.PLUS, 0); }
+		public TerminalNode MINUS() { return getToken(DebugExpressionParser.MINUS, 0); }
+		public TerminalNode TILDA() { return getToken(DebugExpressionParser.TILDA, 0); }
+		public TerminalNode EXCLAM() { return getToken(DebugExpressionParser.EXCLAM, 0); }
 		public UnaryOPContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -648,9 +675,14 @@ public class DebugExpressionParser extends Parser {
 		public TerminalNode LAPR(int i) {
 			return getToken(DebugExpressionParser.LAPR, i);
 		}
+		public List<TerminalNode> RAPR() { return getTokens(DebugExpressionParser.RAPR); }
+		public TerminalNode RAPR(int i) {
+			return getToken(DebugExpressionParser.RAPR, i);
+		}
 		public DTypeContext dType() {
 			return getRuleContext(DTypeContext.class,0);
 		}
+		public TerminalNode TYPEOF() { return getToken(DebugExpressionParser.TYPEOF, 0); }
 		public TerminalNode IDENT() { return getToken(DebugExpressionParser.IDENT, 0); }
 		public CastExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -757,6 +789,18 @@ public class DebugExpressionParser extends Parser {
 		public CastExprContext castExpr(int i) {
 			return getRuleContext(CastExprContext.class,i);
 		}
+		public List<TerminalNode> ASTERISC() { return getTokens(DebugExpressionParser.ASTERISC); }
+		public TerminalNode ASTERISC(int i) {
+			return getToken(DebugExpressionParser.ASTERISC, i);
+		}
+		public List<TerminalNode> DIVIDE() { return getTokens(DebugExpressionParser.DIVIDE); }
+		public TerminalNode DIVIDE(int i) {
+			return getToken(DebugExpressionParser.DIVIDE, i);
+		}
+		public List<TerminalNode> MODULAR() { return getTokens(DebugExpressionParser.MODULAR); }
+		public TerminalNode MODULAR(int i) {
+			return getToken(DebugExpressionParser.MODULAR, i);
+		}
 		public MultExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -846,6 +890,14 @@ public class DebugExpressionParser extends Parser {
 		public MultExprContext multExpr(int i) {
 			return getRuleContext(MultExprContext.class,i);
 		}
+		public List<TerminalNode> PLUS() { return getTokens(DebugExpressionParser.PLUS); }
+		public TerminalNode PLUS(int i) {
+			return getToken(DebugExpressionParser.PLUS, i);
+		}
+		public List<TerminalNode> MINUS() { return getTokens(DebugExpressionParser.MINUS); }
+		public TerminalNode MINUS(int i) {
+			return getToken(DebugExpressionParser.MINUS, i);
+		}
 		public AddExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -924,6 +976,14 @@ public class DebugExpressionParser extends Parser {
 		public AddExprContext addExpr(int i) {
 			return getRuleContext(AddExprContext.class,i);
 		}
+		public List<TerminalNode> SHIFTL() { return getTokens(DebugExpressionParser.SHIFTL); }
+		public TerminalNode SHIFTL(int i) {
+			return getToken(DebugExpressionParser.SHIFTL, i);
+		}
+		public List<TerminalNode> SHIFTR() { return getTokens(DebugExpressionParser.SHIFTR); }
+		public TerminalNode SHIFTR(int i) {
+			return getToken(DebugExpressionParser.SHIFTR, i);
+		}
 		public ShiftExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1001,6 +1061,22 @@ public class DebugExpressionParser extends Parser {
 		}
 		public ShiftExprContext shiftExpr(int i) {
 			return getRuleContext(ShiftExprContext.class,i);
+		}
+		public List<TerminalNode> LT() { return getTokens(DebugExpressionParser.LT); }
+		public TerminalNode LT(int i) {
+			return getToken(DebugExpressionParser.LT, i);
+		}
+		public List<TerminalNode> GT() { return getTokens(DebugExpressionParser.GT); }
+		public TerminalNode GT(int i) {
+			return getToken(DebugExpressionParser.GT, i);
+		}
+		public List<TerminalNode> LTE() { return getTokens(DebugExpressionParser.LTE); }
+		public TerminalNode LTE(int i) {
+			return getToken(DebugExpressionParser.LTE, i);
+		}
+		public List<TerminalNode> GTE() { return getTokens(DebugExpressionParser.GTE); }
+		public TerminalNode GTE(int i) {
+			return getToken(DebugExpressionParser.GTE, i);
 		}
 		public RelExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1102,6 +1178,14 @@ public class DebugExpressionParser extends Parser {
 		public RelExprContext relExpr(int i) {
 			return getRuleContext(RelExprContext.class,i);
 		}
+		public List<TerminalNode> EQ() { return getTokens(DebugExpressionParser.EQ); }
+		public TerminalNode EQ(int i) {
+			return getToken(DebugExpressionParser.EQ, i);
+		}
+		public List<TerminalNode> NE() { return getTokens(DebugExpressionParser.NE); }
+		public TerminalNode NE(int i) {
+			return getToken(DebugExpressionParser.NE, i);
+		}
 		public EqExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1180,6 +1264,10 @@ public class DebugExpressionParser extends Parser {
 		public EqExprContext eqExpr(int i) {
 			return getRuleContext(EqExprContext.class,i);
 		}
+		public List<TerminalNode> AND() { return getTokens(DebugExpressionParser.AND); }
+		public TerminalNode AND(int i) {
+			return getToken(DebugExpressionParser.AND, i);
+		}
 		public AndExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1236,6 +1324,10 @@ public class DebugExpressionParser extends Parser {
 		}
 		public AndExprContext andExpr(int i) {
 			return getRuleContext(AndExprContext.class,i);
+		}
+		public List<TerminalNode> XOR() { return getTokens(DebugExpressionParser.XOR); }
+		public TerminalNode XOR(int i) {
+			return getToken(DebugExpressionParser.XOR, i);
 		}
 		public XorExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1294,6 +1386,10 @@ public class DebugExpressionParser extends Parser {
 		public XorExprContext xorExpr(int i) {
 			return getRuleContext(XorExprContext.class,i);
 		}
+		public List<TerminalNode> OR() { return getTokens(DebugExpressionParser.OR); }
+		public TerminalNode OR(int i) {
+			return getToken(DebugExpressionParser.OR, i);
+		}
 		public OrExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1351,6 +1447,10 @@ public class DebugExpressionParser extends Parser {
 		public OrExprContext orExpr(int i) {
 			return getRuleContext(OrExprContext.class,i);
 		}
+		public List<TerminalNode> LOGICAND() { return getTokens(DebugExpressionParser.LOGICAND); }
+		public TerminalNode LOGICAND(int i) {
+			return getToken(DebugExpressionParser.LOGICAND, i);
+		}
 		public LogAndExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1407,6 +1507,10 @@ public class DebugExpressionParser extends Parser {
 		}
 		public LogAndExprContext logAndExpr(int i) {
 			return getRuleContext(LogAndExprContext.class,i);
+		}
+		public List<TerminalNode> LOGICOR() { return getTokens(DebugExpressionParser.LOGICOR); }
+		public TerminalNode LOGICOR(int i) {
+			return getToken(DebugExpressionParser.LOGICOR, i);
 		}
 		public LogOrExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1534,6 +1638,10 @@ public class DebugExpressionParser extends Parser {
 		public BaseTypeContext baseType() {
 			return getRuleContext(BaseTypeContext.class,0);
 		}
+		public List<TerminalNode> ASTERISC() { return getTokens(DebugExpressionParser.ASTERISC); }
+		public TerminalNode ASTERISC(int i) {
+			return getToken(DebugExpressionParser.ASTERISC, i);
+		}
 		public List<TerminalNode> NUMBER() { return getTokens(DebugExpressionParser.NUMBER); }
 		public TerminalNode NUMBER(int i) {
 			return getToken(DebugExpressionParser.NUMBER, i);
@@ -1629,6 +1737,14 @@ public class DebugExpressionParser extends Parser {
 		public DTypeContext dType() {
 			return getRuleContext(DTypeContext.class,0);
 		}
+		public TerminalNode RAPR() { return getToken(DebugExpressionParser.RAPR, 0); }
+		public TerminalNode CHAR() { return getToken(DebugExpressionParser.CHAR, 0); }
+		public TerminalNode SHORT() { return getToken(DebugExpressionParser.SHORT, 0); }
+		public TerminalNode INT() { return getToken(DebugExpressionParser.INT, 0); }
+		public TerminalNode FLOAT() { return getToken(DebugExpressionParser.FLOAT, 0); }
+		public TerminalNode DOUBLE() { return getToken(DebugExpressionParser.DOUBLE, 0); }
+		public TerminalNode SIGNED() { return getToken(DebugExpressionParser.SIGNED, 0); }
+		public TerminalNode UNSIGNED() { return getToken(DebugExpressionParser.UNSIGNED, 0); }
 		public BaseTypeContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
