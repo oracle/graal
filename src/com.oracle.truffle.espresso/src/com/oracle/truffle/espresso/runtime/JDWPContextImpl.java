@@ -24,12 +24,14 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.lang.reflect.Array;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -505,5 +507,15 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public void releaseEvents() {
         eventListener.releaseEvents();
+    }
+
+    @Override
+    public List<Path> getClassPath() {
+        return context.getVmProperties().classpath();
+    }
+
+    @Override
+    public List<Path> getBootClassPath() {
+        return context.getVmProperties().bootClasspath();
     }
 }

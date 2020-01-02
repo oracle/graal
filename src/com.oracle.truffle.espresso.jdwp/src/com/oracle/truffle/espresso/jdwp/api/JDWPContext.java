@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
+import java.nio.file.Path;
+import java.util.List;
+
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
  */
@@ -369,4 +372,18 @@ public interface JDWPContext {
      * This method is called when the VM should release all held JDWP events.
      */
     void releaseEvents();
+
+    /**
+     * Returns the classpath.
+     *
+     * @return a list representation of each classpath entry
+     */
+    List<Path> getClassPath();
+
+    /**
+     * Returns the bootclasspath.
+     *
+     * @return a list representation of each bootclasspath entry
+     */
+    List<Path> getBootClassPath();
 }

@@ -279,6 +279,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.CAPABILITIES.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.CLASS_PATHS.ID:
+                                    result = JDWP.VirtualMachine.CLASS_PATHS.createReply(packet, context);
+                                    break;
                                 case JDWP.VirtualMachine.DISPOSE_OBJECTS.ID:
                                     result = JDWP.VirtualMachine.DISPOSE_OBJECTS.createReply(packet);
                                     break;
