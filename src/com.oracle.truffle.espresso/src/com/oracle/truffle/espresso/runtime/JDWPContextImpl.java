@@ -31,7 +31,6 @@ import java.util.List;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;

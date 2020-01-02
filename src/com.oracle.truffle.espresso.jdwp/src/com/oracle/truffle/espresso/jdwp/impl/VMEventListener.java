@@ -39,9 +39,9 @@ public interface VMEventListener extends VMListener {
 
     void addClassUnloadRequestId(int id);
 
-    void addThreadStartedRequestId(int id);
+    void addThreadStartedRequestId(int id, byte suspendPolicy);
 
-    void addThreadDiedRequestId(int id);
+    void addThreadDiedRequestId(int id, byte suspendPolicy);
 
     void addVMStartRequest(int id);
 
@@ -68,4 +68,8 @@ public interface VMEventListener extends VMListener {
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 
     void clearAllBreakpointRequests();
+
+    void removeThreadStartedRequestId();
+
+    void removeThreadDiedRequestId();
 }
