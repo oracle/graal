@@ -28,22 +28,28 @@ import java.util.concurrent.Callable;
 public final class CommandResult {
 
     private final PacketStream reply;
-    private final List<Callable<Void>> futures;
+    private final List<Callable<Void>> preFutures;
+    private final List<Callable<Void>> postFutures;
 
     CommandResult(PacketStream reply) {
-        this(reply, null);
+        this(reply, null, null);
     }
 
-    CommandResult(PacketStream reply, List<Callable<Void>> futures) {
+    CommandResult(PacketStream reply, List<Callable<Void>> preFutures, List<Callable<Void>> postFutures) {
         this.reply = reply;
-        this.futures = futures;
+        this.preFutures = preFutures;
+        this.postFutures = postFutures;
     }
 
     public PacketStream getReply() {
         return reply;
     }
 
-    public List<Callable<Void>> getFutures() {
-        return futures;
+    public List<Callable<Void>> getPreFutures() {
+        return preFutures;
+    }
+
+    public List<Callable<Void>> getPostFutures() {
+        return postFutures;
     }
 }

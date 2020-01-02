@@ -158,7 +158,7 @@ final class JDWP {
                         controller.disposeDebugger(true);
                         return null;
                     }
-                }));
+                }), null);
             }
         }
 
@@ -197,6 +197,25 @@ final class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
                 return new CommandResult(reply);
+            }
+        }
+
+        static class EXIT {
+            public static final int ID = 10;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                return new CommandResult(reply,
+                                null,
+                                Collections.singletonList(new Callable<Void>() {
+                                    @Override
+                                    public Void call()  {
+                                        context.exit(input.readInt());
+                                        return null;
+                                    }
+                                }));
             }
         }
 
@@ -1720,7 +1739,7 @@ final class JDWP {
 
                 JDWPLogger.log("status command for thread: %s with status: %s, suspended: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread), threadStatus, suspended);
 
-                return new CommandResult(reply, null);
+                return new CommandResult(reply);
             }
 
             private static int getThreadStatus(int jvmtiThreadStatus) {
@@ -2034,7 +2053,7 @@ final class JDWP {
                 int arrayLength = context.getArrayLength(array);
 
                 reply.writeInt(arrayLength);
-                return new CommandResult(reply, null);
+                return new CommandResult(reply);
             }
         }
 

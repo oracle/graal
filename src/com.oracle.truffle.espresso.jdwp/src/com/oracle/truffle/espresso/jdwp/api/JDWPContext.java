@@ -344,4 +344,11 @@ public interface JDWPContext {
      */
     KlassRef[] getNestedTypes(KlassRef klass);
 
+    /**
+     * Terminates the target VM with the given exit code. On some platforms, the exit code might be
+     * truncated, for example, to the low order 8 bits. All ids previously returned from the target
+     * VM become invalid. Threads running in the VM are abruptly terminated. A thread death
+     * exception is not thrown and finally blocks are not run.
+     */
+    void exit(int exitCode);
 }
