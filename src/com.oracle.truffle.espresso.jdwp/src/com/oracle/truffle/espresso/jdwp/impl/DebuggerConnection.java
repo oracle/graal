@@ -486,6 +486,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.SUSPEND_COUNT.ID:
                                     result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                     break;
+                                case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
+                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet);
+                                    break;
                             }
                             break;
                         case JDWP.ThreadGroupReference.ID:
