@@ -33,7 +33,9 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
+import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
@@ -246,6 +248,28 @@ final class JDWP {
                 reply.writeBoolean(false); // canGetOwnedMonitorInfo
                 reply.writeBoolean(false); // canGetCurrentContendedMonitor
                 reply.writeBoolean(false); // canGetMonitorInfo
+                return new CommandResult(reply);
+            }
+        }
+
+        static class CLASS_PATHS {
+            public static final int ID = 13;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                reply.writeString("");
+                List<Path> classPath = context.getClassPath();
+                reply.writeInt(classPath.size());
+                for (Path path : classPath) {
+                    reply.writeString(path.toAbsolutePath().toString());
+                }
+                List<Path> bootClassPath = context.getBootClassPath();
+                reply.writeInt(bootClassPath.size());
+                for (Path path : bootClassPath) {
+                    reply.writeString(path.toAbsolutePath().toString());
+                }
+
                 return new CommandResult(reply);
             }
         }
