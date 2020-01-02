@@ -150,10 +150,10 @@ public final class RequestedJDWPEvents {
                 eventListener.increaseFieldBreakpointCount();
                 break;
             case THREAD_START:
-                eventListener.addThreadStartedRequestId(packet.id);
+                eventListener.addThreadStartedRequestId(packet.id, suspendPolicy);
                 break;
             case THREAD_DEATH:
-                eventListener.addThreadDiedRequestId(packet.id);
+                eventListener.addThreadDiedRequestId(packet.id, suspendPolicy);
                 break;
             case CLASS_UNLOAD:
                 eventListener.addClassUnloadRequestId(packet.id);
@@ -324,10 +324,10 @@ public final class RequestedJDWPEvents {
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
                         break;
                     case THREAD_START:
-                        eventListener.addThreadStartedRequestId(packet.id);
+                        eventListener.removeThreadStartedRequestId();
                         break;
                     case THREAD_DEATH:
-                        eventListener.addThreadDiedRequestId(packet.id);
+                        eventListener.removeThreadDiedRequestId();
                         break;
                     case CLASS_UNLOAD:
                         eventListener.addClassUnloadRequestId(packet.id);
