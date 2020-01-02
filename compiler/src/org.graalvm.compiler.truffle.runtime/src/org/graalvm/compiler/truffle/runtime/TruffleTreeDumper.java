@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.PrintTruffleTrees;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintTruffleTrees;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
