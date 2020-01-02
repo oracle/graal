@@ -48,6 +48,7 @@ final class JDWP {
     private static final boolean CAN_REDEFINE_CLASSES = false;
     private static final boolean CAN_GET_INSTANCE_INFO = false;
     private static final boolean CAN_FORCE_EARLY_RETURN = false;
+    private static final boolean CAN_GET_MONITOR_FRAME_INFO = false;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
@@ -344,7 +345,7 @@ final class JDWP {
                 reply.writeBoolean(false); // canSetDefaultStratum
                 reply.writeBoolean(CAN_GET_INSTANCE_INFO); // canGetInstanceInfo
                 reply.writeBoolean(false); // canRequestMonitorEvents
-                reply.writeBoolean(false); // canGetMonitorFrameInfo
+                reply.writeBoolean(CAN_GET_MONITOR_FRAME_INFO); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
                 reply.writeBoolean(true); // canGetConstantPool
                 reply.writeBoolean(CAN_FORCE_EARLY_RETURN); // canForceEarlyReturn
@@ -1991,6 +1992,22 @@ final class JDWP {
 
                 reply.writeInt(suspensionCount);
                 return new CommandResult(reply);
+            }
+        }
+
+        static class OWNED_MONITORS_STACK_DEPTH_INFO {
+            public static final int ID = 13;
+
+            static CommandResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                if (!CAN_GET_MONITOR_FRAME_INFO) {
+                    // tracked by: /browse/GR-20413
+                    reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                    return new CommandResult(reply);
+                } else {
+                    throw new RuntimeException("Not implemented!");
+                }
             }
         }
 

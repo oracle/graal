@@ -99,7 +99,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isValidThread(Object thread) {
-        return context.isValidThread(thread);
+        if (thread instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) thread;
+            return context.getMeta().Thread.isAssignableFrom(staticObject.getKlass());
+        } else {
+            return false;
+        }
     }
 
     @Override
