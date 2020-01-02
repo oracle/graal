@@ -66,7 +66,7 @@ public final class DebuggerController implements ContextsListener {
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
-    private final Map<Object, Integer> commandRequestIds = new HashMap<>();
+    private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -137,8 +137,8 @@ public final class DebuggerController implements ContextsListener {
         return options.transport;
     }
 
-    public void setCommandRequestId(Object thread, int commandRequestId) {
-        commandRequestIds.put(thread, commandRequestId);
+    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy) {
+        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy));
     }
 
     /**
@@ -495,9 +495,9 @@ public final class DebuggerController implements ContextsListener {
         JDWPLogger.log("Suspending event thread: %s with new suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
 
         // if during stepping, send a step completed event back to the debugger
-        Integer id = commandRequestIds.get(thread);
-        if (id != null) {
-            eventListener.stepCompleted(id, currentFrame);
+        SteppingInfo info = commandRequestIds.get(thread);
+        if (info != null) {
+            eventListener.stepCompleted(info.getRequestId(), info.getSuspendPolicy(), thread, currentFrame);
         }
         // reset
         commandRequestIds.put(thread, null);
@@ -696,10 +696,10 @@ public final class DebuggerController implements ContextsListener {
         }
 
         private boolean checkExclusionFilters(SuspendedEvent event, Object thread, CallFrame frame) {
-            Integer id = commandRequestIds.get(thread);
+            SteppingInfo info = commandRequestIds.get(thread);
 
-            if (id != null) {
-                RequestFilter requestFilter = eventFilters.getRequestFilter(id);
+            if (info != null) {
+                RequestFilter requestFilter = eventFilters.getRequestFilter(info.getRequestId());
 
                 if (requestFilter != null && requestFilter.getStepInfo() != null) {
                     // we're currently stepping, so check if suspension point

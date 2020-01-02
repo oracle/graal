@@ -2010,7 +2010,6 @@ final class JDWP {
             public static final int ID = 14;
 
             static CommandResult createReply(Packet packet) {
-                PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 if (!CAN_FORCE_EARLY_RETURN) {

@@ -424,11 +424,11 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void stepCompleted(int commandRequestId, CallFrame currentFrame) {
+    public void stepCompleted(int commandRequestId, byte suspendPolicy, Object guestThread, CallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        // tracked by /browse/GR-19816
-        stream.writeByte(SuspendStrategy.EVENT_THREAD);
+        stream.writeByte(suspendPolicy);
+        suspend(suspendPolicy, guestThread);
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
