@@ -2462,6 +2462,20 @@ final class JDWP {
         }
     }
 
+    static class Event {
+        public static final int ID = 64;
+
+        static class COMPOSITE {
+            public static final int ID = 100;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                return new CommandResult(reply);
+            }
+        }
+    }
+
     private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
             case BOOLEAN:

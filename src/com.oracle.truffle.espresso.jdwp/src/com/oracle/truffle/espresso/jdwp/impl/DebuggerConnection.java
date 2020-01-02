@@ -584,6 +584,17 @@ public final class DebuggerConnection implements Commands {
                             }
                             break;
                         }
+                        case JDWP.Event.ID: {
+                            switch (packet.cmd) {
+                                case JDWP.Event.COMPOSITE.ID: {
+                                    result = JDWP.Event.COMPOSITE.createReply(packet, context);
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
                         default:
                             break;
                     }
