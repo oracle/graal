@@ -25,10 +25,12 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
+import java.util.Arrays;
+
 public abstract class AbstractBreakpointInfo implements BreakpointInfo {
 
     private final RequestFilter filter;
-    private Breakpoint breakpoint;
+    private Breakpoint[] breakpoints = new Breakpoint[0];
     private byte suspendPolicy;
 
     public AbstractBreakpointInfo(RequestFilter filter) {
@@ -36,13 +38,14 @@ public abstract class AbstractBreakpointInfo implements BreakpointInfo {
     }
 
     @Override
-    public void setBreakpoint(Breakpoint bp) {
-        this.breakpoint = bp;
+    public void addBreakpoint(Breakpoint bp) {
+        breakpoints = Arrays.copyOf(breakpoints, breakpoints.length + 1);
+        breakpoints[breakpoints.length - 1] = bp;
     }
 
     @Override
-    public Breakpoint getBreakpoint() {
-        return breakpoint;
+    public Breakpoint[] getBreakpoints() {
+        return breakpoints;
     }
 
     @Override
@@ -53,6 +56,11 @@ public abstract class AbstractBreakpointInfo implements BreakpointInfo {
     @Override
     public int getRequestId() {
         return filter.getRequestId();
+    }
+
+    @Override
+    public byte getEventKind() {
+        return filter.getEventKind();
     }
 
     @Override

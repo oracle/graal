@@ -2468,7 +2468,7 @@ final class JDWP {
         static class COMPOSITE {
             public static final int ID = 100;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
                 return new CommandResult(reply);

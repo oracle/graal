@@ -151,7 +151,7 @@ public final class DebuggerController implements ContextsListener {
         try {
             Breakpoint bp = Breakpoint.newBuilder(location.getSource()).lineIs(location.getLineNumber()).build();
             bp.setEnabled(true);
-            int ignoreCount = command.getBreakpointInfo().getFilter().getIgnoreCount();
+            int ignoreCount = command.getRequestFilter().getIgnoreCount();
             if (ignoreCount > 0) {
                 bp.setIgnoreCount(ignoreCount);
             }
@@ -163,6 +163,30 @@ public final class DebuggerController implements ContextsListener {
             // perhaps the debugger's view on the source is out of sync, in which case
             // the bytecode and source does not match.
             JDWPLogger.log("Failed submitting breakpoint at non-existing location: %s", JDWPLogger.LogLevel.ALL, location);
+        }
+    }
+
+    public void submitMethodEntryBreakpoint(DebuggerCommand debuggerCommand) {
+        // method entry breakpoints are limited per class, so we must
+        // install a first line breakpoint into each method in the class
+        KlassRef[] klasses = debuggerCommand.getRequestFilter().getKlassRefPatterns();
+        List<Breakpoint> breakpoints = new ArrayList<>();
+        for (KlassRef klass : klasses) {
+            for (MethodRef method : klass.getDeclaredMethods()) {
+                int line = method.getFirstLine();
+                Breakpoint bp;
+                if (line != -1) {
+                    bp = Breakpoint.newBuilder(method.getSource()).lineIs(line).build();
+                } else {
+                    bp = Breakpoint.newBuilder(method.getSource().createUnavailableSection()).build();
+                }
+                breakpoints.add(bp);
+            }
+        }
+        BreakpointInfo breakpointInfo = debuggerCommand.getBreakpointInfo();
+        for (Breakpoint breakpoint : breakpoints) {
+            mapBreakpoint(breakpoint, breakpointInfo);
+            debuggerSession.install(breakpoint);
         }
     }
 
@@ -181,7 +205,7 @@ public final class DebuggerController implements ContextsListener {
     @CompilerDirectives.TruffleBoundary
     private void mapBreakpoint(Breakpoint bp, BreakpointInfo info) {
         breakpointInfos.put(bp, info);
-        info.setBreakpoint(bp);
+        info.addBreakpoint(bp);
     }
 
     public void clearBreakpoints() {
@@ -596,7 +620,7 @@ public final class DebuggerController implements ContextsListener {
                         jobs.add(new Callable<Void>() {
                             @Override
                             public Void call() {
-                                eventListener.breakpointHit(info, currentThread);
+                                eventListener.breakpointHit(info, callFrames[0], currentThread);
                                 return null;
                             }
                         });
