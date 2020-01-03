@@ -37,6 +37,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
@@ -70,6 +71,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
@@ -916,6 +918,56 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
         }
         return genericSignature;
+    }
+
+    private final Field.StableBoolean hasActiveBreakpoints = new Field.StableBoolean(false);
+
+    private MethodBreakpoint[] infos = new MethodBreakpoint[0];
+
+    @Override
+    public boolean hasActiveBreakpoint() {
+        return hasActiveBreakpoints.get();
+    }
+
+    @Override
+    public MethodBreakpoint[] getMethodBreakpointInfos() {
+        return infos;
+    }
+
+    @Override
+    public void addMethodBreakpointInfo(MethodBreakpoint info) {
+        hasActiveBreakpoints.set(true);
+        if (infos.length == 0) {
+            infos = new MethodBreakpoint[]{info};
+            return;
+        }
+
+        infos = Arrays.copyOf(infos, infos.length + 1);
+        infos[infos.length - 1] = info;
+    }
+
+    @Override
+    public void removeMethodBreakpointInfo(int requestId) {
+        // shrink the array to avoid null values
+        if (infos.length == 0) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method breakpoint info");
+        } else if (infos.length == 1) {
+            infos = new MethodBreakpoint[0];
+            hasActiveBreakpoints.set(false);
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < infos.length; i++) {
+                if (infos[i].getRequestId() == requestId) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            MethodBreakpoint[] temp = new MethodBreakpoint[infos.length - 1];
+            for (int i = 0; i < temp.length; i++) {
+                temp[i] = i < removeIndex ? infos[i] : infos[i +1];
+            }
+            infos = temp;
+        }
     }
 
     // endregion jdwp-specific
