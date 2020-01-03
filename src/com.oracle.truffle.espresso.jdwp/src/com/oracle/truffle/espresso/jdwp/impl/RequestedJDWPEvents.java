@@ -105,11 +105,22 @@ public final class RequestedJDWPEvents {
                 break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
             case METHOD_EXIT:
+                MethodBreakpointInfo methodInfo = new MethodBreakpointInfo(filter);
+                methodInfo.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
+                eventListener.increaseMethodBreakpointCount();
+                for (KlassRef klass : filter.getKlassRefPatterns()) {
+                    for (MethodRef method : klass.getDeclaredMethods()) {
+                        method.addMethodBreakpointInfo(methodInfo);
+                        methodInfo.addMethod(method);
+                    }
+                }
+                filter.addBreakpointInfo(methodInfo);
                 break;
             case METHOD_ENTRY:
                 BreakpointInfo info = filter.getBreakpointInfo();
                 if (info == null) {
-                    info = new MethodEntryBreakpointInfo(filter);
+                    info = new MethodBreakpointInfo(filter);
                 }
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
@@ -315,10 +326,15 @@ public final class RequestedJDWPEvents {
                     case SINGLE_STEP:
                         break;
                     case METHOD_EXIT_WITH_RETURN_VALUE:
-                    case METHOD_ENTRY:
                     case METHOD_EXIT:
+                        MethodBreakpointInfo methodInfo = (MethodBreakpointInfo) requestFilter.getBreakpointInfo();
+                        for (MethodRef method : methodInfo.getMethods()) {
+                            method.removeMethodBreakpointInfo(requestFilter.getRequestId());
+                        }
+                        eventListener.decreaseMethodBreakpointCount();
                         break;
                     case BREAKPOINT:
+                    case METHOD_ENTRY:
                     case EXCEPTION:
                         eventListener.removeBreakpointRequest(requestFilter.getRequestId());
                         break;

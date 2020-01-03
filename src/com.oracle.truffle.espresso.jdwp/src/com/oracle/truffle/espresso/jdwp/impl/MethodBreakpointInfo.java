@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,55 +22,30 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public final class EmptyListener implements VMListener {
+import java.util.Arrays;
 
-    @Override
-    public void vmStarted(Object mainThread) {
+public class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodBreakpoint {
 
+    private MethodRef[] methods = new MethodRef[0];
+
+    public MethodBreakpointInfo(RequestFilter filter) {
+        super(filter);
     }
 
     @Override
-    public void classPrepared(KlassRef klass, Object prepareThread, boolean alreadyPrepared) {
-
+    public boolean isLineBreakpoint() {
+        return true;
     }
 
-    @Override
-    public void threadStarted(Object thread) {
-
+    public void addMethod(MethodRef method) {
+        methods = Arrays.copyOf(methods, methods.length + 1);
+        methods[methods.length - 1] = method;
     }
 
-    @Override
-    public void threadDied(Object thread) {
-
-    }
-
-    @Override
-    public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        return false;
-    }
-
-    @Override
-    public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        return false;
-    }
-
-    @Override
-    public boolean hasMethodBreakpoint(MethodRef method, Object returnValue) {
-        return false;
-    }
-
-    @Override
-    public void holdEvents() {
-
-    }
-
-    @Override
-    public void releaseEvents() {
-
+    public MethodRef[] getMethods() {
+        return methods;
     }
 }

@@ -1259,12 +1259,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         return toReturn;
     }
 
-    public void notifyEntry(VirtualFrame frame) {
-        if (instrumentation != null) {
-            instrumentation.notifyEntry(frame);
-        }
-    }
-
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         InstrumentationSupport info = this.instrumentation;
         if (info == null && materializedTags.contains(StatementTag.class)) {
@@ -2387,9 +2381,11 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         @Child private MapperBCI hookBCIToNodeIndex;
 
         private final EspressoContext context;
+        private final Method method;
 
         InstrumentationSupport(Method method) {
             this.context = method.getContext();
+            this.method = method;
             LineNumberTable table = method.getLineNumberTable();
 
             if (table != LineNumberTable.EMPTY) {
@@ -2421,11 +2417,16 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
 
         public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame) {
-            // TODO(Gregersen) - implement method entry breakpoint hooks
+            // TODO(Gregersen) - method entry breakpoints are currently implemented by submitting
+            // first line breakpoints within each method. This works insofar the method has a valid
+            // line table. For classes compiled without debug information we could use this hook
+            // instead.
         }
 
-        public void notifyReturn(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") int statementIndex, @SuppressWarnings("unused") Object toReturn) {
-            // TODO(Gregersen) - implement method return breakpoint hooks
+        public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
+            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
+                enterAt(frame, statementIndex);
+            }
         }
 
         void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {

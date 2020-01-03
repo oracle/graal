@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -51,6 +53,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
+    private static volatile int fieldBreakpointCount;
+    private final StableBoolean methodBreakpointsActive = new StableBoolean(false);
+    private static volatile int methodBreakpointCount;
     private SocketConnection connection;
     private volatile boolean holdEvents;
 
@@ -145,8 +150,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         breakpointRequests.clear();
     }
 
-    private static volatile int fieldBreakpointCount;
-
     @Override
     public void increaseFieldBreakpointCount() {
         fieldBreakpointCount++;
@@ -159,6 +162,21 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (fieldBreakpointCount <= 0) {
             fieldBreakpointCount = 0;
             fieldBreakpointsActive.set(false);
+        }
+    }
+
+    @Override
+    public void increaseMethodBreakpointCount() {
+        methodBreakpointCount++;
+        methodBreakpointsActive.set(true);
+    }
+
+    @Override
+    public void decreaseMethodBreakpointCount() {
+        methodBreakpointCount--;
+        if (methodBreakpointCount <= 0) {
+            methodBreakpointCount = 0;
+            methodBreakpointsActive.set(false);
         }
     }
 
@@ -218,6 +236,34 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 return true;
             }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean hasMethodBreakpoint(MethodRef method, Object returnValue) {
+        if (!methodBreakpointsActive.get()) {
+            return false;
+        } else {
+            return checkMethodBreakpoint(method, returnValue);
+        }
+    }
+
+    private boolean checkMethodBreakpoint(MethodRef method, Object returnValue) {
+        if (!method.hasActiveBreakpoint()) {
+            return false;
+        } else {
+            return checkMethodSlowPath(method, returnValue);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private boolean checkMethodSlowPath(MethodRef method, Object returnValue) {
+        for (MethodBreakpoint info : method.getMethodBreakpointInfos()) {
+            // OK, tell the Debug API to suspend the thread now
+            debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) info, returnValue));
+            debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+            return true;
         }
         return false;
     }
@@ -322,6 +368,39 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(frame.getMethodId());
         stream.writeLong(frame.getCodeIndex());
         JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.STEPPING, context.getThreadName(currentThread), info.getSuspendPolicy());
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
+    }
+
+    @Override
+    public void methodBreakpointHit(MethodBreakpointEvent methodEvent, Object currentThread, CallFrame frame) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+        MethodBreakpointInfo info = methodEvent.getInfo();
+
+        stream.writeByte(info.getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(info.getEventKind());
+        stream.writeInt(info.getRequestId());
+        long threadId = ids.getIdAsLong(currentThread);
+        stream.writeLong(threadId);
+
+        // location
+        stream.writeByte(frame.getTypeTag());
+        stream.writeLong(frame.getClassId());
+        stream.writeLong(frame.getMethodId());
+        stream.writeLong(frame.getCodeIndex());
+
+        // return value if requested
+        if (info.getEventKind() == RequestedJDWPEvents.METHOD_EXIT_WITH_RETURN_VALUE) {
+            Object returnValue = methodEvent.getReturnValue();
+            byte tag = context.getTag(returnValue);
+            JDWP.writeValue(tag, returnValue, stream, true, context);
+        }
+
         if (holdEvents) {
             heldEvents.add(stream);
         } else {

@@ -80,4 +80,15 @@ public interface VMListener {
      * Send all held events, and stop holding events.
      */
     void releaseEvents();
+
+    /**
+     * Determines if the method has a method breakpoint set. If true, the caller of this method
+     * is expected to enter a probe node to allow for the Truffle Debug API to suspend the
+     * execution.
+     *
+     * @param method the method
+     * @param returnValue the object to be returned from the method if any
+     * @return true only if the method has a method breakpoint, false otherwise
+     */
+    boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
 }
