@@ -79,7 +79,7 @@ public final class RequestedJDWPEvents {
         byte suspendPolicy = input.readByte();
         int modifiers = input.readInt();
 
-        RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers, suspendPolicy);
+        RequestFilter filter = new RequestFilter(packet.id, eventKind, suspendPolicy);
         JDWPLogger.log("New event request with ID: %d with kind: %d and %d modifiers", JDWPLogger.LogLevel.STEPPING, packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
@@ -104,11 +104,19 @@ public final class RequestedJDWPEvents {
                 }
                 break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
-            case METHOD_ENTRY:
             case METHOD_EXIT:
                 break;
-            case BREAKPOINT:
+            case METHOD_ENTRY:
                 BreakpointInfo info = filter.getBreakpointInfo();
+                if (info == null) {
+                    info = new MethodEntryBreakpointInfo(filter);
+                }
+                info.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), info);
+                prefutures.add(callback.createMethodEntryBreakpointCommand(info));
+                break;
+            case BREAKPOINT:
+                info = filter.getBreakpointInfo();
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 prefutures.add(callback.createLineBreakpointCommand(info));

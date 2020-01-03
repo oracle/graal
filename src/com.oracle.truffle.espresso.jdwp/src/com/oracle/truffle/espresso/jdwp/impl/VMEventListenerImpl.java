@@ -134,8 +134,10 @@ public final class VMEventListenerImpl implements VMEventListener {
     @CompilerDirectives.TruffleBoundary
     public void removeBreakpointRequest(int requestId) {
         BreakpointInfo remove = breakpointRequests.remove(requestId);
-        Breakpoint breakpoint = remove.getBreakpoint();
-        breakpoint.dispose();
+        Breakpoint[] breakpoints = remove.getBreakpoints();
+        for (Breakpoint breakpoint : breakpoints) {
+            breakpoint.dispose();
+        }
     }
 
     @Override
@@ -303,22 +305,22 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void breakpointHit(BreakpointInfo info, Object currentThread) {
+    public void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
-        stream.writeByte(RequestedJDWPEvents.BREAKPOINT);
+        stream.writeByte(info.getEventKind());
         stream.writeInt(info.getRequestId());
         long threadId = ids.getIdAsLong(currentThread);
         stream.writeLong(threadId);
 
         // location
-        stream.writeByte(info.getTypeTag());
-        stream.writeLong(info.getClassId());
-        stream.writeLong(info.getMethodId());
-        stream.writeLong(info.getBci());
+        stream.writeByte(frame.getTypeTag());
+        stream.writeLong(frame.getClassId());
+        stream.writeLong(frame.getMethodId());
+        stream.writeLong(frame.getCodeIndex());
         JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.STEPPING, context.getThreadName(currentThread), info.getSuspendPolicy());
         if (holdEvents) {
             heldEvents.add(stream);

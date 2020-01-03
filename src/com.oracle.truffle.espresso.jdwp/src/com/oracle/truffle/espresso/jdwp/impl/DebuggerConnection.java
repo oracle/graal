@@ -108,10 +108,23 @@ public final class DebuggerConnection implements Commands {
     public Callable<Void> createLineBreakpointCommand(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() {
                 LineBreakpointInfo lineInfo = (LineBreakpointInfo) info;
-                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT, null);
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_LINE_BREAKPOINT, info.getFilter());
                 debuggerCommand.setSourceLocation(new SourceLocation(lineInfo.getSlashName(), (int) lineInfo.getLine(), context));
+                debuggerCommand.setBreakpointInfo(info);
+                addBlocking(debuggerCommand);
+                return null;
+            }
+        };
+    }
+
+    @Override
+    public Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info) {
+        return new Callable<Void>() {
+            @Override
+            public Void call() {
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_METHOD_ENTRY_BREAKPOINT, info.getFilter());
                 debuggerCommand.setBreakpointInfo(info);
                 addBlocking(debuggerCommand);
                 return null;
@@ -123,7 +136,7 @@ public final class DebuggerConnection implements Commands {
     public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() {
                 DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);
                 debuggerCommand.setBreakpointInfo(info);
                 addBlocking(debuggerCommand);
@@ -151,8 +164,11 @@ public final class DebuggerConnection implements Commands {
                         case STEP_OUT:
                             controller.stepOut(filter);
                             break;
-                        case SUBMIT_BREAKPOINT:
+                        case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
+                            break;
+                        case SUBMIT_METHOD_ENTRY_BREAKPOINT:
+                            controller.submitMethodEntryBreakpoint(debuggerCommand);
                             break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);
@@ -587,7 +603,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.Event.ID: {
                             switch (packet.cmd) {
                                 case JDWP.Event.COMPOSITE.ID: {
-                                    result = JDWP.Event.COMPOSITE.createReply(packet, context);
+                                    result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
                                 }
                                 default:

@@ -33,7 +33,7 @@ public interface VMEventListener extends VMListener {
 
     void classUnloaded(KlassRef klass);
 
-    void breakpointHit(BreakpointInfo info, Object currentThread);
+    void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread);
 
     void vmDied();
 
