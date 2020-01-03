@@ -28,6 +28,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Argum
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -49,10 +51,9 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
@@ -73,8 +74,11 @@ public final class EngineData {
         }
     };
 
+    private static final AtomicLong engineCounter = new AtomicLong();
+
     int splitLimit;
     int splitCount;
+    public final long id;
     @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
 
@@ -105,6 +109,7 @@ public final class EngineData {
     @CompilationFinal public boolean performanceWarningsAreFatal;
     @CompilationFinal public String compileOnly;
     @CompilationFinal public boolean callTargetStatistics;
+    @CompilationFinal public boolean callTargetStatisticDetails;
 
     // computed fields.
     @CompilationFinal public int firstTierCallThreshold;
@@ -112,6 +117,7 @@ public final class EngineData {
     @CompilationFinal public int lastTierCallThreshold;
 
     EngineData(OptionValues options) {
+        this.id = engineCounter.incrementAndGet();
         // splitting options
         loadOptions(options);
 
@@ -148,8 +154,8 @@ public final class EngineData {
         this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
         this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
-        this.callTargetStatistics = TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
-                        TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails);
+        this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
+        this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {

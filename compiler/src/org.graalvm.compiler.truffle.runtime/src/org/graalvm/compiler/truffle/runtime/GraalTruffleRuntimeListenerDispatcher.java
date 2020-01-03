@@ -124,6 +124,13 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
         }
     }
 
+    @Override
+    public void onEngineClosed(EngineData runtimeData) {
+        for (GraalTruffleRuntimeListener l : this) {
+            l.onEngineClosed(runtimeData);
+        }
+    }
+
     // Conversion from TruffleCompilerListener events to GraalTruffleRuntimeListener events
 
     @Override

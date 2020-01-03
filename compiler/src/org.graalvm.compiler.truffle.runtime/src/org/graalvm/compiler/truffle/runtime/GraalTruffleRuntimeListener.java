@@ -166,6 +166,14 @@ public interface GraalTruffleRuntimeListener {
     default void onShutdown() {
     }
 
+    /**
+     * Notifies this object an engine using the {@link GraalTruffleRuntime} was closed.
+     *
+     * @param runtimeData the engine's compiler configuration
+     */
+    default void onEngineClosed(EngineData runtimeData) {
+    }
+
     static void addASTSizeProperty(OptimizedCallTarget target, TruffleInlining inliningDecision, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
         int deepNodeCount = nodeCount;

@@ -47,6 +47,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -297,6 +299,8 @@ public final class TruffleRuntimeOptions {
         result.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
         result.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
         result.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
+        result.put(CompilationStatistics, SharedTruffleRuntimeOptions.TruffleCompilationStatistics);
+        result.put(CompilationStatisticDetails, SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails);
 
         result.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         result.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);

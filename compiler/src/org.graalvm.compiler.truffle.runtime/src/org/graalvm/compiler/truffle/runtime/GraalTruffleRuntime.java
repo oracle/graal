@@ -686,6 +686,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    void onEngineClosed(EngineData runtimeData) {
+        getListener().onEngineClosed(runtimeData);
+    }
+
     protected void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         List<OptimizedCallTarget> blockCompilations = OptimizedBlockNode.preparePartialBlockCompilations(callTarget);
         for (OptimizedCallTarget blockTarget : blockCompilations) {

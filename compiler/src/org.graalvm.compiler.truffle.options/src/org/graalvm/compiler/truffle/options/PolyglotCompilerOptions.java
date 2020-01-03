@@ -160,6 +160,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
 
+    @Option(help = "Print Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationStatistics = new OptionKey<>(false);
+
+    @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
+
     // Inlining
 
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
