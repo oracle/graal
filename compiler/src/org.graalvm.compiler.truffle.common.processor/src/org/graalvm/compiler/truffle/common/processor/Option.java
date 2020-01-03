@@ -337,8 +337,9 @@ public class Option {
         option("TruffleProfilingEnabled")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true")
-            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles."),
+            .def("PolyglotCompilerOptions.Profiling.getDefaultValue()")
+            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles.")
+            .deprecatedBy("Profiling"),
 
         option("TraceTruffleTransferToInterpreter")
             .type("Boolean")

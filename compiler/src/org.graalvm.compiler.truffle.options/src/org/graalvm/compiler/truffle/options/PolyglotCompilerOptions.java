@@ -105,6 +105,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Speculate on return types at call sites", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> ReturnTypeSpeculation = new OptionKey<>(true);
 
+    @Option(help = "Enable/disable builtin profiles in com.oracle.truffle.api.profiles.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> Profiling = new OptionKey<>(true);
+
     // MultiTier
 
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
