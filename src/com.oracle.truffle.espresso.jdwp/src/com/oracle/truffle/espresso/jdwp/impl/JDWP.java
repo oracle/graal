@@ -211,7 +211,7 @@ final class JDWP {
                                 null,
                                 Collections.singletonList(new Callable<Void>() {
                                     @Override
-                                    public Void call()  {
+                                    public Void call() {
                                         context.exit(input.readInt());
                                         return null;
                                     }
