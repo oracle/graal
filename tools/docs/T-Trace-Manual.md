@@ -211,7 +211,7 @@ a sample script which uses a variant of the Sieve of Erathostenes to compute one
 thousand of prime numbers:
 
 ```bash
-$ js --experimental-options --agentscript=function-tracing.js sieve.js | grep -v Computed
+$ graalvm/bin/js --experimental-options --agentscript=function-tracing.js sieve.js | grep -v Computed
 Just called :program as 1 function invocation
 Just called Natural.next as 17 function invocation
 Just called Natural.next as 33 function invocation
@@ -254,7 +254,7 @@ when you apply the JavaScript instrument to the Ruby program, here is what
 you get:
 
 ```bash
-$ ruby --polyglot --experimental-options --agentscript=source-trace.js helloworld.rb
+$ graalvm/bin/ruby --polyglot --experimental-options --agentscript=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -495,7 +495,7 @@ and at that moment it emits its own exception effectively interrupting the user
 program execution. As a result one gets:
 
 ```bash
-$ js --polyglot --experimental-options --agentscript=term.js seq.js
+$ graalvm/bin/js --polyglot --experimental-options --agentscript=term.js seq.js
 Hello T-Trace!
 How
 great you are!
@@ -549,7 +549,7 @@ logging via standard OpenTracing API. Use the `npm` command to install
 one of the JavaScript libraries for tracing:
 
 ```bash
-$ npm install opentracing
+$ graalvm/bin/npm install opentracing
 ```
 
 Now you can use its API in your instrument `function-tracing.js` via the
