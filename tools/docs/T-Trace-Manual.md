@@ -403,13 +403,19 @@ Two is the result 2
 **T-Trace** is a perfect tool for polyglot, language agnostic aspect oriented
 programming!
 
-### Compatibility of **T-Trace**
+### API of **T-Trace**
 
 The **T-Trace** functionality is offered as a technology preview and 
 requires one to use `--experimental-options` to enable the `--agentscript`
 instrument. Never the less, the compatibility of the **T-Trace** API 
 exposed via the `agent` object
-is treated seriously. Future versions will add new features, but whatever has
+is treated seriously.
+
+The [documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+of the `agent` object properties and functions is available as part of its
+[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION).
+
+Future versions will add new features, but whatever has
 once been exposed, remains functional. If your script depends on some fancy new
 feature, it may check version of the exposed API:
 
@@ -417,9 +423,10 @@ feature, it may check version of the exposed API:
 print(`Agent version is ${agent.version}`);
 ```
 
-and act accordingly to the obtained version. The documentation of the `agent`
-object properties and functions is available as part of its
-[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html).
+and act accordingly to the obtained version. New elements in the
+[documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+carry associated `@since` tag to describe the minimimal version the associated
+functionality/element is available since.
 
 ### Delaying **T-Trace** Initialization in **node.js**
 
