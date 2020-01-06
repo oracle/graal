@@ -395,9 +395,12 @@ public class SystemUtils {
     }
 
     public static int getJavaMajorVersion(CommandInput cmd) {
-        String v = cmd.getParameter(CommonConstants.SYSPROP_JAVA_VERSION, true); // NOI18N
+        String v = cmd.getLocalRegistry() != null ? cmd.getLocalRegistry().getJavaVersion() : null;
+        if (v == null) {
+            cmd.getParameter(CommonConstants.SYSPROP_JAVA_VERSION, true);
+        } // NOI18N
         if (v != null) {
-            return interpretMajorVersion(v);
+            return interpretJavaMajorVersion(v);
         } else {
             return getJavaMajorVersion();
         }
@@ -405,10 +408,16 @@ public class SystemUtils {
 
     public static int getJavaMajorVersion() {
         String v = System.getProperty(CommonConstants.SYSPROP_JAVA_VERSION); // NOI18N
-        return interpretMajorVersion(v);
+        return interpretJavaMajorVersion(v);
     }
 
-    private static int interpretMajorVersion(String v) {
+    /**
+     * Interprets String as a java version, returning the major version number.
+     * 
+     * @param v the version string
+     * @return the major version number, or zero if unknown
+     */
+    public static int interpretJavaMajorVersion(String v) {
         String s;
         if (v.startsWith("1.")) { // NOI18N
             s = v.substring(2);
