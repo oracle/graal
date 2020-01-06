@@ -31,6 +31,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveA
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -380,7 +381,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jcc(cc, branchTarget);
     }
 
-    public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget) {
+    public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb, LIRFrameState state) {
+        if (state != null) {
+            crb.recordImplicitException(position(), state);
+        }
         AMD64MIOp.TEST.emit(this, size, src, imm32, false);
         jcc(cc, branchTarget);
     }
@@ -390,7 +394,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jcc(cc, branchTarget);
     }
 
-    public final void testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget) {
+    public final void testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb, LIRFrameState state) {
+        if (state != null) {
+            crb.recordImplicitException(position(), state);
+        }
         AMD64RMOp.TEST.emit(this, size, src1, src2);
         jcc(cc, branchTarget);
     }
@@ -405,7 +412,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jcc(cc, branchTarget);
     }
 
-    public final void cmpAndJcc(CompilationResultBuilder crb, OperandSize size, Register src, int imm32, VMConstant inlinedConstant, ConditionFlag cc, Label branchTarget) {
+    public final void cmpAndJcc(OperandSize size, Register src, int imm32, VMConstant inlinedConstant, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb) {
         if (inlinedConstant != null) {
             crb.recordInlineDataInCode(inlinedConstant);
         }
@@ -413,9 +420,12 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jcc(cc, branchTarget);
     }
 
-    public final void cmpAndJcc(CompilationResultBuilder crb, OperandSize size, AMD64Address src, int imm32, VMConstant inlinedConstant, ConditionFlag cc, Label branchTarget) {
+    public final void cmpAndJcc(OperandSize size, AMD64Address src, int imm32, VMConstant inlinedConstant, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb, LIRFrameState state) {
         if (inlinedConstant != null) {
             crb.recordInlineDataInCode(inlinedConstant);
+        }
+        if (state != null) {
+            crb.recordImplicitException(position(), state);
         }
         AMD64BinaryArithmetic.CMP.getMIOpcode(size, NumUtil.isByte(imm32)).emit(this, size, src, imm32, inlinedConstant != null);
         jcc(cc, branchTarget);
@@ -426,12 +436,15 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jcc(cc, branchTarget);
     }
 
-    public final void cmpAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget) {
+    public final void cmpAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb, LIRFrameState state) {
+        if (state != null) {
+            crb.recordImplicitException(position(), state);
+        }
         AMD64BinaryArithmetic.CMP.getRMOpcode(size).emit(this, size, src1, src2);
         jcc(cc, branchTarget);
     }
 
-    public final void cmpAndJcc(CompilationResultBuilder crb, OperandSize size, Register src1, Constant src2, ConditionFlag cc, Label branchTarget) {
+    public final void cmpAndJcc(OperandSize size, Register src1, Constant src2, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb) {
         AMD64Address src2AsAddress = (AMD64Address) crb.recordDataReferenceInCode(src2, size.getBytes());
         AMD64BinaryArithmetic.CMP.getRMOpcode(size).emit(this, size, src1, src2AsAddress);
         jcc(cc, branchTarget);

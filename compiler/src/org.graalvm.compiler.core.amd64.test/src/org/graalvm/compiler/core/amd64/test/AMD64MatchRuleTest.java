@@ -33,9 +33,11 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.ConstOp;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CmpConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CmpDataBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -120,7 +122,6 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         return 0;
     }
 
-    @Ignore("GR-20304 merges fused-pair into one single LIR.")
     @Test
     public void testLoadTestNoMatch() {
         compile(getResolvedJavaMethod("testLoadTestNoMatchSnippet"), null);
@@ -128,6 +129,10 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         boolean found = false;
         for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
             if (ins instanceof ConstOp && ((ConstOp) ins).getOpcode().toString().equals("CMP")) {
+                assertFalse("CMP expected only once in first block", found);
+                found = true;
+            }
+            if (ins instanceof CmpConstBranchOp || ins instanceof CmpBranchOp || ins instanceof CmpDataBranchOp) {
                 assertFalse("CMP expected only once in first block", found);
                 found = true;
             }
