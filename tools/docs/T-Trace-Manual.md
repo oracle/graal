@@ -244,7 +244,8 @@ agent.on('source', function(ev) {
 });
 ```
 
-and prepare your Ruby file `helloworld.rb`:
+and prepare your Ruby file `helloworld.rb` (make sure GraalVM Ruby is
+installed with `gu install ruby`):
 
 ```ruby
 puts 'Hello from GraalVM Ruby!'
@@ -320,7 +321,8 @@ the application at all the places representing `ROOT` of application functions.
 
 Not only one can instrument any GraalVM language, but also the **T-Trace**
 scripts can be written in any GraalVM supported language. Take for example
-Ruby and create `source-tracing.rb` file:
+Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
+`gu install ruby`) file:
 
 ```ruby
 puts "Ruby: Initializing T-Trace script"
