@@ -94,7 +94,7 @@ launch your GraalVM's `bin/node` launcher with the `--agentscript` instrument an
 observe what scripts are being loaded and evaluated:
 
 ```bash
-$ $H/bin/node --experimental-options --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
+$ graalvm/bin/node --experimental-options --js.print --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 29938 characters from url.js
 Loading 345 characters from internal/idna.js
 Loading 12642 characters from punycode.js
@@ -159,7 +159,7 @@ function. The latter is executed when the `node` process execution is over (regi
 `agent.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
-$ node --experimental-options --agentscript=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --experimental-options --js.print --agentscript=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
 === Histogram ===
 543 calls to isPosixPathSeparator
@@ -337,7 +337,7 @@ and then you can launch your `node` application and instrument it with such
 Ruby written script:
 
 ```bash
-$ /graalvm/bin/node --experimental-options --polyglot --agentscript=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
+$ graalvm/bin/node --experimental-options --js.print --polyglot --agentscript=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
 Ruby: Initializing T-Trace script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -391,7 +391,7 @@ in `fib.js`, then invoking following command yields detailed information about
 the program execution and parameters passed between function invocations:
 
 ```bash
-$ /graalvm/bin/node --experimental-options --agentscript=fib-trace.js fib.js
+$ graalvm/bin/node --experimental-options --js.print --agentscript=fib-trace.js fib.js
 fib for 3
 fib for 2
 fib for 1
@@ -453,7 +453,7 @@ function. Then it removes the probes using `agent.off` and invokes the actual
 access to all the node modules. The script can be used as
 
 ```js
-$ node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
+$ graalvm/bin/node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
 ```
 
 This initialization sequence is known to work on GraalVM's node `v12.10.0`
