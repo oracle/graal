@@ -168,7 +168,7 @@ public final class ComponentRegistry implements ComponentCollection {
         if (graalAttributes != null) {
             return graalAttributes;
         }
-        Map<String, String> m = storage.loadGraalVersionInfo();
+        Map<String, String> m = new HashMap<>(storage.loadGraalVersionInfo());
         String v = m.get(CommonConstants.CAP_JAVA_VERSION);
         if (v != null) {
             Matcher rm = JAVA_VERSION_PATTERN.matcher(v);
@@ -176,13 +176,19 @@ public final class ComponentRegistry implements ComponentCollection {
                 v = rm.group(1);
             }
             int mv = SystemUtils.interpretJavaMajorVersion(v);
-            m = new HashMap<>(m);
             if (mv < 1) {
                 m.remove(CommonConstants.CAP_JAVA_VERSION);
             } else {
                 m.put(CommonConstants.CAP_JAVA_VERSION, "" + mv); // NOI18N
             }
             graalAttributes = m;
+        }
+        // On JDK11, amd64 architecture name changed to x86_64.
+        v = SystemUtils.normalizeArchitecture(
+                        m.get(CommonConstants.CAP_OS_NAME),
+                        m.get(CommonConstants.CAP_OS_ARCH));
+        if (v != null) {
+            m.put(CommonConstants.CAP_OS_ARCH, v);
         }
         return graalAttributes;
     }

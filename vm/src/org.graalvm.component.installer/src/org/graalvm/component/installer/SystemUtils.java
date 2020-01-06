@@ -585,4 +585,22 @@ public class SystemUtils {
         return sb.toString();
     }
 
+    /**
+     * Normalizes architecture string.
+     * 
+     * @param os OS name
+     * @param arch arch name
+     * @return normalized arch name, or {@code null}.
+     */
+    public static String normalizeArchitecture(String os, String arch) {
+        if (arch == null) {
+            return null;
+        }
+        switch (arch) {
+            case CommonConstants.ARCH_X8664:
+                return CommonConstants.ARCH_AMD64;
+            default:
+                return arch;
+        }
+    }
 }
