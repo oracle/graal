@@ -169,6 +169,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
 
+    @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
+
     // Inlining
 
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)

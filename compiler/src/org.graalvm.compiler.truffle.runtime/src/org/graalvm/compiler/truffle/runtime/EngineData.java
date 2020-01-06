@@ -39,6 +39,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinIn
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
@@ -51,6 +52,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -110,6 +112,8 @@ public final class EngineData {
     @CompilationFinal public String compileOnly;
     @CompilationFinal public boolean callTargetStatistics;
     @CompilationFinal public boolean callTargetStatisticDetails;
+    @CompilationFinal public boolean profilingEnabled;
+    @CompilationFinal public boolean traceTransferToInterpreter;
 
     // computed fields.
     @CompilationFinal public int firstTierCallThreshold;
@@ -156,6 +160,8 @@ public final class EngineData {
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
         this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
         this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
+        this.profilingEnabled = getPolyglotOptionValue(options, Profiling);
+        this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {

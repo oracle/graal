@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
-
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -45,12 +43,12 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -90,6 +88,13 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         UNSAFE = getUnsafe();
     }
 
+    private static ThreadLocal<Boolean> inNotifyTransferToInterpreter = new ThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return false;
+        }
+    };
+
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
@@ -115,8 +120,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             runtime.installDefaultListeners();
         }
     }
-
-    private Boolean traceTransferToInterpreter;
 
     private volatile Lazy lazy;
     private volatile String lazyConfigurationName;
@@ -393,12 +396,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (traceTransferToInterpreter == null) {
-            this.traceTransferToInterpreter = TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter);
+        if (inNotifyTransferToInterpreter.get()) {
+            return;
         }
-
-        if (traceTransferToInterpreter) {
-            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
+        inNotifyTransferToInterpreter.set(true);
+        try {
+            EngineData runtimeData = getCurrentEngineData();
+            if (runtimeData.traceTransferToInterpreter) {
+                TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
+            }
+        } finally {
+            inNotifyTransferToInterpreter.remove();
         }
     }
 

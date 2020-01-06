@@ -344,8 +344,9 @@ public class Option {
         option("TraceTruffleTransferToInterpreter")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print stack trace on transfer to interpreter."),
+            .def("PolyglotCompilerOptions.TraceTransferToInterpreter.getDefaultValue()")
+            .help("Print stack trace on transfer to interpreter.")
+            .deprecatedBy("TraceTransferToInterpreter"),
 
         option("TruffleMultiTier")
             .type("Boolean")

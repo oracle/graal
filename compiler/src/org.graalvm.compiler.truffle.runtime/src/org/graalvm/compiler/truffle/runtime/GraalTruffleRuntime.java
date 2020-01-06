@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
@@ -34,7 +33,6 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -882,22 +880,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return callMethods;
     }
 
-    // cached field access for last engine to make it fast in the interpreter
-    private Reference<EngineData> profilingEnabledKey;
-    private boolean profilingEnabled;
-
     @Override
     public final boolean isProfilingEnabled() {
-        EngineData runtimeData = GraalTVMCI.getEngineData(null);
-        assert runtimeData != null;
-        synchronized (this) {
-            EngineData cachedData = profilingEnabledKey == null ? null : profilingEnabledKey.get();
-            if (cachedData != runtimeData) {
-                profilingEnabled = TruffleRuntimeOptions.getPolyglotOptionValue(runtimeData.engineOptions, Profiling);
-                profilingEnabledKey = new WeakReference<>(runtimeData);
-            }
-            return profilingEnabled;
-        }
+        EngineData runtimeData = getCurrentEngineData();
+        return runtimeData.profilingEnabled;
+    }
+
+    /**
+     * Use {@link OptimizedCallTarget#engine} whenever possible as it's much faster.
+     */
+    protected static EngineData getCurrentEngineData() {
+        return GraalTVMCI.getEngineData(null);
     }
 
     private static LayoutFactory loadObjectLayoutFactory() {
