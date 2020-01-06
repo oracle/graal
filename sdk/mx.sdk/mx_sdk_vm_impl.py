@@ -1848,8 +1848,9 @@ x-GraalVM-Polyglot-Part: {polyglot}
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
         if isinstance(main_component, mx_sdk.GraalVmLanguage):
+            _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join('jre', 'languages', main_component.dir_name))
+""".format(workdir=join(_wd_base, main_component.dir_name))
 
         post_install_msg = None
         for component in self.components:
