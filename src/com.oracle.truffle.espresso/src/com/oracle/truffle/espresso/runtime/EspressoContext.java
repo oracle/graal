@@ -126,6 +126,7 @@ public final class EspressoContext {
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions); // null if not
                                                                               // specified
         this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.DisableMethodHandleInlining = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.DisableMethodHandleInlining);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
     }
 
@@ -603,6 +604,7 @@ public final class EspressoContext {
     // Checkstyle: stop field name check
 
     public final boolean InlineFieldAccessors;
+    public final boolean DisableMethodHandleInlining;
 
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;

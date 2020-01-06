@@ -88,7 +88,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"canInline(target, cachedTarget)"})
+    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"inliningEnabled()", "canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {

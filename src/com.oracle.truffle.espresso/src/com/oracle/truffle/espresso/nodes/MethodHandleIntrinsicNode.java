@@ -54,5 +54,9 @@ public abstract class MethodHandleIntrinsicNode extends Node implements ContextA
         return method.getContext();
     }
 
+    public boolean inliningEnabled() {
+        return !getContext().DisableMethodHandleInlining;
+    }
+
     public abstract Object call(Object[] args);
 }
