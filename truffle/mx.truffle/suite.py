@@ -74,11 +74,11 @@ suite = {
     # ------------- Libraries -------------
 
     "JLINE" : {
-      "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
+      "sha1" : "a1c05da3a6409c63f368254fd85e1ca54069eed6",
       "maven" : {
-        "groupId" : "jline",
+        "groupId" : "org.jline",
         "artifactId" : "jline",
-        "version" : "2.14.6",
+        "version" : "3.13.2",
       }
     },
 
