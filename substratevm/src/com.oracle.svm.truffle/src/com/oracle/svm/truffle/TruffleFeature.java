@@ -54,6 +54,7 @@ import java.util.TreeSet;
 import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -93,6 +94,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -102,6 +104,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -310,6 +313,18 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
             truffleRuntime.resetHosted();
+            Deoptimizer.registerTraceDeoptimizationSupplier(new Deoptimizer.TraceDeoptimizationSupplier() {
+
+                private final AtomicBoolean warningShown = new AtomicBoolean();
+
+                @Override
+                public boolean traceDeoptimization() {
+                    if (!SubstrateOptions.IncludeNodeSourcePositions.getValue() && warningShown.compareAndSet(false, true)) {
+                        Log.log().string("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.").newline();
+                    }
+                    return SubstrateTruffleRuntime.isNotifyTransferToInterpreter();
+                }
+            });
         }
         RuntimeClassInitialization.initializeAtBuildTime("com.oracle.truffle");
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
