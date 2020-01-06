@@ -665,7 +665,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     "commit.committer-ts": _info['committer-ts'],
                 }
         _metadata_dict = OrderedDict()
-        if parent_release_file is not None:
+        if parent_release_file is not None and exists(parent_release_file):
             with open(parent_release_file, 'r') as f:
                 for line in f:
                     assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
