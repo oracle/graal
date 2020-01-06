@@ -853,6 +853,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
+    public int getCatchLocation(int bci, StaticObject ex) {
+        ExceptionHandler[] handlers = getExceptionHandlers();
+        ExceptionHandler resolved = null;
+        for (ExceptionHandler toCheck : handlers) {
+            if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
+                Klass catchType = null;
+                if (!toCheck.isCatchAll()) {
+                    catchType = getRuntimeConstantPool().resolvedKlassAt(getDeclaringKlass(), toCheck.catchTypeCPI());
+                }
+                if (catchType == null || InterpreterToVM.instanceOf(ex, catchType)) {
+                    // the first found exception handler is our exception handler
+                    resolved = toCheck;
+                    break;
+                }
+            }
+        }
+        if (resolved != null) {
+            return resolved.getHandlerBCI();
+        } else {
+            return -1;
+        }
+    }
+
     // region jdwp-specific
 
     @Override

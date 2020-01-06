@@ -673,7 +673,7 @@ public final class DebuggerController implements ContextsListener {
                         jobs.add(new Callable<Void>() {
                             @Override
                             public Void call() {
-                                eventListener.exceptionThrown(info, currentThread, guestException, callFrames[0]);
+                                eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
                                 return null;
                             }
                         });

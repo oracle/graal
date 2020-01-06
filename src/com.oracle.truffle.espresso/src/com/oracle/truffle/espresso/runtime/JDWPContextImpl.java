@@ -33,6 +33,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -521,5 +522,15 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public List<Path> getBootClassPath() {
         return context.getVmProperties().bootClasspath();
+    }
+
+    @Override
+    public int getCatchLocation(MethodRef method, Object guestException, int bci) {
+        if (guestException instanceof StaticObject) {
+            Method guestMethod = (Method) method;
+            return guestMethod.getCatchLocation(bci, (StaticObject) guestException);
+        } else {
+            return -1;
+        }
     }
 }

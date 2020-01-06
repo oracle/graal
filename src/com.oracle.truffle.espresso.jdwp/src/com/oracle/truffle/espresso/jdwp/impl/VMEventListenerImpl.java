@@ -471,9 +471,10 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame callFrame) {
+    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame[] callFrames) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
+        CallFrame top = callFrames[0];
         stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
@@ -482,21 +483,34 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(ids.getIdAsLong(currentThread));
 
         // location
-        stream.writeByte(callFrame.getTypeTag());
-        stream.writeLong(callFrame.getClassId());
-        stream.writeLong(callFrame.getMethodId());
-        stream.writeLong(callFrame.getCodeIndex());
+        stream.writeByte(top.getTypeTag());
+        stream.writeLong(top.getClassId());
+        stream.writeLong(top.getMethodId());
+        stream.writeLong(top.getCodeIndex());
 
         // exception
         stream.writeByte(TagConstants.OBJECT);
         stream.writeLong(context.getIds().getIdAsLong(exception));
 
-        // catch-location. TODO(Gregersen) - figure out how to implement this
-        // tracked by /browse/GR-19554
-        stream.writeByte((byte) 1);
-        stream.writeLong(0);
-        stream.writeLong(0);
-        stream.writeLong(0);
+        // catch-location
+        boolean caught = false;
+        for (CallFrame callFrame : callFrames) {
+            MethodRef method = (MethodRef) context.getIds().fromId((int) callFrame.getMethodId());
+            int catchLocation = context.getCatchLocation(method, exception, (int) callFrame.getCodeIndex());
+            if (catchLocation != -1) {
+                stream.writeByte(callFrame.getTypeTag());
+                stream.writeLong(callFrame.getClassId());
+                stream.writeLong(callFrame.getMethodId());
+                stream.writeLong(catchLocation);
+                caught = true;
+            }
+        }
+        if (!caught) {
+            stream.writeByte((byte) 1);
+            stream.writeLong(0);
+            stream.writeLong(0);
+            stream.writeLong(0);
+        }
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
