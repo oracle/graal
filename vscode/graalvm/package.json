@@ -49,6 +49,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Start GraalVM Language Server within processes being run or debugged"
+				},
+				"graalvm.languageServer.delegateServers": {
+					"type": "string",
+					"default": "",
+					"description": "Comma-separated list of [host:]port where other language servers run"
 				}
 			}
 		},

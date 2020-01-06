@@ -88,7 +88,12 @@ function startLanguageServer(graalVMHome: string) {
 			if (!serverWorkDir) {
 				serverWorkDir = vscode.workspace.rootPath;
 			}
-			const serverProcess = cp.spawn(re, ['--jvm', '--lsp', '--experimental-options', '--shell'], { cwd: serverWorkDir });
+			let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+			let lspOpt = '--lsp';
+			if (delegateServers) {
+				lspOpt = '--lsp.Delegates=' + delegateServers;
+			}
+			const serverProcess = cp.spawn(re, ['--jvm', lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
 			if (!serverProcess || !serverProcess.pid) {
 				vscode.window.showErrorMessage(`Launching server using command ${re} failed.`);
 			} else {
@@ -249,6 +254,7 @@ class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider 
 		}
 		if (inProcessServer) {
 			stopLanguageServer();
+                        let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
 			if (config.runtimeArgs) {
 				let idx = config.runtimeArgs.indexOf('--jvm');
 				if (idx < 0) {
@@ -257,13 +263,20 @@ class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider 
 				idx = config.runtimeArgs.indexOf('--lsp');
 				if (idx < 0) {
 					config.runtimeArgs.unshift('--lsp');
+					if (delegateServers) {
+						config.runtimeArgs.unshift('--lsp.Delegates=' + delegateServers);
+					}
 				}
 				idx = config.runtimeArgs.indexOf('--experimental-options');
 				if (idx < 0) {
 					config.runtimeArgs.unshift('--experimental-options');
 				}
 			} else {
-				config.runtimeArgs = ['--jvm', '--lsp', '--experimental-options'];
+				if (delegateServers) {
+					config.runtimeArgs = ['--jvm', '--lsp.Delegates=' + delegateServers, '--experimental-options'];
+				} else {
+					config.runtimeArgs = ['--jvm', '--lsp', '--experimental-options'];
+				}
 			}
 		} else if (config.program) {
 			vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
