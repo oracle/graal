@@ -157,7 +157,7 @@ public class OptionKey<T> {
      * {@link #onValueUpdate(EconomicMap, Object, Object)} method is called once the value is set.
      *
      * @param values map of option values
-     * @param v the value to set for this key in {@code map}
+     * @param v the value to set for this key in {@code values}
      */
     @SuppressWarnings("unchecked")
     public void update(EconomicMap<OptionKey<?>, Object> values, Object v) {
@@ -170,7 +170,7 @@ public class OptionKey<T> {
      * {@link #onValueUpdate(EconomicMap, Object, Object)} method is called once the value is set.
      *
      * @param values map of option values
-     * @param v the value to set for this key in {@code map}
+     * @param v the value to set for this key in {@code values}
      */
     @SuppressWarnings("unchecked")
     public void putIfAbsent(EconomicMap<OptionKey<?>, Object> values, Object v) {
