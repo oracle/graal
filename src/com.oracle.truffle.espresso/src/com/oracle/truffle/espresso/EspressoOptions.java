@@ -147,7 +147,7 @@ public final class EspressoOptions {
 
     @Option(help = "Disable efforts to inline through method handle calls.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> DisableMethodHandleInlining = new OptionKey<>(false);
+    public static final OptionKey<Boolean> InlineMethodHandle = new OptionKey<>(true);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {

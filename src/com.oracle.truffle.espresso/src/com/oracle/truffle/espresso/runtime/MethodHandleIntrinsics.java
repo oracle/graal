@@ -44,8 +44,10 @@ import com.oracle.truffle.espresso.nodes.MHLinkToNodeGen;
 import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
 
 /**
- * This class manages the instances of polymorphic methods we need to create to manage the method
- * handle polymorphic signature method dispatch.
+ * This class manages MethodHandle polymorphic methods dispatch. It creates and records dummy
+ * espresso Method instances every time a new signature is seen. This is the only place that keeps
+ * track of these, as the dummy methods are not present in klasses, since they are merely internal
+ * constructs.
  * 
  * Since the whole method handle machinery is a pretty opaque black box, here is a quick summary of
  * what's happening under espresso's hood.
