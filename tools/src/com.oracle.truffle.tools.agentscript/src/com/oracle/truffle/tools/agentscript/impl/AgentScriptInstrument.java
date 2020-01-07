@@ -28,8 +28,13 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
@@ -101,6 +106,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
         final Instrumenter instrumenter = env.getInstrumenter();
         instrumenter.attachContextsListener(new ContextsListener() {
             private AgentObject agent;
+            private EventBinding<?> agentBinding;
 
             @Override
             public void onContextCreated(TruffleContext context) {
@@ -112,18 +118,32 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (agent != null || language.isInternal()) {
+                if (agentBinding != null || language.isInternal()) {
                     return;
                 }
-                try {
-                    Source script = src.get();
-                    agent = new AgentObject(env);
-                    CallTarget target = env.parse(script, "agent");
-                    target.call(agent);
-                    agent.initializationFinished();
-                } catch (IOException ex) {
-                    throw AgentException.raise(ex);
-                }
+                agentBinding = instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+                    @Override
+                    public void onEnter(EventContext ctx, VirtualFrame frame) {
+                        agentBinding.dispose();
+                        try {
+                            Source script = src.get();
+                            agent = new AgentObject(env);
+                            CallTarget target = env.parse(script, "agent");
+                            target.call(agent);
+                            agent.initializationFinished();
+                        } catch (IOException ex) {
+                            throw AgentException.raise(ex);
+                        }
+                    }
+
+                    @Override
+                    public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                    }
+
+                    @Override
+                    public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                    }
+                });
             }
 
             @Override
