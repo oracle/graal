@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
@@ -109,6 +110,19 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             private AgentObject agent;
             private EventBinding<?> agentBinding;
 
+            @CompilerDirectives.TruffleBoundary
+            void initializeAgent() {
+                try {
+                    Source script = src.get();
+                    agent = new AgentObject(env);
+                    CallTarget target = env.parse(script, "agent");
+                    target.call(agent);
+                    agent.initializationFinished();
+                } catch (IOException ex) {
+                    throw AgentException.raise(ex);
+                }
+            }
+
             @Override
             public void onContextCreated(TruffleContext context) {
             }
@@ -126,16 +140,9 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                 agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new ExecutionEventListener() {
                     @Override
                     public void onEnter(EventContext ctx, VirtualFrame frame) {
+                        CompilerDirectives.transferToInterpreter();
                         agentBinding.dispose();
-                        try {
-                            Source script = src.get();
-                            agent = new AgentObject(env);
-                            CallTarget target = env.parse(script, "agent");
-                            target.call(agent);
-                            agent.initializationFinished();
-                        } catch (IOException ex) {
-                            throw AgentException.raise(ex);
-                        }
+                        initializeAgent();
                     }
 
                     @Override
