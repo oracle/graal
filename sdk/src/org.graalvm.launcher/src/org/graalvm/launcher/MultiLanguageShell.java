@@ -40,6 +40,7 @@
  */
 package org.graalvm.launcher;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -67,8 +68,8 @@ import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
-
-class MultiLanguageShell {
+class MultiLanguageShell implements Closeable {
+    private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";
     private final Map<Language, History> histories = new HashMap<>();
     private final Context context;
     private final InputStream in;
@@ -82,7 +83,6 @@ class MultiLanguageShell {
     private Language currentLanguage;
     private boolean verboseErrors = false;
     private String input = "";
-    private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";
 
     MultiLanguageShell(Context context, InputStream in, OutputStream out, String defaultStartLanguage) throws IOException {
         this.context = context;
@@ -99,14 +99,24 @@ class MultiLanguageShell {
         resetLineReader();
     }
 
+    private static String createBufferPrompt(String prompt) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < prompt.length() - 2; i++) {
+            b.append(" ");
+        }
+        return b.append("+ ").toString();
+    }
+
+    private static String createPrompt(Language currentLanguage) {
+        return String.format("%s> ", currentLanguage.getId());
+    }
+
     public int runRepl() throws IOException {
         printHeader();
         for (;;) {
             try {
-                final String prompt = createPrompt(currentLanguage);
-                input += reader.readLine(input.equals("") ? prompt : createBufferPrompt(prompt));
-                String trimmedInput = input.trim();
-                if (handleBuiltins(trimmedInput) || eval()) {
+                input += reader.readLine(prompt());
+                if (handleBuiltins() || eval()) {
                     reader.getHistory().add(input);
                     input = "";
                 }
@@ -125,6 +135,11 @@ class MultiLanguageShell {
             }
         }
         return 0;
+    }
+
+    private String prompt() {
+        final String prompt = createPrompt(currentLanguage);
+        return input.equals("") ? prompt : createBufferPrompt(prompt);
     }
 
     private boolean eval() throws IOException {
@@ -188,7 +203,8 @@ class MultiLanguageShell {
         }
     }
 
-    private boolean handleBuiltins(String trimmedInput) throws IOException {
+    private boolean handleBuiltins() throws IOException {
+        final String trimmedInput = input.trim();
         if (trimmedInput.equals("")) {
             return true;
         }
@@ -229,11 +245,8 @@ class MultiLanguageShell {
     }
 
     private void resetLineReader() {
-        reader = LineReaderBuilder.builder().
-                terminal(terminal).
-                appName("GraalVM MultiLanguage Shell " + context.getEngine().getVersion()).
-                history(histories.computeIfAbsent(currentLanguage, language -> new DefaultHistory())).
-                build();
+        reader = LineReaderBuilder.builder().terminal(terminal).appName("GraalVM MultiLanguage Shell " + context.getEngine().getVersion()).history(
+                        histories.computeIfAbsent(currentLanguage, language -> new DefaultHistory())).build();
         for (String s : reader.getKeyMaps().keySet()) {
             reader.getKeyMaps().get(s).bind(new Reference(WIDGET_NAME), KeyMap.alt('l'));
             reader.getWidgets().put(WIDGET_NAME, () -> {
@@ -243,11 +256,7 @@ class MultiLanguageShell {
     }
 
     private Terminal terminal() throws IOException {
-        return TerminalBuilder.builder().
-                    streams(in, out).
-                    system(true).
-                    signalHandler(Terminal.SignalHandler.SIG_IGN).
-                    build();
+        return TerminalBuilder.builder().streams(in, out).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private Map<String, Language> prompts() {
@@ -285,9 +294,14 @@ class MultiLanguageShell {
             println("  " + promptsString + "    to switch to a language.");
         } else {
             println("Usage: ");
-            println("  Use Ctrl+L to switch language and Ctrl+D to exit.");
+            println("  Use Alt+L to switch language and Ctrl+D to exit.");
             println("  Enter -usage to get a list of available commands.");
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        terminal.close();
     }
 
     @SuppressWarnings("serial")
@@ -308,18 +322,6 @@ class MultiLanguageShell {
         public final Throwable fillInStackTrace() {
             return this;
         }
-    }
-
-    private static String createBufferPrompt(String prompt) {
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < prompt.length() - 2; i++) {
-            b.append(" ");
-        }
-        return b.append("+ ").toString();
-    }
-
-    private static String createPrompt(Language currentLanguage) {
-        return String.format("%s> ", currentLanguage.getId());
     }
 
 }
