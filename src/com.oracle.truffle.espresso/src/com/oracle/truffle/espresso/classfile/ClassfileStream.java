@@ -187,6 +187,12 @@ public final class ClassfileStream {
         }
     }
 
+    byte[] getByteRange(int startPosition, int length) {
+        byte[] result = new byte[length];
+        System.arraycopy(bytes, startPosition, result, 0, length);
+        return result;
+    }
+
     public boolean isAtEndOfFile() {
         return bstream.available() == 0;
     }

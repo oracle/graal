@@ -113,7 +113,7 @@ public abstract class ByteSequence {
         return value[index + offset()];
     }
 
-    public final byte[] getUnderlyingBytes() {
+    final byte[] getUnderlyingBytes() {
         return value;
     }
 
