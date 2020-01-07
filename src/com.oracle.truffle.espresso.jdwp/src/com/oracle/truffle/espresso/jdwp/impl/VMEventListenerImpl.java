@@ -524,7 +524,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(suspendPolicy);
-        suspend(suspendPolicy, guestThread);
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
@@ -675,7 +674,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         }
     }
 
-    private void suspend(byte suspendPolicy, Object... thread) {
+    private void suspend(byte suspendPolicy, Object thread) {
         switch(suspendPolicy) {
             case SuspendStrategy.NONE:
                 return;
