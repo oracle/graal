@@ -109,7 +109,8 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return tag == ReadVariableTag.class || super.hasTag(tag);
     }
 
+    @Override
     public Object getNodeObject() {
-        return new NodeObjectDescriptor(getSlot().getIdentifier().toString());
+        return NodeObjectDescriptor.readVariable(getSlot().getIdentifier().toString());
     }
 }

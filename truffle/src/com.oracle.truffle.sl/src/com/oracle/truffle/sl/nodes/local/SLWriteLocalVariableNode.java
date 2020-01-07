@@ -137,7 +137,8 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
         return tag == WriteVariableTag.class || super.hasTag(tag);
     }
 
+    @Override
     public Object getNodeObject() {
-        return new NodeObjectDescriptor(getSlot().getIdentifier().toString());
+        return NodeObjectDescriptor.writeVariable(getSlot().getIdentifier().toString());
     }
 }

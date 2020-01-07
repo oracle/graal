@@ -43,11 +43,10 @@ public abstract class LSPLibrary extends Library {
 
     /**
      * Get the documentation information about an object. The returned object is either a String, or
-     * an object providing <code>MarkupContent</code> via one <code>getValue</code> method that
-     * takes the markup <code>kind</code> as an argument. Currently <code>plaintext</code> and
-     * <code>markdown</code> are the supported kinds. If the format is <code>markdown</code>, then
-     * the value can contain fenced code blocks like in GitHub issues. When no format argument is
-     * provided, <code>plaintext</code> is assumed.
+     * an object providing <code>MarkupContent</code> via invocation of member whose name represents
+     * the markup kind. Currently <code>plaintext</code> and <code>markdown</code> are the supported
+     * kinds. If the format is <code>markdown</code>, then the value can contain fenced code blocks
+     * like in GitHub issues. When a String is returned, <code>plaintext</code> kind is assumed.
      */
     @Abstract
     @SuppressWarnings("unused")

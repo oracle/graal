@@ -40,20 +40,21 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private static final int SIZE = 2;
+    private final String keyName;
 
-    NodeObjectDescriptorKeys() {
+    NodeObjectDescriptorKeys(String keyName) {
+        this.keyName = keyName;
     }
 
     @ExportMessage
@@ -65,33 +66,22 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < SIZE;
+        return index >= 0 && index < 1;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
     long getArraySize() {
-        return SIZE;
+        return 1;
     }
 
     @ExportMessage
-    Object readArrayElement(long index) throws InvalidArrayIndexException {
+    Object readArrayElement(long index, @Cached BranchProfile exception) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw InvalidArrayIndexException.create(index);
         }
-        switch ((int) index) {
-            case 0:
-                return StandardTags.ReadVariableTag.NAME;
-            case 1:
-                return StandardTags.WriteVariableTag.NAME;
-            default:
-                throw InvalidArrayIndexException.create(index);
-        }
-    }
-
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof NodeObjectDescriptorKeys;
+        return keyName;
     }
 
 }

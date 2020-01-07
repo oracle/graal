@@ -51,55 +51,99 @@ import com.oracle.truffle.api.library.ExportMessage;
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
  */
-@ExportLibrary(InteropLibrary.class)
-public final class NodeObjectDescriptor implements TruffleObject {
-
-    private static final TruffleObject KEYS_NAME = new NodeObjectDescriptorKeys();
+public abstract class NodeObjectDescriptor implements TruffleObject {
 
     private final String name;
 
-    public NodeObjectDescriptor(String name) {
+    private NodeObjectDescriptor(String name) {
         assert name != null;
         this.name = name;
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return true;
+    public static NodeObjectDescriptor readVariable(String name) {
+        return new ReadDescriptor(name);
     }
 
-    @ExportMessage
+    public static NodeObjectDescriptor writeVariable(String name) {
+        return new WriteDescriptor(name);
+    }
+
     Object readMember(String member) throws UnknownIdentifierException {
-        switch (member) {
-            case StandardTags.ReadVariableTag.NAME:
-            case StandardTags.WriteVariableTag.NAME:
-                return name;
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(member);
+        if (isMemberReadable(member)) {
+            return name;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.create(member);
         }
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberReadable(String member) {
-        switch (member) {
-            case StandardTags.ReadVariableTag.NAME:
-            case StandardTags.WriteVariableTag.NAME:
-                return true;
-            default:
-                return false;
+    abstract boolean isMemberReadable(String member);
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ReadDescriptor extends NodeObjectDescriptor {
+
+        private static final TruffleObject KEYS_READ = new NodeObjectDescriptorKeys(StandardTags.ReadVariableTag.NAME);
+
+        ReadDescriptor(String name) {
+            super(name);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @Override
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return StandardTags.ReadVariableTag.NAME.equals(member);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return KEYS_READ;
+        }
+
+        @Override
+        @ExportMessage
+        Object readMember(String member) throws UnknownIdentifierException {
+            return super.readMember(member);
         }
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return KEYS_NAME;
-    }
+    @ExportLibrary(InteropLibrary.class)
+    static final class WriteDescriptor extends NodeObjectDescriptor {
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof NodeObjectDescriptor;
+        private static final TruffleObject KEYS_WRITE = new NodeObjectDescriptorKeys(StandardTags.WriteVariableTag.NAME);
+
+        WriteDescriptor(String name) {
+            super(name);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @Override
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return StandardTags.WriteVariableTag.NAME.equals(member);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return KEYS_WRITE;
+        }
+
+        @Override
+        @ExportMessage
+        Object readMember(String member) throws UnknownIdentifierException {
+            return super.readMember(member);
+        }
     }
 }
