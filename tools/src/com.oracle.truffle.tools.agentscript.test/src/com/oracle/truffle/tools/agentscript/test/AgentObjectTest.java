@@ -202,7 +202,7 @@ public class AgentObjectTest {
         evalFirstAndThenOnEnterCallbackImpl(background);
     }
 
-    private void evalFirstAndThenOnEnterCallbackImpl(Executor registerIn) throws Throwable {
+    private static void evalFirstAndThenOnEnterCallbackImpl(Executor registerIn) throws Throwable {
         try (Context c = AgentObjectFactory.newContext()) {
 
             // @formatter:off
