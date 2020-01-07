@@ -71,6 +71,10 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
                 assertFalse("MemoryConstOp expected only once in first block", found);
                 found = true;
             }
+            if (ins instanceof CmpConstBranchOp || ins instanceof CmpBranchOp || ins instanceof CmpDataBranchOp) {
+                assertFalse("CMP expected only once in first block", found);
+                found = true;
+            }
         }
         assertTrue("Memory compare must be in the LIR", found);
     }

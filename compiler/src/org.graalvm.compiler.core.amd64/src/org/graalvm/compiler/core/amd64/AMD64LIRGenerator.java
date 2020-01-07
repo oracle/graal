@@ -28,7 +28,6 @@ package org.graalvm.compiler.core.amd64;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
