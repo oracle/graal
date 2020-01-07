@@ -218,6 +218,7 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(y)) {
+                assert state == null;
                 if (crb.isSuccessorEdge(trueDestination)) {
                     masm.testAndJcc(size, asRegister(x), asRegister(y), condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
@@ -292,6 +293,7 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(x)) {
+                assert state == null;
                 if (crb.isSuccessorEdge(trueDestination)) {
                     masm.testAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
@@ -365,6 +367,7 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(y)) {
+                assert state == null;
                 if (crb.isSuccessorEdge(trueDestination)) {
                     masm.cmpAndJcc(size, asRegister(x), asRegister(y), condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
@@ -451,6 +454,7 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(x)) {
+                assert state == null;
                 if (crb.isSuccessorEdge(trueDestination)) {
                     masm.cmpAndJcc(size, asRegister(x), y, inlinedY, condition.negate(), falseDestination.label(), crb);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
