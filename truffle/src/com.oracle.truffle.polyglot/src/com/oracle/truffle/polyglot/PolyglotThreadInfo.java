@@ -61,7 +61,6 @@ final class PolyglotThreadInfo {
     private volatile long lastEntered;
     private volatile long timeExecuted;
     private boolean deprioritized;
-    private static Boolean canLowerPriority = null;
 
     private static volatile ThreadMXBean threadBean;
 
@@ -175,35 +174,4 @@ final class PolyglotThreadInfo {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
-    static synchronized boolean canLowerThreadPriority() {
-
-        class ThreadPriorityCheck extends Thread {
-            boolean canLower = false;
-
-            @Override
-            public void run() {
-                int nativePriority = OSSupport.getNativeThreadPriority();
-                setPriority(Thread.MIN_PRIORITY);
-                int lowerNativePriority = OSSupport.getNativeThreadPriority();
-                // native priorities are actually inverse (lower value -> higher priority)
-                if (lowerNativePriority > nativePriority) {
-                    canLower = true;
-                }
-            }
-        }
-
-        if (canLowerPriority == null) {
-            ThreadPriorityCheck tpc = new ThreadPriorityCheck();
-            tpc.start();
-            try {
-                tpc.join();
-            } catch (InterruptedException e) {
-                // should not happen
-                throw new HostException(e);
-            }
-            canLowerPriority = tpc.canLower;
-
-        }
-        return canLowerPriority;
-    }
 }

@@ -64,7 +64,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -79,7 +78,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
@@ -383,12 +381,6 @@ final class PolyglotLimits {
                 }
             }
             if (limits.timeLimit != null) {
-                if (!OSSupport.isAvailable()) {
-                    throw new TimeLimitUnsupportedException("Native OS support not available");
-                }
-                if (!PolyglotThreadInfo.canLowerThreadPriority()) {
-                    throw new TimeLimitUnsupportedException("Cannot lower guest thread priority");
-                }
                 engine.noThreadTimingNeeded.invalidate();
                 engine.noPriorityChangeNeeded.invalidate();
                 long timeLimitMillis = limits.timeLimit.toMillis();
@@ -468,20 +460,5 @@ final class PolyglotLimits {
             }
 
         }
-
-        class TimeLimitUnsupportedException extends RuntimeException implements TruffleException {
-
-            private static final long serialVersionUID = -3787334681973775704L;
-
-            TimeLimitUnsupportedException(String message) {
-                super(message);
-            }
-
-            public Node getLocation() {
-                return null;
-            }
-
-        }
     }
-
 }
