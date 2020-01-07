@@ -49,6 +49,7 @@ import shutil
 
 from os.path import join, exists, isfile, isdir, dirname, basename, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
+from binascii import b2a_hex
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
@@ -539,6 +540,32 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         else:
             mx.warn("'{}' does not exist or is not a file".format(jdk_src_zip))
 
+        # Edit lib/security/default.policy in java.base
+        patched_java_base = join(build_dir, 'java.base.jmod')
+        with open(join(jmods_dir, 'java.base.jmod'), 'rb') as src_f, open(patched_java_base, 'wb') as dst_f:
+            jmod_header = src_f.read(4)
+            assert len(jmod_header) == 4 and jmod_header == 'JM\x01\x00', "Unexpected jmod header:" + b2a_hex(jmod_header)
+            dst_f.write(jmod_header)
+            policy_result = 'not found'
+            with ZipFile(src_f, 'r') as src_zip, ZipFile(dst_f, 'w', src_zip.compression) as dst_zip:
+                for i in src_zip.infolist():
+                    if i.filename[-1] == '/':
+                        continue
+                    src_member = src_zip.read(i)
+                    if i.filename == 'lib/security/default.policy':
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"' in src_member:
+                            policy_result = 'unmodified'
+                        else:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
+    permission java.security.AllPermission;
+};
+"""
+                    dst_zip.writestr(i, src_member)
+            if policy_result == 'not found':
+                raise mx.abort("Couldn't find `lib/security/default.policy` in " + join(jmods_dir, 'java.base.jmod'))
+
         for jmd in modules:
             # Remove existing sources for all the modules that we include
             dst_src_zip_contents = {key: dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
@@ -572,7 +599,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         else:
             jlink.append('--add-modules=' + ','.join(sorted(all_module_names)))
 
-        module_path = jmods_dir
+        module_path = patched_java_base + os.pathsep + jmods_dir
         if modules:
             module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
         jlink.append('--module-path=' + module_path)
