@@ -124,6 +124,8 @@ public abstract class ConstantPool {
 
     public abstract int getMajorVersion();
 
+    public abstract int getMinorVersion();
+
     public abstract int length();
 
     public abstract PoolConstant at(int index, String description);
@@ -362,14 +364,14 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser) {
-        return parse(language, stream, parser, null, null);
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
+        return parse(language, stream, parser, null, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context) {
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -529,7 +531,7 @@ public abstract class ConstantPool {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries, parser.getMajorVersion(), stream.getByteRange(rawPoolStartPosition, rawPoolLength));
+        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, stream.getByteRange(rawPoolStartPosition, rawPoolLength));
 
         // Validation
         for (int j = 1; j < constantPool.length(); ++j) {
