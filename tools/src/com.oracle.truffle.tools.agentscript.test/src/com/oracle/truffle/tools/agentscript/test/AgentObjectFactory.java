@@ -151,7 +151,7 @@ final class AgentObjectFactory extends ProxyLanguage {
 
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
-            return StandardTags.RootBodyTag.class == tag;
+            return StandardTags.RootBodyTag.class == tag || StandardTags.RootTag.class == tag;
         }
 
         @Override
