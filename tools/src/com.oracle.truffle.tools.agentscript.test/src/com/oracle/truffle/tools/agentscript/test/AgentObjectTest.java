@@ -43,9 +43,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AgentObjectTest {
+    @Before
+    public void cleanAgentObject() {
+        AgentObjectFactory.cleanAgentObject();
+    }
+
     @Test
     public void versionOfTheAgent() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
@@ -177,6 +183,51 @@ public class AgentObjectTest {
 
             assertFalse("No listener notified", program[0]);
             assertNull("No function entered", functionName[0]);
+        }
+    }
+
+    @Test
+    public void evalFirstAndThenOnEnterCallback() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] functionName = {null};
+            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
+                if (ctx.name().length() == 0) {
+                    return;
+                }
+                assertNull("No function entered yet", functionName[0]);
+                functionName[0] = ctx.name();
+            };
+            agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
+
+            // @formatter:off
+            Source runScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n"
+                    + "  CALL(foo)\n"
+                    + ")",
+                    "run.px"
+            ).build();
+            // @formatter:on
+            c.eval(runScript);
+
+            assertEquals("Function foo has been called", "foo", functionName[0]);
         }
     }
 

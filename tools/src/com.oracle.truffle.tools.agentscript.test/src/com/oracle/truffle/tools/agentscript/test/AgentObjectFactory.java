@@ -89,6 +89,7 @@ final class AgentObjectFactory extends ProxyLanguage {
     }
 
     public static Value createAgentObject(Context context) {
+        cleanAgentObject();
         ProxyLanguage.setDelegate(new AgentObjectFactory());
 
         // BEGIN: AgentObjectFactory#createAgentObject
@@ -100,10 +101,13 @@ final class AgentObjectFactory extends ProxyLanguage {
         access.registerAgentScript(agentSrc);
         // END: AgentObjectFactory#createAgentObject
 
-        agentObject = null;
         Value value = context.eval(ProxyLanguage.ID, "");
         assertNotNull("Agent object has been initialized", agentObject);
         return value;
+    }
+
+    static void cleanAgentObject() {
+        agentObject = null;
     }
 
     private static Source createAgentSource() {
