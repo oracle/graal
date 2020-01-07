@@ -445,7 +445,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, base_dir, {
                     'source_type': 'file',
                     'path': _src_jdk_dir,
-                    'exclude': exclusion_list + _escaping_links + [
+                    'exclude': exclusion_list + sorted(_escaping_links) + [
                         exclude_base + '/COPYRIGHT',
                         exclude_base + '/LICENSE',
                         exclude_base + '/README.html',
@@ -517,7 +517,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         component_suites = {}
         installables = {}
         has_graal_compiler = False
-        for _component in self.components:
+        for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
             _component_type_base = _get_component_type_base(_component)
             if isinstance(_component, (mx_sdk.GraalVmJreComponent, mx_sdk.GraalVmJdkComponent)):
@@ -587,7 +587,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _jre_bin_names = []
             graalvm_dists = set()
 
-            for _launcher_config in _get_launcher_configs(_component):
+            for _launcher_config in sorted(_get_launcher_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_launcher_config.jar_distributions)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
@@ -612,7 +612,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add_native_image_macro(_launcher_config, _component)
                 if with_polyglot_launcher and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
-            for _library_config in _get_library_configs(_component):
+            for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_library_config.jar_distributions)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
@@ -1202,7 +1202,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)
                 ]
 
-                for language, path in image_config.relative_home_paths.items():
+                for language, path in sorted(image_config.relative_home_paths.items()):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
 
             build_args += [mx_subst.string_substitutions.substitute(arg) for arg in image_config.build_args]
