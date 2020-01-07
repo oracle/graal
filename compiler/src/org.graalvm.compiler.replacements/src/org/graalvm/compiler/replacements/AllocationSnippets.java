@@ -47,7 +47,12 @@ import jdk.vm.ci.code.MemoryBarriers;
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
 public abstract class AllocationSnippets implements Snippets {
-    protected Object allocateInstanceImpl(Word hub, Word prototypeMarkWord, UnsignedWord size, boolean fillContents, boolean emitMemoryBarrier, boolean constantSize,
+    protected Object allocateInstanceImpl(Word hub,
+                    Word prototypeMarkWord,
+                    UnsignedWord size,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    boolean constantSize,
                     AllocationProfilingData profilingData) {
         Object result;
         Word tlabInfo = getTLABInfo();
@@ -66,8 +71,17 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
-    protected Object allocateArrayImpl(Word hub, Word prototypeMarkWord, int length, int headerSize, int log2ElementSize, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
-                    boolean maybeUnroll, boolean supportsBulkZeroing, AllocationProfilingData profilingData) {
+    protected Object allocateArrayImpl(Word hub,
+                    Word prototypeMarkWord,
+                    int length,
+                    int headerSize,
+                    int log2ElementSize,
+                    boolean fillContents,
+                    int fillStartOffset,
+                    boolean emitMemoryBarrier,
+                    boolean maybeUnroll,
+                    boolean supportsBulkZeroing,
+                    AllocationProfilingData profilingData) {
         Word thread = getTLABInfo();
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
@@ -134,12 +148,23 @@ public abstract class AllocationSnippets implements Snippets {
      * @param manualUnroll maximally unroll zeroing
      * @param supportsBulkZeroing whether bulk zeroing is supported by the backend
      */
-    private void zeroMemory(Word memory, int startOffset, UnsignedWord endOffset, boolean isEndOffsetConstant, boolean manualUnroll, boolean supportsBulkZeroing,
+    private void zeroMemory(Word memory,
+                    int startOffset,
+                    UnsignedWord endOffset,
+                    boolean isEndOffsetConstant,
+                    boolean manualUnroll,
+                    boolean supportsBulkZeroing,
                     AllocationSnippetCounters snippetCounters) {
         fillMemory(0, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, supportsBulkZeroing, snippetCounters);
     }
 
-    private void fillMemory(long value, Word memory, int startOffset, UnsignedWord endOffset, boolean isEndOffsetConstant, boolean manualUnroll, boolean supportsBulkZeroing,
+    private void fillMemory(long value,
+                    Word memory,
+                    int startOffset,
+                    UnsignedWord endOffset,
+                    boolean isEndOffsetConstant,
+                    boolean manualUnroll,
+                    boolean supportsBulkZeroing,
                     AllocationSnippetCounters snippetCounters) {
         ReplacementsUtil.runtimeAssert(endOffset.and(0x7).equal(0), "unaligned object size");
         UnsignedWord offset = WordFactory.unsigned(startOffset);
@@ -192,14 +217,25 @@ public abstract class AllocationSnippets implements Snippets {
      * @param isEndOffsetConstant is {@code  endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      */
-    private void fillWithGarbage(Word memory, int startOffset, UnsignedWord endOffset, boolean isEndOffsetConstant, boolean manualUnroll, AllocationSnippetCounters snippetCounters) {
+    private void fillWithGarbage(Word memory,
+                    int startOffset,
+                    UnsignedWord endOffset,
+                    boolean isEndOffsetConstant,
+                    boolean manualUnroll,
+                    AllocationSnippetCounters snippetCounters) {
         fillMemory(0xfefefefefefefefeL, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, false, snippetCounters);
     }
 
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatObject(Word hub, Word prototypeMarkWord, UnsignedWord size, Word memory, boolean fillContents, boolean emitMemoryBarrier, boolean constantSize,
+    protected Object formatObject(Word hub,
+                    Word prototypeMarkWord,
+                    UnsignedWord size,
+                    Word memory,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    boolean constantSize,
                     AllocationSnippetCounters snippetCounters) {
         initializeObjectHeader(memory, hub, prototypeMarkWord, false);
         int headerSize = instanceHeaderSize();
@@ -217,8 +253,17 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatArray(Word hub, Word prototypeMarkWord, UnsignedWord allocationSize, int length, Word memory, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
-                    boolean maybeUnroll, boolean supportsBulkZeroing, AllocationSnippetCounters snippetCounters) {
+    protected Object formatArray(Word hub,
+                    Word prototypeMarkWord,
+                    UnsignedWord allocationSize,
+                    int length,
+                    Word memory,
+                    boolean fillContents,
+                    int fillStartOffset,
+                    boolean emitMemoryBarrier,
+                    boolean maybeUnroll,
+                    boolean supportsBulkZeroing,
+                    AllocationSnippetCounters snippetCounters) {
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
