@@ -29,7 +29,6 @@
 from __future__ import print_function
 
 import os
-import copy
 import time
 import re
 import tempfile
@@ -307,21 +306,36 @@ _graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
 _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
-_graalvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=_graalvm_force_bash_launchers,
-                                skip_libraries=_graalvm_skip_libraries,
-                                exclude_components=_graalvm_exclude_components)
-_graalvm_jvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                    force_bash_launchers=True,
-                                    skip_libraries=True,
-                                    exclude_components=_graalvm_exclude_components)
+def get_dynamic_imports(extra_imports=None):
+    imports = [x for x, _ in mx.get_dynamic_imports()]
+    if extra_imports is not None:
+        imports.extend(extra_imports)
+    return imports
 
-graalvm_configs = [_graalvm_config]
-graalvm_jvm_configs = [_graalvm_jvm_config]
+def _graalvm_config():
+    return GraalVMConfig(dynamicimports=get_dynamic_imports(),
+                         disable_libpolyglot=True,
+                         force_bash_launchers=_graalvm_force_bash_launchers,
+                         skip_libraries=_graalvm_skip_libraries,
+                         exclude_components=_graalvm_exclude_components)
+
+def _graalvm_jvm_config():
+    return GraalVMConfig(dynamicimports=get_dynamic_imports(),
+                         disable_libpolyglot=True,
+                         force_bash_launchers=True,
+                         skip_libraries=True,
+                         exclude_components=_graalvm_exclude_components)
+
+def _graalvm_js_config():
+    return GraalVMConfig(dynamicimports=get_dynamic_imports(['/graal-js']),
+                                   disable_libpolyglot=True,
+                                   force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
+                                   skip_libraries=_graalvm_skip_libraries,
+                                   exclude_components=_graalvm_exclude_components)
 
 
-def graalvm_config():
-    return graalvm_configs[-1]
+graalvm_config = _graalvm_config
+graalvm_jvm_config = _graalvm_jvm_config
 
 
 def build_native_image_image(config=None, args=None):
@@ -532,8 +546,8 @@ def svm_gate_body(args, tasks):
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
-            build_native_image_image(config=_graalvm_js_config)
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
+            build_native_image_image(config=_graalvm_js_config())
+            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config()) as native_image:
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
@@ -668,13 +682,6 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
     if not passing:
         mx.abort('JS benchmark ' + name + ' failed')
-
-
-_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'],
-                                   disable_libpolyglot=True,
-                                   force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
-                                   skip_libraries=_graalvm_skip_libraries,
-                                   exclude_components=_graalvm_exclude_components)
 
 
 def build_js(native_image):
@@ -1324,11 +1331,6 @@ def _ensure_vm_built(config):
         with open(rev_file_name, 'w') as f:
             f.write(rev_value)
         build_native_image_image(config)
-
-def graalvm_jvm_config():
-    config = copy.deepcopy(graalvm_jvm_configs[-1])
-    config.dynamicimports.extend([x for x, _ in mx.get_dynamic_imports()])
-    return config
 
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
