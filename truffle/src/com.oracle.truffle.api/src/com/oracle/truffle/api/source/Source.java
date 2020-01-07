@@ -66,6 +66,8 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -1218,115 +1220,23 @@ public abstract class Source {
         return builder.toString();
     }
 
-    static String digest(byte[] message, int from, int length) {
-        int[] m = new int[19];
-        int[] x = new int[48];
-        int[] c = new int[16];
-
-        int t;
-        int loop = 1;
-        int start = 0;
-        int bytes = 0;
-
-        for (int i = 0; i < 16; ++i) {
-            x[i] = c[i] = 0;
-        }
-
-        int last = 0;
-        int index = from;
-        m[16] = m[17] = m[18] = 0;
-        while (loop == 1) {
-            m[0] = m[16];
-            m[1] = m[17];
-            m[2] = m[18];
-            for (int i = 3; i < 16; i++) {
-                m[i] = 0;
-            }
-            int i;
-            for (i = start; index < length && i < 16; ++index) {
-                int code = message[index];
-                if (code < 0) {
-                    code += 256;
-                }
-                m[i++] = code;
-            }
-            bytes += i - start;
-            start = i - 16;
-
-            if (index == length && i < 16) {
-                loop = 2;
-                t = 16 - (bytes & 15);
-                for (; i < 16; ++i) {
-                    m[i] = t;
-                }
-            }
-
-            for (i = 0; i < 16; ++i) {
-                c[i] ^= S[m[i] ^ last];
-                last = c[i];
-            }
-
-            for (i = 0; i < loop; ++i) {
-                int[] mOrC = i == 0 ? m : c;
-
-                x[16] = mOrC[0];
-                x[32] = x[16] ^ x[0];
-                x[17] = mOrC[1];
-                x[33] = x[17] ^ x[1];
-                x[18] = mOrC[2];
-                x[34] = x[18] ^ x[2];
-                x[19] = mOrC[3];
-                x[35] = x[19] ^ x[3];
-                x[20] = mOrC[4];
-                x[36] = x[20] ^ x[4];
-                x[21] = mOrC[5];
-                x[37] = x[21] ^ x[5];
-                x[22] = mOrC[6];
-                x[38] = x[22] ^ x[6];
-                x[23] = mOrC[7];
-                x[39] = x[23] ^ x[7];
-                x[24] = mOrC[8];
-                x[40] = x[24] ^ x[8];
-                x[25] = mOrC[9];
-                x[41] = x[25] ^ x[9];
-                x[26] = mOrC[10];
-                x[42] = x[26] ^ x[10];
-                x[27] = mOrC[11];
-                x[43] = x[27] ^ x[11];
-                x[28] = mOrC[12];
-                x[44] = x[28] ^ x[12];
-                x[29] = mOrC[13];
-                x[45] = x[29] ^ x[13];
-                x[30] = mOrC[14];
-                x[46] = x[30] ^ x[14];
-                x[31] = mOrC[15];
-                x[47] = x[31] ^ x[15];
-
-                t = 0;
-                for (int j = 0; j < 18; ++j) {
-                    for (int k = 0; k < 48; ++k) {
-                        x[k] = t = x[k] ^ S[t];
-                    }
-                    t = (t + j) & 0xFF;
-                }
-            }
-        }
-
-        StringBuilder result = new StringBuilder(32);
-        for (int i = 0; i < 16; ++i) {
-            final String hex = Integer.toHexString(x[i]);
-            if (result.length() == 0) {
-                if (hex.equals("0")) {
-                    continue;
-                }
-            } else {
+    private static String digest(byte[] message, int from, int length) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(message, from, length);
+            byte[] digest = md.digest();
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < digest.length; i++) {
+                String hex = Integer.toHexString(0xff & digest[i]);
                 if (hex.length() == 1) {
-                    result.append("0");
+                    result.append('0');
                 }
+                result.append(hex);
             }
-            result.append(hex);
+            return result.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new AssertionError("The message digest algorithm SHA-256 is not supported.", e);
         }
-        return result.toString();
     }
 
     @SuppressWarnings({"unchecked", "unused"})
