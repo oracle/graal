@@ -145,20 +145,54 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> CLINIT = StaticSymbols.putName("<clinit>");
         // Boxing and String
         public static final Symbol<Name> value = StaticSymbols.putName("value");
+        public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");
         // Field, Thread and MemberName
         public static final Symbol<Name> name = StaticSymbols.putName("name");
         // Thread and Runnable
         public static final Symbol<Name> run = StaticSymbols.putName("run");
         // Thread and System
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
-        // Object
+        // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         // null
         public static final Symbol<Name> Null = StaticSymbols.putName("null");
 
         // finding main
-        public static final Symbol<Name> main = StaticSymbols.putName("main");
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");
+        public static final Symbol<Name> main = StaticSymbols.putName("main");
+
+        // Reflection
+        public static final Symbol<Name> clazz = StaticSymbols.putName("clazz");
+        public static final Symbol<Name> getParameterTypes = StaticSymbols.putName("getParameterTypes");
+        public static final Symbol<Name> override = StaticSymbols.putName("override");
+        public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
+        public static final Symbol<Name> root = StaticSymbols.putName("root");
+        public static final Symbol<Name> signature = StaticSymbols.putName("signature");
+        public static final Symbol<Name> slot = StaticSymbols.putName("slot");
+        public static final Symbol<Name> type = StaticSymbols.putName("type");
+
+        // java.lang.*
+        // j.l.AssertionStatusDirectives
+        public static final Symbol<Name> classes = StaticSymbols.putName("classes");
+        public static final Symbol<Name> classEnabled = StaticSymbols.putName("classEnabled");
+        public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
+        public static final Symbol<Name> packages = StaticSymbols.putName("packages");
+        public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
+
+        // j.l.Class
+        public static final Symbol<Name> forName = StaticSymbols.putName("forName");
+
+        // j.l.ClassLoader
+        public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
+        public static final Symbol<Name> findNative = StaticSymbols.putName("findNative");
+        public static final Symbol<Name> getSystemClassLoader = StaticSymbols.putName("getSystemClassLoader");
+        public static final Symbol<Name> loadClass = StaticSymbols.putName("loadClass");
+        public static final Symbol<Name> parent = StaticSymbols.putName("parent");
+
+        // j.l.String
+        public static final Symbol<Name> hash = StaticSymbols.putName("hash");
+        public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
+        public static final Symbol<Name> length = StaticSymbols.putName("length");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
@@ -168,105 +202,48 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
-        // j.l.String
-        public static final Symbol<Name> hash = StaticSymbols.putName("hash");
-        public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
-        public static final Symbol<Name> length = StaticSymbols.putName("length");
-
-        // Boxing
-        public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");
-
         // j.l.Thread
-        public static final Symbol<Name> group = StaticSymbols.putName("group");
-        public static final Symbol<Name> priority = StaticSymbols.putName("priority");
-        public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
-        public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
-        public static final Symbol<Name> stop = StaticSymbols.putName("stop");
-        public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
-        public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
-        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
-        public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
-        public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
-        public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
-        public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
-        public static final Symbol<Name> remove = StaticSymbols.putName("remove");
-        public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
-        public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> add = StaticSymbols.putName("add");
-
-        // j.l.Class
-        public static final Symbol<Name> forName = StaticSymbols.putName("forName");
-
-        // j.l.ClassLoader
-        public static final Symbol<Name> findNative = StaticSymbols.putName("findNative");
-        public static final Symbol<Name> getSystemClassLoader = StaticSymbols.putName("getSystemClassLoader");
-        public static final Symbol<Name> parent = StaticSymbols.putName("parent");
-        public static final Symbol<Name> loadClass = StaticSymbols.putName("loadClass");
-        public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
-
-        // Reflection
-        public static final Symbol<Name> clazz = StaticSymbols.putName("clazz");
-        public static final Symbol<Name> type = StaticSymbols.putName("type");
-        public static final Symbol<Name> slot = StaticSymbols.putName("slot");
-        public static final Symbol<Name> root = StaticSymbols.putName("root");
-        public static final Symbol<Name> override = StaticSymbols.putName("override");
-        public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
-        public static final Symbol<Name> signature = StaticSymbols.putName("signature");
-        public static final Symbol<Name> getParameterTypes = StaticSymbols.putName("getParameterTypes");
-
-        // j.l.invoke.*
-        // MemberName
-        public static final Symbol<Name> flags = StaticSymbols.putName("flags");
-        public static final Symbol<Name> form = StaticSymbols.putName("form");
-        public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
-        // CallSite
-        public static final Symbol<Name> target = StaticSymbols.putName("target");
-        // LambdaForm
-        public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
-        public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
-        public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");
-        // MethodHandles
-        public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
-        // MethodHandleNatives
-        public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
-        public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
-        public static final Symbol<Name> linkCallSite = StaticSymbols.putName("linkCallSite");
-        public static final Symbol<Name> linkMethodHandleConstant = StaticSymbols.putName("linkMethodHandleConstant");
-        // MethodType
-        public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
-        public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
-
-        // ByteBuffer
-        public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
+        public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
+        public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
+        public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
+        public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
+        public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
+        public static final Symbol<Name> group = StaticSymbols.putName("group");
+        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
+        public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
+        public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
+        public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
+        public static final Symbol<Name> priority = StaticSymbols.putName("priority");
+        public static final Symbol<Name> remove = StaticSymbols.putName("remove");
+        public static final Symbol<Name> stop = StaticSymbols.putName("stop");
+        public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
+        public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
 
         // j.l.System
+        public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> initializeSystemClass = StaticSymbols.putName("initializeSystemClass");
         public static final Symbol<Name> security = StaticSymbols.putName("security");
-        public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
-
-        // java.security.ProtectionDomain
-        public static final Symbol<Name> impliesCreateAccessControlContext = StaticSymbols.putName("impliesCreateAccessControlContext");
-
-        // java.security.AccessControlContext
-        public static final Symbol<Name> isAuthorized = StaticSymbols.putName("isAuthorized");
-        public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
-        public static final Symbol<Name> context = StaticSymbols.putName("context");
-        public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
-
-        // sun.reflect.ConstantPool
-        public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
 
         // j.l.Shutdown
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
+
+        // java.nio.ByteBuffer
+        public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
 
         // java.nio.Buffer
         public static final Symbol<Name> address = StaticSymbols.putName("address");
         public static final Symbol<Name> capacity = StaticSymbols.putName("capacity");
 
-        // j.l.ref.Finalizer
-        public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
-        public static final Symbol<Name> register = StaticSymbols.putName("register");
+        // java.lang.invoke.*
+        // CallSite
+        public static final Symbol<Name> target = StaticSymbols.putName("target");
+
+        // LambdaForm
+        public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");
+        public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
+        public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> getCallerClass = StaticSymbols.putName("getCallerClass");
 
         public static final Symbol<Name> createMemoryPool = StaticSymbols.putName("createMemoryPool");
@@ -275,7 +252,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> tid = StaticSymbols.putName("tid");
         public static final Symbol<Name> getFromClass = StaticSymbols.putName("getFromClass");
 
-        // Polymorphic signature method names
+        // MemberName
+        public static final Symbol<Name> flags = StaticSymbols.putName("flags");
+        public static final Symbol<Name> form = StaticSymbols.putName("form");
+        public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
+
+        // MethodHandle
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
         public static final Symbol<Name> invokeExact = StaticSymbols.putName("invokeExact");
         public static final Symbol<Name> invokeBasic = StaticSymbols.putName("invokeBasic");
@@ -285,71 +267,93 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
         public static final Symbol<Name> linkToSpecial = StaticSymbols.putName("linkToSpecial");
 
-        // j.l.AssertionStatusDirectives
-        public static final Symbol<Name> classes = StaticSymbols.putName("classes");
-        public static final Symbol<Name> classEnabled = StaticSymbols.putName("classEnabled");
-        public static final Symbol<Name> packages = StaticSymbols.putName("packages");
-        public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
-        public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
+        // MethodHandleNatives
+        public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
+        public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
+        public static final Symbol<Name> linkCallSite = StaticSymbols.putName("linkCallSite");
+        public static final Symbol<Name> linkMethodHandleConstant = StaticSymbols.putName("linkMethodHandleConstant");
+
+        // MethodHandles
+        public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
+
+        // MethodType
+        public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
+        public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
+
+        // j.l.ref.Finalizer
+        public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
+        public static final Symbol<Name> register = StaticSymbols.putName("register");
 
         // j.l.ref.Reference
-        public static final Symbol<Name> referent = StaticSymbols.putName("referent");
         public static final Symbol<Name> discovered = StaticSymbols.putName("discovered");
+        public static final Symbol<Name> lock = StaticSymbols.putName("lock");
         public static final Symbol<Name> next = StaticSymbols.putName("next");
+        public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");
         public static final Symbol<Name> pending = StaticSymbols.putName("pending");
         public static final Symbol<Name> queue = StaticSymbols.putName("queue");
-        public static final Symbol<Name> lock = StaticSymbols.putName("lock");
-        public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");
+        public static final Symbol<Name> referent = StaticSymbols.putName("referent");
+
+        // java.security.ProtectionDomain
+        public static final Symbol<Name> impliesCreateAccessControlContext = StaticSymbols.putName("impliesCreateAccessControlContext");
+
+        // java.security.AccessControlContext
+        public static final Symbol<Name> context = StaticSymbols.putName("context");
+        public static final Symbol<Name> isAuthorized = StaticSymbols.putName("isAuthorized");
+        public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
+        public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
+
+        // sun.reflect.ConstantPool
+        public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
 
         // Attribute names
+        public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
+        public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
         public static final Symbol<Name> Code = StaticSymbols.putName("Code");
+        public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
+        public static final Symbol<Name> Deprecated = StaticSymbols.putName("Deprecated");
         public static final Symbol<Name> EnclosingMethod = StaticSymbols.putName("EnclosingMethod");
         public static final Symbol<Name> Exceptions = StaticSymbols.putName("Exceptions");
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
         public static final Symbol<Name> LineNumberTable = StaticSymbols.putName("LineNumberTable");
         public static final Symbol<Name> LocalVariableTable = StaticSymbols.putName("LocalVariableTable");
-        public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
-        public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");
-        public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
+        public static final Symbol<Name> LocalVariableTypeTable = StaticSymbols.putName("LocalVariableTypeTable");
+        public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
         public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeInvisibleTypeAnnotations = StaticSymbols.putName("RuntimeInvisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
-        public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
-        public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+        public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");
         public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
-        public static final Symbol<Name> Deprecated = StaticSymbols.putName("Deprecated");
-        public static final Symbol<Name> LocalVariableTypeTable = StaticSymbols.putName("LocalVariableTypeTable");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
         // MemberName
-        public static final Symbol<Name> HIDDEN_VMTARGET = StaticSymbols.putName("0HIDDEN_VMTARGET");
         public static final Symbol<Name> HIDDEN_VMINDEX = StaticSymbols.putName("0HIDDEN_VMINDEX");
+        public static final Symbol<Name> HIDDEN_VMTARGET = StaticSymbols.putName("0HIDDEN_VMTARGET");
 
         // Method
-        public static final Symbol<Name> HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
         public static final Symbol<Name> HIDDEN_METHOD_KEY = StaticSymbols.putName("0HIDDEN_METHOD_KEY");
+        public static final Symbol<Name> HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
 
         // Constructor
-        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
         public static final Symbol<Name> HIDDEN_CONSTRUCTOR_KEY = StaticSymbols.putName("0HIDDEN_CONSTRUCTOR_KEY");
+        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
 
         // Field
-        public static final Symbol<Name> HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
         public static final Symbol<Name> HIDDEN_FIELD_KEY = StaticSymbols.putName("0HIDDEN_FIELD_KEY");
+        public static final Symbol<Name> HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
 
         // Throwable
         public static final Symbol<Name> HIDDEN_FRAMES = StaticSymbols.putName("0HIDDEN_FRAMES");
 
         // Thread
-        public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
-        public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
-        public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_DEATH = StaticSymbols.putName("0HIDDEN_DEATH");
         public static final Symbol<Name> HIDDEN_DEATH_THROWABLE = StaticSymbols.putName("0HIDDEN_DEATH_THROWABLE");
+        public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
+        public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
+        public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
 
         // Class
