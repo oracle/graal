@@ -137,4 +137,7 @@ public class CommonConstants {
 
     public static final String ENV_DELETE_LIST = "GU_POST_DELETE_LIST"; // NOI18N
     public static final String ENV_COPY_CONTENTS = "GU_POST_COPY_CONTENTS"; // NOI18N
+
+    public static final String ARCH_X8664 = "x86_64"; // NOI18N
+    public static final String ARCH_AMD64 = "amd64"; // NOI18N
 }
