@@ -333,7 +333,7 @@ public interface JDWPContext {
      * @param threadGroup the thread group that threads must belong to
      * @return all active threads in the group
      */
-    Object[] getChildrenThreds(Object threadGroup);
+    Object[] getChildrenThreads(Object threadGroup);
 
     /**
      * Returns the classes and interfaces directly nested within this type.Types further nested

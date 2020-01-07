@@ -2022,7 +2022,7 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object[] children = context.getChildrenThreds(threadGroup);
+                Object[] children = context.getChildrenThreads(threadGroup);
                 reply.writeInt(children.length);
                 for (Object child : children) {
                     reply.writeLong(context.getIds().getIdAsLong(child));

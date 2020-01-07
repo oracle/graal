@@ -343,7 +343,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Object[] getChildrenThreds(Object threadGroup) {
+    public Object[] getChildrenThreads(Object threadGroup) {
         ArrayList<Object> result = new ArrayList<>();
         for (Object thread : getAllGuestThreads()) {
             if (getThreadGroup(thread) == threadGroup) {
