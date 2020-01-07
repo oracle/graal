@@ -52,6 +52,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
+
 def _with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
 
@@ -70,7 +71,7 @@ def _with_metaclass(meta, *bases):
         @classmethod
         def __prepare__(mcs, name, this_bases):
             return meta.__prepare__(name, bases)
-    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {}) #pylint: disable=unused-variable
+    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
 
 
 _graalvm_components = dict()  # By short_name
@@ -85,7 +86,7 @@ _graalvm_hostvm_configs = [
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False): # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -333,7 +334,6 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
 def register_graalvm_component(component):
     """
     :type component: GraalVmComponent
-    :type suite: mx.Suite
     """
     def _log_ignored_component(kept, ignored):
         """
@@ -413,6 +413,8 @@ def get_graalvm_hostvm_configs():
 
 
 _base_jdk = None
+
+
 def base_jdk():
     global _base_jdk
     if _base_jdk is None:
@@ -472,7 +474,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
-    jdk_modules = {jmd.name : jmd for jmd in jdk.get_modules()}
+    jdk_modules = {jmd.name: jmd for jmd in jdk.get_modules()}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
@@ -505,16 +507,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
             extra_modules = []
             for name, requires in target_requires.items():
                 module_jar = join(build_dir, name + '.jar')
-                jmd = JavaModuleDescriptor(name, {}, requires={module : [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
+                jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
                 extra_modules.append(jmd)
                 module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
                 module_info_java = join(module_build_dir, 'module-info.java')
                 module_info_class = join(module_build_dir, 'module-info.class')
                 with open(module_info_java, 'w') as fp:
                     print(jmd.as_module_info(), file=fp)
-                mx.run([jdk.javac, '-d', module_build_dir, \
-                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()), \
-                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)), \
+                mx.run([jdk.javac, '-d', module_build_dir,
+                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
+                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
                         module_info_java])
                 with ZipFile(module_jar, 'w') as zf:
                     zf.write(module_info_class, basename(module_info_class))
@@ -539,7 +541,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 
         for jmd in modules:
             # Remove existing sources for all the modules that we include
-            dst_src_zip_contents = {key : dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
+            dst_src_zip_contents = {key: dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
 
             if with_source(jmd.dist):
                 # Add the sources that we can share.
