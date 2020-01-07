@@ -425,6 +425,31 @@ public abstract class VMThreads {
     }
 
     /**
+     * Detaches all manually attached native threads, but not those threads that were launched from
+     * Java, which must be notified to individually exit in the immediately following tear-down.
+     *
+     * We cannot {@linkplain #cleanupBeforeDetach clean up} the threads we detach here because
+     * cleanup code needs to run in the detaching thread itself. We assume that this is tolerable
+     * considering the immediately following tear-down.
+     */
+    public void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
+        JavaVMOperation.enqueueBlockingSafepoint("detachAllThreadsExceptCurrent", () -> {
+            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            IsolateThread thread = firstThread();
+            while (thread.isNonNull()) {
+                IsolateThread next = nextThread(thread);
+                if (thread.notEqual(currentThread)) {
+                    Thread javaThread = JavaThreads.fromVMThread(thread);
+                    if (!JavaThreads.wasStartedByCurrentIsolate(javaThread)) {
+                        detachThreadInSafeContext(thread);
+                    }
+                }
+                thread = next;
+            }
+        });
+    }
+
+    /**
      * Executes a non-multithreading-safe low-level (i.e., non-Java-level) join operation on the
      * given native thread. If the thread hasn't yet exited on the operating system level, this
      * method blocks until the thread exits on the operating system level. After successfully
