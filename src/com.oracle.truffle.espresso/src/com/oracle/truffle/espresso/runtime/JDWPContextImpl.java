@@ -114,21 +114,21 @@ public final class JDWPContextImpl implements JDWPContext {
         if (slashName.length() == 1) {
             switch (slashName) {
                 case "I":
-                    return new KlassRef[]{context.getMeta()._int.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._int};
                 case "Z":
-                    return new KlassRef[]{context.getMeta()._boolean.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._boolean};
                 case "S":
-                    return new KlassRef[]{context.getMeta()._short.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._short};
                 case "C":
-                    return new KlassRef[]{context.getMeta()._char.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._char};
                 case "B":
-                    return new KlassRef[]{context.getMeta()._byte.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._byte};
                 case "J":
-                    return new KlassRef[]{context.getMeta()._long.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._long};
                 case "D":
-                    return new KlassRef[]{context.getMeta()._double.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._double};
                 case "F":
-                    return new KlassRef[]{context.getMeta()._float.getArrayClass()};
+                    return new KlassRef[]{context.getMeta()._float};
                 default:
                     throw new RuntimeException("invalid primitive component type " + slashName);
             }
