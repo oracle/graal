@@ -131,6 +131,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.logger",
                     "sun.util.resources",
+                    "sun.text.spi",
                     "jdk.internal.perf",
                     "sun.util.locale.provider"
                 ],
