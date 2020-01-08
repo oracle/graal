@@ -280,6 +280,7 @@ public class ConfigurationTool {
                     throw new UsageException("Unknown argument: " + current);
             }
         }
+        rootNode = maybeCreateRootNode(rootNode); // in case of no inputs
 
         rootNode.removeRedundantNodes();
         if (outputPath != null) {
