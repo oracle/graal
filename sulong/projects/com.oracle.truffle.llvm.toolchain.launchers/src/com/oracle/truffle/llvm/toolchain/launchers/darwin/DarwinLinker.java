@@ -80,7 +80,7 @@ public final class DarwinLinker extends Driver {
                     String newOutput = tempDir.resolve("temp.out").toString();
                     List<String> newUserArgs = newUserArgs(userArgs, newOutput, linkerOptionPrefix, outputFlagPos);
                     driver.runDriverReturn(sulongArgs, newUserArgs, verb, hlp, earlyexit);
-                    String bcFile = newOutput + ".lto.opt.bc";
+                    String bcFile = newOutput + ".lto.bc";
                     if (Files.exists(Paths.get(bcFile))) {
                         sulongArgs.add(linkerOptionPrefix + "-sectcreate");
                         sulongArgs.add(linkerOptionPrefix + "__LLVM");

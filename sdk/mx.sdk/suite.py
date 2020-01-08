@@ -91,18 +91,18 @@ suite = {
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-amd64.tar.gz"],
-            "sha1" : "5e26edd8cc0a1072b365937230dd1d0f80eeac00",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-amd64.tar.gz"],
+            "sha1" : "99376a9944e2dfac27087df54c31915f29c6d47e",
           },
           "aarch64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-aarch64.tar.gz"],
-            "sha1" : "685b8cb4f622b0b4c3b989f490acb77b999cf1d8",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-aarch64.tar.gz"],
+            "sha1" : "38ff56cf935b874d1937d1f83598e5ca5af0fb9d",
           }
         },
         "darwin" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-darwin-amd64.tar.gz"],
-            "sha1" : "eb8977b5c79edf5627b1c28ab90ee7d0af6e52f1",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-darwin-amd64.tar.gz"],
+            "sha1" : "832c728a867879a050a74183300c5570ff5f06f1",
           }
         },
         "<others>": {
@@ -115,13 +115,13 @@ suite = {
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-9.0.0-4-g25943767dd-bgba00100a86-linux-amd64.tar.gz"],
-      "sha1" : "a2a0716f437db82302a66ebf63ef0c49c71a35d2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-amd64.tar.gz"],
+      "sha1" : "d585d7165e658eade76c384d3bf0695560c2bf3a",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_LIBCXX_SRC" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-4-g25943767dd-bgba00100a86.tar.gz"],
-      "sha1" : "fbfee587bd3f004008567913fecb670aba3ddfa2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84.tar.gz"],
+      "sha1" : "0faf09895156642a821834f721499a6dc3731d38",
       "license" : "Apache-2.0-LLVM",
     },
   },
