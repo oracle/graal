@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.tests.SulongSuite;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
@@ -1020,6 +1021,22 @@ public class LLVMInteropTest {
             final String testString = "this is a test";
             runner.export((ProxyExecutable) (Value... t) -> testString, "getstring");
             Assert.assertEquals(testString.length(), runner.run());
+        }
+    }
+
+    @Test
+    public void testNullFunctionPointerCall() {
+        try (Runner runner = new Runner("nullFunctionPointerCall")) {
+            try {
+                runner.run();
+            } catch (LLVMNativePointerException e) {
+                // This is expected
+            } catch (PolyglotException e) {
+                final String expected = "Invalid native function pointer";
+                Assert.assertEquals(String.format("Expected '%s'", expected), expected, e.getMessage());
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
         }
     }
 
