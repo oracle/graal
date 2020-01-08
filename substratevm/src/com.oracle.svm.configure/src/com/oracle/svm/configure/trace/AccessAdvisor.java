@@ -133,11 +133,11 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> arrayClass, LazyValue<String> callerClass) {
-        if (!heuristicsEnabled) {
-            return false;
-        }
         if (shouldIgnoreCaller(callerClass)) {
             return true;
+        }
+        if (!heuristicsEnabled) {
+            return false;
         }
         if (callerClass.get() == null && "[Ljava.lang.String;".equals(arrayClass.get())) {
             /*

@@ -133,7 +133,8 @@ public final class Agent {
         ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean restrict = false;
-        boolean builtinFilter = true;
+        boolean builtinCallerFilter = true;
+        boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
         boolean build = false;
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
@@ -165,12 +166,20 @@ public final class Agent {
                     restrict = true;
                 } else if (token.startsWith("restrict=")) {
                     restrict = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-builtin-caller-filter") || /* legacy: */ token.equals("no-filter")) {
-                    builtinFilter = false;
+                } else if (token.equals("no-builtin-caller-filter")) {
+                    builtinCallerFilter = false;
                 } else if (token.startsWith("builtin-caller-filter=")) {
-                    builtinFilter = Boolean.parseBoolean(getTokenValue(token));
+                    builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-builtin-heuristic-filter")) {
+                    builtinHeuristicFilter = false;
+                } else if (token.startsWith("builtin-heuristic-filter=")) {
+                    builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-filter")) { // legacy
+                    builtinCallerFilter = false;
+                    builtinHeuristicFilter = false;
                 } else if (token.startsWith("no-filter=")) { // legacy
-                    builtinFilter = !Boolean.parseBoolean(getTokenValue(token));
+                    builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
+                    builtinHeuristicFilter = builtinCallerFilter;
                 } else if (token.startsWith("caller-filter-file=")) {
                     callerFilterFiles.add(getTokenValue(token));
                 } else if (token.equals("build")) {
@@ -188,7 +197,7 @@ public final class Agent {
         }
 
         RuleNode callersFilter = null;
-        if (!builtinFilter) {
+        if (!builtinCallerFilter) {
             callersFilter = RuleNode.createRoot();
             callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
         }
@@ -227,7 +236,7 @@ public final class Agent {
                 };
                 TraceProcessor processor = new TraceProcessor(mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
-                processor.setHeuristicsEnabled(builtinFilter);
+                processor.setHeuristicsEnabled(builtinHeuristicFilter);
                 if (callersFilter != null) {
                     processor.setCallerFilterTree(callersFilter);
                 }
@@ -267,6 +276,7 @@ public final class Agent {
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
         accessAdvisor = new AccessAdvisor();
+        accessAdvisor.setHeuristicsEnabled(builtinHeuristicFilter);
         TypeAccessChecker reflectAccessChecker = null;
         try {
             ReflectAccessVerifier verifier = null;
