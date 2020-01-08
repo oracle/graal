@@ -2238,7 +2238,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         this.ldr(srcSize, result, a);
     }
 
-    public static class AdrpLdrMacroInstruction extends PatchableCodeAnnotation {
+    public static class AdrpLdrMacroInstruction extends AArch64Assembler.PatchableCodeAnnotation {
         public final int srcSize;
 
         public AdrpLdrMacroInstruction(int position, int srcSize) {
@@ -2279,7 +2279,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
-    public static class AdrpAddMacroInstruction extends PatchableCodeAnnotation {
+    public static class AdrpAddMacroInstruction extends AArch64Assembler.PatchableCodeAnnotation {
         public AdrpAddMacroInstruction(int position) {
             super(position);
         }
@@ -2318,7 +2318,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
-    public static class MovSequenceAnnotation extends PatchableCodeAnnotation {
+    public static class MovSequenceAnnotation extends AArch64Assembler.PatchableCodeAnnotation {
 
         /**
          * An enum to indicate how each 16-bit immediate chunk is represented within a sequence of
