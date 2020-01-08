@@ -350,6 +350,13 @@ public class Option {
             .def("PolyglotCompilerOptions.MultiTier.getDefaultValue()")
             .help("Whether to use multiple Truffle compilation tiers by default.")
             .deprecatedBy("MultiTier"),
+
+        option("PrintTruffleTrees")
+            .type("Boolean")
+            .category("INTERNAL")
+            .def("true")
+            .help("Enable dumping Truffle ASTs to the IdealGraphVisualizer.")
+            .deprecated("Deprecated with no replacement."),
     };
     // @formatter:on
 
@@ -358,7 +365,7 @@ public class Option {
     String type;
     String defaultValue;
     String[] help = {""};
-    String deprecatedBy;
+    String deprecationMessage;
 
     Option name(String value) {
         name = value;
@@ -386,7 +393,12 @@ public class Option {
     }
 
     Option deprecatedBy(String replacement) {
-        deprecatedBy = replacement;
+        deprecationMessage = "Deprecated by {@link PolyglotCompilerOptions#" + replacement + "}.";
+        return this;
+    }
+
+    Option deprecated(String message) {
+        deprecationMessage = message;
         return this;
     }
 
