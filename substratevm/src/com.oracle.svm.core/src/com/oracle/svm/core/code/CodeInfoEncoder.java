@@ -61,6 +61,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
@@ -128,17 +129,17 @@ public class CodeInfoEncoder {
 
     public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset) {
         int totalFrameSize = compilation.getTotalFrameSize();
-        int encodedFrameSize = method.isEntryPoint() ? CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE : totalFrameSize;
+        boolean isEntryPoint = method.isEntryPoint();
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
-        startEntry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, true);
+        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint);
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
         while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
-            entry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, false);
+            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
@@ -204,14 +205,12 @@ public class CodeInfoEncoder {
      * Inverse of {@link CodeInfoDecoder#decodeTotalFrameSize} and
      * {@link CodeInfoDecoder#decodeMethodStart}.
      */
-    protected int encodeFrameSize(int totalFrameSize, boolean methodStart) {
-        if (methodStart) {
-            assert totalFrameSize > 0;
-            return -totalFrameSize;
-        } else {
-            assert totalFrameSize >= 0;
-            return totalFrameSize;
-        }
+    protected int encodeFrameSize(int totalFrameSize, boolean methodStart, boolean isEntryPoint) {
+        VMError.guarantee((totalFrameSize & CodeInfoDecoder.FRAME_SIZE_STATUS_MASK) == 0, "Frame size must be aligned");
+
+        return totalFrameSize |
+                        (methodStart ? CodeInfoDecoder.FRAME_SIZE_METHOD_START : 0) |
+                        (isEntryPoint ? CodeInfoDecoder.FRAME_SIZE_ENTRY_POINT : 0);
     }
 
     private void encodeIPData() {
@@ -379,8 +378,8 @@ public class CodeInfoEncoder {
         }
     }
 
-    public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
-        CodeInfoVerifier.verifyMethod(compilation, compilationOffset, info);
+    public static boolean verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, CodeInfo info) {
+        CodeInfoVerifier.verifyMethod(method, compilation, compilationOffset, info);
         return true;
     }
 
@@ -391,15 +390,14 @@ public class CodeInfoEncoder {
 }
 
 class CodeInfoVerifier {
-    static void verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
+    static void verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, CodeInfo info) {
         for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
             CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
-            assert queryResult.isEntryPoint() || queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
+            assert queryResult.isEntryPoint() == method.isEntryPoint();
+            assert queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert queryResult.isEntryPoint() || CodeInfoAccess.lookupTotalFrameSize(info, totalIP) == queryResult.getTotalFrameSize();
-            assert CodeInfoAccess.lookupExceptionOffset(info, totalIP) == queryResult.getExceptionOffset();
             assert CodeInfoAccess.lookupReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
         }
 
@@ -428,7 +426,9 @@ class CodeInfoVerifier {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilation.getTargetCodeSize();
 
-            long actual = CodeInfoAccess.lookupExceptionOffset(info, offset + compilationOffset);
+            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
+            CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
+            long actual = queryResult.getExceptionOffset();
             long expected = handler.handlerPos - handler.pcOffset;
             assert expected != 0;
             assert expected == actual;
