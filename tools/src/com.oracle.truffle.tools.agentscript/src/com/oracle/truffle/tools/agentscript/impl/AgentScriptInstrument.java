@@ -112,12 +112,16 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @CompilerDirectives.TruffleBoundary
             void initializeAgent() {
+                if (agent != null) {
+                    return;
+                }
                 try {
                     Source script = src.get();
-                    agent = new AgentObject(env);
+                    AgentObject newAgent = new AgentObject(env);
                     CallTarget target = env.parse(script, "agent");
-                    target.call(agent);
-                    agent.initializationFinished();
+                    target.call(newAgent);
+                    newAgent.initializationFinished();
+                    agent = newAgent;
                 } catch (IOException ex) {
                     throw AgentException.raise(ex);
                 }
@@ -136,23 +140,29 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                 if (agentBinding != null || language.isInternal()) {
                     return;
                 }
-                final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
-                agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new ExecutionEventListener() {
-                    @Override
-                    public void onEnter(EventContext ctx, VirtualFrame frame) {
-                        CompilerDirectives.transferToInterpreter();
-                        agentBinding.dispose();
-                        initializeAgent();
-                    }
+                try {
+                    initializeAgent();
+                } catch (AssertionError | NullPointerException | IllegalStateException ex) {
+                    class InitializeLater implements ExecutionEventListener {
 
-                    @Override
-                    public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                    }
+                        @Override
+                        public void onEnter(EventContext ctx, VirtualFrame frame) {
+                            CompilerDirectives.transferToInterpreter();
+                            agentBinding.dispose();
+                            initializeAgent();
+                        }
 
-                    @Override
-                    public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                        @Override
+                        public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                        }
+
+                        @Override
+                        public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                        }
                     }
-                });
+                    final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
+                    agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater());
+                }
             }
 
             @Override
