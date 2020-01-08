@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -58,7 +57,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getIVarBit(addr, getBitWidth());
+            return language.getLLVMMemory().getIVarBit(addr, getBitWidth());
         }
 
         LLVMIVarBitDirectLoadNode createRecursive() {
@@ -100,7 +99,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVM80BitFloat do80BitFloatNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).get80BitFloat(addr);
+            return language.getLLVMMemory().get80BitFloat(addr);
         }
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
@@ -128,7 +127,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getPointer(addr);
+            return language.getLLVMMemory().getPointer(addr);
         }
 
         @Specialization(guards = "isAutoDerefHandle(addr)")

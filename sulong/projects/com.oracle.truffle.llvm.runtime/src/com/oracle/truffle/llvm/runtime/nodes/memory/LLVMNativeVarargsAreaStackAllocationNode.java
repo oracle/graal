@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -57,6 +56,6 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     @Specialization
     protected LLVMNativePointer alloc(VirtualFrame frame, long size,
                     @CachedLanguage LLVMLanguage language) {
-        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot(), size, 8));
+        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
     }
 }

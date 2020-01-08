@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -664,7 +664,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
                         @Cached("createFunction()") TruffleObject function,
                         @CachedLibrary("function") InteropLibrary nativeExecute,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             LLVMNativePointer mem = memory.allocateMemory(3 * 16);
             LLVMNativePointer ptrX = mem;
             LLVMNativePointer ptrY = ptrX.increment(16);

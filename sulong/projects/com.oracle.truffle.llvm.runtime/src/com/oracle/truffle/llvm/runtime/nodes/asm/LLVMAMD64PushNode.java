@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
         protected void doVoid(VirtualFrame frame, short value,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I16_SIZE_IN_BYTES;
@@ -70,7 +70,7 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
         protected void doVoid(VirtualFrame frame, int value,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I32_SIZE_IN_BYTES;
@@ -84,7 +84,7 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
         protected void doVoid(VirtualFrame frame, long value,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I64_SIZE_IN_BYTES;

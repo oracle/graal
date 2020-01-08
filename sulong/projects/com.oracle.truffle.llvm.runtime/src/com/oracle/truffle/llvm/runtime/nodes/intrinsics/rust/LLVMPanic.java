@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,7 +66,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @CachedLanguage LLVMLanguage language) {
         LLVMNativePointer pointer = toNative.executeWithTarget(panicLocVar);
-        throw panicLoc.read(language.getCapability(LLVMMemory.class), pointer.asNative(), this);
+        throw panicLoc.read(language.getLLVMMemory(), pointer.asNative(), this);
     }
 
     static final class PanicLocType {

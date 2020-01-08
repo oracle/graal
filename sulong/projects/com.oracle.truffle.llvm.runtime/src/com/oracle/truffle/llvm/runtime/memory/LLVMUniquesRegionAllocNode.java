@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
     @Specialization
     protected void doOp(VirtualFrame frame,
                     @CachedLanguage LLVMLanguage language) {
-        allocator.allocate(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot());
+        allocator.allocate(frame, language.getLLVMMemory(), getStackPointerSlot());
     }
 
 }

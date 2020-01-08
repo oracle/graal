@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -80,7 +80,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMI1Vector doI1VectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             boolean[] vector = new boolean[getVectorLength()];
             long basePtr = addr.asNative();
             for (int byteOffset = 0; byteOffset < (vector.length / 8) + 1; byteOffset++) {
@@ -125,7 +125,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMI8Vector doI8VectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             byte[] vector = new byte[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -167,7 +167,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMI16Vector doI16VectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             short[] vector = new short[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -209,7 +209,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMI32Vector doI32VectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             int[] vector = new int[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -251,7 +251,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMI64Vector doI64VectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             long[] vector = new long[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -325,7 +325,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMPointerVector doPointerVectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -367,7 +367,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMFloatVector doFloatVectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             float[] vector = new float[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
@@ -409,7 +409,7 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         @ExplodeLoop
         protected LLVMDoubleVector doDoubleVectorNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             double[] vector = new double[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -49,7 +48,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         protected LLVMNativePointer doVoid(int size,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return language.getCapability(LLVMMemory.class).allocateMemory(size);
+                return language.getLLVMMemory().allocateMemory(size);
             } catch (OutOfMemoryError e) {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMNativePointer.createNull();
@@ -60,7 +59,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         protected LLVMNativePointer doVoid(long size,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return language.getCapability(LLVMMemory.class).allocateMemory(size);
+                return language.getLLVMMemory().allocateMemory(size);
             } catch (OutOfMemoryError e) {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMNativePointer.createNull();
@@ -82,7 +81,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             try {
                 long length = Math.multiplyExact(n, size);
-                LLVMNativePointer address = language.getCapability(LLVMMemory.class).allocateMemory(length);
+                LLVMNativePointer address = language.getLLVMMemory().allocateMemory(length);
                 memSet.executeWithTarget(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
@@ -96,7 +95,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             try {
                 long length = Math.multiplyExact(n, size);
-                LLVMNativePointer address = language.getCapability(LLVMMemory.class).allocateMemory(length);
+                LLVMNativePointer address = language.getLLVMMemory().allocateMemory(length);
                 memSet.executeWithTarget(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
@@ -123,7 +122,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         protected LLVMNativePointer doVoid(LLVMNativePointer addr, long size,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return language.getCapability(LLVMMemory.class).reallocateMemory(addr, size);
+                return language.getLLVMMemory().reallocateMemory(addr, size);
             } catch (OutOfMemoryError e) {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMNativePointer.createNull();
@@ -137,7 +136,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         @Specialization
         protected Object doVoid(LLVMNativePointer address,
                         @CachedLanguage LLVMLanguage language) {
-            language.getCapability(LLVMMemory.class).free(address);
+            language.getLLVMMemory().free(address);
             return null;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,7 +61,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMDoubleVector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putDouble(currentPtr, vector.getValue(i));
@@ -84,7 +84,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMFloatVector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putFloat(currentPtr, vector.getValue(i));
@@ -97,7 +97,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI16Vector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putI16(currentPtr, vector.getValue(i));
@@ -110,7 +110,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI1Vector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long basePtr = address.asNative();
         for (int byteOffset = 0; byteOffset < (getVectorLength() / 8) + 1; byteOffset++) {
             long byteAddr = basePtr + byteOffset;
@@ -130,7 +130,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI32Vector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putI32(currentPtr, vector.getValue(i));
@@ -143,7 +143,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI64Vector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putI64(currentPtr, vector.getValue(i));
@@ -156,7 +156,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI8Vector vector,
                     @CachedLanguage LLVMLanguage language) {
         assert vector.getLength() == getVectorLength();
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         long currentPtr = address.asNative();
         for (int i = 0; i < getVectorLength(); i++) {
             memory.putI8(currentPtr, vector.getValue(i));

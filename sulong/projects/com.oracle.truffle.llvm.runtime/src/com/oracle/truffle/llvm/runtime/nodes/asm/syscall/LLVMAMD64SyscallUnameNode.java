@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -46,7 +45,7 @@ public abstract class LLVMAMD64SyscallUnameNode extends LLVMSyscallOperationNode
     @Specialization
     protected long doOp(LLVMNativePointer name,
                     @CachedLanguage LLVMLanguage language) {
-        return LLVMInfo.uname(language.getCapability(LLVMMemory.class), name);
+        return LLVMInfo.uname(language.getLLVMMemory(), name);
     }
 
     @Specialization

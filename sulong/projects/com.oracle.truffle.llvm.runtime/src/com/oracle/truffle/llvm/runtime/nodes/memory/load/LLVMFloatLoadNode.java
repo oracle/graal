@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -46,7 +45,7 @@ public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected float doFloatNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getCapability(LLVMMemory.class).getFloat(addr));
+        return profile.profile(language.getLLVMMemory().getFloat(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

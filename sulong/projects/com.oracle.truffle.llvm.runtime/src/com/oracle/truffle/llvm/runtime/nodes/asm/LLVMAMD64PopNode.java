@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,7 +53,7 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         protected short doI16(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             short value = memory.getI16(sp);
@@ -68,7 +68,7 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         protected int doI32(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             int value = memory.getI32(sp);
@@ -83,7 +83,7 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
         protected long doI64(VirtualFrame frame,
                         @Cached("getStackPointerSlot()") FrameSlot slot,
                         @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
             long sp = basePointer.get(memory);
             long value = memory.getI64(sp);

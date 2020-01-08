@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -52,7 +51,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getCapability(LLVMMemory.class).put80BitFloat(addr, value);
+        language.getLLVMMemory().put80BitFloat(addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     @Specialization
     protected void memset(LLVMNativePointer address, byte value, long length,
                     @CachedLanguage LLVMLanguage language) {
-        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        LLVMMemory memory = language.getLLVMMemory();
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long current = address.asNative();

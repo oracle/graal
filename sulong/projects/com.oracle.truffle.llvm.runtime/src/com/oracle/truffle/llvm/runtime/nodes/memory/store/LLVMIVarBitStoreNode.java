@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -51,7 +50,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doOp(LLVMNativePointer addr, LLVMIVarBit value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getCapability(LLVMMemory.class).putIVarBit(addr, value);
+        language.getLLVMMemory().putIVarBit(addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

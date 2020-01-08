@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -111,7 +110,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @CachedLanguage LLVMLanguage language) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot(), size, alignment));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, alignment));
         }
     }
 
@@ -145,13 +144,13 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @CachedLanguage LLVMLanguage language) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot(), size * (long) nr, alignment));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * (long) nr, alignment));
         }
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, long nr,
                         @CachedLanguage LLVMLanguage language) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot(), size * nr, alignment));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
         }
     }
 }

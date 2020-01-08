@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.MemReadI32NodeGen;
@@ -213,25 +212,25 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         @Specialization(guards = "unitSize == 1")
         long doNativeI8(LLVMNativePointer source, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getI8(source);
+            return language.getLLVMMemory().getI8(source);
         }
 
         @Specialization(guards = "unitSize == 2")
         long doNativeI16(LLVMNativePointer source, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getI16(source);
+            return language.getLLVMMemory().getI16(source);
         }
 
         @Specialization(guards = "unitSize == 4")
         long doNativeI32(LLVMNativePointer source, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getI32(source);
+            return language.getLLVMMemory().getI32(source);
         }
 
         @Specialization(guards = "unitSize == 8")
         long doNativeI64(LLVMNativePointer source, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getCapability(LLVMMemory.class).getI64(source);
+            return language.getLLVMMemory().getI64(source);
         }
     }
 
@@ -426,25 +425,25 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
         @Specialization(guards = "unitSize == 1")
         void doNativeI8(LLVMNativePointer target, long value, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            language.getCapability(LLVMMemory.class).putI8(target, (byte) value);
+            language.getLLVMMemory().putI8(target, (byte) value);
         }
 
         @Specialization(guards = "unitSize == 2")
         void doNativeI16(LLVMNativePointer target, long value, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            language.getCapability(LLVMMemory.class).putI16(target, (short) value);
+            language.getLLVMMemory().putI16(target, (short) value);
         }
 
         @Specialization(guards = "unitSize == 4")
         void doNativeI32(LLVMNativePointer target, long value, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            language.getCapability(LLVMMemory.class).putI32(target, (int) value);
+            language.getLLVMMemory().putI32(target, (int) value);
         }
 
         @Specialization(guards = "unitSize == 8")
         void doNativeI64(LLVMNativePointer target, long value, @SuppressWarnings("unused") int unitSize,
                         @CachedLanguage LLVMLanguage language) {
-            language.getCapability(LLVMMemory.class).putI64(target, value);
+            language.getLLVMMemory().putI64(target, value);
         }
     }
 

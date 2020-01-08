@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -125,7 +125,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        memmove(language.getCapability(LLVMMemory.class), convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
+        memmove(language.getLLVMMemory(), convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
 
     private void memmove(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {

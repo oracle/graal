@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -62,7 +61,7 @@ public abstract class LLVMFrameAddress extends LLVMBuiltin {
                     @CachedLanguage LLVMLanguage language) {
         if (frameLevel == 0) {
             StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-            return LLVMNativePointer.create(pointer.get(language.getCapability(LLVMMemory.class)));
+            return LLVMNativePointer.create(pointer.get(language.getLLVMMemory()));
         } else {
             return LLVMNativePointer.createNull();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMString;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -54,7 +53,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNod
         if (cwd.length() >= size) {
             return -LLVMAMD64Error.ERANGE;
         } else {
-            LLVMString.strcpy(language.getCapability(LLVMMemory.class), buf, cwd);
+            LLVMString.strcpy(language.getLLVMMemory(), buf, cwd);
             return cwd.length() + 1L;
         }
     }

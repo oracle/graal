@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -51,7 +50,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
     protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off,
                     @CachedLanguage LLVMLanguage language) {
         if (mapAnonymousProfile.profile((flags & LLVMAMD64Memory.MAP_ANONYMOUS) != 0)) {
-            LLVMNativePointer ptr = language.getCapability(LLVMMemory.class).allocateMemory(len);
+            LLVMNativePointer ptr = language.getLLVMMemory().allocateMemory(len);
             return ptr.asNative();
         }
         return -LLVMAMD64Error.ENOMEM;
