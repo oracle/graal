@@ -241,6 +241,8 @@ class GraalVMConfig(object):
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
         self.exclude_components = exclude_components or []
+        for x, _ in mx.get_dynamic_imports():
+            self.dynamicimports.append(x)
         if '/substratevm' not in self.dynamicimports:
             self.dynamicimports.append('/substratevm')
 
@@ -306,32 +308,24 @@ _graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
 _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
-def get_dynamic_imports(extra_imports=None):
-    imports = [x for x, _ in mx.get_dynamic_imports()]
-    if extra_imports is not None:
-        imports.extend(extra_imports)
-    return imports
-
 def _graalvm_config():
-    return GraalVMConfig(dynamicimports=get_dynamic_imports(),
-                         disable_libpolyglot=True,
+    return GraalVMConfig(disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers,
                          skip_libraries=_graalvm_skip_libraries,
                          exclude_components=_graalvm_exclude_components)
 
 def _graalvm_jvm_config():
-    return GraalVMConfig(dynamicimports=get_dynamic_imports(),
-                         disable_libpolyglot=True,
+    return GraalVMConfig(disable_libpolyglot=True,
                          force_bash_launchers=True,
                          skip_libraries=True,
                          exclude_components=_graalvm_exclude_components)
 
 def _graalvm_js_config():
-    return GraalVMConfig(dynamicimports=get_dynamic_imports(['/graal-js']),
-                                   disable_libpolyglot=True,
-                                   force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
-                                   skip_libraries=_graalvm_skip_libraries,
-                                   exclude_components=_graalvm_exclude_components)
+    return GraalVMConfig(dynamicimports=['/graal-js'],
+                         disable_libpolyglot=True,
+                         force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
+                         skip_libraries=_graalvm_skip_libraries,
+                         exclude_components=_graalvm_exclude_components)
 
 
 graalvm_config = _graalvm_config
