@@ -75,7 +75,6 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
-    public static final String ExplodeLoop_LoopExplosionKind_Name = "com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
@@ -106,7 +105,6 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
-    public final DeclaredType ExplodeLoop_LoopExplosionKind = c.getDeclaredType(ExplodeLoop_LoopExplosionKind_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
