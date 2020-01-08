@@ -367,7 +367,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void stop0(@Host(Object.class) StaticObject self, Object throwable) {
+    public static void stop0(@Host(Object.class) StaticObject self, @Host(Object.class) Object throwable) {
         self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
         killThread(self);
         setInterrupt(self, true);
