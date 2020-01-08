@@ -145,7 +145,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
 
-    @Option(help = "Disable efforts to inline through method handle calls.", //
+    @Option(help = "Enable inlining through method handle calls.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InlineMethodHandle = new OptionKey<>(true);
 
