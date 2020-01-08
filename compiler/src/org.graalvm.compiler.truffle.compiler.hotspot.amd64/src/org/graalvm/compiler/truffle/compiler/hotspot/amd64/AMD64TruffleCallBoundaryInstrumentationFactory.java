@@ -80,7 +80,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                 }
                 masm.movq(spillRegister, new AMD64Address(spillRegister, entryPointOffset));
                 masm.testq(spillRegister, spillRegister);
-                masm.jcc(ConditionFlag.Equal, doProlog);
+                masm.jccb(ConditionFlag.Equal, doProlog);
                 masm.jmp(spillRegister);
                 masm.bind(doProlog);
             }
