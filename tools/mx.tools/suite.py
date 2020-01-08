@@ -183,31 +183,31 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-27.tar.gz"],
-            "sha1" : "e2eb05c86b69ceae2d95b108ff6b05757511da60",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-29.tar.gz"],
+            "sha1" : "ec4544d46156446d88f25877f9368437757b06b5",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-27-linux-amd64.tar.gz"],
-                        "sha1" : "e85b9782be00a14e7e0322eb1c51718c07a97d5c",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-29-linux-amd64.tar.gz"],
+                        "sha1" : "35fdcad9ee2b0fe06a0c7c2c5a870258912dd81a",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-27-linux-aarch64.tar.gz"],
-                        "sha1" : "0bad6a6c45dcf22b64b8085e3e5a7f91886e6bfd",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-29-linux-aarch64.tar.gz"],
+                        "sha1" : "96e6f876b62a978b76f526cc95cb2e1a34c2eeac",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-27-macosx-x86_64.tar.gz"],
-                        "sha1" : "7dc9402bfb10f96b69ccc14da599b1352dd34396",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-29-macosx-x86_64.tar.gz"],
+                        "sha1" : "89b1afa9fc7674a67691b23e1c7d76d42d6061df",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-27-windows-amd64.tar.gz"],
-                        "sha1" : "efee1d905ce108a329d8bcdb2e87bca9f223e242",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-29-windows-amd64.tar.gz"],
+                        "sha1" : "f4b7b05b092fc30e95d486aec2472da6fe6e9dd4",
                     }
                 },
             }
