@@ -125,12 +125,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
     private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
-    private static ThreadLocal<Boolean> inIsNotifyTransferToInterpreter = new ThreadLocal<Boolean>() {
-        @Override
-        protected Boolean initialValue() {
-            return false;
-        }
-    };
 
     /**
      * Used only to reset state for native image compilation.
@@ -886,30 +880,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return callMethods;
     }
 
-    @Override
-    public final boolean isProfilingEnabled() {
-        EngineData runtimeData = getCurrentEngineData();
-        return runtimeData.profilingEnabled;
-    }
-
-    public static boolean isNotifyTransferToInterpreter() {
-        if (inIsNotifyTransferToInterpreter.get()) {
-            return false;
-        }
-        inIsNotifyTransferToInterpreter.set(true);
-        try {
-            EngineData runtimeData = getCurrentEngineData();
-            return runtimeData.traceTransferToInterpreter;
-        } finally {
-            inIsNotifyTransferToInterpreter.remove();
-        }
-    }
-
     /**
      * Use {@link OptimizedCallTarget#engine} whenever possible as it's much faster.
      */
-    private static EngineData getCurrentEngineData() {
-        return GraalTVMCI.getEngineData(null);
+    protected static EngineData getEngineData(RootNode rootNode) {
+        return GraalTVMCI.getEngineData(rootNode);
     }
 
     private static LayoutFactory loadObjectLayoutFactory() {

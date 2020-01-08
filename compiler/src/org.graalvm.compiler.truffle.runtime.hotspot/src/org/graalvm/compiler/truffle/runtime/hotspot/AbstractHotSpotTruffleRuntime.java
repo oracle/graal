@@ -71,6 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import sun.misc.Unsafe;
 
 /**
@@ -112,6 +113,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             runtime.installDefaultListeners();
         }
     }
+
+    private boolean traceTransferToInterpreter;
+    private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
     private volatile String lazyConfigurationName;
@@ -189,6 +193,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             synchronized (lock) {
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
+                    EngineData engineData = getEngineData(firstCallTarget.getRootNode());
+                    traceTransferToInterpreter = engineData.traceTransferToInterpreter;
+                    profilingEnabled = engineData.profilingEnabled;
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
@@ -388,9 +395,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (isNotifyTransferToInterpreter()) {
+        if (traceTransferToInterpreter) {
             TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
         }
+    }
+
+    @Override
+    public final boolean isProfilingEnabled() {
+        if (profilingEnabled == null) {
+            profilingEnabled = getEngineData(null).profilingEnabled;
+        }
+        return profilingEnabled;
     }
 
     @Override

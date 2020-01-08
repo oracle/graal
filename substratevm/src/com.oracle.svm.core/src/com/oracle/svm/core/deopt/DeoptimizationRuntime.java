@@ -63,8 +63,8 @@ public class DeoptimizationRuntime {
 
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
             DeoptimizationAction action = Deoptimizer.decodeDeoptAction(actionAndReason);
-            boolean trace = Deoptimizer.isTraceDeoptimization();
-            if (trace) {
+
+            if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
                 CodePointer ip = KnownIntrinsics.readReturnAddress();
                 traceDeoptimization(actionAndReason, speculation, action, sp, ip);
             }
@@ -75,7 +75,7 @@ public class DeoptimizationRuntime {
                 Deoptimizer.deoptimizeFrame(sp, false, speculation);
             }
 
-            if (trace) {
+            if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
                 Log.log().string("]").newline();
             }
 
