@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.ResolveFunctionNod
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -236,7 +237,12 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization
     protected static Object doNativeFunction(LLVMNativePointer pointer, Object[] arguments,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(pointer, arguments);
+        try {
+            return dispatchNode.executeDispatch(pointer, arguments);
+        } catch (IllegalStateException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
+        }
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
