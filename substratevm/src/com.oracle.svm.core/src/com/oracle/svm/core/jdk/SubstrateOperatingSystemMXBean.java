@@ -107,4 +107,18 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
     public double getProcessCpuLoad() {
         throw VMError.unsupportedFeature(MSG);
     }
+
+    // Temporary fix for JDK14 added methods.
+    // Will be removed after [GR-20166] is implemented.
+    public double getCpuLoad() {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    public long getTotalMemorySize() {
+        return getTotalPhysicalMemorySize();
+    }
+
+    public long getFreeMemorySize() {
+        throw VMError.unsupportedFeature(MSG);
+    }
 }

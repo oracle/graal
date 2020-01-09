@@ -150,7 +150,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                 }
                 if (writable && (unregistered || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
                     UserError.guarantee(!analyzedFinalFields.contains(field),
-                                    "A field that was already processed by the analysis cannot be re-registered as writable: " + field);
+                                    "A field that was already processed by the analysis cannot be re-registered as writable: %s", field);
                 }
                 return flags;
             });
@@ -183,14 +183,21 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
          * here, and we assume that user code that requires reflection support is not using
          * substitutions.
          */
-        for (AnalysisType aType : access.getUniverse().getTypes()) {
-            Class<?> originalClass = aType.getJavaClass();
+        for (AnalysisType type : access.getUniverse().getTypes()) {
+            Class<?> originalClass = type.getJavaClass();
             if (originalClass != null) {
                 if (processedClasses.contains(originalClass)) {
                     /* Class has already been processed. */
                     continue;
                 }
-                if (originalClass.isArray() || enclosingMethodOrConstructor(originalClass) != null) {
+                if (type.isArray() && !access.isReachable(type)) {
+                    /*
+                     * We don't want the array type (and its elemental type) to become reachable as
+                     * a result of initializing its reflection data.
+                     */
+                    continue;
+                }
+                if (type.isArray() || enclosingMethodOrConstructor(originalClass) != null) {
                     /*
                      * This type is either an array or it has an enclosing method or constructor. In
                      * either case we process the class, i.e., initialize its reflection data, mark

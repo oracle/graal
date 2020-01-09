@@ -65,7 +65,7 @@ class JniProcessor extends AbstractProcessor {
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
         LazyValue<String> callerClassLazyValue = lazyValue(callerClass);
-        if (advisor.shouldIgnore(callerClassLazyValue)) {
+        if (advisor.shouldIgnoreCaller(callerClassLazyValue)) {
             return;
         }
         String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;

@@ -43,6 +43,7 @@ package com.oracle.truffle.tck;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -55,23 +56,24 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.junit.Assert;
-
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.DebuggerSession;
-import com.oracle.truffle.api.debug.SuspendedCallback;
-import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.debug.SourceElement;
-import com.oracle.truffle.api.source.SourceSection;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
+import com.oracle.truffle.api.debug.SuspendedCallback;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Test utility class that makes it easier to test and debug debugger functionality for guest
@@ -234,16 +236,34 @@ public final class DebuggerTester implements AutoCloseable {
     /**
      * Starts a new {@link Context#eval(Source) evaluation} on the background thread. Only one
      * evaluation can be active at a time. Please ensure that {@link #expectDone()} completed
-     * successfully before starting a new evaluation. Throws an {@link IllegalStateException} if
+     * successfully before starting a new evaluation. When no source is available please refer to
+     * {@link DebuggerTester#startExecute(Function)}. Throws an {@link IllegalStateException} if
      * another evaluation is still executing or the tester is already closed.
      *
      * @since 0.27
      */
     public void startEval(Source s) {
+        startExecute(new Function<Context, Value>() {
+            public Value apply(Context c) {
+                return c.eval(s);
+            }
+        });
+    }
+
+    /**
+     * Starts a new script evaluation on the background thread. Only one evaluation can be active at
+     * a time. Please ensure that {@link #expectDone()} completed successfully before starting a new
+     * evaluation. If a Source is available please refer to {@link DebuggerTester#startEval(Source)}
+     * . Throws an {@link IllegalStateException} if another evaluation is still executing or the
+     * tester is already closed.
+     *
+     * @since 20.0
+     */
+    public void startExecute(Function<Context, Value> script) {
         if (this.executingSource != null) {
-            throw new IllegalStateException("Already executing other source " + s);
+            throw new IllegalStateException("Already executing other source ");
         }
-        this.executingSource = new ExecutingSource(s);
+        this.executingSource = new ExecutingSource(script);
     }
 
     /**
@@ -862,12 +882,12 @@ public final class DebuggerTester implements AutoCloseable {
 
     private static final class ExecutingSource {
 
-        private final Source source;
+        private final Function<Context, Value> function;
         private Throwable error;
         private String returnValue;
 
-        ExecutingSource(Source source) {
-            this.source = source;
+        ExecutingSource(Function<Context, Value> function) {
+            this.function = function;
         }
 
     }
@@ -927,7 +947,7 @@ public final class DebuggerTester implements AutoCloseable {
                     ExecutingSource s = executingSource;
                     try {
                         trace("Start executing " + this);
-                        s.returnValue = context.eval(s.source).toString();
+                        s.returnValue = s.function.apply(context).toString();
                         trace("Done executing " + this);
                     } catch (Throwable e) {
                         s.error = e;

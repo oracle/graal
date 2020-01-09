@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,6 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionKey;
 
 final class EngineAccessor extends Accessor {
 
@@ -766,6 +768,25 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Set<String> getLanguageIds() {
+            return LanguageCache.languages().keySet();
+        }
+
+        @Override
+        public Set<String> getInstrumentIds() {
+            Set<String> ids = new HashSet<>();
+            for (InstrumentCache cache : InstrumentCache.load()) {
+                ids.add(cache.getId());
+            }
+            return ids;
+        }
+
+        @Override
+        public Set<String> getInternalIds() {
+            return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
+        }
+
+        @Override
         public Set<String> getValidMimeTypes(String language) {
             if (language == null) {
                 return LanguageCache.languageMimes().keySet();
@@ -946,6 +967,14 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isIOAllowed() {
             return PolyglotEngineImpl.ALLOW_IO;
+        }
+
+        @Override
+        public String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey) {
+            if (!(optionValues instanceof OptionValuesImpl)) {
+                throw new IllegalArgumentException(String.format("Only %s is supported.", OptionValuesImpl.class.getName()));
+            }
+            return ((OptionValuesImpl) optionValues).getUnparsedOptionValue(optionKey);
         }
     }
 

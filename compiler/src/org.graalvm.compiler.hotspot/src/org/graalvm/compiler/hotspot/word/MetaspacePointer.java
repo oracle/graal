@@ -32,7 +32,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.Word.Opcode;
 import org.graalvm.compiler.word.Word.Operation;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -46,7 +45,7 @@ public abstract class MetaspacePointer {
     public abstract boolean isNull();
 
     @HotSpotOperation(opcode = FROM_POINTER)
-    public abstract Pointer asWord();
+    public abstract Word asWord();
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in

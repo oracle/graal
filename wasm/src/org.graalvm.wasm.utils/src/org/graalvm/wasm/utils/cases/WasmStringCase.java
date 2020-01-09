@@ -58,6 +58,6 @@ public class WasmStringCase extends WasmCase {
 
     @Override
     public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
-        return Collections.singletonMap(name(), WasmBinaryTools.compileWat(program));
+        return Collections.singletonMap(name(), WasmBinaryTools.compileWat(name(), program));
     }
 }

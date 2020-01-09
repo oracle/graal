@@ -84,7 +84,7 @@ public enum AMD64Arithmetic {
             masm.fwait();
             masm.fnstswAX();
             masm.testl(AMD64.rax, 0x400);
-            masm.jcc(ConditionFlag.NotZero, label);
+            masm.jccb(ConditionFlag.NotZero, label);
             masm.fxch(1);
             masm.fpop();
 

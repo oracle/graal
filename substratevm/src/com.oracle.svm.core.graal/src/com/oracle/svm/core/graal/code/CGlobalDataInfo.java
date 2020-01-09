@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.util.VMError;
 
 public final class CGlobalDataInfo {
     public static final String CGLOBALDATA_BASE_SYMBOL_NAME = "__svm_cglobaldata_base";
@@ -66,6 +67,7 @@ public final class CGlobalDataInfo {
     }
 
     public int getOffset() {
+        VMError.guarantee(offset >= 0, "Offset has not been initialized");
         return offset;
     }
 

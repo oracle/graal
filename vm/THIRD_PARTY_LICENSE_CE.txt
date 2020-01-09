@@ -1541,7 +1541,7 @@ so, delete this exception statement from your version.
 
 ================================================================================
 
-Node.js 12.10.0
+Node.js 12.14.0
 
 Node.js is licensed for use as follows:
 

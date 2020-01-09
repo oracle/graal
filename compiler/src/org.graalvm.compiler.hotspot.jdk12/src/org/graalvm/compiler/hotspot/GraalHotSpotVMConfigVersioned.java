@@ -90,4 +90,6 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
     boolean classMirrorIsHandle = true;
 
+    // JDK-8220049
+    boolean threadLocalHandshakes = getFlag("ThreadLocalHandshakes", Boolean.class, false);
 }

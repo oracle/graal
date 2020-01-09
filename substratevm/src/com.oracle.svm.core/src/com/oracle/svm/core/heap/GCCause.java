@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class holds garbage collection causes that are common and therefore shared between different
@@ -39,9 +41,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 public class GCCause {
     @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCCause> HostedGCCauseList = new ArrayList<>();
 
-    public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()");
-    public static final GCCause UnitTest = new GCCause("UnitTest");
-    public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer");
+    @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
+    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
+    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
 
     protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer};
 
@@ -49,12 +51,21 @@ public class GCCause {
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected GCCause(String name) {
+    protected GCCause(String name, int id) {
         /* Checkstyle: allow synchronization. */
+        this.id = id;
+        this.name = name;
+        addGCCauseMapping();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void addGCCauseMapping() {
         synchronized (HostedGCCauseList) { /* Checkstyle: disallow synchronization. */
-            this.id = HostedGCCauseList.size();
-            this.name = name;
-            HostedGCCauseList.add(this);
+            while (HostedGCCauseList.size() <= id) {
+                HostedGCCauseList.add(null);
+            }
+            VMError.guarantee(HostedGCCauseList.get(id) == null, name + " and another GCCause have the same id.");
+            HostedGCCauseList.set(id, this);
         }
     }
 

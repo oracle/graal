@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.ProfileContext;
+import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets.ProfileContext;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;

@@ -21,6 +21,13 @@ suite = {
     "imports": {
         "suites": [
             {
+                "name": "sdk",
+                "subdir": True,
+                "urls": [
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
                 "name": "truffle",
                 "subdir": True,
                 "urls": [
@@ -50,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "e5c0619e1b5a4920a4f8561c2f3b5c96c7682dec",
+                "version": "df83bc5be836024281e67cb8dabf62f96c30d30f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -74,7 +81,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "8a1fd809b0c7be13590fc784fd0da5681473abde",
+                "version": "67a1cdb68d48bd6efdd98cd35bfb67a7bdab7076",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -100,6 +107,9 @@ suite = {
             "javaCompliance" : "1.8+",
             "license" : "GPLv2-CPE",
             "checkstyleVersion" : "8.8",
+            "dependencies": [
+                "sdk:LAUNCHER_COMMON",
+            ],
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -120,6 +130,9 @@ suite = {
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
             "dependencies": [
                 "org.graalvm.component.installer",
+            ],
+            "distDependencies": [
+                "sdk:LAUNCHER_COMMON",
             ],
             "maven" : False,
         },

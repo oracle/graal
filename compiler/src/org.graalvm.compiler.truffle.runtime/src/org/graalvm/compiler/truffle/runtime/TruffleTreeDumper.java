@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.PrintTruffleTrees;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintTruffleTrees;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class TruffleTreeDumper {
 
@@ -90,7 +91,7 @@ public final class TruffleTreeDumper {
             astOutput.endGroup(); // AST
             astOutput.close();
 
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining)) {
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
                 return;
             }
             CallTree callTree = new CallTree(callTarget, null);

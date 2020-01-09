@@ -667,7 +667,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                             }
                         }
                         RemoteObject ro = new RemoteObject(value, generatePreview, context);
-                        context.getRemoteObjectsHandler().register(ro);
+                        context.getRemoteObjectsHandler().register(ro, objectGroup);
                         json.put("result", ro.toJSON());
                     }
                     return json;

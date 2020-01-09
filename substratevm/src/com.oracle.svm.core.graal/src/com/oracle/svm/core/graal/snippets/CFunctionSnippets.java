@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
@@ -54,7 +56,9 @@ import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.CPrologueData;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.Safepoint;
@@ -95,7 +99,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     private static final StackSlotIdentity frameAnchorIdentity = new StackSlotIdentity("CFunctionSnippets.frameAnchorIdentifier");
 
     @Snippet
-    private static JavaFrameAnchor prologueSnippet() {
+    private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
         /* Push a JavaFrameAnchor to the thread-local linked list. */
         JavaFrameAnchor anchor = (JavaFrameAnchor) StackValueNode.stackValue(1, SizeOf.get(JavaFrameAnchor.class), frameAnchorIdentity);
         JavaFrameAnchors.pushFrameAnchor(anchor);
@@ -107,18 +111,24 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          * into Native state also happens immediately before the C call.
          */
 
-        return anchor;
+        return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
     }
 
     @Snippet
-    private static void epilogueSnippet() {
+    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Change the VMThread status from native to Java, blocking if necessary. At this point
-             * the JavaFrameAnchor still needs to be pushed: a concurrently running safepoint code
-             * can start a stack traversal at any time.
-             */
-            Safepoint.transitionNativeToJava();
+            if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
+                /*
+                 * Change the VMThread status from native to Java, blocking if necessary. At this
+                 * point the JavaFrameAnchor still needs to be pushed: a concurrently running
+                 * safepoint code can start a stack traversal at any time.
+                 */
+                Safepoint.transitionNativeToJava();
+            } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
+                Safepoint.transitionVMToJava();
+            } else {
+                ReplacementsUtil.staticAssert(false, "Unexpected thread status");
+            }
         }
 
         /* The thread is now back in the Java state, it is safe to pop the JavaFrameAnchor. */
@@ -147,7 +157,11 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
              */
             node.graph().addBeforeFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
+            int newThreadStatus = node.getNewThreadStatus();
+            assert StatusSupport.isValidStatus(newThreadStatus);
+
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("newThreadStatus", newThreadStatus);
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
@@ -158,7 +172,11 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
+            int oldThreadStatus = node.getOldThreadStatus();
+            assert StatusSupport.isValidStatus(oldThreadStatus);
+
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("oldThreadStatus", oldThreadStatus);
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
@@ -186,7 +204,10 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
                 /*
                  * We are re-using the classInit field of the InvokeNode to store the
-                 * JavaFrameAnchor. That field is in every InvokeNode, and it is otherwise unused by
+                 * CFunctionPrologueNode. During lowering, we create a PrologueDataNode that holds
+                 * all the prologue-related data that the invoke needs in the backend.
+                 *
+                 * The classInit field is in every InvokeNode, and it is otherwise unused by
                  * Substrate VM (it is used only by the Java HotSpot VM). If we ever need the
                  * classInit field for other purposes, we need to create a new subclass of
                  * InvokeNode, and replace the invoke here with an instance of that new subclass.

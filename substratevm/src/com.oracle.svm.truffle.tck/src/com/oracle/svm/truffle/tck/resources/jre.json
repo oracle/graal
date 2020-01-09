@@ -188,5 +188,15 @@
           "parameterTypes" : [
         ]}
     ]
+  },
+  {
+    "name" : "com.oracle.svm.core.thread.JavaVMOperation",
+    "methods" : [
+        { "name" : "operate",
+          "justification" : "The JavaVMOperation is an VM internal concept for task executed in critical sections or safe points, cannot be used by guest language.",
+          "parameterTypes" : [
+            "com.oracle.svm.core.thread.NativeVMOperationData"
+        ]}
+    ]
   }
 ]

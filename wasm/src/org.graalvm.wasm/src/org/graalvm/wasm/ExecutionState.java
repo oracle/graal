@@ -41,9 +41,10 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.collection.IntArrayArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
+
+import java.util.ArrayList;
 
 public class ExecutionState {
     private int stackSize;
@@ -53,7 +54,7 @@ public class ExecutionState {
     private LongArrayList longConstants;
     private IntArrayList stackStates;
     private IntArrayList continuationReturnLength;
-    private IntArrayArrayList branchTables;
+    private ArrayList<int[]> branchTables;
 
     public ExecutionState() {
         this.stackSize = 0;
@@ -63,7 +64,7 @@ public class ExecutionState {
         this.longConstants = new LongArrayList();
         this.stackStates = new IntArrayList();
         this.continuationReturnLength = new IntArrayList();
-        this.branchTables = new IntArrayArrayList();
+        this.branchTables = new ArrayList<>();
     }
 
     public void push() {
@@ -176,6 +177,6 @@ public class ExecutionState {
     }
 
     public int[][] branchTables() {
-        return branchTables.toArray();
+        return branchTables.toArray(new int[0][]);
     }
 }

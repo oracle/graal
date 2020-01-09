@@ -37,6 +37,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
 import com.oracle.truffle.tools.agentscript.AgentScript;
+import java.io.ByteArrayOutputStream;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -55,7 +56,12 @@ final class AgentObjectFactory extends ProxyLanguage {
     }
 
     static Context newContext() {
-        return Context.newBuilder().allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).build();
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        return newContext(os, os);
+    }
+
+    static Context newContext(ByteArrayOutputStream out, ByteArrayOutputStream err) {
+        return Context.newBuilder().out(out).err(err).allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).build();
     }
 
     @Override

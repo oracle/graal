@@ -24,16 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.Arrays;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.graalvm.polyglot.Context;
+import org.junit.Before;
 
 /**
  * Base class for Truffle unit tests that require that there be no background compilation.
@@ -45,24 +43,29 @@ import org.junit.BeforeClass;
  *
  * These tests will be run by the {@code mx unittest} command.
  */
-public abstract class TestWithSynchronousCompiling {
+public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptions {
 
-    private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
-    private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
-    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+    private static final String[] DEFAULT_OTIONS = {
+                    "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
+                    "engine.CompilationThreshold", "10", //
+                    "engine.CompileImmediately", Boolean.FALSE.toString()
+    };
 
-    @BeforeClass
-    public static void before() {
-        backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-        compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    @Before
+    public void before() {
+        setupContext();
     }
 
-    @AfterClass
-    public static void after() {
-        immediateCompilationScope.close();
-        backgroundCompilationScope.close();
-        compilationThresholdScope.close();
+    @Override
+    protected final Context setupContext(String... keyValuePairs) {
+        String[] newOptions;
+        if (keyValuePairs.length == 0) {
+            newOptions = DEFAULT_OTIONS;
+        } else {
+            newOptions = Arrays.copyOf(DEFAULT_OTIONS, DEFAULT_OTIONS.length + keyValuePairs.length);
+            System.arraycopy(keyValuePairs, 0, newOptions, DEFAULT_OTIONS.length, keyValuePairs.length);
+        }
+        return super.setupContext(newOptions);
     }
 
     protected static void assertCompiled(OptimizedCallTarget target) {

@@ -42,7 +42,7 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.Globals;
+import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -80,8 +80,8 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
     }
 
     private void compareGlobals(ContextState firstState, ContextState lastState) {
-        final Globals firstGlobals = firstState.globals();
-        final Globals lastGlobals = lastState.globals();
+        final GlobalRegistry firstGlobals = firstState.globals();
+        final GlobalRegistry lastGlobals = lastState.globals();
         if (firstGlobals.count() != lastGlobals.count()) {
             throw new WasmExecutionException(this, "Mismatch in memory lengths.");
         }

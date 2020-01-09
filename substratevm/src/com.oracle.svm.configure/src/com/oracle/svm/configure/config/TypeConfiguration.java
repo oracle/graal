@@ -50,7 +50,7 @@ public class TypeConfiguration implements JsonPrintable {
 
     public void add(ConfigurationType type) {
         ConfigurationType previous = types.putIfAbsent(type.getQualifiedJavaName(), type);
-        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type");
+        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type %s with %s", previous, type);
     }
 
     public ConfigurationType getOrCreateType(String qualifiedJavaName) {

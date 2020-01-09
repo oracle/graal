@@ -133,6 +133,8 @@ public interface Feedback {
 
     boolean verbatimPart(String msg, boolean verbose);
 
+    boolean verbatimPart(String msg, boolean error, boolean verbose);
+
     boolean backspace(int chars, boolean beVerbose);
 
     /**

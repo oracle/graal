@@ -66,16 +66,10 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
 
     @Test
     public void catchControlFlowExceptionFromCall() {
-        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build();
-        context.enter();
-        try {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
-            AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
-            assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
-        } finally {
-            context.leave();
-            context.close();
-        }
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build());
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
+        AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
+        assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
     }
 
     public static class ThrowControlFlowExceptionTestNode extends AbstractTestNode {

@@ -26,6 +26,8 @@ package com.oracle.svm.core.graal.llvm;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
@@ -47,6 +49,11 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
         NodeLoweringProvider lowering = getLowerings().get(n.getClass());
         if (lowering != null) {
             lowering.lower(n, tool);
+        } else if (n instanceof RemNode) {
+            /* No lowering necessary. */
+        } else if (n instanceof FloatConvertNode) {
+            // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
+            // to see a ConvertNode and throws an error, just do nothing here.
         } else {
             super.lower(n, tool);
         }

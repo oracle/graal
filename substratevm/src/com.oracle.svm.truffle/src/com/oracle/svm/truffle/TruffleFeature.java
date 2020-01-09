@@ -304,7 +304,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
         UserError.guarantee(runtime instanceof SubstrateTruffleRuntime || runtime instanceof DefaultTruffleRuntime,
-                        "Unsupported TruffleRuntime " + runtime.getClass().getName() + " (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)");
+                        "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
+                        runtime.getClass().getName());
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
@@ -873,4 +874,17 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContext
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.LanguageCache", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_LanguageCache {
+
+    /*
+     * The field is also reset explicitly in LanguageCache.resetNativeImageCacheLanguageHomes.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private String languageHome;
 }

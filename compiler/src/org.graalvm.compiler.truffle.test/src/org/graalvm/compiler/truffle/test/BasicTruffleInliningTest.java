@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -220,20 +219,14 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     @SuppressWarnings("try")
     public void testTruffleFunctionInliningFlag() {
-        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "false").build();
-        context.enter();
-        try {
-            // @formatter:off
-            TruffleInlining decisions = builder.
-                    target("callee").
-                    target("caller").
-                        calls("callee", 2).
-                    buildDecisions();
-            // @formatter:on
-            Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
-        } finally {
-            context.leave();
-            context.close();
-        }
+        setupContext("engine.Inlining", "false");
+        // @formatter:off
+        TruffleInlining decisions = builder.
+                target("callee").
+                target("caller").
+                    calls("callee", 2).
+                buildDecisions();
+        // @formatter:on
+        Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
     }
 }

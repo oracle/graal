@@ -44,11 +44,17 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -90,6 +96,8 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
@@ -464,6 +472,45 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         visitedElements.clear();
+        verifyReachableTruffleClasses(access);
+    }
+
+    /**
+     * Verifies that the Truffle compiler does not bring Truffle API types into an image. The
+     * Truffle compiler depends on {@code org.graalvm.compiler.truffle.options} which depends on the
+     * Truffle APIs to be able to use the {@code @com.oracle.truffle.api.Option} annotation. We need
+     * to use the points to analysis to verify that the Truffle API types are not reachable.
+     */
+    private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
+        AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
+        Set<AnalysisMethod> seen = new HashSet<>();
+        universe.getMethods().stream().filter(AnalysisMethod::isRootMethod).forEach(seen::add);
+        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);
+        SortedSet<String> disallowedTypes = new TreeSet<>();
+        while (!todo.isEmpty()) {
+            AnalysisMethod m = todo.removeFirst();
+            String className = m.getDeclaringClass().toClassName();
+            if (!isAllowedType(className)) {
+                disallowedTypes.add(className);
+            }
+            for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
+                for (AnalysisMethod callee : invoke.getCallees()) {
+                    if (seen.add(callee)) {
+                        todo.add(callee);
+                    }
+                }
+            }
+        }
+        if (!disallowedTypes.isEmpty()) {
+            throw UserError.abort("Following non allowed Truffle types are reachable on heap: " + String.join(", ", disallowedTypes));
+        }
+    }
+
+    private static boolean isAllowedType(String className) {
+        if (className.startsWith("com.oracle.truffle.")) {
+            return className.startsWith("com.oracle.truffle.api.nodes.") || className.startsWith("com.oracle.truffle.compiler.enterprise.");
+        }
+        return true;
     }
 
     static class MethodAnnotationSupport {

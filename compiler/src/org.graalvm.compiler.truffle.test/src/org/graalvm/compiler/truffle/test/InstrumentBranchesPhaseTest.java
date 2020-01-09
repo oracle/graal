@@ -95,11 +95,11 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Test
     public void simpleIfTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
         OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
+        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation(target.getOptionValues());
         Assert.assertTrue(target.isValid());
         target.call();
         String stackOutput = instrumentation.accessTableToList(getOptions()).get(0);
@@ -111,7 +111,6 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Test
     public void twoIfsTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
@@ -120,6 +119,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         // We run this twice to make sure that it comes first in the sorted access list.
         target.call();
         target.call();
+        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation(target.getOptionValues());
         String stackOutput1 = instrumentation.accessTableToList(getOptions()).get(0);
         Assert.assertTrue(stackOutput1, stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput1, stackOutput1.contains(String.format("[bci: 4]%n[0] state = ELSE(if=0#, else=2#)")));

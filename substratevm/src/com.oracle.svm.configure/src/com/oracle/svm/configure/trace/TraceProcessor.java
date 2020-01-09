@@ -32,6 +32,7 @@ import java.util.Map;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
@@ -45,8 +46,12 @@ public class TraceProcessor extends AbstractProcessor {
         reflectionProcessor = new ReflectionProcessor(advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
     }
 
-    public void setFilterEnabled(boolean enabled) {
-        advisor.setIgnoreInternalAccesses(enabled);
+    public void setHeuristicsEnabled(boolean enabled) {
+        advisor.setHeuristicsEnabled(enabled);
+    }
+
+    public void setCallerFilterTree(RuleNode rootNode) {
+        advisor.setCallerFilterTree(rootNode);
     }
 
     public TypeConfiguration getJniConfiguration() {

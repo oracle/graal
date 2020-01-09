@@ -144,6 +144,12 @@ public class InstallerCommandlineTest extends CommandTestBase {
         }
 
         @Override
+        public boolean verbatimOut(String msg, boolean beVerbose) {
+            System.err.println("");
+            return false;
+        }
+
+        @Override
         public String l10n(String key, Object... params) {
             if ("Installer_BuiltingCatalogURL".equals(key)) {
                 return testCatalogURL;
@@ -209,6 +215,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         assertNull(main.createOptions(args));
         assertMsg("INFO_Usage", true);
 
+        main = new MockInstallerMain(new String[0]);
         capture.out.clear();
         args.add(0, "install");
         assertNotNull(main.createOptions(args));

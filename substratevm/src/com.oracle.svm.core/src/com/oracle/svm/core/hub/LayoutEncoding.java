@@ -34,6 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -41,6 +42,21 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * The layout encoding for instances is the aligned instance size (i.e., a positive number).
+ * <p>
+ * For arrays, the layout encoding is a negative number with the following format:<br>
+ *
+ * <code>[tag:2, free:10, base:12, indexShift:8]</code>
+ * <ul>
+ * <li>tag: 0x80 if the array is an object array, 0xC0 if it is a primitive array</li>
+ * <li>free: currently unused bits</li>
+ * <li>base: the array base offset</li>
+ * <li>indexShift: the array index shift for accessing array elements or for computing the array
+ * size based on the array length</li>
+ * </ul>
+ */
+@DuplicatedInNativeCode
 public class LayoutEncoding {
 
     private static final int NEUTRAL_VALUE = 0;
@@ -55,8 +71,8 @@ public class LayoutEncoding {
     private static final int ARRAY_BASE_MASK = 0xfff;
     private static final int ARRAY_TAG_BITS = 2;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
-    private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00; // 0xC0000000 >> 30
-    private static final int ARRAY_TAG_OBJECT_VALUE = ~0x01; // 0x80000000 >> 30
+    private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00;
+    private static final int ARRAY_TAG_OBJECT_VALUE = ~0x01;
 
     public static int forPrimitive() {
         return PRIMITIVE_VALUE;

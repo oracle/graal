@@ -52,27 +52,27 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class ContentDigestTest {
     @Test
-    public void emptyMD2() throws Exception {
-        assertDigest(new byte[0], "Empty MD2 digest");
+    public void emptySHA256() throws Exception {
+        assertDigest(new byte[0], "Empty SHA-256 digest");
     }
 
     @Test
-    public void hiMD2() throws Exception {
-        assertDigest("Hi".getBytes("UTF-8"), "Empty MD2 digest");
+    public void hiSHA256() throws Exception {
+        assertDigest("Hi".getBytes("UTF-8"), "Empty SHA-256 digest");
     }
 
     @Test
-    public void helloWorldMD2() throws Exception {
-        assertDigest("Hello World!".getBytes("UTF-8"), "Empty MD2 digest");
+    public void helloWorldSHA256() throws Exception {
+        assertDigest("Hello World!".getBytes("UTF-8"), "Empty SHA-256 digest");
     }
 
     @Test
-    public void minusMD2() throws Exception {
-        assertDigest(new byte[]{-75, 119}, "MD2 digest for negative byte");
+    public void minusSHA256() throws Exception {
+        assertDigest(new byte[]{-75, 119}, "SHA-256 digest for negative byte");
     }
 
     @Test
-    public void computeMD2s() throws Exception {
+    public void computeSHA256s() throws Exception {
         for (int i = 0; i < 100; i++) {
             long seed = System.currentTimeMillis();
             final String msg = "Digest for seed " + seed + " is the same";
@@ -88,8 +88,12 @@ public class ContentDigestTest {
     }
 
     private static void assertDigest(byte[] arr, final String msg) throws Exception {
-        byte[] result = MessageDigest.getInstance("MD2").digest(arr);
+        byte[] result = MessageDigest.getInstance("SHA-256").digest(arr);
         String expecting = new BigInteger(1, result).toString(16);
+        // Add leading `0`s if missing to allign to standard 64 digit SHA-256 format.
+        while (expecting.length() < 64) {
+            expecting = '0' + expecting;
+        }
 
         Method m = Class.forName("com.oracle.truffle.api.source.Source").getDeclaredMethod("digest", byte[].class, int.class, int.class);
         ReflectionUtils.setAccessible(m, true);

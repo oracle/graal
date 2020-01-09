@@ -45,6 +45,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.options.OptionValues;
 
 final class GraphManager {
 
@@ -60,7 +61,7 @@ final class GraphManager {
         this.callNodeProvider = callNodeProvider;
     }
 
-    Entry get(CompilableTruffleAST truffleAST) {
+    Entry get(OptionValues options, CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             Cancellable cancellable = rootIR.getCancellable();
@@ -69,7 +70,7 @@ final class GraphManager {
             StructuredGraph.AllowAssumptions allowAssumptions = rootIR.getAssumptions() != null ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO;
             CompilationIdentifier id = rootIR.compilationId();
             final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
-            StructuredGraph graph = partialEvaluator.createGraphForInlining(debug, truffleAST, callNodeProvider, plugin, allowAssumptions, id, log, cancellable,
+            StructuredGraph graph = partialEvaluator.createGraphForInlining(options, debug, truffleAST, callNodeProvider, plugin, allowAssumptions, id, log, cancellable,
                             graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
             entry = new GraphManager.Entry(graph, truffleCallNodeToInvoke);
@@ -78,9 +79,9 @@ final class GraphManager {
         return entry;
     }
 
-    EconomicMap<TruffleCallNode, Invoke> peRoot(CompilableTruffleAST truffleAST) {
+    EconomicMap<TruffleCallNode, Invoke> peRoot(OptionValues options, CompilableTruffleAST truffleAST) {
         final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
-        partialEvaluator.parseRootGraphForInlining(truffleAST, rootIR, callNodeProvider, plugin, graphCacheForInlining);
+        partialEvaluator.parseRootGraphForInlining(options, truffleAST, rootIR, callNodeProvider, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
 

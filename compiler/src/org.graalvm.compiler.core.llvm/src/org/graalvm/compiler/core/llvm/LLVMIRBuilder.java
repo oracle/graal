@@ -44,16 +44,16 @@ import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMModuleRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.PointerPointer;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMAttributeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBuilderRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMModuleRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -236,7 +236,7 @@ public class LLVMIRBuilder {
             LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
             setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
-            LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
+            LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
             positionAtEnd(block);
 
             LLVMValueRef anchor = getParam(transitionWrapper, 0);

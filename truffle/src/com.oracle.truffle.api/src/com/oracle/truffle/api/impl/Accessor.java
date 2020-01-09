@@ -97,6 +97,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionKey;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -397,6 +398,14 @@ public abstract class Accessor {
         public abstract boolean isIOAllowed();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
+
+        public abstract Set<String> getLanguageIds();
+
+        public abstract Set<String> getInstrumentIds();
+
+        public abstract Set<String> getInternalIds();
+
+        public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
     }
 
     public abstract static class LanguageSupport {

@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -51,7 +52,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     private final CFunctionPointer target;
 
     CEntryPointJavaCallStubMethod(ResolvedJavaMethod original, String name, ResolvedJavaType declaringClass, CFunctionPointer target) {
-        super(original, true);
+        super(original, StatusSupport.STATUS_IN_NATIVE);
         this.name = name;
         this.declaringClass = declaringClass;
         this.target = target;

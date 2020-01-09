@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import com.oracle.truffle.api.CompilerOptions;
 import org.graalvm.options.OptionKey;
 

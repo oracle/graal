@@ -26,10 +26,6 @@ suite = {
       ],
       "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
     },
-    "LLVM_ORG_LIBCXX_SRC" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334.tar.gz"],
-      "sha1" : "5e291cefe0beb2e2e3784b5aaac621c5081de5ef",
-    },
     "GCC_SOURCE" : {
       "packedResource" : True,
       "urls" : [
@@ -193,25 +189,10 @@ suite = {
         "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
-        "com.oracle.truffle.llvm.instruments",
         "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "checkstyleVersion" : "8.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "1.8+",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-      "jacoco" : "include",
-    },
-
-    "com.oracle.truffle.llvm.instruments" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API"
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
       "workingSets" : "Truffle, LLVM",
@@ -427,9 +408,8 @@ suite = {
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/libsulong.bc",
-        "bin/libsulong++.bc",
-        "bin/libsulong-src.tar.gz",
+        "bin/<lib:sulong>",
+        "bin/<lib:sulong++>",
       ],
       "headers" : [
         "include/polyglot.h",
@@ -443,6 +423,9 @@ suite = {
         "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
         "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
         "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
+        "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
+        "LIBSULONG" : "<lib:sulong>",
+        "LIBSULONGXX" : "<lib:sulong++>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -473,7 +456,7 @@ suite = {
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/<lib:sulong>",
+        "bin/<lib:sulong-native>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
@@ -482,7 +465,7 @@ suite = {
       ],
       "buildEnv" : {
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "LIBSULONG" : "<lib:sulong>",
+        "LIBSULONG" : "<lib:sulong-native>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
@@ -726,6 +709,7 @@ suite = {
         "bitcodeformat/hello-darwin-compile-fembed-bitcode.o",
         "bitcodeformat/hello-darwin-link-fembed-bitcode",
         "bitcodeformat/hello-darwin-link-fembed-bitcode.dylib",
+        "bitcodeformat/hello-darwin-link.bundle",
       ],
       "buildEnv": {
         "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
@@ -977,8 +961,8 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           {
@@ -996,20 +980,6 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
-      ],
-      "license" : "BSD-new",
-    },
-
-    "SULONG_LIB_SRC" : {
-      "native" : True,
-      "overlaps" : [
-        "SULONG_HOME"
-      ],
-      "layout" : {
-        "./" : "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong-src.tar.gz",
-      },
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
       ],
       "license" : "BSD-new",
     },
