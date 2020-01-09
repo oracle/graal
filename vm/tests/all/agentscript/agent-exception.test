@@ -31,7 +31,7 @@ good you are?
 .*at <js> log.log.js:1-6:.*
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
->[7] js --experimental-options --agentscript=agent-error.js log.js
+>[7] js --jvm --experimental-options --agentscript=agent-error.js log.js
 Error while initializing Object
 .*at <js> .*program.*
 .*at <js> .*anonymous.*
