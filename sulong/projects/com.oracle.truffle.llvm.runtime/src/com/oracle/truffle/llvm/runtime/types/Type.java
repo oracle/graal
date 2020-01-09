@@ -145,4 +145,14 @@ public abstract class Type {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }
+
+    public static boolean fitsIntoUnsignedInt(long l) {
+        return (l & 0xFFFF_FFFF_0000_0000L) == 0;
+    }
+
+    public static int toUnsignedInt(long l) {
+        assert fitsIntoUnsignedInt(l);
+        return (int)l; // drop 32 MSB
+    }
+
 }
