@@ -478,7 +478,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        Target_java_lang_Thread.stop0((StaticObject) guestThread, guestThrowable);
+        Target_java_lang_Thread.stop0((StaticObject) guestThread, (StaticObject) guestThrowable);
     }
 
     @Override
