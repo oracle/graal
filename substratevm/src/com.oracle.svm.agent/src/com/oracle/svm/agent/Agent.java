@@ -137,7 +137,7 @@ public final class Agent {
         boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
         boolean build = false;
-        if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
+        if (options.isNonNull()) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
                 System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
@@ -191,9 +191,11 @@ public final class Agent {
                     return 1;
                 }
             }
-        } else {
+        }
+
+        if (traceOutputFile == null && configOutputDir == null && !restrict && restrictConfigs.isEmpty() && !build) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
-            System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
+            System.err.println(MESSAGE_PREFIX + "no output/restrict/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
         }
 
         RuleNode callersFilter = null;
