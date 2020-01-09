@@ -39,6 +39,9 @@ import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * This test exercises the FrameState used for deoptimization in the JVMTI post_on_exceptions path.
+ */
 public class HotSpotDeoptPostExceptions extends GraalCompilerTest {
 
     @Override

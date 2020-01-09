@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
@@ -43,6 +44,9 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.DeoptimizeWithExceptionInCallerNode;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.word.Word;
@@ -55,13 +59,23 @@ import jdk.vm.ci.code.Register;
  */
 public class CreateExceptionStub extends SnippetStub {
 
+    public static class Options {
+        @Option(help = "Emit deopts for exception throws", type = OptionType.Expert)//
+        public static final OptionKey<Boolean> HotSpotDeoptExplicitExceptions = new OptionKey<>(false);
+    }
+
     protected CreateExceptionStub(String snippetMethodName, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         super(snippetMethodName, options, providers, linkage);
     }
 
     @Fold
-    static boolean reportsDeoptmization(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
+    static boolean reportsDeoptimization(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
         return config.deoptBlobUnpackWithExceptionInTLS != 0;
+    }
+
+    @Fold
+    static boolean alwayDeoptimize(@Fold.InjectedParameter OptionValues options) {
+        return Options.HotSpotDeoptExplicitExceptions.getValue(options);
     }
 
     @Fold
@@ -81,28 +95,24 @@ public class CreateExceptionStub extends SnippetStub {
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, Word message) {
         Word thread = registerAsWord(threadRegister);
         int deoptimized = throwAndPostJvmtiException(THROW_AND_POST_JVMTI_EXCEPTION, thread, classAsCString(exception), message);
-        Object clearPendingException = clearPendingException(thread);
-        if (reportsDeoptmization(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) && deoptimized != 0) {
-            DeoptimizeWithExceptionInCallerNode.deopt(clearPendingException);
-        }
-        return clearPendingException;
+        return handleExceptionReturn(thread, deoptimized);
     }
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer klass) {
         Word thread = registerAsWord(threadRegister);
         int deoptimized = throwKlassExternalNameException(THROW_KLASS_EXTERNAL_NAME_EXCEPTION, thread, classAsCString(exception), klass);
-        Object clearPendingException = clearPendingException(thread);
-        if (reportsDeoptmization(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) && deoptimized != 0) {
-            DeoptimizeWithExceptionInCallerNode.deopt(clearPendingException);
-        }
-        return clearPendingException;
+        return handleExceptionReturn(thread, deoptimized);
     }
 
     protected static Object createException(Register threadRegister, Class<? extends Throwable> exception, KlassPointer objKlass, KlassPointer targetKlass) {
         Word thread = registerAsWord(threadRegister);
         int deoptimized = throwClassCastException(THROW_CLASS_CAST_EXCEPTION, thread, classAsCString(exception), objKlass, targetKlass);
+        return handleExceptionReturn(thread, deoptimized);
+    }
+
+    private static Object handleExceptionReturn(Word thread, int deoptimized) {
         Object clearPendingException = clearPendingException(thread);
-        if (reportsDeoptmization(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) && deoptimized != 0) {
+        if (alwayDeoptimize(INJECTED_OPTIONVALUES) || (reportsDeoptimization(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) && deoptimized != 0)) {
             DeoptimizeWithExceptionInCallerNode.deopt(clearPendingException);
         }
         return clearPendingException;
