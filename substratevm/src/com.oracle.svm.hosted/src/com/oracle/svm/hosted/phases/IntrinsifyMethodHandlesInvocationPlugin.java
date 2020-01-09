@@ -29,7 +29,10 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -84,6 +87,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -100,6 +104,7 @@ import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
@@ -144,12 +149,22 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * HotSpot world.
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
+
+    static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
+    }
+
+    private final boolean analysis;
     private final Providers originalProviders;
     private final Providers universeProviders;
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
 
     private final ClassInitializationPlugin classInitializationPlugin;
+
+    private final IntrinsificationRegistry intrinsificationRegistry;
+
+    private final ResolvedJavaType methodHandleType;
+    private final Set<String> methodHandleInvokeMethodNames;
 
     private final Class<?> varHandleClass;
     private final ResolvedJavaType varHandleType;
@@ -158,13 +173,24 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
-    public IntrinsifyMethodHandlesInvocationPlugin(Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+    public IntrinsifyMethodHandlesInvocationPlugin(boolean analysis, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+        this.analysis = analysis;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
         this.originalProviders = GraalAccess.getOriginalProviders();
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
+
+        if (analysis) {
+            intrinsificationRegistry = new IntrinsificationRegistry();
+            ImageSingletons.add(IntrinsificationRegistry.class, intrinsificationRegistry);
+        } else {
+            intrinsificationRegistry = ImageSingletons.lookup(IntrinsificationRegistry.class);
+        }
+
+        methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
+        methodHandleInvokeMethodNames = new HashSet<>(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
@@ -193,7 +219,19 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args))) {
             processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
             return true;
+
+        } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
+            /*
+             * The native methods defined in the class MethodHandle are currently not implemented at
+             * all. Normally, we would mark them as @Delete to give the user a good error message.
+             * Unfortunately, that does not work for the MethodHandle methods because they are
+             * signature polymorphic, i.e., they exist in every possible signature. Therefore, we
+             * must only look at the declaring class and the method name here.
+             */
+            reportUnsupportedFeature(b, method);
+            return true;
         }
+
         return false;
     }
 
@@ -452,37 +490,28 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             for (Node node : graph.getNodes()) {
                 if (node == graph.start() || node instanceof ParameterNode || node instanceof ConstantNode || node instanceof FrameState) {
                     /* Ignore the allowed framework around the nodes we care about. */
-                    continue;
                 } else if (node instanceof MethodCallTargetNode) {
                     /* We check the Invoke, so we can ignore the call target. */
-                    continue;
                 } else if ((node instanceof Invoke || node instanceof LoadFieldNode || node instanceof StoreFieldNode) && singleFunctionality == null) {
                     singleFunctionality = node;
-                    continue;
                 } else if (node instanceof ReturnNode && singleReturn == null) {
                     singleReturn = (ReturnNode) node;
-                    continue;
-                }
-
-                String message = "Invoke with MethodHandle argument could not be reduced to at most a single call: " + methodHandleMethod.format("%H.%n(%p)");
-
-                if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                    /*
-                     * Ensure that we have space on the expression stack for the (unused) return
-                     * value of the invoke.
-                     */
-                    ((BytecodeParser) b).getFrameStateBuilder().clearStack();
-                    b.handleReplacedInvoke(InvokeKind.Static, b.getMetaAccess().lookupJavaMethod(unsupportedFeatureMethod),
-                                    new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
-                    /* The invoked method throws an exception and therefore never returns. */
-                    b.append(new DeadEndNode());
-                    return;
-
                 } else {
-                    throw new UnsupportedFeatureException(message + System.lineSeparator() + "To diagnose the issue, you can add the option " +
-                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
-                                    ". The error is then reported at run time when the invoke is executed.");
+                    reportUnsupportedFeature(b, methodHandleMethod);
+                    return;
                 }
+            }
+
+            /*
+             * When parsing for compilation, we must not intrinsify method handles that were not
+             * intrinsified during analysis. Otherwise new code that was no seen as reachable by the
+             * static analysis would be compiled.
+             */
+            if (analysis) {
+                intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
+            } else if (intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
+                reportUnsupportedFeature(b, methodHandleMethod);
+                return;
             }
 
             JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
@@ -548,6 +577,30 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         } catch (Throwable ex) {
             throw debug.handle(ex);
+        }
+    }
+
+    private static void reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+        String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
+                        "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
+                        "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
+
+        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            /*
+             * Ensure that we have space on the expression stack for the (unused) return value of
+             * the invoke.
+             */
+            ((BytecodeParser) b).getFrameStateBuilder().clearStack();
+            b.handleReplacedInvoke(InvokeKind.Static, b.getMetaAccess().lookupJavaMethod(unsupportedFeatureMethod),
+                            new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
+            /* The invoked method throws an exception and therefore never returns. */
+            b.append(new DeadEndNode());
+            return;
+
+        } else {
+            throw new UnsupportedFeatureException(message + System.lineSeparator() + "To diagnose the issue, you can add the option " +
+                            SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
+                            ". The error is then reported at run time when the invoke is executed.");
         }
     }
 
