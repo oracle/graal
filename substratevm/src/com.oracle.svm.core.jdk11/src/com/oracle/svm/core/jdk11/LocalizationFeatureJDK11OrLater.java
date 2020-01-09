@@ -29,9 +29,20 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.LocalizationFeature;
+//Checkstyle: stop
+import sun.text.spi.JavaTimeDateTimePatternProvider;
+//Checkstyle: start
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.spi.LocaleServiceProvider;
 
 @AutomaticFeature
 final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
+
+    private static final List<Class<? extends LocaleServiceProvider>> jdk9PlusClasses = Collections.singletonList(
+                    JavaTimeDateTimePatternProvider.class);
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -43,5 +54,12 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
         super.addResourceBundles();
 
         addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorResources(imageLocale));
+    }
+
+    @Override
+    protected List<Class<? extends LocaleServiceProvider>> getSpiClasses() {
+        List<Class<? extends LocaleServiceProvider>> allClasses = new ArrayList<>(super.getSpiClasses());
+        allClasses.addAll(jdk9PlusClasses);
+        return allClasses;
     }
 }

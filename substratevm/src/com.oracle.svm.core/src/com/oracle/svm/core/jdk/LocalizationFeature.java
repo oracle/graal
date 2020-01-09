@@ -29,11 +29,24 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
+import java.text.spi.BreakIteratorProvider;
+import java.text.spi.CollatorProvider;
+import java.text.spi.DateFormatProvider;
+import java.text.spi.DateFormatSymbolsProvider;
+import java.text.spi.DecimalFormatSymbolsProvider;
+import java.text.spi.NumberFormatProvider;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.spi.CalendarDataProvider;
+import java.util.spi.CalendarNameProvider;
+import java.util.spi.CurrencyNameProvider;
+import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
+import java.util.spi.TimeZoneNameProvider;
 
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -180,22 +193,25 @@ public abstract class LocalizationFeature implements Feature {
      * LocaleServiceProviderPool.spiClasses does not contain all the classes we need, so we list
      * them manually here.
      */
-    @SuppressWarnings({"unchecked"}) //
-    private static final Class<LocaleServiceProvider>[] spiClasses = (Class<LocaleServiceProvider>[]) new Class<?>[]{
-                    java.text.spi.BreakIteratorProvider.class,
-                    java.text.spi.CollatorProvider.class,
-                    java.text.spi.DateFormatProvider.class,
-                    java.text.spi.DateFormatSymbolsProvider.class,
-                    java.text.spi.DecimalFormatSymbolsProvider.class,
-                    java.text.spi.NumberFormatProvider.class,
-                    java.util.spi.CurrencyNameProvider.class,
-                    java.util.spi.LocaleNameProvider.class,
-                    java.util.spi.TimeZoneNameProvider.class,
-                    java.util.spi.CalendarDataProvider.class,
-                    java.util.spi.CalendarNameProvider.class};
+    private static final List<Class<? extends LocaleServiceProvider>> spiClasses = Arrays.asList(
+                    BreakIteratorProvider.class,
+                    CollatorProvider.class,
+                    DateFormatProvider.class,
+                    DateFormatSymbolsProvider.class,
+                    DecimalFormatSymbolsProvider.class,
+                    NumberFormatProvider.class,
+                    CurrencyNameProvider.class,
+                    LocaleNameProvider.class,
+                    TimeZoneNameProvider.class,
+                    CalendarDataProvider.class,
+                    CalendarNameProvider.class);
+
+    protected List<Class<? extends LocaleServiceProvider>> getSpiClasses() {
+        return spiClasses;
+    }
 
     private void addProviders() {
-        for (Class<LocaleServiceProvider> providerClass : spiClasses) {
+        for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, imageLocale));
 
             support.adaptersByClass.put(providerClass, adapter);
