@@ -111,19 +111,25 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             private EventBinding<?> agentBinding;
 
             @CompilerDirectives.TruffleBoundary
-            void initializeAgent() {
-                if (agent != null) {
-                    return;
+            synchronized boolean initializeAgentObject() {
+                if (agent == null) {
+                    agent = new AgentObject(env);
+                    return true;
                 }
-                try {
-                    Source script = src.get();
-                    AgentObject newAgent = new AgentObject(env);
-                    CallTarget target = env.parse(script, "agent");
-                    target.call(newAgent);
-                    newAgent.initializationFinished();
-                    agent = newAgent;
-                } catch (IOException ex) {
-                    throw AgentException.raise(ex);
+                return false;
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            void initializeAgent() {
+                if (initializeAgentObject()) {
+                    try {
+                        Source script = src.get();
+                        CallTarget target = env.parse(script, "agent");
+                        target.call(agent);
+                        agent.initializationFinished();
+                    } catch (IOException ex) {
+                        throw AgentException.raise(ex);
+                    }
                 }
             }
 
