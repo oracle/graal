@@ -128,7 +128,9 @@ public final class Target_java_lang_Thread {
                     } else {
                         setThreadStop(thread, KillStatus.NORMAL);
                     }
-                    throw meta.throwEx(ThreadDeath.class);
+                    // check if death cause throwable is set, if not throw ThreadDeath
+                    StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
+                    throw deathThrowable != null ? Meta.throwEx(deathThrowable) : meta.throwEx(ThreadDeath.class);
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
@@ -365,11 +367,11 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    @SuppressWarnings("unused")
-    public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
+    public static void stop0(@Host(Object.class) StaticObject self, @Host(Object.class) StaticObject throwable) {
         self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
         killThread(self);
         setInterrupt(self, true);
+        setDeathThrowable(self, throwable);
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
@@ -398,6 +400,14 @@ public final class Target_java_lang_Thread {
 
     public static void killThread(StaticObject thread) {
         thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, KillStatus.KILL);
+    }
+
+    public static void setDeathThrowable(StaticObject self, Object deathThrowable) {
+        self.setHiddenField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE, deathThrowable);
+    }
+
+    public static Object getDeathThrowable(StaticObject self) {
+        return self.getHiddenField(self.getKlass().getMeta().HIDDEN_DEATH_THROWABLE);
     }
 
     public static KillStatus getKillStatus(StaticObject thread) {

@@ -121,12 +121,18 @@ public abstract class ConstantPool {
 
     public abstract int getMajorVersion();
 
+    public abstract int getMinorVersion();
+
     public abstract int length();
 
     public abstract PoolConstant at(int index, String description);
 
     public final PoolConstant at(int index) {
         return at(index, null);
+    }
+
+    public byte[] getRawBytes() {
+        return new byte[0];
     }
 
     static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
@@ -355,19 +361,19 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser) {
-        return parse(language, stream, parser, null, null);
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
+        return parse(language, stream, parser, null, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context) {
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
         }
-
+        int rawPoolStartPosition = stream.getPosition();
         final PoolConstant[] entries = new PoolConstant[length];
         entries[0] = InvalidConstant.VALUE;
 
@@ -387,6 +393,7 @@ public abstract class ConstantPool {
                         } else {
                             entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
                         }
+
                         stream.readU2();
                         break;
                     }
@@ -495,8 +502,7 @@ public abstract class ConstantPool {
                 }
                 case METHODTYPE: {
                     parser.checkInvokeDynamicSupport(tag);
-                    int descriptorIndex = stream.readU2();
-                    entries[i] = new MethodTypeConstant.Index(descriptorIndex);
+                    entries[i] = new MethodTypeConstant.Index(stream.readU2());
                     break;
                 }
                 case DYNAMIC: {
@@ -522,8 +528,9 @@ public abstract class ConstantPool {
             }
             i++;
         }
+        int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries, parser.getMajorVersion());
+        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, stream.getByteRange(rawPoolStartPosition, rawPoolLength));
 
         // Validation
         for (int j = 1; j < constantPool.length(); ++j) {

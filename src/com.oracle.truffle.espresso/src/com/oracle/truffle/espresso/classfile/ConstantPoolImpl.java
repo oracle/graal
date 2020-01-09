@@ -32,18 +32,28 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 final class ConstantPoolImpl extends ConstantPool {
 
     private final int majorVersion;
+    private final int minorVersion;
 
     @CompilationFinal(dimensions = 1) //
     private final PoolConstant[] constants;
 
-    ConstantPoolImpl(PoolConstant[] constants, int majorVersion) {
+    private final byte[] rawBytes;
+
+    ConstantPoolImpl(PoolConstant[] constants, int majorVersion, int minorVersion, byte[] rawBytes) {
         this.constants = Objects.requireNonNull(constants);
         this.majorVersion = majorVersion;
+        this.minorVersion = minorVersion;
+        this.rawBytes = rawBytes;
     }
 
     @Override
     public int length() {
         return constants.length;
+    }
+
+    @Override
+    public byte[] getRawBytes() {
+        return rawBytes;
     }
 
     @Override
@@ -58,5 +68,10 @@ final class ConstantPoolImpl extends ConstantPool {
     @Override
     public int getMajorVersion() {
         return majorVersion;
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return minorVersion;
     }
 }

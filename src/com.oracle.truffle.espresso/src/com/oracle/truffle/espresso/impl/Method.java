@@ -62,6 +62,7 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -123,6 +124,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private ObjectKlass[] checkedExceptions;
 
     private final Method proxy;
+    private String genericSignature;
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -823,6 +825,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return LocalVariableTable.EMPTY;
     }
 
+    public LocalVariableTable getLocalVariableTypeTable() {
+        CodeAttribute attribute = getCodeAttribute();
+        if (attribute != null) {
+            return attribute.getLocalvariableTypeTable();
+        }
+        return LocalVariableTable.EMPTY;
+    }
+
     /**
      * @return the source object associated with this method
      */
@@ -877,7 +887,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
             Object theCallee = InterpreterToVM.newObject(getDeclaringKlass());
-            invokeWithConversions(callee, args);
+            invokeWithConversions(theCallee, args);
             return theCallee;
         }
         return invokeWithConversions(callee, args);
@@ -889,6 +899,18 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         int lastLine = table.getLastLine();
         int lineAt = table.getLineNumber((int) codeIndex);
         return lastLine == lineAt;
+    }
+
+    public String getGenericSignatureAsString() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedMethod.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = ""; // if no generics, the generic signature is empty
+            } else {
+                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
     }
 
     // endregion jdwp-specific

@@ -56,6 +56,13 @@ public interface KlassRef {
     String getTypeAsString();
 
     /**
+     * Returns the String representation of the generic type of the class.
+     *
+     * @return the generic class type descriptor name
+     */
+    String getGenericTypeAsString();
+
+    /**
      * Returns all declared methods of the class.
      * 
      * @return array of MethodRef
@@ -138,4 +145,34 @@ public interface KlassRef {
      * @return klass modifier bitmask.
      */
     int getModifiers();
+
+    /**
+     * Returns the array klass for this klass with the given dimensions.
+     *
+     * @param dimensions array dimension
+     * @return array klass
+     */
+    KlassRef getArrayClass(int dimensions);
+
+    /**
+     * Returns the major version of the corresponding class file for this klass.
+     * 
+     * @return the major class file version
+     */
+    int getMajorVersion();
+
+    /**
+     * Returns the minor version of the corresponding class file for this klass.
+     *
+     * @return the minor class file version
+     */
+    int getMinorVersion();
+
+    /**
+     * Returns the constant pool as specified in the Class File Format.
+     *
+     * @return a representation of the constant pool
+     */
+    JDWPConstantPool getJDWPConstantPool();
+
 }

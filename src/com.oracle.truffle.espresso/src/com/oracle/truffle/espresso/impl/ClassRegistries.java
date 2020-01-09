@@ -87,6 +87,9 @@ public final class ClassRegistries {
         // look in boot class registry
         if (bootClassRegistry.classes.containsKey(type)) {
             klasses.add(bootClassRegistry.classes.get(type));
+            // if a type loaded by the boot loader, there can't
+            // be any others, so return immediately
+            return klasses.toArray(new Klass[0]);
         }
         // continue search in all other registries
         for (ClassRegistry registry : registries.values()) {

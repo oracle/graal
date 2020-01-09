@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -97,6 +98,8 @@ public final class ObjectKlass extends Klass {
     private final Attribute runtimeVisibleAnnotations;
 
     private final Klass hostKlass;
+
+    private String genericSignature;
 
     // Stores the VTable for classes, holds public non-static methods for interfaces.
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
@@ -851,6 +854,20 @@ public final class ObjectKlass extends Klass {
     }
 
     @TruffleBoundary
+    public List<Symbol<Name>> getNestedTypeNames() {
+        ArrayList<Symbol<Name>> result = new ArrayList<>();
+        if (innerClasses != null) {
+            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                if (entry.innerClassIndex != 0) {
+                    result.add(pool.classAt(entry.innerClassIndex).getName(pool));
+
+                }
+            }
+        }
+        return result;
+    }
+
+    @TruffleBoundary
     private int computeModifiers() {
         int modifiers = getModifiers();
         if (innerClasses != null) {
@@ -884,5 +901,28 @@ public final class ObjectKlass extends Klass {
     private boolean hasDeclaredDefaultMethods() {
         assert !hasDeclaredDefaultMethods || isInterface();
         return hasDeclaredDefaultMethods;
+    }
+
+    @Override
+    public String getGenericTypeAsString() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedKlass.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = ""; // if no generics, the generic signature is empty
+            } else {
+                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
+    }
+
+    @Override
+    public int getMajorVersion() {
+        return linkedKlass.getMajorVersion();
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return linkedKlass.getMinorVersion();
     }
 }

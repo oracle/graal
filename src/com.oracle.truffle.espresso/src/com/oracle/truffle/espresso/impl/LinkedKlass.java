@@ -142,4 +142,12 @@ public final class LinkedKlass {
     public LinkedKlass[] getInterfaces() {
         return interfaces;
     }
+
+    public int getMajorVersion() {
+        return getConstantPool().getMajorVersion();
+    }
+
+    public int getMinorVersion() {
+        return getConstantPool().getMinorVersion();
+    }
 }

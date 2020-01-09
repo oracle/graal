@@ -226,6 +226,7 @@ class FieldTable {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_IS_ALIVE));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_INTERRUPTED));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH));
+            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH_THROWABLE));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SUSPEND_LOCK));
             return c;
         } else if (type == Type.Class) {

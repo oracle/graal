@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -751,6 +752,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
+    public String getGenericTypeAsString() {
+        // only ObjectKlass(es) can have a generic signature
+        return "";
+    }
+
+    @Override
     public Klass[] getImplementedInterfaces() {
         return getInterfaces();
     }
@@ -773,14 +780,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     return ClassStatusConstants.VERIFIED;
                 case ObjectKlass.PREPARED:
                 case ObjectKlass.LINKED:
-                    return ClassStatusConstants.PREPARED;
+                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED;
                 case ObjectKlass.INITIALIZED:
-                    return ClassStatusConstants.INITIALIZED;
+                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
                 default:
                     return ClassStatusConstants.ERROR;
             }
         } else {
-            return ClassStatusConstants.INITIALIZED;
+            return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
         }
     }
 
@@ -804,6 +811,21 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return mirror();
     }
 
-    // endregion jdwp-specific
+    @Override
+    public int getMajorVersion() {
+        return 0;
+    }
 
+    @Override
+    public int getMinorVersion() {
+        return 0;
+    }
+
+    @Override
+    public JDWPConstantPool getJDWPConstantPool() {
+        ConstantPool pool = getConstantPool();
+        return new JDWPConstantPool(pool.length(), pool.getRawBytes());
+    }
+
+    // endregion jdwp-specific
 }

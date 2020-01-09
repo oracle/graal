@@ -74,6 +74,13 @@ public interface MethodRef {
     String getSignatureAsString();
 
     /**
+     * Returns the String representation of the generic signature of the method.
+     *
+     * @return the generic signature name
+     */
+    String getGenericSignatureAsString();
+
+    /**
      * Returns the method modifiers.
      * 
      * @return the bitmask for the modifiers
@@ -111,6 +118,11 @@ public interface MethodRef {
      * @return the local variable table of the method
      */
     LocalVariableTableRef getLocalVariableTable();
+
+    /**
+     * @return the local generic variable table of the method
+     */
+    LocalVariableTableRef getLocalVariableTypeTable();
 
     /**
      * @return the line number table of the method

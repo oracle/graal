@@ -66,4 +66,6 @@ public interface VMEventListener extends VMListener {
     void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
+
+    void clearAllBreakpointRequests();
 }

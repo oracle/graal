@@ -20,36 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
-import java.util.List;
-import java.util.concurrent.Callable;
+public final class JDWPConstantPool {
 
-public final class CommandResult {
+    private final int count;
+    private final byte[] bytes;
 
-    private final PacketStream reply;
-    private final List<Callable<Void>> preFutures;
-    private final List<Callable<Void>> postFutures;
-
-    CommandResult(PacketStream reply) {
-        this(reply, null, null);
+    public JDWPConstantPool(int count, byte[] bytes) {
+        this.count = count;
+        this.bytes = bytes;
     }
 
-    CommandResult(PacketStream reply, List<Callable<Void>> preFutures, List<Callable<Void>> postFutures) {
-        this.reply = reply;
-        this.preFutures = preFutures;
-        this.postFutures = postFutures;
+    public int getCount() {
+        return count;
     }
 
-    public PacketStream getReply() {
-        return reply;
-    }
-
-    public List<Callable<Void>> getPreFutures() {
-        return preFutures;
-    }
-
-    public List<Callable<Void>> getPostFutures() {
-        return postFutures;
+    public byte[] getBytes() {
+        return bytes;
     }
 }
