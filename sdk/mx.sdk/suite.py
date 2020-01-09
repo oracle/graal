@@ -101,8 +101,9 @@ suite = {
         },
         "darwin" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-darwin-amd64.tar.gz"],
-            "sha1" : "832c728a867879a050a74183300c5570ff5f06f1",
+            # version difference due to rebuild for compatibility with older macOS versions
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bg2672c53415-darwin-amd64.tar.gz"],
+            "sha1" : "e55af4a2e74893c1024545d7a03d7e640d6c20dc",
           }
         },
         "<others>": {
