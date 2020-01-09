@@ -677,7 +677,7 @@ public abstract class AArch64Assembler extends Assembler {
         MRS(0xD5300000),
         MSR(0xD5100000),
         DC(0xD5087000),
-        ISB(0xD5033FDF),
+        ISB(0x000000C0),
 
         BLR_NATIVE(0xc0000000),
 
@@ -2991,7 +2991,8 @@ public abstract class AArch64Assembler extends Assembler {
         LOAD_LOAD(0x9, "ISHLD"),
         LOAD_STORE(0x9, "ISHLD"),
         STORE_STORE(0xA, "ISHST"),
-        ANY_ANY(0xB, "ISH");
+        ANY_ANY(0xB, "ISH"),
+        SYSTEM(0xF, "SYS");
 
         public final int encoding;
         public final String optionName;
@@ -3011,6 +3012,13 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(DMB.encoding | BarrierOp | barrierKind.encoding << BarrierKindOffset);
     }
 
+    /**
+     * Instruction Synchronization Barrier.
+     */
+    public void isb() {
+        emitInt(ISB.encoding | BarrierOp | BarrierKind.SYSTEM.encoding << BarrierKindOffset);
+    }
+
     public void mrs(Register dst, SystemRegister systemRegister) {
         emitInt(MRS.encoding | systemRegister.encoding() | rt(dst));
     }
@@ -3021,13 +3029,6 @@ public abstract class AArch64Assembler extends Assembler {
 
     public void dc(DataCacheOperationType type, Register src) {
         emitInt(DC.encoding | type.encoding() | rt(src));
-    }
-
-    /**
-     * Instruction Synchronization Barrier.
-     */
-    public void isb() {
-        emitInt(ISB.encoding);
     }
 
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {

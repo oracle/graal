@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -177,6 +177,7 @@ void determineCPUFeatures(CPUFeatures* features) {
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "aarch64cpufeatures.h"
 
