@@ -487,7 +487,13 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean systemExitImplemented() {
+        return false;
+    }
+
+    @Override
     public void exit(int exitCode) {
-        System.exit(exitCode);
+        // TODO - implement proper system exit for Espresso
+        // tracked here: /browse/GR-20496
     }
 }

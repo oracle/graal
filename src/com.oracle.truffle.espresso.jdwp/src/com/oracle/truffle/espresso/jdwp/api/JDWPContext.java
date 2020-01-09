@@ -345,10 +345,19 @@ public interface JDWPContext {
     KlassRef[] getNestedTypes(KlassRef klass);
 
     /**
+     * Determines if the underlying language has a proper implementation
+     * of the Java-equivalent of System.exit(int exitCode)
+     *
+     * @return true if System.exit is implemented, false otherwise
+     */
+    boolean systemExitImplemented();
+
+    /**
      * Terminates the target VM with the given exit code. On some platforms, the exit code might be
      * truncated, for example, to the low order 8 bits. All ids previously returned from the target
      * VM become invalid. Threads running in the VM are abruptly terminated. A thread death
      * exception is not thrown and finally blocks are not run.
      */
     void exit(int exitCode);
+
 }
