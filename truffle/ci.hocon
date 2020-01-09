@@ -35,7 +35,7 @@ truffleWeekly: ${truffle-weekly-notifications} {
 }
 
 builds += [
-  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
