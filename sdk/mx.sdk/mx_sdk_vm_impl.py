@@ -1981,6 +1981,10 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         add_files_from_component(component, base_dir, [])
 
+        sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+        metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
+        layout.setdefault(base_dir + '/release', []).append('string:' + metadata)
+
         for dependency_name, details in component.standalone_dependencies.items():
             dependency_path = details[0]
             excluded_paths = details[1] if len(details) > 1 else []
