@@ -186,6 +186,34 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         this.isLeaf = method.isLeaf;
     }
 
+    private Method(Method method, CodeAttribute split) {
+        super(method.getRawSignature(), method.getName());
+        this.declaringKlass = method.declaringKlass;
+        // TODO(peterssen): Custom constant pool for methods is not supported.
+        this.pool = (RuntimeConstantPool) method.getConstantPool();
+
+        this.linkedMethod = method.linkedMethod;
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+        }
+
+        this.codeAttribute = split;
+        this.callTarget = null;
+
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        initRefKind();
+        // Proxy the method, so that we have the same callTarget if it is not yet initialized.
+        // Allows for not duplicating the codeAttribute
+        this.proxy = method.proxy == null ? method : method.proxy;
+        this.poisonPill = method.poisonPill;
+        this.isLeaf = method.isLeaf;
+    }
+
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
         this(declaringKlass, linkedMethod, linkedMethod.getRawSignature());
     }
@@ -841,6 +869,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
         assert isMethodHandleIntrinsic();
         return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
+    }
+
+    public Method forceSplit() {
+        assert isMethodHandleIntrinsic();
+        Method result = new Method(this, getCodeAttribute().forceSplit());
+        FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
+        FrameSlot monitorSlot = null;
+        if (usesMonitors()) {
+            monitorSlot = frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object);
+        }
+        // BCI slot is always the latest.
+        FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result, frameDescriptor, monitorSlot, bciSlot));
+        result.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+
+        return result;
     }
 
     // region jdwp-specific

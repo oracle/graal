@@ -49,11 +49,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * 
  * Note that there is a small overhead, as the method invoked is usually the actual payload (in
  * opposition to the other MH nodes, who usually either calls the type checkers, or performs type
- * checks on erased primitives) to the , whose signature is not sub-workd erased. Unfortunately, the
- * under-the-carpet machinery created by guest java code works, and returns sub-words erased to
- * ints. We thus need to restore the kind of each argument before executing the payload, and since
- * this method is called from the black box, we need to erase the kind of the result to int if
- * needed.
+ * checks on erased primitives), whose signature is not sub-workd erased. Unfortunately, the
+ * under-the-carpet machinery created by guest java code returns sub-words erased to ints. We thus
+ * need to restore the kind of each argument before executing the payload, and since this method is
+ * called from the black box, we need to erase the kind of the result to int if needed.
  */
 public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     private final int argCount;

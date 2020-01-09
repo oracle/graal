@@ -33,10 +33,11 @@ public final class LinkToVirtualNode implements Linker {
     @Override
     public Method linkTo(Method target, Object[] args) {
         Method resolved = target;
-        StaticObject receiver = (StaticObject) args[0];
-        if ((target.getRefKind() != REF_invokeSpecial)) {
-            resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
+        if ((target.getRefKind() == REF_invokeSpecial) || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
+            return resolved;
         }
+        StaticObject receiver = (StaticObject) args[0];
+        resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
         return resolved;
     }
 }
