@@ -53,13 +53,22 @@ generate                  generates configuration file(s) from all inputs.
                           -H:ResourceConfigurationFiles=<path>.
                           The paths in the configuration file might need to be
                           adjusted for the build directories/classpath.
+    --caller-filter-file=<path>
+                          Provides a custom filter file for excluding usages
+                          of JNI, reflection and resources based on the caller
+                          class (read more below). This option can be provided
+                          more than once, and the filter rules from the files
+                          will be processed in the specified order.
     --no-builtin-caller-filter
                           Usages of JNI, reflection and resources that are
                           internal to the JDK, to GraalVM or to the Java VM do
                           not need to be configured for native-image builds and
                           by default, are filtered (removed) from the generated
                           configurations. This option disables the built-in
-                          filter for those usages.
+                          filter for such usages based on the caller class.
+    --no-builtin-heuristic-filter
+                          This option disables builtin heuristics that identify
+                          further internal JNI, reflection and resource usages.
 
 generate-filters          builds a class filter according to the parameters.
                           Filter rules are created according to the order of
