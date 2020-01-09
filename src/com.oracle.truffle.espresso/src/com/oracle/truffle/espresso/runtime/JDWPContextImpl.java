@@ -533,33 +533,4 @@ public final class JDWPContextImpl implements JDWPContext {
             return -1;
         }
     }
-
-    public void holdEvents() {
-        eventListener.holdEvents();
-    }
-
-    @Override
-    public void releaseEvents() {
-        eventListener.releaseEvents();
-    }
-
-    @Override
-    public List<Path> getClassPath() {
-        return context.getVmProperties().classpath();
-    }
-
-    @Override
-    public List<Path> getBootClassPath() {
-        return context.getVmProperties().bootClasspath();
-    }
-
-    @Override
-    public int getCatchLocation(MethodRef method, Object guestException, int bci) {
-        if (guestException instanceof StaticObject) {
-            Method guestMethod = (Method) method;
-            return guestMethod.getCatchLocation(bci, (StaticObject) guestException);
-        } else {
-            return -1;
-        }
-    }
 }
