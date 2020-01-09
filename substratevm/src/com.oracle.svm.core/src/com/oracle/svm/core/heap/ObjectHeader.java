@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -58,6 +59,8 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
+
+    public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
 
     public abstract int getReservedBits();
 

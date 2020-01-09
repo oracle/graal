@@ -249,16 +249,16 @@ public class ObjectHeaderImpl extends ObjectHeader {
     public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
         assert heapKind == HeapKind.Unmanaged;
         // headers in unmanaged memory don't need any GC-specific bits set
-        initializeHeaderOfNewObject(objectPointer, hub, false, false);
+        Word objectHeader = encodeAsObjectHeader(hub, false, false);
+        initializeHeaderOfNewObject(objectPointer, objectHeader);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, boolean rememberedSet, boolean unaligned) {
-        WordBase header = formatHub(hub, rememberedSet, unaligned);
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
         if (getReferenceSize() == Integer.BYTES) {
-            objectPointer.writeInt(getHubOffset(), (int) header.rawValue(), LocationIdentity.INIT_LOCATION);
+            objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {
-            objectPointer.writeWord(getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+            objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
         }
     }
 
@@ -270,8 +270,13 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
+    @Override
+    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
+        return encodeAsObjectHeader(hub, false, false);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static WordBase formatHub(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
+    public Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
         /*
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.

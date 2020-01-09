@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.genscavenge.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
@@ -44,14 +45,18 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
     @Input protected ValueNode length;
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode unaligned;
+    @Input protected ValueNode fillContents;
+    @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned) {
+    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned, ValueNode fillContents, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
         this.length = length;
         this.rememberedSet = rememberedSet;
         this.unaligned = unaligned;
+        this.fillContents = fillContents;
+        this.emitMemoryBarrier = emitMemoryBarrier;
     }
 
     public ValueNode getMemory() {
@@ -74,8 +79,19 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
         return unaligned;
     }
 
+    public ValueNode getFillContents() {
+        return fillContents;
+    }
+
+    public ValueNode getEmitMemoryBarrier() {
+        return emitMemoryBarrier;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
+
+    @NodeIntrinsic
+    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, boolean emitMemoryBarrier);
 }

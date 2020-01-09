@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.genscavenge.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
@@ -42,12 +43,16 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
     @Input protected ValueNode memory;
     @Input protected ValueNode hub;
     @Input protected ValueNode rememberedSet;
+    @Input protected ValueNode fillContents;
+    @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatObjectNode(ValueNode memory, ValueNode hub, ValueNode rememberedSet) {
+    public FormatObjectNode(ValueNode memory, ValueNode hub, ValueNode rememberedSet, ValueNode fillContents, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
         this.rememberedSet = rememberedSet;
+        this.fillContents = fillContents;
+        this.emitMemoryBarrier = emitMemoryBarrier;
     }
 
     public ValueNode getMemory() {
@@ -62,8 +67,19 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
         return rememberedSet;
     }
 
+    public ValueNode getFillContents() {
+        return fillContents;
+    }
+
+    public ValueNode getEmitMemoryBarrier() {
+        return emitMemoryBarrier;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
+
+    @NodeIntrinsic
+    public static native Object formatObject(Pointer memory, Class<?> hub, boolean rememberedSet, boolean fillContents, boolean emitMemoryBarrier);
 }
