@@ -35,13 +35,14 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 
 import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.compiler.options.OptionValues;
 
 public final class AMD64ELFMacroAssembler extends AMD64MacroAssembler implements ELFMacroAssembler {
 
     private int currentEndOfInstruction;
 
-    public AMD64ELFMacroAssembler(TargetDescription target) {
-        super(target);
+    public AMD64ELFMacroAssembler(TargetDescription target, OptionValues optionValues) {
+        super(target, optionValues);
     }
 
     @Override

@@ -62,7 +62,7 @@ final class ForeignGotCallSiteRelocationSymbol extends CallSiteRelocationSymbol 
     }
 
     private static int addPltJump(DataBuilder dataBuilder) {
-        ELFMacroAssembler masm = ELFMacroAssembler.getELFMacroAssembler(dataBuilder.getBackend().getTarget());
+        ELFMacroAssembler masm = ELFMacroAssembler.getELFMacroAssembler(dataBuilder.getBackend().getTarget(), dataBuilder.getBackend().getRuntime().getOptions());
         byte[] code = masm.getPLTJumpCode(); // It includes alignment nops.
         int size = masm.currentEndOfInstruction();
         dataBuilder.getBinaryContainer().appendCodeBytes(code, 0, code.length);

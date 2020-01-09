@@ -38,6 +38,7 @@ import static org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp.useAVX51
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXComparisonPredicate;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -155,8 +156,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
 
             // If the length of the string is less than 32, we chose not to use the
             // AVX512 instructions.
-            masm.testl(len, -32);
-            masm.jcc(AMD64Assembler.ConditionFlag.Zero, labelBelowThreshold);
+            masm.testlAndJcc(len, -32, ConditionFlag.Zero, labelBelowThreshold, false);
 
             // First check whether a character is compressible (<= 0xff).
             // Create mask to test for Unicode chars inside (zmm) vector.
@@ -303,6 +303,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.jccb(AMD64Assembler.ConditionFlag.NotZero, labelReturnZero);
             masm.packuswb(tmp2Reg, tmp3Reg);     // Only ASCII chars; compress each to a byte.
             masm.movq(new AMD64Address(dst), tmp2Reg);
+
             masm.addq(src, 16);
             masm.addq(dst, 8);
 
@@ -311,8 +312,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         }
 
         // Compress any remaining characters using a vanilla implementation.
-        masm.testl(len, len);
-        masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelReturnLength);
+        masm.testlAndJcc(len, len, ConditionFlag.Zero, labelReturnLength, true);
         masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times2));
         masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times1));
         masm.negq(len);

@@ -64,6 +64,7 @@ public abstract class Assembler {
      * Backing code buffer.
      */
     private final Buffer codeBuffer;
+    private int lastOpStart = 0;
 
     protected Consumer<CodeAnnotation> codePatchingAnnotationConsumer;
 
@@ -86,8 +87,28 @@ public abstract class Assembler {
         return codeBuffer.position();
     }
 
+    public void setPosition(int position) {
+        codeBuffer.setPosition(position);
+    }
+
+    public final void setLastOpStart(int lastOpStart) {
+        this.lastOpStart = lastOpStart;
+    }
+
+    public final void markJCCPrecedingInstruction() {
+        setLastOpStart(position());
+    }
+
+    public final int getLastOpStart() {
+        return lastOpStart;
+    }
+
     public final void emitByte(int x) {
         codeBuffer.emitByte(x);
+    }
+
+    public final void emitBytes(byte[] bytes) {
+        codeBuffer.emitBytes(bytes, 0, bytes.length);
     }
 
     public final void emitShort(int x) {

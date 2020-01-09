@@ -929,6 +929,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.lir",
       ],
+      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Assembler,AMD64",

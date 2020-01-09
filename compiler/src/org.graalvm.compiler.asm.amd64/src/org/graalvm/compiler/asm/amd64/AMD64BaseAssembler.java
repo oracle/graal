@@ -559,7 +559,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         int disp = addr.getDisplacement();
 
         if (base.equals(AMD64.rip)) { // also matches addresses returned by getPlaceholder()
-            // [00 000 101] disp32
+            // [00 reg 101] disp32
             assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
             if (codePatchingAnnotationConsumer != null && addr.instructionStartPosition >= 0) {

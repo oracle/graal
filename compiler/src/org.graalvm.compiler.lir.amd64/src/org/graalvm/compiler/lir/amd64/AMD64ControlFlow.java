@@ -539,7 +539,17 @@ public class AMD64ControlFlow {
 
         @Override
         protected void jcc(AMD64MacroAssembler masm, boolean negate, LabelRef target) {
-            floatJcc(masm, negate ? condition.negate() : condition, negate ? !unorderedIsTrue : unorderedIsTrue, target.label());
+            ConditionFlag condition1 = negate ? condition.negate() : condition;
+            boolean unorderedIsTrue1 = negate ? !unorderedIsTrue : unorderedIsTrue;
+            Label label = target.label();
+            Label endLabel = new Label();
+            if (unorderedIsTrue1 && !trueOnUnordered(condition1)) {
+                masm.jcc(ConditionFlag.Parity, label);
+            } else if (!unorderedIsTrue1 && trueOnUnordered(condition1)) {
+                masm.jccb(ConditionFlag.Parity, endLabel);
+            }
+            masm.jcc(condition1, label);
+            masm.bind(endLabel);
         }
     }
 
@@ -738,8 +748,7 @@ public class AMD64ControlFlow {
 
                 // Jump to the default target if the first DWORD (original key) doesn't match the
                 // current key. Accounts for hash collisions with unknown keys
-                masm.cmpl(entryScratchReg, valueReg);
-                masm.jcc(ConditionFlag.NotEqual, defaultTarget.label());
+                masm.cmplAndJcc(entryScratchReg, valueReg, ConditionFlag.NotEqual, defaultTarget.label(), false);
 
                 // Shift to the second DWORD
                 masm.sarq(entryScratchReg, 32);
@@ -870,17 +879,6 @@ public class AMD64ControlFlow {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
         }
-    }
-
-    private static void floatJcc(AMD64MacroAssembler masm, ConditionFlag condition, boolean unorderedIsTrue, Label label) {
-        Label endLabel = new Label();
-        if (unorderedIsTrue && !trueOnUnordered(condition)) {
-            masm.jcc(ConditionFlag.Parity, label);
-        } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-            masm.jccb(ConditionFlag.Parity, endLabel);
-        }
-        masm.jcc(condition, label);
-        masm.bind(endLabel);
     }
 
     private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue,
