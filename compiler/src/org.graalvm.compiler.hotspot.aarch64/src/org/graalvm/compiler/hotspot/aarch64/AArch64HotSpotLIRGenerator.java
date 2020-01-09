@@ -400,6 +400,11 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
+    public void emitDeoptimizeWithExceptionInCaller(Value exception) {
+
+    }
+
+    @Override
     public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
         moveDeoptValuesToThread(actionAndReason, failedSpeculation);
         append(new AArch64HotSpotDeoptimizeOp(state));

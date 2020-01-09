@@ -63,6 +63,8 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
 
     void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
 
+    void emitDeoptimizeWithExceptionInCaller(Value exception);
+
     /**
      * Emits code for a {@link LoadConstantIndirectlyNode}.
      *

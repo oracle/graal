@@ -102,7 +102,7 @@ public class DebugInfoBuilder {
         } while (current != null);
 
         assert verifyFrameState(node, topState);
-        BytecodeFrame frame = computeFrameForState(topState);
+        BytecodeFrame frame = computeFrameForState(node, topState);
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -230,7 +230,7 @@ public class DebugInfoBuilder {
         return true;
     }
 
-    protected BytecodeFrame computeFrameForState(FrameState state) {
+    protected BytecodeFrame computeFrameForState(NodeWithState node, FrameState state) {
         try {
             assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
             assert state.bci != BytecodeFrame.UNKNOWN_BCI;
@@ -256,7 +256,7 @@ public class DebugInfoBuilder {
 
             BytecodeFrame caller = null;
             if (state.outerFrameState() != null) {
-                caller = computeFrameForState(state.outerFrameState());
+                caller = computeFrameForState(node, state.outerFrameState());
             }
 
             if (!state.canProduceBytecodeFrame()) {
