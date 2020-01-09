@@ -209,14 +209,14 @@ final class JDWP {
 
                 if (context.systemExitImplemented()) {
                     return new CommandResult(reply,
-                            null,
-                            Collections.singletonList(new Callable<Void>() {
-                                @Override
-                                public Void call() {
-                                    context.exit(input.readInt());
-                                    return null;
-                                }
-                            }));
+                                    null,
+                                    Collections.singletonList(new Callable<Void>() {
+                                        @Override
+                                        public Void call() {
+                                            context.exit(input.readInt());
+                                            return null;
+                                        }
+                                    }));
                 } else {
                     reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
                     return new CommandResult(reply);
