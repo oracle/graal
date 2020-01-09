@@ -33,6 +33,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -44,6 +45,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
@@ -58,6 +60,10 @@ final class Target_java_net_URL {
 
     @Delete private static Hashtable<?, ?> handlers;
 
+    @Alias private static Object streamHandlerLock;
+
+    @Alias static URLStreamHandlerFactory factory;
+
     @Substitute
     private static URLStreamHandler getURLStreamHandler(String protocol) throws MalformedURLException {
         /*
@@ -68,6 +74,16 @@ final class Target_java_net_URL {
          * available, and how to add a protocol at image build time.
          */
         return JavaNetSubstitutions.getURLStreamHandler(protocol);
+    }
+
+    @Substitute
+    public static void setURLStreamHandlerFactory(URLStreamHandlerFactory fac) {
+        synchronized (streamHandlerLock) {
+            if (factory != null) {
+                throw new Error("factory already defined");
+            }
+            factory = fac;
+        }
     }
 }
 
