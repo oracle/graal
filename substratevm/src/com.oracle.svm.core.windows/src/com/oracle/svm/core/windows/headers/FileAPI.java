@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.windows.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -33,6 +35,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 
 //Checkstyle: stop
 
@@ -62,4 +66,6 @@ public class FileAPI {
     @CFunction
     public static native int GetStdHandle(int stdHandle);
 
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
 }
