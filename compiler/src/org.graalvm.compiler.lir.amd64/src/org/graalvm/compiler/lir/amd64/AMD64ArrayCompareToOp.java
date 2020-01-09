@@ -34,6 +34,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.EnumSet;
 
+import jdk.vm.ci.code.CodeUtil;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -66,6 +67,8 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
     private final int array1BaseOffset;
     private final int array2BaseOffset;
 
+    private final int useAVX3Threshold;
+
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
     @Alive({REG}) protected Value array2Value;
@@ -78,8 +81,11 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
 
-    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length1, Value length2) {
+    public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length1, Value length2) {
         super(TYPE);
+
+        assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
+        this.useAVX3Threshold = useAVX3Threshold;
         this.kind1 = kind1;
         this.kind2 = kind2;
 
@@ -311,7 +317,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
             masm.bind(COMPARE_WIDE_VECTORS_LOOP);
 
             // if (VM_Version::supports_avx512vlbw()) { // trying 64 bytes fast loop
-            if (supportsAVX512VLBW(crb.target)) {
+            if (useAVX3Threshold == 0 && supportsAVX512VLBW(crb.target)) {
                 masm.cmpl(cnt2, stride2x2);
                 masm.jccb(ConditionFlag.Below, COMPARE_WIDE_VECTORS_LOOP_AVX2);
                 masm.testl(cnt2, stride2x2 - 1);   // cnt2 holds the vector count

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.phases;
+package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.lir.alloc.lsra.LinearScanPhase;
-import org.graalvm.compiler.lir.dfa.LocationMarkerPhase;
-import org.graalvm.compiler.lir.dfa.MarkBasePointersPhase;
-import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
-import org.graalvm.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
-import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.junit.Test;
 
-public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
-    public EconomyAllocationStage(@SuppressWarnings("unused") OptionValues options) {
-        appendPhase(new MarkBasePointersPhase());
+public class IntegerDivRemCanonicalizationTest extends GraalCompilerTest {
 
-        appendPhase(new LinearScanPhase());
+    public static int redundantRemNode(int a, int b) {
+        int r = (a - a % b) / b;
+        return r;
+    }
 
-        // build frame map
-        appendPhase(new SimpleStackSlotAllocator());
-
-        // currently we mark locations only if we do register allocation
-        appendPhase(new LocationMarkerPhase());
+    @Test
+    public void testRedundantRemNode() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("redundantRemNode"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        // We expect the remainder to be canonicalized away.
+        assertTrue(graph.getNodes().filter(SignedRemNode.class).count() == 0);
     }
 }

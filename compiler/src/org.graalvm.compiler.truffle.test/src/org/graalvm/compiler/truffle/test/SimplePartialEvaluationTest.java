@@ -57,6 +57,8 @@ import org.graalvm.compiler.truffle.test.nodes.StringEqualsNode;
 import org.graalvm.compiler.truffle.test.nodes.StringHashCodeFinalNode;
 import org.graalvm.compiler.truffle.test.nodes.StringHashCodeNonFinalNode;
 import org.graalvm.compiler.truffle.test.nodes.SynchronizedExceptionMergeNode;
+import org.graalvm.compiler.truffle.test.nodes.UnrollLoopUntilReturnNode;
+import org.graalvm.compiler.truffle.test.nodes.UnrollLoopUntilReturnWithThrowNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.LoopExplosionPhiNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.NestedExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.TwoMergesExplodedLoopTestNode;
@@ -754,10 +756,24 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void unrollLoopUntilReturn() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new UnrollLoopUntilReturnNode();
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "unrollLoopUntilReturn", result));
+    }
+
+    @Test
     public void explodeLoopUntilReturnWithThrow() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ExplodeLoopUntilReturnWithThrowNode();
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "explodeLoopUntilReturnWithThrow", result));
+    }
+
+    @Test
+    public void unrollLoopUntilReturnWithThrow() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new UnrollLoopUntilReturnWithThrowNode();
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "unrollLoopUntilReturnWithThrow", result));
     }
 
     @Test

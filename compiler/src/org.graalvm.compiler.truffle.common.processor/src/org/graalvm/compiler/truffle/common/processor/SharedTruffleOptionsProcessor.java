@@ -119,15 +119,10 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 for (Option option : Option.options) {
                     String defaultValue;
 
-                    String deprecatedByText = null;
-                    if (option.deprecatedBy != null) {
-                        deprecatedByText = "Deprecated by {@link PolyglotCompilerOptions#" + option.deprecatedBy + "}.";
-                    }
-
                     if (isRuntime) {
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("    /**\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                             out.printf("     */\n");
                         }
                         String help;
@@ -165,9 +160,9 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("     * OptionType: %s\n", optionType);
 
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("     *\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                         }
                         out.printf("     */\n");
 

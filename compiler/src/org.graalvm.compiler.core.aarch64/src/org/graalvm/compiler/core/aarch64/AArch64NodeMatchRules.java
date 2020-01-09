@@ -32,6 +32,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
@@ -39,6 +40,8 @@ import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
 import org.graalvm.compiler.core.match.MatchRule;
+import org.graalvm.compiler.core.match.MatchableNode;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Variable;
@@ -68,8 +71,10 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.memory.Access;
 
+@MatchableNode(nodeClass = AArch64PointerAddNode.class, inputs = {"base", "offset"})
 public class AArch64NodeMatchRules extends NodeMatchRules {
     private static final EconomicMap<Class<? extends BinaryNode>, AArch64ArithmeticOp> binaryOpMap;
     private static final EconomicMap<Class<? extends BinaryNode>, AArch64BitFieldOp.BitFieldOpCode> bitFieldOpMap;
@@ -110,6 +115,22 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
 
     protected AArch64Kind getMemoryKind(Access access) {
         return (AArch64Kind) gen.getLIRKind(access.asNode().stamp(NodeView.DEFAULT)).getPlatformKind();
+    }
+
+    private static ExtendType getZeroExtendType(int fromBits) {
+        switch (fromBits) {
+            case Byte.SIZE:
+                return ExtendType.UXTB;
+            case Short.SIZE:
+                return ExtendType.UXTH;
+            case Integer.SIZE:
+                return ExtendType.UXTW;
+            case Long.SIZE:
+                return ExtendType.UXTX;
+            default:
+                GraalError.shouldNotReachHere("extended from " + fromBits + "bits is not supported!");
+                return null;
+        }
     }
 
     private AllocatableValue moveSp(AllocatableValue value) {
@@ -163,6 +184,46 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
 
     private static boolean isNarrowingLongToInt(NarrowNode narrow) {
         return narrow.getInputBits() == 64 && narrow.getResultBits() == 32;
+    }
+
+    @MatchRule("(AArch64PointerAdd=addP base ZeroExtend)")
+    @MatchRule("(AArch64PointerAdd=addP base (LeftShift ZeroExtend Constant))")
+    public ComplexMatchResult extendedPointerAddShift(AArch64PointerAddNode addP) {
+        ValueNode offset = addP.getOffset();
+        ZeroExtendNode zeroExtend;
+        int shiftNum;
+        if (offset instanceof ZeroExtendNode) {
+            zeroExtend = (ZeroExtendNode) offset;
+            shiftNum = 0;
+        } else {
+            LeftShiftNode shift = (LeftShiftNode) offset;
+            zeroExtend = (ZeroExtendNode) shift.getX();
+            shiftNum = shift.getY().asJavaConstant().asInt();
+        }
+
+        int fromBits = zeroExtend.getInputBits();
+        int toBits = zeroExtend.getResultBits();
+        if (toBits != 64) {
+            return null;
+        }
+        assert fromBits <= toBits;
+        ExtendType extendType = getZeroExtendType(fromBits);
+
+        if (shiftNum >= 0 && shiftNum <= 4) {
+            ValueNode base = addP.getBase();
+            return builder -> {
+                AllocatableValue x = gen.asAllocatable(operand(base));
+                AllocatableValue y = gen.asAllocatable(operand(zeroExtend.getValue()));
+                AllocatableValue baseReference = LIRKind.derivedBaseFromValue(x);
+                LIRKind kind = LIRKind.combineDerived(gen.getLIRKind(addP.stamp(NodeView.DEFAULT)),
+                                baseReference, null);
+                Variable result = gen.newVariable(kind);
+                gen.append(new AArch64ArithmeticOp.ExtendedAddShiftOp(result, x, moveSp(y),
+                                extendType, shiftNum));
+                return result;
+            };
+        }
+        return null;
     }
 
     @MatchRule("(And (UnsignedRightShift=shift a Constant=b) Constant=c)")

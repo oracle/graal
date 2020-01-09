@@ -173,10 +173,15 @@ public abstract class JavaThreads {
         return toTarget(thread).sleepParkEvent;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
         Thread javaThread = currentThread.get(thread);
-        return toTarget(javaThread).wasStartedByCurrentIsolate;
+        return wasStartedByCurrentIsolate(javaThread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static boolean wasStartedByCurrentIsolate(Thread thread) {
+        return toTarget(thread).wasStartedByCurrentIsolate;
     }
 
     /* End of accessor functions. */
