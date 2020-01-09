@@ -54,7 +54,7 @@ import static org.graalvm.wasm.ValueTypes.I32_TYPE;
 
 public class TestutilModule extends BuiltinModule {
     public static class Options {
-        public static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
+        static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
     }
 
     public static class Names {

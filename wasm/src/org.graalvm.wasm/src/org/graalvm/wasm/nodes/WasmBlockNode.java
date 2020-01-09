@@ -2200,7 +2200,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I32_WRAP_I64: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    int result = (int) (x % 0x8000_0000);
+                    int result = (int) (x & 0xFFFF_FFFFL);
                     pushInt(frame, stackPointer, result);
                     stackPointer++;
                     trace("push wrap_i64(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
