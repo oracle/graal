@@ -147,6 +147,7 @@ public final class Target_java_lang_Thread {
         return EspressoLanguage.getCurrentContext().getCurrentThread();
     }
 
+    @TruffleBoundary
     @Substitution
     public static @Host(Thread[].class) StaticObject getThreads() {
         EspressoContext context = EspressoLanguage.getCurrentContext();
