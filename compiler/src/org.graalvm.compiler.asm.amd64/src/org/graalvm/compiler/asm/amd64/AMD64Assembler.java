@@ -3374,24 +3374,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // 8bit operands
         if (dst.encoding == 0) {
             emitByte(0xA9);
+            emitInt(imm32);
         } else {
-            prefix(dst);
-            emitByte(0xF7);
-            emitModRM(0, dst);
+            AMD64MIOp.TEST.emit(this, DWORD, dst, imm32);
         }
-        emitInt(imm32);
     }
 
     public final void testl(Register dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x85);
-        emitModRM(dst, src);
+        AMD64RMOp.TEST.emit(this, DWORD, dst, src);
     }
 
     public final void testl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x85);
-        emitOperandHelper(dst, src, 0);
+        AMD64RMOp.TEST.emit(this, DWORD, dst, src);
     }
 
     public final void unpckhpd(Register dst, Register src) {
@@ -3763,9 +3757,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void testq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x85);
-        emitModRM(dst, src);
+        AMD64RMOp.TEST.emit(this, QWORD, dst, src);
     }
 
     public final void btrq(Register src, int imm8) {
