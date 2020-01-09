@@ -152,11 +152,22 @@ suite = {
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
-        "org.graalvm.tools.lsp": {
+        "org.graalvm.tools.api.lsp": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance": "8+",
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets": "Tools",
+        },
+        "org.graalvm.tools.lsp": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "org.graalvm.tools.api.lsp",
                 "TruffleJSON"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
@@ -389,13 +400,26 @@ suite = {
                 ],
             },
         },
+        "LSP_API": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "org.graalvm.tools.api.lsp",
+            "dependencies": ["org.graalvm.tools.api.lsp"],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "lsp_api",
+            },
+            "description" : "Truffle Language Server backend API.",
+        },
         "LSP": {
             "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "org.graalvm.tools.lsp",
             "dependencies": ["org.graalvm.tools.lsp"],
             "distDependencies" : [
-                "truffle:TRUFFLE_API",
+                "LSP_API",
             ],
             "maven" : {
               "artifactId" : "lsp",

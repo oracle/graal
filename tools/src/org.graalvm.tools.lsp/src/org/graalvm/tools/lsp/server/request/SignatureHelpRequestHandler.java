@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
-import org.graalvm.tools.lsp.interop.LSPLibrary;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.types.ParameterInformation;
@@ -93,17 +93,19 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
                 // TODO: Are we asking for the signature on the correct object?
                 if (evalResult.isEvaluationDone() && !evalResult.isError()) {
                     Object result = evalResult.getResult();
-                    if (result instanceof TruffleObject) {
+                    if (INTEROP.accepts(result) && INTEROP.isExecutable(result)) {
                         try {
                             Object signature = LSP_INTEROP.getSignature(result);
                             LanguageInfo langInfo = surrogate.getLanguageInfo();
                             String label = env.toString(langInfo, signature);
                             SignatureInformation info = SignatureInformation.create(label, null);
-                            if (signature instanceof TruffleObject && INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {
-                                Object doc = INTEROP.readMember(signature, PROP_DOCUMENTATION);
-                                Object documentation = completionHandler.getDocumentation(doc, langInfo);
-                                if (documentation != null) {
-                                    info.setDocumentation(documentation);
+                            if (signature instanceof TruffleObject) {
+                                if (INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {
+                                    Object doc = INTEROP.readMember(signature, PROP_DOCUMENTATION);
+                                    Object documentation = completionHandler.getDocumentation(doc, langInfo);
+                                    if (documentation != null) {
+                                        info.setDocumentation(documentation);
+                                    }
                                 }
                                 if (INTEROP.isMemberReadable(signature, PROP_PARAMETERS)) {
                                     Object paramsObject = INTEROP.readMember(signature, PROP_PARAMETERS);
@@ -156,12 +158,11 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
             }
             Object i1Obj = INTEROP.readArrayElement(paramLabelObject, 0);
             Object i2Obj = INTEROP.readArrayElement(paramLabelObject, 1);
-            if (!(i1Obj instanceof Number) || !(i2Obj instanceof Number)) {
+            if (!INTEROP.fitsInInt(i1Obj) || !INTEROP.fitsInInt(i2Obj)) {
                 LOG.fine("ERROR: Label indexes of " + paramLabelObject + " are not numbers: " + i1Obj + ", " + i2Obj);
                 return null;
             }
-            // TODO: pass the indexes after https://github.com/eclipse/lsp4j/issues/300 is fixed.
-            paramLabel = label.substring(((Number) i1Obj).intValue(), ((Number) i2Obj).intValue());
+            paramLabel = label.substring(INTEROP.asInt(i1Obj), INTEROP.asInt(i2Obj));
         } else {
             LOG.fine("ERROR: Unknown label object: " + paramLabelObject + " in " + param);
             return null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.types.CompletionContext;
 import org.graalvm.tools.lsp.server.types.CompletionItem;
 import org.graalvm.tools.lsp.server.types.CompletionItemKind;
@@ -48,7 +49,6 @@ import org.graalvm.tools.lsp.server.types.MarkupKind;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.interop.LSPLibrary;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
@@ -464,7 +464,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             langInfo = getObjectLanguageInfo(langInfo, obj);
         }
 
-        if (truffleObj != null) {
+        if (truffleObj != null && INTEROP.isExecutable(truffleObj)) {
             String formattedSignature = getFormattedSignature(truffleObj, langInfo);
             detailText = formattedSignature != null ? formattedSignature : "";
         }
