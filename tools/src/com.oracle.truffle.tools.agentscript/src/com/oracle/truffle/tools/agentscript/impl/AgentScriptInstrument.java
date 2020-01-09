@@ -121,15 +121,16 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @CompilerDirectives.TruffleBoundary
             void initializeAgent() {
+                Source script = src.get();
+                CallTarget target;
+                try {
+                    target = env.parse(script, "agent");
+                } catch (IOException ex) {
+                    throw AgentException.raise(ex);
+                }
                 if (initializeAgentObject()) {
-                    try {
-                        Source script = src.get();
-                        CallTarget target = env.parse(script, "agent");
-                        target.call(agent);
-                        agent.initializationFinished();
-                    } catch (IOException ex) {
-                        throw AgentException.raise(ex);
-                    }
+                    target.call(agent);
+                    agent.initializationFinished();
                 }
             }
 
