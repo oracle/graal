@@ -2,13 +2,8 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
-## Version 20.0.0
-* The deprecated `graalvm.home` and `graalvm.version` system properties have been removed, use the [HomeFinder](https://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html) instead.
-* Added `EventContext.createError` which allows to introduce guest application errors in execution listeners/nodes.
-* Deprecated `Instrumenter.attachExecutionEventListener` and `ExecutionEventListener.onInputValue` as explicit input filters are not supported by event listeners. Use ExecutionEventNodes instead.
-* Added [Context.Builder.currentWorkingDirectory](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#currentWorkingDirectory-java.nio.file.Path-) to set the current working directory used by the guest application to resolve relative paths.
+## Version 19.3.1
 * The algorithm used to generate a unique [URI](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
-
 
 ## Version 19.3.0
 * The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
