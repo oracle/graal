@@ -187,9 +187,9 @@ public final class ClassfileStream {
         }
     }
 
-    byte[] getByteRange(int startPosition, int length) {
-        byte[] result = new byte[length];
-        System.arraycopy(bytes, startPosition, result, 0, length);
+    byte[] getByteRange(int startPosition, int numBytes) {
+        byte[] result = new byte[numBytes];
+        System.arraycopy(bytes, startPosition, result, 0, numBytes);
         return result;
     }
 
