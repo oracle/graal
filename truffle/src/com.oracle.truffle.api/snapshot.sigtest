@@ -100,7 +100,7 @@ meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public java.lang.String toString()
 supr java.lang.Object
-hfds id,name,version,vmObject
+hfds id,name,polyglotInstrument,version
 
 CLSS public com.oracle.truffle.api.OptimizationFailedException
 cons public init(java.lang.Throwable,com.oracle.truffle.api.RootCallTarget)
@@ -169,7 +169,7 @@ meth public java.lang.Object enter()
 meth public void close()
 meth public void leave(java.lang.Object)
 supr java.lang.Object
-hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,impl
+hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
 
 CLSS public final com.oracle.truffle.api.TruffleContext$Builder
  outer com.oracle.truffle.api.TruffleContext
@@ -337,7 +337,7 @@ meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},
 meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
  anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds languageInfo,reference,vmObject
+hfds languageInfo,polyglotLanguageInstance,reference
 
 CLSS public final static !enum com.oracle.truffle.api.TruffleLanguage$ContextPolicy
  outer com.oracle.truffle.api.TruffleLanguage
@@ -424,7 +424,7 @@ meth public void exportSymbol(java.lang.String,java.lang.Object)
 meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
-hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,fileSystemContext,in,initialized,initializedUnchangedAssumption,internalFileSystemContext,languageServicesCollector,options,out,services,spi,valid,vmObject
+hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,fileSystemContext,in,initialized,initializedUnchangedAssumption,internalFileSystemContext,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
@@ -767,7 +767,7 @@ meth public final <%0 extends com.oracle.truffle.api.TruffleLanguage> {%%0} getL
  anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo()
 supr com.oracle.truffle.api.nodes.Node
-hfds GENERIC,language,referenceCache,sourceVM
+hfds GENERIC,language,polyglotEngine,referenceCache
 hcls ReferenceCache
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.ExplodeLoop
@@ -782,6 +782,7 @@ CLSS public final static !enum com.oracle.truffle.api.nodes.ExplodeLoop$LoopExpl
 fld public final static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind FULL_EXPLODE
 fld public final static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind FULL_EXPLODE_UNTIL_RETURN
 fld public final static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind FULL_UNROLL
+fld public final static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind FULL_UNROLL_UNTIL_RETURN
 fld public final static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind MERGE_EXPLODE
 meth public static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind[] values()
@@ -864,7 +865,7 @@ meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 supr java.lang.Object
-hfds defaultMimeType,engineObject,id,interactive,internal,mimeTypes,name,version
+hfds defaultMimeType,id,interactive,internal,mimeTypes,name,polyglotLanguage,version
 
 CLSS public abstract com.oracle.truffle.api.nodes.LoopNode
 cons protected init()
@@ -1228,6 +1229,8 @@ CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source
 meth public com.oracle.truffle.api.source.Source build()
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder cached(boolean)
+meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(java.lang.CharSequence)
+meth public com.oracle.truffle.api.source.Source$LiteralBuilder content(org.graalvm.polyglot.io.ByteSequence)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder encoding(java.nio.charset.Charset)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder interactive(boolean)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder internal(boolean)
@@ -1235,6 +1238,7 @@ meth public com.oracle.truffle.api.source.Source$LiteralBuilder mimeType(java.la
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder name(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$LiteralBuilder uri(java.net.URI)
 supr com.oracle.truffle.api.source.Source$SourceBuilder
+hfds buildThrowsIOException
 
 CLSS public com.oracle.truffle.api.source.Source$SourceBuilder
  outer com.oracle.truffle.api.source.Source

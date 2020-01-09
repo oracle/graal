@@ -168,7 +168,7 @@ meth public final java.util.List<com.oracle.truffle.api.debug.DebugValue> getArr
 meth public java.lang.String toString()
 supr java.lang.Object
 hfds INTEROP,preferredLanguage
-hcls AbstractDebugValue,ArrayElementValue,HeapValue,ObjectMemberValue,ObjectPropertyValue
+hcls AbstractDebugCachedValue,AbstractDebugValue,ArrayElementValue,HeapValue,ObjectMemberValue
 
 CLSS public final com.oracle.truffle.api.debug.Debugger
 meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback,com.oracle.truffle.api.debug.SourceElement[])
@@ -200,6 +200,7 @@ meth public java.lang.String toString()
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.debug.DebugValue> getExportedSymbols()
 meth public void close()
+meth public void resume(java.lang.Thread)
 meth public void resumeAll()
 meth public void setBreakpointsActive(boolean)
  anno 0 java.lang.Deprecated()
@@ -208,6 +209,8 @@ meth public void setContextsListener(com.oracle.truffle.api.debug.DebugContextsL
 meth public void setSourcePath(java.lang.Iterable<java.net.URI>)
 meth public void setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter)
 meth public void setThreadsListener(com.oracle.truffle.api.debug.DebugThreadsListener,boolean)
+meth public void suspend(java.lang.Thread)
+meth public void suspendAll()
 meth public void suspendNextExecution()
 supr java.lang.Object
 hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,breakpointsUnresolved,breakpointsUnresolvedEmpty,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,includeInternal,locationBreakpointsActive,sessionId,sourceElements,sourceFilter,sources,stepping,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions

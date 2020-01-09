@@ -125,6 +125,7 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor ARRAY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor DATE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor DURATION
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXCEPTION
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
