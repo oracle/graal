@@ -139,9 +139,6 @@ public final class LanguageServerImpl extends LanguageServer {
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         // TODO: Read params.getCapabilities();
 
-        List<String> signatureTriggerChars = waitForResultAndHandleExceptions(truffleAdapter.getSignatureHelpTriggerCharactersOfAllLanguages());
-        List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharactersOfAllLanguages());
-
         ServerCapabilities capabilities = ServerCapabilities.create();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
         capabilities.setDocumentSymbolProvider(false);
@@ -149,9 +146,9 @@ public final class LanguageServerImpl extends LanguageServer {
         capabilities.setDefinitionProvider(false);
         capabilities.setDocumentHighlightProvider(true);
         capabilities.setCodeLensProvider(CodeLensOptions.create().setResolveProvider(false));
-        capabilities.setCompletionProvider(CompletionOptions.create().setTriggerCharacters(triggerCharacters).setResolveProvider(false));
+        capabilities.setCompletionProvider(CompletionOptions.create().setResolveProvider(false));
         capabilities.setCodeActionProvider(true);
-        capabilities.setSignatureHelpProvider(SignatureHelpOptions.create().setTriggerCharacters(signatureTriggerChars));
+        capabilities.setSignatureHelpProvider(SignatureHelpOptions.create());
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(false);
         capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));

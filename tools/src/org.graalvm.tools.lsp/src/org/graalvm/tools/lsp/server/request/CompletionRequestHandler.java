@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.types.CompletionContext;
@@ -102,14 +101,6 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
         this.langId2CompletionTriggerCharacters = langId2CompletionTriggerCharacters;
-    }
-
-    public List<String> getCompletionTriggerCharactersWithEnteredContext() {
-        return env.getLanguages().values().stream() //
-                        .filter(lang -> !lang.isInternal()) //
-                        .flatMap(info -> env.getCompletionTriggerCharacters(info).stream()) //
-                        .distinct() //
-                        .collect(Collectors.toList());
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int column, CompletionContext completionContext) throws DiagnosticsNotification {
@@ -376,11 +367,9 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         Object boxedObject;
         Object keys = null;
         if (InteropUtils.isPrimitive(object)) {
-            boxedObject = env.boxPrimitive(langInfo, object);
-            if (boxedObject == null) {
-                LOG.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
-                return false;
-            }
+            // TODO: box the primitive when such API is available
+            LOG.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
+            return false;
         } else {
             boxedObject = object;
         }
@@ -462,7 +451,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
         Object truffleObj = null;
         if (InteropUtils.isPrimitive(obj)) {
-            truffleObj = env.boxPrimitive(langInfo, obj);
+            truffleObj = null; // TODO: box the primitive when such API is available
         } else {
             truffleObj = (TruffleObject) obj;
             langInfo = getObjectLanguageInfo(langInfo, obj);

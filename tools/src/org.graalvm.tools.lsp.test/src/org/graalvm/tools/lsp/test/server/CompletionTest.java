@@ -52,6 +52,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.builtins.SLHelloEqualsWorldBuiltin;
 import com.oracle.truffle.sl.runtime.SLContext;
+import java.util.Collections;
+import org.graalvm.tools.lsp.server.types.CompletionOptions;
+import org.graalvm.tools.lsp.server.types.ServerCapabilities;
 
 public class CompletionTest extends TruffleLSPTest {
 
@@ -126,6 +129,7 @@ public class CompletionTest extends TruffleLSPTest {
         Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
 
+        setTriggerCharacters();
         replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "extraneous input '.'");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 2, 13, null);
         CompletionList completionList = futureC.get();
@@ -170,6 +174,7 @@ public class CompletionTest extends TruffleLSPTest {
         Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
         futureCoverage.get();
 
+        setTriggerCharacters();
         replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "extraneous input '.'");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 8, 13, null);
         CompletionList completionList = futureC.get();
@@ -178,5 +183,13 @@ public class CompletionTest extends TruffleLSPTest {
         assertEquals("p", item.getLabel());
         assertEquals("Number", item.getDetail());
         assertEquals(CompletionItemKind.Property, item.getKind());
+    }
+
+    private void setTriggerCharacters() {
+        ServerCapabilities capabilities = ServerCapabilities.create();
+        CompletionOptions completionProvider = CompletionOptions.create();
+        completionProvider.setTriggerCharacters(Collections.singletonList("."));
+        capabilities.setCompletionProvider(completionProvider);
+        truffleAdapter.setServerCapabilities("sl", capabilities);
     }
 }

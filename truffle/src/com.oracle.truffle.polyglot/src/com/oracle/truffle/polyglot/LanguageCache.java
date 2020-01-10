@@ -98,8 +98,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final String version;
     private final boolean interactive;
     private final boolean internal;
-    private final List<String> completionTriggerCharacters;
-    private final List<String> signatureHelpTriggerCharacters;
     private final Set<String> services;
     private final LanguageReflection languageReflection;
 
@@ -112,7 +110,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
                     Set<String> dependentLanguages, boolean interactive, boolean internal, Set<String> services,
-                    List<String> completionTriggerCharacters, List<String> signatureHelpTriggerCharacters,
                     LanguageReflection languageReflection) {
         this.languageReflection = languageReflection;
         this.className = className;
@@ -130,8 +127,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = internal;
         this.languageHome = languageHome;
         this.services = services;
-        this.completionTriggerCharacters = completionTriggerCharacters;
-        this.signatureHelpTriggerCharacters = signatureHelpTriggerCharacters;
 
         if (TruffleOptions.AOT) {
             languageReflection.aotInitializeAtBuildTime();
@@ -160,8 +155,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, servicesClassNames,
-                        Collections.emptyList(),
-                        Collections.emptyList(),
                         LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
     }
 
@@ -288,14 +281,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     boolean isInteractive() {
         return interactive;
-    }
-
-    List<String> getCompletionTriggerCharacters() {
-        return completionTriggerCharacters;
-    }
-
-    List<String> getSignatureHelpTriggerCharacters() {
-        return signatureHelpTriggerCharacters;
     }
 
     String getLanguageHome() {
@@ -659,7 +644,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 LegacyLanguageReflection reflection = new LegacyLanguageReflection(name, loader, className, detectorClassNames);
                 return new LanguageCache(id, name, implementationName, version, className, languageHome,
                                 characterMimes, byteMimeTypes, defaultMime, dependentLanguages,
-                                interactive, internal, servicesClassNames, Collections.emptyList(), Collections.emptyList(), reflection);
+                                interactive, internal, servicesClassNames, reflection);
             }
 
             private static TreeSet<String> parseList(Properties info, String prefix) {
@@ -866,8 +851,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     Collections.addAll(dependentLanguages, reg.dependentLanguages());
                     boolean interactive = reg.interactive();
                     boolean internal = reg.internal();
-                    List<String> completionTriggerCharacters = Collections.unmodifiableList(Arrays.asList(reg.completionTriggerCharacters()));
-                    List<String> signatureHelpTriggerCharacters = Collections.unmodifiableList(Arrays.asList(reg.signatureHelpTriggerCharacters()));
                     Set<String> servicesClassNames = new TreeSet<>();
                     for (String service : provider.getServicesClassNames()) {
                         servicesClassNames.add(service);
@@ -875,7 +858,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     LanguageReflection reflection = new ServiceLoaderLanguageReflection(provider, reg.contextPolicy());
                     into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                                     characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal,
-                                    servicesClassNames, completionTriggerCharacters, signatureHelpTriggerCharacters, reflection));
+                                    servicesClassNames, reflection));
                 }
             }
 

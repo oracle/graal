@@ -987,16 +987,6 @@ final class EngineAccessor extends Accessor {
             return ((OptionValuesImpl) optionValues).getUnparsedOptionValue(optionKey);
         }
 
-        @Override
-        public List<String> getCompletionTriggerCharacters(Object polyglotLanguage) {
-            return ((PolyglotLanguage) polyglotLanguage).cache.getCompletionTriggerCharacters();
-        }
-
-        @Override
-        public List<String> getSignatureHelpTriggerCharacters(Object polyglotLanguage) {
-            return ((PolyglotLanguage) polyglotLanguage).cache.getSignatureHelpTriggerCharacters();
-        }
-
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

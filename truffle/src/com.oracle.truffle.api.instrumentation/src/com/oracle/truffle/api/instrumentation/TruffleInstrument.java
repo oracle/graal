@@ -724,48 +724,6 @@ public abstract class TruffleInstrument {
             return langScopes;
         }
 
-        /**
-         * Get a list of completion trigger characters of a language. A completion trigger character
-         * is a String which might for example auto-activate a code completion system of a source
-         * code editor.
-         *
-         * @param languageInfo a language
-         * @return a list of completion trigger characters of that language, can be empty.
-         * @since 20.0.0
-         */
-        public List<String> getCompletionTriggerCharacters(LanguageInfo languageInfo) {
-            Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
-            return InstrumentAccessor.engineAccess().getCompletionTriggerCharacters(polyglotLanguage);
-        }
-
-        /**
-         * Get a list of signature help trigger characters of a language. A signature help trigger
-         * character is a String which might for example auto-activate visual support in a source
-         * code editor for completing the signature of a callable.
-         *
-         * @param languageInfo a language
-         * @return a list of signature help trigger characters of that language, can be empty.
-         * @since 20.0.0
-         */
-        public List<String> getSignatureHelpTriggerCharacters(LanguageInfo languageInfo) {
-            Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
-            return InstrumentAccessor.engineAccess().getSignatureHelpTriggerCharacters(polyglotLanguage);
-        }
-
-        /**
-         * Box a primitive value into a language-specific TruffleObject.
-         *
-         * @param languageInfo a language
-         * @param primitive a primitive value
-         * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
-         *         cannot be boxed into a language-specific TruffleObject.
-         * @since 20.0.0
-         */
-        public Object boxPrimitive(LanguageInfo languageInfo, Object primitive) {
-            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-            return InstrumentAccessor.langAccess().boxPrimitive(env, primitive);
-        }
-
         private static class MessageTransportProxy implements MessageTransport {
 
             private final MessageTransport transport;

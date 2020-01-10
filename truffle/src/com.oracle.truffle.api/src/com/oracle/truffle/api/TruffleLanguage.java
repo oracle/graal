@@ -454,30 +454,6 @@ public abstract class TruffleLanguage<C> {
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
 
-        /**
-         * Specifies a list of completion trigger characters of this language. A completion trigger
-         * character is a String which might, for example, auto-activate a code completion system of
-         * a source code editor.
-         * <p>
-         * Example: in JavaScript this is '<code>.</code>'.
-         *
-         * @return a list of completion trigger characters of this language, can be empty.
-         * @since 20.0.0
-         */
-        String[] completionTriggerCharacters() default {};
-
-        /**
-         * Specifies a list of signature help trigger characters of this language. A signature help
-         * trigger character is a String which might for example auto-activate visual support in a
-         * source code editor for completing the signature of a callable.
-         * <p>
-         * Example: in JavaScript this is '<code>(</code>'.
-         *
-         * @return a list of signature help trigger characters of that language, can be empty.
-         * @since 20.0.0
-         */
-        String[] signatureHelpTriggerCharacters() default {};
-
     }
 
     /**
@@ -1094,19 +1070,6 @@ public abstract class TruffleLanguage<C> {
     protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
         assert node != null;
         return LanguageAccessor.engineAccess().createDefaultLexicalScope(node, frame);
-    }
-
-    /**
-     * Try to box a primitive value into a language-specific TruffleObject of this language.
-     *
-     * @param context the current context of the language
-     * @param primitive a primitive value
-     * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
-     *         cannot be boxed into a language-specific TruffleObject.
-     * @since 20.0.0
-     */
-    protected Object boxPrimitive(C context, @SuppressWarnings("unused") Object primitive) {
-        return null;
     }
 
     /**
@@ -2594,10 +2557,6 @@ public abstract class TruffleLanguage<C> {
         Iterable<Scope> findLocalScopes(Node node, Frame frame) {
             assert node != null;
             return getSpi().findLocalScopes(context, node, frame);
-        }
-
-        Object boxPrimitive(Object primitive) {
-            return getSpi().boxPrimitive(context, primitive);
         }
 
         Iterable<Scope> findTopScopes() {

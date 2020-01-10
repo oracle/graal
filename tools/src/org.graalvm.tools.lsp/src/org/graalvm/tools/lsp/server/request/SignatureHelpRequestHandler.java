@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
@@ -60,6 +59,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Map;
 
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
@@ -72,12 +72,14 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
     private final CompletionRequestHandler completionHandler;
+    private final Map<String, List<String>> langId2SignatureTriggerCharacters;
 
     public SignatureHelpRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator,
-                    CompletionRequestHandler completionHandler) {
+                    CompletionRequestHandler completionHandler, Map<String, List<String>> langId2SignatureTriggerCharacters) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
         this.completionHandler = completionHandler;
+        this.langId2SignatureTriggerCharacters = langId2SignatureTriggerCharacters;
     }
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
@@ -182,15 +184,8 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
         int triggerCharOffset = charOffset - 1;
         char signatureTirggerChar = characters.charAt(triggerCharOffset);
 
-        List<String> signatureHelpTriggerCharacters = env.getSignatureHelpTriggerCharacters(surrogate.getLanguageInfo());
+        List<String> signatureHelpTriggerCharacters = langId2SignatureTriggerCharacters.getOrDefault(surrogate.getLanguageId(), Collections.emptyList());
         return signatureHelpTriggerCharacters.contains(String.valueOf(signatureTirggerChar));
     }
 
-    public List<String> getSignatureHelpTriggerCharactersWithEnteredContext() {
-        return env.getLanguages().values().stream() //
-                        .filter(lang -> !lang.isInternal()) //
-                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info).stream()) //
-                        .distinct() //
-                        .collect(Collectors.toList());
-    }
 }

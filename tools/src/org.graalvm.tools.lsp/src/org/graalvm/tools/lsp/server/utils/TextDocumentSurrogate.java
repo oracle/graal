@@ -58,7 +58,6 @@ public final class TextDocumentSurrogate {
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
     private TextDocumentContentChangeEvent lastChange = null;
-    private final List<String> completionTriggerCharacters;
     private final LanguageInfo languageInfo;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
@@ -68,13 +67,11 @@ public final class TextDocumentSurrogate {
         this.editorText = blueprint.editorText;
         this.sourceWrapper = blueprint.sourceWrapper;
         this.lastChange = blueprint.lastChange;
-        this.completionTriggerCharacters = blueprint.completionTriggerCharacters;
         this.languageInfo = blueprint.languageInfo;
     }
 
-    public TextDocumentSurrogate(final TruffleFile truffleFile, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
+    public TextDocumentSurrogate(final TruffleFile truffleFile, final LanguageInfo languageInfo) {
         this.truffleFile = truffleFile;
-        this.completionTriggerCharacters = completionTriggerCharacters;
         this.section2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
         this.languageInfo = languageInfo;
@@ -110,10 +107,6 @@ public final class TextDocumentSurrogate {
 
     public SourceWrapper getSourceWrapper() {
         return sourceWrapper;
-    }
-
-    public List<String> getCompletionTriggerCharacters() {
-        return completionTriggerCharacters;
     }
 
     public LanguageInfo getLanguageInfo() {

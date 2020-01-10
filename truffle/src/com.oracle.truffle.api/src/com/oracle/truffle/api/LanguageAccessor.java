@@ -320,11 +320,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object boxPrimitive(TruffleLanguage.Env env, Object primitive) {
-            return env.boxPrimitive(primitive);
-        }
-
-        @Override
         public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
             return env.findTopScopes();
         }

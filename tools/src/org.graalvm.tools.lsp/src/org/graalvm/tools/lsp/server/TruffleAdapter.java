@@ -75,6 +75,7 @@ import com.oracle.truffle.api.source.Source;
 
 import org.graalvm.tools.lsp.server.types.CompletionOptions;
 import org.graalvm.tools.lsp.server.types.ServerCapabilities;
+import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
 
 /**
  * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
@@ -97,6 +98,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private HighlightRequestHandler highlightHandler;
     private TextDocumentSurrogateMap surrogateMap;
     private final Map<String, List<String>> langId2CompletionTriggerCharacters = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> langId2SignatureTriggerCharacters = new ConcurrentHashMap<>();
 
     public TruffleAdapter(boolean developerMode) {
         this.developerMode = developerMode;
@@ -116,7 +118,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, langId2CompletionTriggerCharacters);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler, developerMode);
-        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler);
+        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler, langId2SignatureTriggerCharacters);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor);
     }
@@ -128,33 +130,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
                 return null;
             }).get();
 
-            Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
-                Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
-                for (LanguageInfo langInfo : env.getLanguages().values()) {
-                    if (langInfo.isInternal()) {
-                        continue;
-                    }
-                    langInfo.getMimeTypes().stream().forEach(mimeType -> mimeType2LangInfo.put(mimeType, langInfo));
-                }
-                return mimeType2LangInfo;
-            });
-
-            Future<Map<String, List<String>>> futureCompletionTriggerCharacters = contextAwareExecutor.executeWithDefaultContext(() -> {
-                Map<String, List<String>> langId2CompletionTriggerCharacters = new HashMap<>();
-                for (LanguageInfo langInfo : env.getLanguages().values()) {
-                    if (langInfo.isInternal()) {
-                        continue;
-                    }
-                    LOG.log(Level.FINEST, "Retrieving completion trigger characters for {0}", langInfo.getId());
-                    langId2CompletionTriggerCharacters.put(langInfo.getId(), env.getCompletionTriggerCharacters(langInfo));
-                }
-                return langId2CompletionTriggerCharacters;
-            });
-
-            Map<String, LanguageInfo> mimeType2LangInfo = futureMimeTypes.get();
-            Map<String, List<String>> langId2CompletionTriggerCharacters = futureCompletionTriggerCharacters.get();
-
-            this.surrogateMap = new TextDocumentSurrogateMap(env, langId2CompletionTriggerCharacters, mimeType2LangInfo);
+            this.surrogateMap = new TextDocumentSurrogateMap(env);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
@@ -306,6 +282,13 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
                 langId2CompletionTriggerCharacters.put(languageId, triggerCharacters);
             }
         }
+        SignatureHelpOptions signatureHelpProvider = capabilities.getSignatureHelpProvider();
+        if (signatureHelpProvider != null) {
+            List<String> triggerCharacters = signatureHelpProvider.getTriggerCharacters();
+            if (triggerCharacters != null) {
+                langId2SignatureTriggerCharacters.put(languageId, triggerCharacters);
+            }
+        }
     }
 
     final class WorkspaceWalker implements FileVisitor<Path> {
@@ -399,22 +382,6 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
             coverageHandler.showCoverageWithEnteredContext(uri);
             return null;
-        });
-    }
-
-    public Future<List<String>> getCompletionTriggerCharactersOfAllLanguages() {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            List<String> triggerCharacters = completionHandler.getCompletionTriggerCharactersWithEnteredContext();
-            LOG.log(Level.CONFIG, "Completion trigger character set: {0}", triggerCharacters);
-            return triggerCharacters;
-        });
-    }
-
-    public Future<List<String>> getSignatureHelpTriggerCharactersOfAllLanguages() {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            List<String> signatureTriggerChars = signatureHelpHandler.getSignatureHelpTriggerCharactersWithEnteredContext();
-            LOG.log(Level.CONFIG, "SignatureHelp trigger character set: {0}", signatureTriggerChars);
-            return signatureTriggerChars;
         });
     }
 
