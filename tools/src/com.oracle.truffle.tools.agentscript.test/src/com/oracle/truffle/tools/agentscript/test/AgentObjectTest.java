@@ -340,8 +340,12 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] expressionCounter = {0};
+            int[] expressionReturnCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionReturnCounter[0]++;
             }, AgentObjectFactory.createConfig(true, false, false, null));
 
             // @formatter:off
@@ -358,6 +362,7 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
+            assertEquals("Same amount of expressions", expressionCounter[0], expressionReturnCounter[0]);
         }
     }
 
@@ -391,11 +396,14 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
             }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
 
             // @formatter:on
             c.eval(sampleScript);
 
-            assertEquals("No expressions", 0, expressionCounter[0]);
+            assertEquals("No expressions entered & exited", 0, expressionCounter[0]);
         }
     }
 
