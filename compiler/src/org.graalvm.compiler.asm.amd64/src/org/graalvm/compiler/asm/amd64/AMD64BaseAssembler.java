@@ -356,7 +356,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
-    private static boolean needsRex(Register reg) {
+    protected static boolean needsRex(Register reg) {
         return reg.encoding >= MinEncodingNeedsRex;
     }
 

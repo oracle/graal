@@ -27,6 +27,10 @@ package org.graalvm.compiler.asm.amd64;
 import static jdk.vm.ci.amd64.AMD64.CPU;
 import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.amd64.AMD64.XMM;
+import static jdk.vm.ci.amd64.AMD64.r12;
+import static jdk.vm.ci.amd64.AMD64.r13;
+import static jdk.vm.ci.amd64.AMD64.rbp;
+import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
@@ -2009,113 +2013,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         super.annotatePatchingImmediate(operandOffset, operandSize);
     }
 
-    public boolean isLastOpFuseable() {
-        int start = getLastOpStart();
-        assert start >= 0 && start < position() : "last op start is not set properly.";
-        byte[] lastInstruction = copy(start, position());
-
-        boolean isWordOp = false;
-        int offset = 0;
-        int op = lastInstruction[offset++] & 0xFF;
-        if (op == WORD.getSizePrefix()) {
-            // skip prefix to indicate WORD-size registers
-            isWordOp = true;
-            op = lastInstruction[offset++] & 0xFF;
-        }
-        if (0x40 <= op && op <= 0x4F) {
-            // skip REX prefix
-            op = lastInstruction[offset++] & 0xFF;
-        }
-        switch (op) {
-            // ADD
-            case 0x00:
-            case 0x01:
-            case 0x02:
-            case 0x03:
-                // case 0x04: AL-specific
-                // case 0x05: AX/EAX/RAX-specific
-                // AND
-            case 0x20:
-            case 0x21:
-            case 0x22:
-            case 0x23:
-                // case 0x24: AL-specific
-                // case 0x25: AX/EAX/RAX-specific
-                // SUB
-            case 0x28:
-            case 0x29:
-            case 0x2A:
-            case 0x2B:
-                // case 0x2C: AL-specific
-                // case 0x2D: AX/EAX/RAX-specific
-                // CMP
-            case 0x38:
-            case 0x39:
-            case 0x3A:
-            case 0x3B:
-                // case 0x3C: AL-specific
-                // case 0x3D: AX/EAX/RAX-specific
-                // TEST
-            case 0x84:
-            case 0x85:
-                return skipOperandsFromModRM(offset, lastInstruction) == lastInstruction.length;
-            // TEST
-            // case 0xA8: AL-specific
-            case 0xA9: // AX/EAX/RAX-specific
-                return offset + 4 == lastInstruction.length;
-            // case 0xF6: byte test
-            case 0xF7:
-                offset = skipOperandsFromModRM(offset, lastInstruction);
-                return offset != -1 && offset + (isWordOp ? 2 : 4) == lastInstruction.length;
-            case 0x80:
-            case 0x81:
-            case 0x83:
-                /**
-                 * The second argument to
-                 * {@link AMD64BinaryArithmetic#AMD64BinaryArithmetic(String, int)}
-                 */
-                if (codePatchingAnnotationConsumer != null) {
-                    // be conservative when code patching is needed
-                    return false;
-                }
-                // test next byte without moving offset
-                int ext = ((lastInstruction[offset] & 0b00111000) >>> 3);
-                switch (ext) {
-                    case 0: // ADD
-                    case 4: // AND
-                    case 5: // SUB
-                    case 7: // CMP
-                        offset = skipOperandsFromModRM(offset, lastInstruction);
-                        if (offset != -1) {
-                            if (op == 0x81) {
-                                // imm is short or int
-                                offset += isWordOp ? 2 : 4;
-                            } else {
-                                // imm is byte
-                                offset += 1;
-                            }
-                            return offset == lastInstruction.length;
-                        } else {
-                            return false;
-                        }
-                    default:
-                        return false;
-                }
-            case 0xFE:
-            case 0xFF:
-                // test next byte without moving offset
-                switch ((lastInstruction[offset] & 0b00111000) >>> 3) {
-                    case 0: // INC
-                    case 1: // DEC
-                        return skipOperandsFromModRM(offset, lastInstruction) == lastInstruction.length;
-                    default:
-                        return false;
-                }
-            default:
-                return false;
-        }
-    }
-
     protected boolean mayCrossBoundary(int opStart, int opEnd) {
         return (opStart / JCC_ERRATUM_MITIGATION_BOUNDARY) != ((opEnd - 1) / JCC_ERRATUM_MITIGATION_BOUNDARY) || (opEnd % JCC_ERRATUM_MITIGATION_BOUNDARY) == 0;
     }
@@ -2124,35 +2021,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         return JCC_ERRATUM_MITIGATION_BOUNDARY - (pos % JCC_ERRATUM_MITIGATION_BOUNDARY);
     }
 
-    protected void shiftAndFillWithNop(int shiftRegionStart, int shiftRegionEnd, int bytesToShift) {
-        assert shiftRegionStart < shiftRegionEnd;
-        byte[] lastOps = copy(shiftRegionStart, shiftRegionEnd);
-        setPosition(shiftRegionStart);
-        nop(bytesToShift);
-        emitBytes(lastOps);
-        if (codePatchShifter != null) {
-            codePatchShifter.shift(shiftRegionStart, bytesToShift);
-        }
-    }
-
-    protected void testAndAlignNextJCC(int bytesToEmit) {
-        if (useBranchesWithin32ByteBoundary) {
-            if (isLastOpFuseable()) {
-                int beforeLastFuseOp = getLastOpStart();
-                int beforeNextJCC = position();
-                int afterNextJCC = beforeNextJCC + bytesToEmit;
-                if (mayCrossBoundary(beforeLastFuseOp, afterNextJCC)) {
-                    int bytesToShift = bytesUntilBoundary(beforeLastFuseOp);
-                    shiftAndFillWithNop(beforeLastFuseOp, beforeNextJCC, bytesToShift);
-                }
-            } else {
-                // not fuse-able, only consider current jcc
-                testAndAlignNextOp(bytesToEmit);
-            }
-        }
-    }
-
-    protected final void testAndAlignNextOp(int bytesToEmit) {
+    protected final int testAndAlignNextOp(int bytesToEmit) {
         if (useBranchesWithin32ByteBoundary) {
             int beforeNextOp = position();
             int afterNextOp = beforeNextOp + bytesToEmit;
@@ -2162,16 +2031,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 if (codePatchShifter != null) {
                     codePatchShifter.shift(beforeNextOp, bytesToShift);
                 }
-            }
-        }
-    }
-
-    protected final int testAndAlignLastOp(int beforeLastOp) {
-        if (useBranchesWithin32ByteBoundary) {
-            int afterLastOp = position();
-            if (mayCrossBoundary(beforeLastOp, afterLastOp)) {
-                int bytesToShift = bytesUntilBoundary(beforeLastOp);
-                shiftAndFillWithNop(beforeLastOp, afterLastOp, bytesToShift);
                 return bytesToShift;
             }
         }
@@ -2189,7 +2048,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
-            testAndAlignNextJCC(shortSize);
+            testAndAlignNextOp(shortSize);
             // After alignment, isByte(disp - shortSize) might not hold. Need to check again.
             int pos = position();
             disp = jumpTarget - pos;
@@ -2203,7 +2062,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         // 0000 1111 1000 tttn #32-bit disp
         assert forceDisp32 || isInt(disp - longSize) : "must be 32bit offset (call4)";
-        testAndAlignNextJCC(longSize);
+        testAndAlignNextOp(longSize);
         int pos = position();
         disp = jumpTarget - pos;
         emitByte(0x0F);
@@ -2217,7 +2076,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         if (l.isBound()) {
             return jcc(cc, l.position(), false);
         } else {
-            testAndAlignNextJCC(6);
+            testAndAlignNextOp(6);
             // Note: could eliminate cond. jumps to this jump if condition
             // is the same however, seems to be rather unlikely case.
             // Note: use jccb() if label to be bound is very close to get
@@ -2233,7 +2092,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final int jccb(ConditionFlag cc, Label l) {
         final int shortSize = 2;
-        testAndAlignNextJCC(shortSize);
+        testAndAlignNextOp(shortSize);
         int pos = position();
         if (l.isBound()) {
             int entry = l.position();
@@ -2297,34 +2156,83 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public final int jmp(Register entry) {
-        int mark = position();
+    protected final void jmpWithoutAlignment(Register entry) {
         prefix(entry);
         emitByte(0xFF);
         emitModRM(4, entry);
-        int bytesShifted = testAndAlignLastOp(mark);
-        return mark + bytesShifted;
+    }
+
+    public final void jmp(Register entry) {
+        int bytesToEmit = needsRex(entry) ? 3 : 2;
+        testAndAlignNextOp(bytesToEmit);
+        int beforeJmp = position();
+        jmpWithoutAlignment(entry);
+        assert beforeJmp + bytesToEmit == position();
     }
 
     public final void jmp(AMD64Address adr) {
-        int mark = position();
+        int bytesToEmit = (needsRex(adr.getBase()) || needsRex(adr.getIndex()) ? 4 : 3) + addressInBytes(adr);
+        testAndAlignNextOp(bytesToEmit);
+        int beforeJmp = position();
         prefix(adr);
         emitByte(0xFF);
         emitOperandHelper(AMD64.rsp, adr, 0);
-        testAndAlignLastOp(mark);
+        assert beforeJmp + bytesToEmit == position();
+    }
+
+    /**
+     * This method should be synchronized with
+     * {@link AMD64BaseAssembler#emitOperandHelper(Register, AMD64Address, int)}}.
+     */
+    private static int addressInBytes(AMD64Address addr) {
+        Register base = addr.getBase();
+        Register index = addr.getIndex();
+        int disp = addr.getDisplacement();
+
+        if (base.equals(AMD64.rip)) {
+            return 5;
+        } else if (base.isValid()) {
+            final boolean isZeroDisplacement = disp == 0 && !base.equals(rbp) && !base.equals(r13);
+            if (index.isValid()) {
+                if (isZeroDisplacement) {
+                    return 2;
+                } else if (isByte(disp)) {
+                    return 3;
+                } else {
+                    return 6;
+                }
+            } else if (base.equals(rsp) || base.equals(r12)) {
+                if (disp == 0) {
+                    return 2;
+                } else if (isByte(disp)) {
+                    return 3;
+                } else {
+                    return 6;
+                }
+            } else {
+                if (isZeroDisplacement) {
+                    return 1;
+                } else if (isByte(disp)) {
+                    return 2;
+                } else {
+                    return 5;
+                }
+            }
+        } else {
+            return 6;
+        }
     }
 
     public final void jmpb(Label l) {
+        final int shortSize = 2;
+        testAndAlignNextOp(shortSize);
         if (l.isBound()) {
-            testAndAlignNextOp(2);
-            int shortSize = 2;
             // Displacement is relative to byte just after jmpb instruction
             int displacement = l.position() - position() - shortSize;
             GraalError.guarantee(isByte(displacement), "Displacement too large to be encoded as a byte: %d", displacement);
             emitByte(0xEB);
             emitByte(displacement & 0xFF);
         } else {
-            testAndAlignNextOp(2);
             l.addPatchAt(position(), this);
             emitByte(0xEB);
             emitByte(0);

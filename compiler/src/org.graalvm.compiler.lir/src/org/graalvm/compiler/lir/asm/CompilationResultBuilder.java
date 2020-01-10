@@ -577,25 +577,21 @@ public class CompilationResultBuilder {
             if (op.getPosition() != null) {
                 recordSourceMapping(start, asm.position(), op.getPosition());
             }
-            if (start < asm.position()) { // skip no-op LIR
-                asm.setLastOpStart(start);
-                if (LIR_INSTRUCTION_VERIFIERS.size() > 0) {
-                    // TODO start might have changed
-                    int end = asm.position();
-                    for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
-                        if (codeAnnotation instanceof JumpTable) {
-                            // Skip jump table. Here we assume the jump table is at the tail of the
-                            // emitted code.
-                            int jumpTableStart = codeAnnotation.position;
-                            if (jumpTableStart >= start && jumpTableStart < end) {
-                                end = jumpTableStart;
-                            }
+            if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
+                int end = asm.position();
+                for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
+                    if (codeAnnotation instanceof JumpTable) {
+                        // Skip jump table. Here we assume the jump table is at the tail of the
+                        // emitted code.
+                        int jumpTableStart = codeAnnotation.position;
+                        if (jumpTableStart >= start && jumpTableStart < end) {
+                            end = jumpTableStart;
                         }
                     }
-                    byte[] emittedCode = asm.copy(start, end);
-                    for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
-                        verifier.verify(op, emittedCode);
-                    }
+                }
+                byte[] emittedCode = asm.copy(start, end);
+                for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
+                    verifier.verify(op, emittedCode);
                 }
             }
         } catch (BailoutException e) {
