@@ -2017,11 +2017,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         return (opStart / JCC_ERRATUM_MITIGATION_BOUNDARY) != ((opEnd - 1) / JCC_ERRATUM_MITIGATION_BOUNDARY) || (opEnd % JCC_ERRATUM_MITIGATION_BOUNDARY) == 0;
     }
 
-    protected int bytesUntilBoundary(int pos) {
+    private int bytesUntilBoundary(int pos) {
         return JCC_ERRATUM_MITIGATION_BOUNDARY - (pos % JCC_ERRATUM_MITIGATION_BOUNDARY);
     }
 
-    protected final int testAndAlignNextOp(int bytesToEmit) {
+    protected final void testAndAlign(int bytesToEmit) {
         if (useBranchesWithin32ByteBoundary) {
             int beforeNextOp = position();
             int afterNextOp = beforeNextOp + bytesToEmit;
@@ -2031,72 +2031,63 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 if (codePatchShifter != null) {
                     codePatchShifter.shift(beforeNextOp, bytesToShift);
                 }
-                return bytesToShift;
             }
         }
-        return 0;
     }
 
     /**
-     * Emit a jcc instruction given a known target address.
-     *
+     * Emit a jcc instruction given a known target address. AMD64AssemblerFuseableInstructionTest*
+     * 
      * @return the position where the jcc instruction starts.
      */
-    public int jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
+    public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         final int shortSize = 2;
         final int longSize = 6;
 
         long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
-            testAndAlignNextOp(shortSize);
+            testAndAlign(shortSize);
             // After alignment, isByte(disp - shortSize) might not hold. Need to check again.
-            int pos = position();
-            disp = jumpTarget - pos;
+            disp = jumpTarget - position();
             if (isByte(disp - shortSize)) {
                 // 0111 tttn #8-bit disp
                 emitByte(0x70 | cc.getValue());
                 emitByte((int) ((disp - shortSize) & 0xFF));
-                return pos;
             }
         }
 
         // 0000 1111 1000 tttn #32-bit disp
         assert forceDisp32 || isInt(disp - longSize) : "must be 32bit offset (call4)";
-        testAndAlignNextOp(longSize);
-        int pos = position();
-        disp = jumpTarget - pos;
+        testAndAlign(longSize);
+        disp = jumpTarget - position();
         emitByte(0x0F);
         emitByte(0x80 | cc.getValue());
         emitInt((int) (disp - longSize));
-        return pos;
     }
 
-    public final int jcc(ConditionFlag cc, Label l) {
+    public final void jcc(ConditionFlag cc, Label l) {
         assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {
-            return jcc(cc, l.position(), false);
+            jcc(cc, l.position(), false);
         } else {
-            testAndAlignNextOp(6);
+            testAndAlign(6);
             // Note: could eliminate cond. jumps to this jump if condition
             // is the same however, seems to be rather unlikely case.
             // Note: use jccb() if label to be bound is very close to get
             // an 8-bit displacement
-            int pos = position();
-            l.addPatchAt(pos, this);
+            l.addPatchAt(position(), this);
             emitByte(0x0F);
             emitByte(0x80 | cc.getValue());
             emitInt(0);
-            return pos;
         }
     }
 
-    public final int jccb(ConditionFlag cc, Label l) {
+    public final void jccb(ConditionFlag cc, Label l) {
         final int shortSize = 2;
-        testAndAlignNextOp(shortSize);
-        int pos = position();
+        testAndAlign(shortSize);
         if (l.isBound()) {
             int entry = l.position();
-            assert isByte(entry - (position() + shortSize)) : "Dispacement too large for a short jmp";
+            assert isByte(entry - (position() + shortSize)) : "Displacement too large for a short jmp";
             long disp = entry - position();
             // 0111 tttn #8-bit disp
             emitByte(0x70 | cc.getValue());
@@ -2106,7 +2097,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             emitByte(0x70 | cc.getValue());
             emitByte(0);
         }
-        return pos;
     }
 
     /**
@@ -2122,7 +2112,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // the long jmp triggering range.
         if (!forceDisp32) {
             // We first align the next jmp assuming it will be short jmp.
-            testAndAlignNextOp(shortSize);
+            testAndAlign(shortSize);
             int pos = position();
             long disp = jumpTarget - pos;
             if (isByte(disp - shortSize)) {
@@ -2132,7 +2122,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             }
         }
 
-        testAndAlignNextOp(longSize);
+        testAndAlign(longSize);
         int pos = position();
         long disp = jumpTarget - pos;
         emitByte(0xE9);
@@ -2149,7 +2139,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             // we can't yet know where the label will be bound. If you're sure that
             // the forward jump will not run beyond 256 bytes, use jmpb to
             // force an 8-bit displacement.
-            testAndAlignNextOp(5);
+            testAndAlign(5);
             l.addPatchAt(position(), this);
             emitByte(0xE9);
             emitInt(0);
@@ -2164,15 +2154,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jmp(Register entry) {
         int bytesToEmit = needsRex(entry) ? 3 : 2;
-        testAndAlignNextOp(bytesToEmit);
+        testAndAlign(bytesToEmit);
         int beforeJmp = position();
         jmpWithoutAlignment(entry);
         assert beforeJmp + bytesToEmit == position();
     }
 
     public final void jmp(AMD64Address adr) {
-        int bytesToEmit = (needsRex(adr.getBase()) || needsRex(adr.getIndex()) ? 4 : 3) + addressInBytes(adr);
-        testAndAlignNextOp(bytesToEmit);
+        int bytesToEmit = (needsRex(adr.getBase()) || needsRex(adr.getIndex()) ? 2 : 1) + addressInBytes(adr);
+        testAndAlign(bytesToEmit);
         int beforeJmp = position();
         prefix(adr);
         emitByte(0xFF);
@@ -2184,7 +2174,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * This method should be synchronized with
      * {@link AMD64BaseAssembler#emitOperandHelper(Register, AMD64Address, int)}}.
      */
-    private static int addressInBytes(AMD64Address addr) {
+    protected static int addressInBytes(AMD64Address addr) {
         Register base = addr.getBase();
         Register index = addr.getIndex();
         int disp = addr.getDisplacement();
@@ -2225,7 +2215,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jmpb(Label l) {
         final int shortSize = 2;
-        testAndAlignNextOp(shortSize);
+        testAndAlign(shortSize);
         if (l.isBound()) {
             // Displacement is relative to byte just after jmpb instruction
             int displacement = l.position() - position() - shortSize;
@@ -3189,10 +3179,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void ret(int imm16) {
         if (imm16 == 0) {
-            testAndAlignNextOp(1);
+            testAndAlign(1);
             emitByte(0xC3);
         } else {
-            testAndAlignNextOp(3);
+            testAndAlign(3);
             emitByte(0xC2);
             emitShort(imm16);
         }
