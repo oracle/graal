@@ -27,6 +27,8 @@ There is a JVMCI [port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and 
 A JVMCI-enabled JDK 8 can be downloaded from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
 or you can [build](#building-jvmci-jdk8) it yourself.
 
+The JVMCI JDKs that Graal is currently tested against are specified in [common.json](../common.json).
+
 Most compiler sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
 These sources are in [versioned projects](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
 If you don't have a JDK that satisfies the requirement of a versioned project, the project is ignored by mx.
