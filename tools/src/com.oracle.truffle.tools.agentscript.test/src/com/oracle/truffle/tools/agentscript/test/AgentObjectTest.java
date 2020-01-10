@@ -393,7 +393,6 @@ public class AgentObjectTest {
             };
             agentAPI.on("source", listener);
 
-
             int[] expressionCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
