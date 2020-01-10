@@ -141,12 +141,6 @@ public class SubstrateOptions {
     @Option(help = "Print summary GC information after each collection")//
     public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print summary GC information after main completion")//
-    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
-    public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection")//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
 
@@ -354,7 +348,7 @@ public class SubstrateOptions {
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 
-    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)

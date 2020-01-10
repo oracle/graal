@@ -329,7 +329,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread(false);
+            IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
             if (thread.isNull()) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
                 StackOverflowCheck.singleton().initialize(thread);
@@ -438,7 +438,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
-        IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread(inCrashHandler);
+        IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
         if (thread.isNull()) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -496,11 +496,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget
     private static int verifyIsolateThread(IsolateThread thread) {
-        IsolateThread threadFromOS = VMThreads.singleton().findIsolateThreadforCurrentOSThread(false);
-
-        if (!thread.equal(threadFromOS)) {
-            throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
-                            "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+        // The verification code below may only be executed if the current thread does not own the
+        // THREADS_MUTEX. Otherwise, deadlocks could occur as the thread mutex would get locked a
+        // second time.
+        VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
+        if (!VMThreads.ownsThreadMutex()) {
+            IsolateThread threadFromOS = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
+            if (!thread.equal(threadFromOS)) {
+                throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
+                                "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+            }
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -548,7 +553,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadforCurrentOSThread(false).isNonNull();
+        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadForCurrentOSThread(false).isNonNull();
     }
 
     @Snippet

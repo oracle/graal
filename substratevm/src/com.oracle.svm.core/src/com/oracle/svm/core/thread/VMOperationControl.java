@@ -213,7 +213,7 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Set the current VM operation as atomically as possible - this is mainly relevant for deopt test cases")
     void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
-        assert operation != null && queueingThread.isNonNull() && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull();
+        assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull();
         inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
@@ -384,11 +384,12 @@ public final class VMOperationControl {
             }
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public IsolateThread getIsolateThread() {
             return isolateThread;
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isRunning() {
             return running;
         }
@@ -476,7 +477,7 @@ public final class VMOperationControl {
                 enqueue(operation, data);
                 operationQueued.broadcast();
                 while (!operation.isFinished(data)) {
-                    operationFinished.blockNoTransition();
+                    operationFinished.blockNoTransitionUnspecifiedOwner();
                 }
             } finally {
                 mutex.unlockNoTransitionUnspecifiedOwner();

@@ -137,6 +137,12 @@ final class SingleThreadedVMCondition extends VMCondition {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Override
+    public void blockNoTransitionUnspecifiedOwner() {
+        VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
+    }
+
     @Override
     public long block(long nanos) {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");

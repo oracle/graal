@@ -479,15 +479,14 @@ public abstract class VMThreads {
     protected abstract OSThreadId getCurrentOSThreadId();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public IsolateThread findIsolateThreadforCurrentOSThread(boolean inCrashHandler) {
+    public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
         OSThreadId osThreadId = getCurrentOSThreadId();
 
         /*
          * This code can execute during the prologue of a crash handler for a thread that already
-         * owns the lock because it is the master of a safepoint. Trying to reacquire the lock here
-         * would result in deadlock.
+         * owns the lock. Trying to reacquire the lock here would result in deadlock.
          */
-        boolean needsLock = !(inCrashHandler && VMOperationControl.isFrozen());
+        boolean needsLock = !inCrashHandler;
         if (needsLock) {
             /*
              * Accessing the VMThread list requires the lock, but locking must be without
@@ -510,6 +509,11 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeOwnsThreadMutex(String message) {
         THREAD_MUTEX.guaranteeIsOwner(message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean ownsThreadMutex() {
+        return THREAD_MUTEX.isOwner();
     }
 
     /*
