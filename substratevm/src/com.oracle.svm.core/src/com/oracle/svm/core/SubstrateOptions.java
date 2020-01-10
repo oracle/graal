@@ -45,6 +45,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.XOptions;
 
 public class SubstrateOptions {
 
@@ -148,6 +149,46 @@ public class SubstrateOptions {
 
     @Option(help = "Print more information about the heap before and after each collection")//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
+
+    @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXms().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmx().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmn().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXss().setValue(newValue);
+            }
+        }
+    };
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
@@ -355,4 +396,23 @@ public class SubstrateOptions {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
 
+    @Fold
+    public static long hostedMinHeapSize() {
+        return MinHeapSize.getValue();
+    }
+
+    @Fold
+    public static long hostedMaxHeapSize() {
+        return MaxHeapSize.getValue();
+    }
+
+    @Fold
+    public static long hostedMaxNewSize() {
+        return MaxNewSize.getValue();
+    }
+
+    @Fold
+    public static long hostedStackSize() {
+        return StackSize.getValue();
+    }
 }
