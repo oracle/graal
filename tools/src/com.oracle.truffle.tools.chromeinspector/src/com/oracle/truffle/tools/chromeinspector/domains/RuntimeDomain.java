@@ -44,10 +44,14 @@ public abstract class RuntimeDomain extends Domain {
 
     public abstract Params getProperties(String objectId, boolean ownProperties, boolean accessorPropertiesOnly, boolean generatePreview) throws CommandProcessException;
 
-    public abstract Params callFunctionOn(String objectId, String functionDeclaration, JSONArray arguments, boolean silent, boolean returnByValue, boolean generatePreview, boolean awaitPromise)
-                    throws CommandProcessException;
+    public abstract Params callFunctionOn(String objectId, String functionDeclaration, JSONArray arguments, boolean silent, boolean returnByValue, boolean generatePreview, boolean awaitPromise,
+                    int executionContextId, String objectGroup) throws CommandProcessException;
 
     public abstract void runIfWaitingForDebugger(CommandPostProcessor postProcessor);
+
+    public abstract void releaseObject(String objectId);
+
+    public abstract void releaseObjectGroup(String objectGroup);
 
     public abstract void notifyConsoleAPICalled(String type, Object text);
 

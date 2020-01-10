@@ -1221,7 +1221,7 @@ public class UniverseBuilder {
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
         for (HostedField field : fields) {
-            if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && field.getAnnotation(ExcludeFromReferenceMap.class) == null) {
+            if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && !excludeFromReferenceMap(field)) {
                 referenceMap.markReferenceAtOffset(field.getLocation(), true);
             }
         }
@@ -1236,6 +1236,10 @@ public class UniverseBuilder {
             }
         }
         return referenceMap;
+    }
+
+    private static boolean excludeFromReferenceMap(HostedField field) {
+        return field.getAnnotation(ExcludeFromReferenceMap.class) != null && SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 
     private void processFieldLocations() {

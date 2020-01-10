@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -736,8 +736,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 crb.recordInlineDataInCode(inputConstant);
                 masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
             } else {
-                AArch64Address address = (AArch64Address) crb.recordDataReferenceInCode(inputConstant, referenceSize);
-                masm.loadAddress(resultReg, address, 1);
+                crb.recordDataReferenceInCode(inputConstant, referenceSize);
+                AArch64Address address = AArch64Address.createScaledImmediateAddress(resultReg, 0x0);
+                masm.adrpLdr(referenceSize * 8, resultReg, address);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
                 Register baseReg = getBaseRegister(crb);
@@ -921,6 +922,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
-        return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool()));
+        return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool(), false));
     }
 }

@@ -134,6 +134,9 @@ public class SubstrateOptions {
         return makeFilter(RuntimeAssertionsFilter.getValue());
     }
 
+    @Option(help = "Use a card remembered set heap for GC")//
+    public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
+
     @Option(help = "Print summary GC information after each collection")//
     public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
 

@@ -46,7 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
@@ -132,8 +132,8 @@ public class LLVMPersonalityFunction {
 
     @Uninterruptible(reason = "Called before Java state is restored")
     public static Throwable retrieveException() {
-        Throwable exception = SnippetRuntime.currentException.get();
-        SnippetRuntime.currentException.set(null);
+        Throwable exception = ExceptionUnwind.currentException.get();
+        ExceptionUnwind.currentException.set(null);
         return exception;
     }
 

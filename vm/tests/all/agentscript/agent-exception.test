@@ -3,16 +3,16 @@ Hello T-Trace.
 How
 great you are!
 .*at <js> checkLogging.*
-.*at <js> log.log.js:1-6:18-103.
-.*at <js> howAreYou.log.js:11:176-185.
+.*at <js> log.log.js:1-6:18-.*
+.*at <js> howAreYou.log.js:11:.*.
 
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "howAreYou()"
 Hello T-Trace.
 How
 great you are!
 .*at <js> checkLogging.*
-.*at <js> log.log.js:1-6:18-103.
-.*at <js> howAreYou.log.js:11:176-185.
+.*at <js> log.log.js:1-6:18-.*
+.*at <js> howAreYou.log.js:11:.*
 
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "howDoYouDo()"
 Hello T-Trace!
@@ -20,14 +20,19 @@ How
 do
 you feel?
 .*at <js> checkLogging.*
-.*at <js> log.log.js:1-6:18-103.
-.*at <js> howDoYouDo.log.js:18:279-287.
+.*at <js> log.log.js:1-6:18-.*
+.*at <js> howDoYouDo.log.js:18:.*
 .*at <js> :program.<eval_script>:1:0-11.
 >[7] js --experimental-options --agentscript=agent-exception.js -f log.js -e "areYouBad()"
 Hello T-Trace!
 How
 good you are?
 .*at <js> checkLogging.*
-.*at <js> log.log.js:1-6:18-103.
-.*at <js> areYouBad.log.js:26:395-404.
+.*at <js> log.log.js:1-6:.*
+.*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
+>[7] js --jvm --experimental-options --agentscript=agent-error.js log.js
+Error while initializing Object
+.*at <js> .*program.*
+.*at <js> .*anonymous.*
+.*at <js> .*Unknown.*

@@ -56,6 +56,7 @@ public class WasmFunction implements TruffleObject {
     private ImportDescriptor importDescriptor;
     private WasmCodeEntry codeEntry;
     private final int typeIndex;
+    private int typeEquivalenceClass;
     private CallTarget callTarget;
 
     /**
@@ -67,6 +68,7 @@ public class WasmFunction implements TruffleObject {
         this.importDescriptor = importDescriptor;
         this.codeEntry = null;
         this.typeIndex = typeIndex;
+        this.typeEquivalenceClass = -1;
         this.callTarget = null;
     }
 
@@ -86,7 +88,7 @@ public class WasmFunction implements TruffleObject {
         return symbolTable.functionTypeReturnType(typeIndex);
     }
 
-    public int returnTypeLength() {
+    int returnTypeLength() {
         return symbolTable.functionTypeReturnTypeLength(typeIndex);
     }
 
@@ -97,11 +99,13 @@ public class WasmFunction implements TruffleObject {
     public CallTarget resolveCallTarget() {
         if (callTarget == null) {
             CompilerDirectives.transferToInterpreter();
-            // TODO: If this is an imported function, the call target might not yet be resolved.
-            // Check this, and wait until the call target gets resolved.
             throw new RuntimeException("Call target was not resolved.");
         }
         return callTarget;
+    }
+
+    void setTypeEquivalenceClass(int typeEquivalenceClass) {
+        this.typeEquivalenceClass = typeEquivalenceClass;
     }
 
     @Override
@@ -145,6 +149,10 @@ public class WasmFunction implements TruffleObject {
         return importDescriptor != null;
     }
 
+    public ImportDescriptor importDescriptor() {
+        return importDescriptor;
+    }
+
     public String importedModuleName() {
         return isImported() ? importDescriptor.moduleName : null;
     }
@@ -155,6 +163,10 @@ public class WasmFunction implements TruffleObject {
 
     public int typeIndex() {
         return typeIndex;
+    }
+
+    public int typeEquivalenceClass() {
+        return typeEquivalenceClass;
     }
 
     public int index() {

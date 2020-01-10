@@ -43,6 +43,7 @@ from __future__ import print_function
 
 from abc import ABCMeta
 from argparse import ArgumentParser
+from collections import OrderedDict
 import io
 import json
 import os
@@ -491,7 +492,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             # Add release file
             _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-            _metadata = self._get_metadata(_sorted_suites)
+            _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
         # Add the rest of the GraalVM
@@ -645,11 +646,15 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         return BaseGraalVmLayoutDistributionTask(args, self)
 
     @staticmethod
-    def _get_metadata(suites):
+    def _get_metadata(suites, parent_release_file=None):
         """
         :type suites: list[mx.Suite]
-        :return:
+        :type parent_release_file: str | None
+        :rtype: str
         """
+        def quote(string):
+            return '"{}"'.format(string)
+
         _commit_info = {}
         for _s in suites:
             if _s.vc:
@@ -659,29 +664,36 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                     "commit.committer-ts": _info['committer-ts'],
                 }
-        _metadata = """\
-OS_NAME={os}
-OS_ARCH={arch}
-SOURCE="{source}"
-COMMIT_INFO={commit_info}
-GRAALVM_VERSION={version}""".format(
-            os=get_graalvm_os(),
-            arch=mx.get_arch(),
-            source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites]),
-            commit_info=json.dumps(_commit_info, sort_keys=True),
-            version=_suite.release_version()
-        )
+        _metadata_dict = OrderedDict()
+        if parent_release_file is not None and exists(parent_release_file):
+            with open(parent_release_file, 'r') as f:
+                for line in f:
+                    assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
+                    k, v = line.strip().split('=', 1)
+                    _metadata_dict[k] = v
 
+        _metadata_dict.setdefault('JAVA_VERSION', quote(_src_jdk.version))
+        _metadata_dict.setdefault('OS_NAME', quote(get_graalvm_os()))
+        _metadata_dict.setdefault('OS_ARCH', quote(mx.get_arch()))
+
+        _metadata_dict['GRAALVM_VERSION'] = quote(_suite.release_version())
+        _source = _metadata_dict.get('SOURCE') or ''
+        if _source:
+            if len(_source) > 1 and _source[0] == '"' and _source[-1] == '"':
+                _source = _source[1:-1]
+            _source += ' '
+        _source += ' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites])
+        _metadata_dict['SOURCE'] = quote(_source)
+        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)  # unquoted to simplify JSON parsing
         if _suite.is_release():
             catalog = _release_catalog()
         else:
             snapshot_catalog = _snapshot_catalog()
             catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir)) if snapshot_catalog else None
-
         if catalog:
-            _metadata += "\ncomponent_catalog={}".format(catalog)
+            _metadata_dict['component_catalog'] = quote(catalog)
 
-        return _metadata
+        return '\n'.join(['{}={}'.format(k, v) for k, v in _metadata_dict.items()])
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):

@@ -131,6 +131,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.logger",
                     "sun.util.resources",
+                    "sun.text.spi",
                     "jdk.internal.perf",
                     "sun.util.locale.provider"
                 ],
@@ -1118,8 +1119,12 @@ suite = {
             "dependencies" : ["com.oracle.svm.core.graal.llvm"],
             "distDependencies" : [
                 "SVM",
-                "compiler:GRAAL_LLVM"
+                "compiler:GRAAL_LLVM",
+                "sdk:LLVM_TOOLCHAIN"
             ],
+            "javaProperties": {
+                "llvm.bin.dir": "<path:LLVM_TOOLCHAIN>/bin/",
+            },
             "maven" : False,
         },
 

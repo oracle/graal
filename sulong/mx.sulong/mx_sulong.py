@@ -296,6 +296,7 @@ def checkCFile(targetFile):
         subprocess.check_output(formatCommand + ['-i'])
         mx.log('\n'.join(formattedContent))
         mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
+        mx.logv("command: " + " ".join(formatCommand))
         return False
     return True
 

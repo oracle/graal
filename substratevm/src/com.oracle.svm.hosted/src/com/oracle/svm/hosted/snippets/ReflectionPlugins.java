@@ -29,8 +29,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -46,16 +44,13 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -66,62 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReflectionPlugins {
 
-    static final class CallSiteDescriptor {
-        ResolvedJavaMethod method;
-        int bci;
-
-        private CallSiteDescriptor(ResolvedJavaMethod method, int bci) {
-            Objects.requireNonNull(method);
-            this.method = method;
-            this.bci = bci;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof CallSiteDescriptor) {
-                CallSiteDescriptor other = (CallSiteDescriptor) obj;
-                return other.bci == this.bci && other.method.equals(this.method);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return method.hashCode() ^ bci;
-        }
-    }
-
-    static class ReflectionPluginRegistry {
-
-        /**
-         * Contains all the classes, methods, fields intrinsified by this plugin during analysis.
-         * Only these elements will be intrinsified during compilation. We cannot intrinsify an
-         * element during compilation if it was not intrinsified during analysis since it can lead
-         * to compiling code that was not seen during analysis.
-         */
-        ConcurrentHashMap<CallSiteDescriptor, Object> analysisElements = new ConcurrentHashMap<>();
-
-        public void add(ResolvedJavaMethod method, int bci, Object element) {
-            add(new CallSiteDescriptor(method, bci), element);
-        }
-
-        public void add(CallSiteDescriptor location, Object element) {
-            Object previous = analysisElements.put(location, element);
-            /*
-             * New elements can only be added when the reflection plugins are executed during the
-             * analysis. If an intrinsified element was already registered that's an error.
-             */
-            VMError.guarantee(previous == null, "Detected previously intrinsified reflectively accessed element. ");
-        }
-
-        public <T> T get(ResolvedJavaMethod method, int bci) {
-            return get(new CallSiteDescriptor(method, bci));
-        }
-
-        @SuppressWarnings("unchecked")
-        public <T> T get(CallSiteDescriptor location) {
-            return (T) analysisElements.get(location);
-        }
+    static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
     }
 
     static class Options {
@@ -394,20 +334,11 @@ public class ReflectionPlugins {
                 }
             }
             /* We are during analysis, we should intrinsify and cache the intrinsified object. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(context.getMethod()), context.bci(), element);
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), element);
             return element;
         }
         /* We are during compilation, we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(context.getMethod()), context.bci());
-    }
-
-    private static ResolvedJavaMethod toAnalysisMethod(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).wrapped;
-        } else {
-            VMError.guarantee(method instanceof AnalysisMethod);
-            return method;
-        }
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
     }
 
     private static void pushConstant(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, JavaConstant constant, String targetElement) {

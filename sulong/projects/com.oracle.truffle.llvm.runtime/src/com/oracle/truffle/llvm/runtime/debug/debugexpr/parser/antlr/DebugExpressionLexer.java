@@ -44,7 +44,7 @@ import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings("all")
 public class DebugExpressionLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.7.1", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -64,31 +64,40 @@ public class DebugExpressionLexer extends Lexer {
 		"DEFAULT_MODE"
 	};
 
-	public static final String[] ruleNames = {
-		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "LETTER", 
-		"DIGIT", "CR", "LF", "SINGLECOMMA", "QUOTE", "LAPR", "RAPR", "ASTERISC", 
-		"PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", "POINTER", "EXCLAM", 
-		"TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", "GTE", "LTE", "EQ", 
-		"NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", "LONG", "SHORT", 
-		"FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", "FLOATNUMBER", 
-		"CHARCONST", "WS"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "LETTER", 
+			"DIGIT", "CR", "LF", "SINGLECOMMA", "QUOTE", "LAPR", "RAPR", "ASTERISC", 
+			"PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", "POINTER", "EXCLAM", 
+			"TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", "GTE", "LTE", "EQ", 
+			"NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", "LONG", "SHORT", 
+			"FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", "FLOATNUMBER", 
+			"CHARCONST", "WS"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'['", "']'", "','", "'sizeof'", "'?'", "':'", "'void'", "'long'", 
-		"'('", "')'", "'*'", "'+'", "'-'", "'/'", "'||'", "'&&'", "'.'", "'->'", 
-		"'!'", "'~'", "'%'", "'>>'", "'<<'", "'>'", "'<'", "'>='", "'<='", "'=='", 
-		"'!='", "'&'", "'|'", "'^'", "'signed'", "'unsigned'", "'int'", "'LONG'", 
-		"'short'", "'float'", "'double'", "'char'", "'typeof'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, "LAPR", "RAPR", 
-		"ASTERISC", "PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", "POINTER", 
-		"EXCLAM", "TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", "GTE", "LTE", 
-		"EQ", "NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", "LONG", "SHORT", 
-		"FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", "FLOATNUMBER", 
-		"CHARCONST", "WS"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'['", "']'", "','", "'sizeof'", "'?'", "':'", "'void'", "'long'", 
+			"'('", "')'", "'*'", "'+'", "'-'", "'/'", "'||'", "'&&'", "'.'", "'->'", 
+			"'!'", "'~'", "'%'", "'>>'", "'<<'", "'>'", "'<'", "'>='", "'<='", "'=='", 
+			"'!='", "'&'", "'|'", "'^'", "'signed'", "'unsigned'", "'int'", "'LONG'", 
+			"'short'", "'float'", "'double'", "'char'", "'typeof'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, "LAPR", "RAPR", 
+			"ASTERISC", "PLUS", "MINUS", "DIVIDE", "LOGICOR", "LOGICAND", "DOT", 
+			"POINTER", "EXCLAM", "TILDA", "MODULAR", "SHIFTR", "SHIFTL", "GT", "LT", 
+			"GTE", "LTE", "EQ", "NE", "AND", "OR", "XOR", "SIGNED", "UNSIGNED", "INT", 
+			"LONG", "SHORT", "FLOAT", "DOUBLE", "CHAR", "TYPEOF", "IDENT", "NUMBER", 
+			"FLOATNUMBER", "CHARCONST", "WS"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**

@@ -232,16 +232,17 @@ public final class Deoptimizer {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
-        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (DeoptimizationSupport.enabled() && returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
-            /* The DeoptimizedFrame instance is stored above the return address. */
-            DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
-            assert result != null;
-            return result;
-        } else {
-            return null;
+        if (DeoptimizationSupport.enabled()) {
+            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
+            /* A frame is deoptimized when the return address was patched to the deoptStub. */
+            if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+                /* The DeoptimizedFrame instance is stored above the return address. */
+                DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
+                assert result != null;
+                return result;
+            }
         }
+        return null;
     }
 
     private static void installDeoptimizedFrame(Pointer sourceSp, DeoptimizedFrame deoptimizedFrame) {
@@ -716,7 +717,7 @@ public final class Deoptimizer {
         VMError.guarantee(sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize(), "Insufficient space in frame for pointer to DeoptimizedFrame");
 
         /* Allocate a buffer to hold the contents of the new target frame. */
-        DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getTotalFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
+        DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getEncodedFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
 
         installDeoptimizedFrame(sourceSp, deoptimizedFrame);
 

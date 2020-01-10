@@ -36,6 +36,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -109,7 +110,7 @@ public class JNIRegistrationUtil {
         return !runOnceCallbacks.add(callback);
     }
 
-    public void cleanup() {
+    public void afterAnalysis(@SuppressWarnings("unused") AfterAnalysisAccess access) {
         runOnceCallbacks.clear();
     }
 }

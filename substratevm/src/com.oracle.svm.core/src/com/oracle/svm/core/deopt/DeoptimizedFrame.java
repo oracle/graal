@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -39,8 +40,10 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
 import com.oracle.svm.core.heap.FeebleReference;
@@ -271,13 +274,13 @@ public final class DeoptimizedFrame {
         }
     }
 
-    protected static DeoptimizedFrame factory(int targetContentSize, long sourceTotalFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
+    protected static DeoptimizedFrame factory(int targetContentSize, long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
                     CodePointer sourcePC) {
         final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
-        return new DeoptimizedFrame(sourceTotalFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, sourcePC);
+        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, sourcePC);
     }
 
-    private final long sourceTotalFrameSize;
+    private final long sourceEncodedFrameSize;
     private final FeebleReference<SubstrateInstalledCode> sourceInstalledCode;
     private final VirtualFrame topFrame;
     private final Deoptimizer.TargetContent targetContent;
@@ -285,9 +288,9 @@ public final class DeoptimizedFrame {
     private final CodePointer sourcePC;
     private final char[] completedMessage;
 
-    private DeoptimizedFrame(long sourceTotalFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
+    private DeoptimizedFrame(long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
                     CodePointer sourcePC) {
-        this.sourceTotalFrameSize = sourceTotalFrameSize;
+        this.sourceEncodedFrameSize = sourceEncodedFrameSize;
         this.topFrame = topFrame;
         this.targetContent = targetContent;
         this.sourceInstalledCode = sourceInstalledCode == null ? null : FeebleReference.factory(sourceInstalledCode, null);
@@ -303,8 +306,13 @@ public final class DeoptimizedFrame {
      * is still present on the stack until the actual stack frame rewriting happens.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
+    public long getSourceEncodedFrameSize() {
+        return sourceEncodedFrameSize;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public long getSourceTotalFrameSize() {
-        return sourceTotalFrameSize;
+        return CodeInfoQueryResult.getTotalFrameSize(sourceEncodedFrameSize);
     }
 
     /**
@@ -387,7 +395,9 @@ public final class DeoptimizedFrame {
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
         CodeInfo info = CodeInfoTable.getImageCodeInfo();
-        long handler = CodeInfoAccess.lookupExceptionOffset(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)));
+        SimpleCodeInfoQueryResult codeInfoQueryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), codeInfoQueryResult);
+        long handler = codeInfoQueryResult.getExceptionOffset();
         assert handler != 0 : "no exception handler registered for deopt target";
         firstAddressEntry.returnAddress += handler;
     }

@@ -111,6 +111,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private String name;
 
     /**
+     * Used to quickly determine in which category a certain hub falls (e.g., instance or array).
+     */
+    private int hubType;
+
+    /**
      * Encoding of the object or array size. Decode using {@link LayoutEncoding}.
      */
     private int layoutEncoding;
@@ -152,7 +157,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private boolean isInstantiated;
 
-    private boolean isAnonymousClass;
+    /**
+     * Boolean value or exception that happend at image-build time.
+     */
+    private Object isAnonymousClass;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -314,9 +322,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, boolean isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
-                    ClassLoader classLoader) {
+    public DynamicHub(String name, HubType hubType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
+                    int modifiers, ClassLoader classLoader) {
         this.name = name;
+        this.hubType = hubType.getValue();
         this.isLocalClass = isLocalClass;
         this.isAnonymousClass = isAnonymousClass;
         this.superHub = superType;
@@ -556,14 +565,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public boolean isInstanceClass() {
-        // Special handling for hybrids, which are arrays from the point of view of LayoutEncoding.
-        return LayoutEncoding.isInstance(getLayoutEncoding()) || (LayoutEncoding.isArray(getLayoutEncoding()) && name.charAt(0) != '[');
+        return HubType.isInstance(hubType);
     }
 
     @Substitute
     public boolean isArray() {
-        // Cannot use LayoutEncoding.isArray because it returns the wrong result for hybrids.
-        return name.charAt(0) == '[';
+        return HubType.isArray(hubType);
     }
 
     @Substitute
@@ -729,7 +736,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isAnonymousClass() {
-        return isAnonymousClass;
+        if (isAnonymousClass instanceof Boolean) {
+            return (Boolean) isAnonymousClass;
+        } else if (isAnonymousClass instanceof NoClassDefFoundError) {
+            throw (NoClassDefFoundError) isAnonymousClass;
+        } else if (isAnonymousClass instanceof InternalError) {
+            throw (InternalError) isAnonymousClass;
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
     }
 
     @Substitute
@@ -1298,7 +1313,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     private String getSimpleBinaryName0() {
-        if (isAnonymousClass || enclosingClass == null) {
+        if (isAnonymousClass() || enclosingClass == null) {
             return null;
         }
         try {

@@ -34,6 +34,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -43,9 +47,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AgentObjectTest {
+    @Before
+    public void cleanAgentObject() {
+        AgentObjectFactory.cleanAgentObject();
+    }
+
     @Test
     public void versionOfTheAgent() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
@@ -177,6 +187,77 @@ public class AgentObjectTest {
 
             assertFalse("No listener notified", program[0]);
             assertNull("No function entered", functionName[0]);
+        }
+    }
+
+    @Test
+    public void evalFirstAndThenOnEnterCallback() throws Throwable {
+        Executor direct = (c) -> c.run();
+        evalFirstAndThenOnEnterCallbackImpl(direct);
+    }
+
+    @Test
+    public void evalFirstAndThenOnEnterCallbackInBackground() throws Throwable {
+        Executor background = Executors.newSingleThreadExecutor();
+        evalFirstAndThenOnEnterCallbackImpl(background);
+    }
+
+    private static void evalFirstAndThenOnEnterCallbackImpl(Executor registerIn) throws Throwable {
+        try (Context c = AgentObjectFactory.newContext()) {
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] functionName = {null};
+            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
+                if (ctx.name().length() == 0) {
+                    return;
+                }
+                assertNull("No function entered yet", functionName[0]);
+                functionName[0] = ctx.name();
+            };
+
+            CountDownLatch await = new CountDownLatch(1);
+            Throwable[] err = {null};
+            registerIn.execute(() -> {
+                try {
+                    agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
+                } catch (Throwable t) {
+                    err[0] = t;
+                } finally {
+                    await.countDown();
+                }
+            });
+            await.await(10, TimeUnit.SECONDS);
+            if (err[0] != null) {
+                throw err[0];
+            }
+
+            // @formatter:off
+            Source runScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n"
+                    + "  CALL(foo)\n"
+                    + ")",
+                    "run.px"
+            ).build();
+            // @formatter:on
+            c.eval(runScript);
+
+            assertEquals("Function foo has been called", "foo", functionName[0]);
         }
     }
 

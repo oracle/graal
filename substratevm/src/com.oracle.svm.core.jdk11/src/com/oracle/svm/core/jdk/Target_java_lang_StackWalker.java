@@ -192,7 +192,7 @@ final class Target_java_lang_StackWalker {
             if (deoptimizedFrame != null) {
                 curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
                 walk.setIPCodeInfo(WordFactory.nullPointer());
-                JavaStackWalker.continueWalk(walk);
+                JavaStackWalker.continueWalk(walk, WordFactory.nullPointer());
 
             } else {
                 UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
@@ -202,7 +202,7 @@ final class Target_java_lang_StackWalker {
                 try {
                     CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
                     curRegularFrame = queryFrameInfo(info, ip);
-                    JavaStackWalker.continueWalk(walk);
+                    JavaStackWalker.continueWalk(walk, info);
                 } finally {
                     CodeInfoAccess.releaseTether(untetheredInfo, tether);
                 }

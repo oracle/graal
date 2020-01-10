@@ -34,11 +34,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
+@DuplicatedInNativeCode
 public class CodeReferenceMapDecoder {
 
     /**
@@ -59,6 +61,7 @@ public class CodeReferenceMapDecoder {
 
         Pointer objRef = (Pointer) baseAddress;
         long idx = referenceMapIndex;
+        boolean firstRun = true;
         while (true) {
             /*
              * The following code is copied from TypeReader.getUV() and .getSV() because we cannot
@@ -102,11 +105,12 @@ public class CodeReferenceMapDecoder {
             }
 
             boolean derived = false;
-            if (gap < 0) {
+            if (!firstRun && gap < 0) {
                 /* Derived pointer run */
                 gap = -(gap + 1);
                 derived = true;
             }
+            firstRun = false;
 
             objRef = objRef.add(WordFactory.unsigned(gap));
             boolean compressed = (count < 0);

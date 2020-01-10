@@ -878,7 +878,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         checkSubProcessFinished();
         if (engine.boundEngine && parent == null) {
             try {
-                engine.ensureClosed(cancelIfExecuting, false);
+                engine.ensureClosed(cancelIfExecuting, true);
             } catch (Throwable t) {
                 throw PolyglotImpl.wrapGuestException(engine, t);
             }

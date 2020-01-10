@@ -60,12 +60,12 @@ public class WasmMultiCase extends WasmCase {
     public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
         HashMap<String, byte[]> binaries = new HashMap<>();
         for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
-            String name = entry.getKey();
+            String filename = entry.getKey();
             Object content = entry.getValue();
             if (content instanceof String) {
-                binaries.put(name, WasmBinaryTools.compileWat((String) content));
+                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content));
             } else if (content instanceof byte[]) {
-                binaries.put(name, (byte[]) content);
+                binaries.put(filename, (byte[]) content);
             } else {
                 throw new RuntimeException("Unknown content type: " + content.getClass());
             }

@@ -41,7 +41,7 @@
 package org.graalvm.wasm;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
@@ -54,9 +54,9 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
-    private final Memories memories;
-    private final Globals globals;
-    private final Tables tables;
+    private final MemoryRegistry memoryRegistry;
+    private final GlobalRegistry globals;
+    private final TableRegistry tableRegistry;
     private final Linker linker;
     private Map<String, WasmModule> modules;
 
@@ -67,10 +67,10 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
-        this.globals = new Globals();
-        this.tables = new Tables();
-        this.memories = new Memories();
-        this.modules = new HashMap<>();
+        this.globals = new GlobalRegistry();
+        this.tableRegistry = new TableRegistry();
+        this.memoryRegistry = new MemoryRegistry();
+        this.modules = new LinkedHashMap<>();
         this.linker = new Linker(language);
         initializeBuiltinModules();
     }
@@ -88,16 +88,16 @@ public final class WasmContext {
         return language;
     }
 
-    public Memories memories() {
-        return memories;
+    public MemoryRegistry memories() {
+        return memoryRegistry;
     }
 
-    public Globals globals() {
+    public GlobalRegistry globals() {
         return globals;
     }
 
-    public Tables tables() {
-        return tables;
+    public TableRegistry tables() {
+        return tableRegistry;
     }
 
     public Linker linker() {

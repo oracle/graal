@@ -287,7 +287,7 @@ public abstract class ObjectScanner {
      * Hook for scanned constant. The subclasses can provide additional processing for the scanned
      * constants.
      */
-    protected abstract void forScannedConstant(JavaConstant scannedValue, Object reason);
+    protected abstract void forScannedConstant(JavaConstant scannedValue, ScanReason reason);
 
     public final void scanConstant(JavaConstant value, ScanReason reason) {
         scanConstant(value, reason, null);
@@ -528,11 +528,15 @@ public abstract class ObjectScanner {
         }
     }
 
-    static class FieldScan implements ScanReason {
+    protected static class FieldScan implements ScanReason {
         final AnalysisField field;
 
         FieldScan(AnalysisField field) {
             this.field = field;
+        }
+
+        public AnalysisField getField() {
+            return field;
         }
 
         @Override
@@ -554,13 +558,17 @@ public abstract class ObjectScanner {
         }
     }
 
-    static class MethodScan implements ScanReason {
+    protected static class MethodScan implements ScanReason {
         final AnalysisMethod method;
         final NodeSourcePosition sourcePosition;
 
         MethodScan(AnalysisMethod method, NodeSourcePosition nodeSourcePosition) {
             this.method = method;
             this.sourcePosition = nodeSourcePosition;
+        }
+
+        public AnalysisMethod getMethod() {
+            return method;
         }
 
         @Override
