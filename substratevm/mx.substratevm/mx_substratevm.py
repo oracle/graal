@@ -1172,6 +1172,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
+def _native_image_configure_extra_jvm_args():
+    if svm_java8():
+        return []
+    args = list(add_exports_from_packages(['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta']))
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
+        args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
+    return args
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image Configure Tool',
@@ -1188,7 +1196,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             main_class="com.oracle.svm.configure.ConfigurationTool",
             build_args=[
                 "-H:-ParseRuntimeOptions",
-            ]
+            ],
+            extra_jvm_args=_native_image_configure_extra_jvm_args(),
         )
     ],
 ))
