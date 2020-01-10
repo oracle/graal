@@ -52,14 +52,6 @@ public abstract class NativeVMOperation extends VMOperation {
         VMOperationControl.get().enqueueFromNonJavaThread(data);
     }
 
-    public NativeVMOperationData getNext(NativeVMOperationData data) {
-        return data.getNext();
-    }
-
-    public void setNext(NativeVMOperationData data, NativeVMOperationData value) {
-        data.setNext(value);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected boolean isFinished(NativeVMOperationData data) {
@@ -67,6 +59,7 @@ public abstract class NativeVMOperation extends VMOperation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setFinished(NativeVMOperationData data, boolean value) {
         data.setFinished(value);
     }
@@ -77,6 +70,7 @@ public abstract class NativeVMOperation extends VMOperation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setQueuingThread(NativeVMOperationData data, IsolateThread value) {
         data.setQueuingThread(value);
     }

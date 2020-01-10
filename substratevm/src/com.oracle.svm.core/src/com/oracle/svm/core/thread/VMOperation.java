@@ -163,10 +163,12 @@ public abstract class VMOperation {
 
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract void setQueuingThread(NativeVMOperationData data, IsolateThread value);
 
     protected abstract boolean isFinished(NativeVMOperationData data);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract void setFinished(NativeVMOperationData data, boolean value);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Whitelisted because some operations may allocate.")

@@ -75,9 +75,9 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         GenScavengeAllocationSnippets snippetReceiver = new GenScavengeAllocationSnippets();
-        GenScavengeAllocationSnippets.Templates newObjectSnippets = new GenScavengeAllocationSnippets.Templates(snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers,
+        GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers,
                         snippetReflection);
-        newObjectSnippets.registerLowerings(lowerings);
+        allocationSnippets.registerLowerings(lowerings);
     }
 
     @Snippet

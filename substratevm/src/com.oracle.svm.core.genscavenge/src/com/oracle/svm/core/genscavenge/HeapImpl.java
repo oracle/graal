@@ -497,22 +497,22 @@ public class HeapImpl extends Heap {
 
     @Fold
     static boolean getVerifyHeapBeforeGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyHeapAfterGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackBeforeGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackAfterGC() {
-        return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
     }
 
     @NeverInline("Starting a stack walk in the caller frame")

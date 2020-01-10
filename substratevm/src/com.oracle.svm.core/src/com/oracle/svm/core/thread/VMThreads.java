@@ -552,6 +552,7 @@ public abstract class VMThreads {
         public static final int STATUS_IN_VM = STATUS_IN_NATIVE + 1;
         private static final int MAX_STATUS = STATUS_IN_VM;
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static String statusToString(int status, boolean safepointsDisabled) {
             switch (status) {
                 case STATUS_CREATED:
@@ -572,6 +573,7 @@ public abstract class VMThreads {
         /* Access methods to treat VMThreads.statusTL as a volatile int. */
 
         /** For debugging. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static String getStatusString(IsolateThread vmThread) {
             return statusToString(statusTL.getVolatile(vmThread), isStatusIgnoreSafepoints(vmThread));
         }
@@ -611,6 +613,7 @@ public abstract class VMThreads {
             return (statusTL.getVolatile() == STATUS_IN_VM);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusNative() {
             statusTL.setVolatile(STATUS_IN_NATIVE);
         }
@@ -654,6 +657,10 @@ public abstract class VMThreads {
 
         public static void setStatusVM() {
             statusTL.setVolatile(STATUS_IN_VM);
+        }
+
+        public static void setStatusVM(IsolateThread thread) {
+            statusTL.setVolatile(thread, STATUS_IN_VM);
         }
 
         /** A guarded transition from native to another status. */

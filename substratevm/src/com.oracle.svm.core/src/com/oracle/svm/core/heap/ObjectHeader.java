@@ -56,6 +56,8 @@ public abstract class ObjectHeader {
     @Platforms(Platform.HOSTED_ONLY.class)
     public abstract long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress);
 
+    public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub dynamicHubFromObjectHeader(UnsignedWord header);
 
@@ -68,8 +70,6 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
-
-    public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
 
     public enum HeapKind {
         Unmanaged
