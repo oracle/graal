@@ -47,22 +47,22 @@ import java.io.FileDescriptor;
  */
 @TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = JDK11OrEarlier.class)
 @SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBuffer_JDK8OrLater {
+final class Target_java_nio_DirectByteBuffer_JDK11OrEarlier {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Target_jdk_internal_ref_Cleaner cleaner;
 
     @Alias
-    protected Target_java_nio_DirectByteBuffer_JDK8OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
+    protected Target_java_nio_DirectByteBuffer_JDK11OrEarlier(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
     }
 
 }
 
 @TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = JDK11OrEarlier.class)
 @SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBufferR_JDK8OrLater {
+final class Target_java_nio_DirectByteBufferR_JDK11OrEarlier {
 
     @Alias
-    protected Target_java_nio_DirectByteBufferR_JDK8OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
+    protected Target_java_nio_DirectByteBufferR_JDK11OrEarlier(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
     }
 
 }
@@ -71,13 +71,13 @@ final class Target_java_nio_DirectByteBufferR_JDK8OrLater {
 final class Target_sun_nio_ch_Util {
 
     @Substitute
-    private static Target_java_nio_DirectByteBuffer_JDK8OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper) {
-        return new Target_java_nio_DirectByteBuffer_JDK8OrLater(size, addr, fd, unmapper);
+    private static Target_java_nio_DirectByteBuffer_JDK11OrEarlier newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper) {
+        return new Target_java_nio_DirectByteBuffer_JDK11OrEarlier(size, addr, fd, unmapper);
     }
 
     @Substitute
-    static Target_java_nio_DirectByteBufferR_JDK8OrLater newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper) {
-        return new Target_java_nio_DirectByteBufferR_JDK8OrLater(size, addr, fd, unmapper);
+    static Target_java_nio_DirectByteBufferR_JDK11OrEarlier newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper) {
+        return new Target_java_nio_DirectByteBufferR_JDK11OrEarlier(size, addr, fd, unmapper);
     }
 
 }
