@@ -316,6 +316,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             """
             :rtype: list[(str, source_dict)], list[str]
             """
+            _incl_list = []
+            _excl_list = []
             orig_info_plist = join(_src_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
                 from mx import etreeParse
@@ -330,14 +332,22 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         graalvm_bundle_name += ' ' + graalvm_version()
                         el.text = graalvm_bundle_name
                         bio = io.BytesIO()
-                        root.write(bio) # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
+                        root.write(bio)  # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
                             'source_type': 'string',
                             'value': _decode(bio.getvalue()),
                             'ignore_value_subst': True
                         }
-                        return [(base_dir + '/Contents/Info.plist', plist_src)], [orig_info_plist]
-            return [], []
+                        _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
+                        _excl_list.append(orig_info_plist)
+                        break
+                if _src_jdk_version != 8:
+                    libjli_symlink = {
+                        'source_type': 'link',
+                        'path': '../Home/lib/jli/libjli.dylib'
+                    }
+                    _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
+            return _incl_list, _excl_list
 
         svm_component = get_component('svm', stage1=True)
 
