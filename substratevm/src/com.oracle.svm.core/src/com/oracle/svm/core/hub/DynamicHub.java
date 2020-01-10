@@ -67,6 +67,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -1280,10 +1281,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK11OrLater.class)
     private native boolean isTopLevelClass();
 
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private native Object[] getEnclosingMethod0();
-
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     private String getSimpleBinaryName0() {
@@ -1310,6 +1307,72 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
         throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
     }
+
+    /*
+     * We are defensive and also handle private native methods by marking them as deleted. If they
+     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
+     * linking error.
+     */
+    @Delete
+    private static native void registerNatives();
+
+    @Delete
+    static native Class<?> getPrimitiveClass(String name);
+
+    @Delete
+    private native Object[] getEnclosingMethod0();
+
+    @Delete
+    private native Class<?>[] getInterfaces0();
+
+    @Delete
+    native void setSigners(Object[] signers);
+
+    @Delete
+    private native java.security.ProtectionDomain getProtectionDomain0();
+
+    @Delete
+    private native String getGenericSignature0();
+
+    @Delete
+    native byte[] getRawAnnotations();
+
+    @Delete
+    native byte[] getRawTypeAnnotations();
+
+    @Delete
+    native Target_jdk_internal_reflect_ConstantPool getConstantPool();
+
+    @Delete
+    private native Field[] getDeclaredFields0(boolean publicOnly);
+
+    @Delete
+    private native Method[] getDeclaredMethods0(boolean publicOnly);
+
+    @Delete
+    private native <T> Constructor<T>[] getDeclaredConstructors0(boolean publicOnly);
+
+    @Delete
+    private native Class<?>[] getDeclaredClasses0();
+
+    @Delete
+    private static native boolean desiredAssertionStatus0(Class<?> clazz);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native String getName0();
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private native Class<?> getNestHost0();
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private native Class<?>[] getNestMembers0();
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private native String initClassName();
 }
 
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
@@ -1331,4 +1394,8 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     public static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
         return soleInstance;
     }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
+final class Target_jdk_internal_reflect_ConstantPool {
 }
