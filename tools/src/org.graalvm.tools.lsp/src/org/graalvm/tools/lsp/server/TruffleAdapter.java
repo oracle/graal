@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.tools.lsp.server.types.CompletionContext;
@@ -70,7 +72,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import java.util.function.Function;
+
+import org.graalvm.tools.lsp.server.types.CompletionOptions;
+import org.graalvm.tools.lsp.server.types.ServerCapabilities;
 
 /**
  * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
@@ -92,6 +96,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private CoverageRequestHandler coverageHandler;
     private HighlightRequestHandler highlightHandler;
     private TextDocumentSurrogateMap surrogateMap;
+    private final Map<String, List<String>> langId2CompletionTriggerCharacters = new ConcurrentHashMap<>();
 
     public TruffleAdapter(boolean developerMode) {
         this.developerMode = developerMode;
@@ -109,7 +114,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
 
     private void createLSPRequestHandlers() {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
-        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
+        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, langId2CompletionTriggerCharacters);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler, developerMode);
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
@@ -278,6 +283,28 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
             return futureTasks.get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    String getLanguageId(URI uri) {
+        TextDocumentSurrogate doc = surrogateMap.get(uri);
+        if (doc != null) {
+            return doc.getLanguageId();
+        }
+        try {
+            return Source.findLanguage(env.getTruffleFile(uri));
+        } catch (IOException ex) {
+            return null;
+        }
+    }
+
+    public void setServerCapabilities(String languageId, ServerCapabilities capabilities) {
+        CompletionOptions completionProvider = capabilities.getCompletionProvider();
+        if (completionProvider != null) {
+            List<String> triggerCharacters = completionProvider.getTriggerCharacters();
+            if (triggerCharacters != null) {
+                langId2CompletionTriggerCharacters.put(languageId, triggerCharacters);
+            }
         }
     }
 

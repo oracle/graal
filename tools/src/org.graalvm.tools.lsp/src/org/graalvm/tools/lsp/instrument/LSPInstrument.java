@@ -50,6 +50,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
 import org.graalvm.tools.lsp.instrument.LSOptions.HostAndPort;
+import org.graalvm.tools.lsp.instrument.LSOptions.LanguageAndAddress;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
@@ -64,6 +65,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.collections.Pair;
 
 @Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class})
 public final class LSPInstrument extends TruffleInstrument implements EnvironmentProvider {
@@ -174,7 +176,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                 Integer backlog = options.get(LSOptions.SocketBacklogSize);
                 InetAddress address = socketAddress.getAddress();
                 ServerSocket serverSocket = new ServerSocket(port, backlog, address);
-                List<SocketAddress> delegates = createDelegateSockets(options.get(LSOptions.Delegates));
+                List<Pair<String, SocketAddress>> delegates = createDelegateSockets(options.get(LSOptions.Delegates));
                 LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket, delegates).thenRun(() -> {
                     try {
                         executorWrapper.executeWithDefaultContext(() -> {
@@ -196,13 +198,13 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         return truffleAdapter;
     }
 
-    private static List<SocketAddress> createDelegateSockets(List<HostAndPort> hostPorts) {
+    private static List<Pair<String, SocketAddress>> createDelegateSockets(List<LanguageAndAddress> hostPorts) {
         if (hostPorts.isEmpty()) {
             return Collections.emptyList();
         }
-        List<SocketAddress> sockets = new ArrayList<>(hostPorts.size());
-        for (HostAndPort hostPort : hostPorts) {
-            sockets.add(hostPort.createSocket());
+        List<Pair<String, SocketAddress>> sockets = new ArrayList<>(hostPorts.size());
+        for (LanguageAndAddress langAddress : hostPorts) {
+            sockets.add(Pair.create(langAddress.getLanguageId(), langAddress.getAddress().createSocket()));
         }
         return sockets;
     }

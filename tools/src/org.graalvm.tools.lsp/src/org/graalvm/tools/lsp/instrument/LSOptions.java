@@ -62,17 +62,17 @@ public final class LSOptions {
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
 
-    static final OptionType<List<HostAndPort>> DELEGATES = new OptionType<>("[[host:]port],...", (addresses) -> {
+    static final OptionType<List<LanguageAndAddress>> DELEGATES = new OptionType<>("[languageId@][[host:]port],...", (addresses) -> {
         if (addresses.isEmpty()) {
             return Collections.emptyList();
         }
         String[] array = addresses.split(",");
-        List<HostAndPort> hostPorts = new ArrayList<>(array.length);
+        List<LanguageAndAddress> hostPorts = new ArrayList<>(array.length);
         for (String address : array) {
-            hostPorts.add(HostAndPort.parse(address));
+            hostPorts.add(LanguageAndAddress.parse(address));
         }
         return hostPorts;
-    }, (Consumer<List<HostAndPort>>) (addresses) -> addresses.forEach((address) -> address.verify()));
+    }, (Consumer<List<LanguageAndAddress>>) (addresses) -> addresses.forEach((address) -> address.verify()));
 
     @Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
@@ -81,7 +81,7 @@ public final class LSOptions {
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
     @Option(help = "Delegate language servers", category = OptionCategory.USER) //
-    static final OptionKey<List<HostAndPort>> Delegates = new OptionKey<>(Collections.emptyList(), DELEGATES);
+    static final OptionKey<List<LanguageAndAddress>> Delegates = new OptionKey<>(Collections.emptyList(), DELEGATES);
 
     static final class HostAndPort {
 
@@ -90,12 +90,12 @@ public final class LSOptions {
         private int port;
         private InetAddress inetAddress;
 
-        HostAndPort(String host, int port) {
+        private HostAndPort(String host, int port) {
             this.host = host;
             this.port = port;
         }
 
-        HostAndPort(String host, String portStr) {
+        private HostAndPort(String host, String portStr) {
             this.host = host;
             this.portStr = portStr;
         }
@@ -156,6 +156,41 @@ public final class LSOptions {
                 ia = inetAddress;
             }
             return new InetSocketAddress(ia, port);
+        }
+    }
+
+    static final class LanguageAndAddress {
+
+        private final String languageId;
+        private final HostAndPort address;
+
+        private LanguageAndAddress(String languageId, HostAndPort address) {
+            this.languageId = languageId;
+            this.address = address;
+        }
+
+        static LanguageAndAddress parse(String la) {
+            int at = la.indexOf('@');
+            if (at < 0) {
+                return new LanguageAndAddress(null, HostAndPort.parse(la));
+            } else {
+                return new LanguageAndAddress(la.substring(0, at), HostAndPort.parse(la.substring(at + 1)));
+            }
+        }
+
+        void verify() {
+            if (languageId != null && languageId.isEmpty()) {
+                throw new IllegalArgumentException("Unknown empty language specified.");
+            }
+            address.verify();
+        }
+
+        String getLanguageId() {
+            return languageId;
+        }
+
+        HostAndPort getAddress() {
+            return address;
         }
     }
 }

@@ -47,6 +47,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.graalvm.tools.lsp.server.DelegateServers;
+import org.graalvm.tools.lsp.server.TruffleAdapter;
 
 public class LanguageServer {
 
@@ -230,21 +231,29 @@ public class LanguageServer {
     public static final class DelegateServer implements Runnable {
 
         private final LoggerProxy logger;
+        private final String languageId;
         private final Socket socket;
         private final InputStream in;
         private final OutputStream out;
         private final OutputStream serverOutput;
+        private final TruffleAdapter truffleAdapter;
         private final Map<Object, JSONObject> receivedMessages = new HashMap<>();
         private Object initializeId;
         private ServerCapabilities capabilities;
 
-        public DelegateServer(SocketAddress socketAddress, OutputStream serverOutput, LoggerProxy logger) throws IOException {
+        public DelegateServer(String languageId, SocketAddress socketAddress, OutputStream serverOutput, TruffleAdapter truffleAdapter, LoggerProxy logger) throws IOException {
+            this.languageId = languageId;
             this.socket = new Socket();
             this.serverOutput = serverOutput;
+            this.truffleAdapter = truffleAdapter;
             this.logger = logger;
             this.socket.connect(socketAddress);
             this.in = socket.getInputStream();
             this.out = socket.getOutputStream();
+        }
+
+        public String getLanguageId() {
+            return languageId;
         }
 
         public String getAddress() {
@@ -311,6 +320,7 @@ public class LanguageServer {
                                 if (result.has("capabilities")) {
                                     JSONObject c = (JSONObject) result.get("capabilities");
                                     this.capabilities = new ServerCapabilities(c);
+                                    truffleAdapter.setServerCapabilities(languageId, capabilities);
                                 }
                             }
                             synchronized (receivedMessages) {

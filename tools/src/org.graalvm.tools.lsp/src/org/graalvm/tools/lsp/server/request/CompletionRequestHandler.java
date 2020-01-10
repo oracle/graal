@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -94,11 +95,13 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private static final int SORTING_PRIORITY_GLOBALS = 2;
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
+    private final Map<String, List<String>> langId2CompletionTriggerCharacters;
 
     public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
-                    SourceCodeEvaluator sourceCodeEvaluator) {
+                    SourceCodeEvaluator sourceCodeEvaluator, Map<String, List<String>> langId2CompletionTriggerCharacters) {
         super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
+        this.langId2CompletionTriggerCharacters = langId2CompletionTriggerCharacters;
     }
 
     public List<String> getCompletionTriggerCharactersWithEnteredContext() {
@@ -124,7 +127,8 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             return emptyList;
         }
 
-        CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column, surrogate.getCompletionTriggerCharacters(),
+        List<String> completionTriggerCharacters = langId2CompletionTriggerCharacters.getOrDefault(surrogate.getLanguageId(), Collections.emptyList());
+        CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column, completionTriggerCharacters,
                         completionContext);
         if (surrogate.isSourceCodeReadyForCodeCompletion()) {
             return createCompletions(surrogate, line, column, completionKind);
@@ -156,7 +160,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             // custom file system callback
             surrogateMap.put(uri, fixedSurrogate);
             try {
-                return createCompletions(fixedSurrogate, line, sourceFix.characterIdx, getCompletionKind(sourceFix.removedCharacters, surrogate.getCompletionTriggerCharacters()));
+                return createCompletions(fixedSurrogate, line, sourceFix.characterIdx, getCompletionKind(sourceFix.removedCharacters, completionTriggerCharacters));
             } finally {
                 surrogateMap.put(uri, surrogate);
             }

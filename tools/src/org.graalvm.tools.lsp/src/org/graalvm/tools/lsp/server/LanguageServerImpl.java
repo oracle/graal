@@ -46,6 +46,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import org.graalvm.collections.Pair;
+
 import org.graalvm.tools.lsp.server.types.CodeAction;
 import org.graalvm.tools.lsp.server.types.CodeActionParams;
 import org.graalvm.tools.lsp.server.types.CodeLens;
@@ -454,7 +456,7 @@ public final class LanguageServerImpl extends LanguageServer {
         return resultOnError;
     }
 
-    public CompletableFuture<?> start(final ServerSocket serverSocket, final List<SocketAddress> delegateAddresses) {
+    public CompletableFuture<?> start(final ServerSocket serverSocket, final List<Pair<String, SocketAddress>> delegateAddresses) {
         clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
@@ -510,15 +512,17 @@ public final class LanguageServerImpl extends LanguageServer {
                     delegateServersList = Collections.emptyList();
                 } else {
                     delegateServersList = new ArrayList<>(delegateAddresses.size());
-                    for (SocketAddress address : delegateAddresses) {
+                    for (Pair<String, SocketAddress> langAddress : delegateAddresses) {
+                        String languageId = langAddress.getLeft();
+                        SocketAddress address = langAddress.getRight();
                         try {
-                            delegateServersList.add(new DelegateServer(address, serverOutput, getLogger()));
+                            delegateServersList.add(new DelegateServer(languageId, address, serverOutput, truffleAdapter, getLogger()));
                         } catch (IOException ex) {
                             err.println("[Graal LSP] Error while connecting to delegate server at " + address + " : " + ex.getLocalizedMessage());
                         }
                     }
                 }
-                return new DelegateServers(delegateServersList);
+                return new DelegateServers(truffleAdapter, delegateServersList);
             }
         }, clientConnectionExecutor);
         return future;
