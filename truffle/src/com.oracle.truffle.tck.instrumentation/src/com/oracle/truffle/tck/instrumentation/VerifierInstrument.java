@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,9 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -65,6 +68,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -93,6 +97,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
                         new NodePropertyChecker());
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(
+                        SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
+                        new InteropStackChecker());
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().build(),
                         new EmptyExecutionEventListener());
@@ -257,7 +264,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
 
         @TruffleBoundary
-        private void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
+        private static void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
             Node node = context.getInstrumentedNode();
             if (!hasParentRootTag(node) &&
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
@@ -269,7 +276,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             }
         }
 
-        private boolean hasParentRootTag(Node node) {
+        private static boolean hasParentRootTag(Node node) {
             Node parent = node.getParent();
             if (parent == null) {
                 return false;
@@ -279,6 +286,68 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                 return true;
             }
             return hasParentRootTag(parent);
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+    }
+
+    private static class InteropStackChecker implements ExecutionEventListener {
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            checkInteropStack();
+        }
+
+        @TruffleBoundary
+        private static void checkInteropStack() {
+            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
+                @Override
+                public FrameInstance visitFrame(FrameInstance frameInstance) {
+                    Node callNode = frameInstance.getCallNode();
+                    if (callNode != null) {
+                        checkInteropNodes(callNode);
+                        return frameInstance;
+                    } else {
+                        return null;
+                    }
+                }
+            });
+        }
+
+        /**
+         * Check that there are no instrumentable nodes between the call node and interop library
+         * node.
+         */
+        private static void checkInteropNodes(Node node) {
+            Node libraryNode = null;
+            Node n = node;
+            while (n != null) {
+                if (n instanceof Library) {
+                    libraryNode = n;
+                    break;
+                }
+                n = n.getParent();
+            }
+            if (libraryNode != null) {
+                n = node;
+                while (n != null) {
+                    if (n instanceof InstrumentableNode && ((InstrumentableNode) n).isInstrumentable()) {
+                        Assert.assertFalse("Node \"" + n + "\" of class " + n.getClass() + " is instrumentable, but used in Library. " + n.getSourceSection() + "\n" +
+                                        "Library implementation nodes ought not to be instrumentable, because library may be rewritten to uncached and therefore no longer be able to be instrumented.\n" +
+                                        "InstrumentableNode.isInstrumentable() should return false in the context of a Library.", true);
+                    }
+                    if (n == libraryNode) {
+                        break;
+                    }
+                    n = n.getParent();
+                }
+            }
         }
 
         @Override
