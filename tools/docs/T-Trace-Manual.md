@@ -71,7 +71,7 @@ based offerings. There is no other system that could compete with the
 multi-language offerings of GraalVM. The ability to create custom **T-Trace** 
 based insights in any language brings the combined offering to yet another level.
 GraalVM with **T-Trace** is the dream come true for anyone seeking security,
-embeddablity, configurability, robustness and performance at the cloud scale.
+[embeddablity](T-Trace-Embedding.md), configurability, robustness and performance at the cloud scale.
 
 ## Hacker's Handle to the Ultimate Tracing Framework
 
@@ -226,7 +226,8 @@ Just called Natural.next as 4097 function invocation
 
 **T-Trace** scripts are ready to be used in any environment - be it the
 default `node` implementation, the lightweight `js` command line tool - 
-or your own application that decides to embedd GraalVM scripting capabilities!
+or your own application that decides to [embedd GraalVM scripting](T-Trace-Embedding.md)
+capabilities!
 
 ### Trully Polyglot - T-Trace any Language
 
