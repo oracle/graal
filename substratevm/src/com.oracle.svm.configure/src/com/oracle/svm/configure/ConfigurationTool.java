@@ -280,13 +280,13 @@ public class ConfigurationTool {
             String current = parts[0];
             String value = (parts.length > 1) ? parts[1] : null;
             switch (current) {
-                case "--include-modules":
-                case "--exclude-modules":
+                case "--include-packages-from-modules":
+                case "--exclude-packages-from-modules":
                     if (SubstrateUtil.HOSTED) {
                         if (rootNode != null) {
                             throw new UsageException(current + " must be specified before other rule-creating arguments");
                         }
-                        RuleNode.Inclusion inclusion = current.equals("--include-modules") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
+                        RuleNode.Inclusion inclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
                         String[] moduleNames = (value != null) ? value.split(",") : new String[0];
                         rootNode = ModuleFilterTools.generateFromModules(moduleNames, inclusion, reduce);
                     } else {
