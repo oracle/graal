@@ -240,7 +240,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeWithExceptionInCaller(Value exception) {
-
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new SPARCHotSpotDeoptimizeWithExceptionCallerOp(config, exception, thread));
     }
 
     @Override
