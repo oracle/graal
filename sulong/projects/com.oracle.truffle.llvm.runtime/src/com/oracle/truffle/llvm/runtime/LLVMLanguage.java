@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import org.graalvm.options.OptionDescriptors;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -111,6 +112,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Configuration activeConfiguration = null;
 
+    @CompilationFinal private LLVMMemory cachedLLVMMemory;
+
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
@@ -174,9 +177,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public <C extends LLVMCapability> C getCapability(Class<C> type) {
         CompilerAsserts.partialEvaluationConstant(type);
-        C ret = activeConfiguration.getCapability(type);
-        CompilerAsserts.partialEvaluationConstant(ret);
-        return ret;
+        if (type == LLVMMemory.class) {
+            return type.cast(getLLVMMemory());
+        } else {
+            C ret = activeConfiguration.getCapability(type);
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                CompilerAsserts.partialEvaluationConstant(ret);
+            }
+            return ret;
+        }
     }
 
     /**
@@ -206,10 +215,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         throw new IllegalStateException("No context, please create the context before accessing the configuration.");
     }
 
+    public LLVMMemory getLLVMMemory() {
+        assert cachedLLVMMemory != null;
+        return cachedLLVMMemory;
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
             activeConfiguration = Configurations.createConfiguration(this, env.getOptions());
+            cachedLLVMMemory = activeConfiguration.getCapability(LLVMMemory.class);
         }
 
         Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
@@ -267,7 +282,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void disposeContext(LLVMContext context) {
         // TODO (PLi): The globals loaded by the context passed needs to be freed.
-        LLVMMemory memory = getCapability(LLVMMemory.class);
+        LLVMMemory memory = getLLVMMemory();
         context.dispose(memory);
     }
 
@@ -334,7 +349,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected void disposeThread(LLVMContext context, Thread thread) {
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
-            context.getThreadingStack().freeStack(getCapability(LLVMMemory.class), thread);
+            context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
     }
 

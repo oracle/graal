@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -41,8 +43,9 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
     private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected byte doI8Native(LLVMNativePointer addr) {
-        return profile.profile(getLLVMMemoryCached().getI8(addr));
+    protected byte doI8Native(LLVMNativePointer addr,
+                    @CachedLanguage LLVMLanguage language) {
+        return profile.profile(language.getLLVMMemory().getI8(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

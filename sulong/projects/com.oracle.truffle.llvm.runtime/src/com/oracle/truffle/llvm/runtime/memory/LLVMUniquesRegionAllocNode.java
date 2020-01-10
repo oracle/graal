@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -59,8 +60,9 @@ public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
     }
 
     @Specialization
-    protected void doOp(VirtualFrame frame, @Cached("getLLVMMemory()") LLVMMemory memory) {
-        allocator.allocate(frame, memory, getStackPointerSlot());
+    protected void doOp(VirtualFrame frame,
+                    @CachedLanguage LLVMLanguage language) {
+        allocator.allocate(frame, language.getLLVMMemory(), getStackPointerSlot());
     }
 
 }
