@@ -36,6 +36,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -92,8 +93,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
                 rerunClassInit(a, "java.lang.UNIXProcess");
             }
         } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl",
-                            "java.io.FilePermission");
+            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
         }
     }
 
@@ -163,6 +163,18 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
+        if (isWindows()) {
+            /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
+        }
+
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
+        }
+    }
+
+    private static void registerProcessHandleImplInfoInitIDs(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(fields(a, "java.lang.ProcessHandleImpl$Info", "command", "commandLine", "arguments", "startTime", "totalTime", "user"));
     }
 
     private static void registerRandomAccessFileInitIDs(DuringAnalysisAccess a) {
