@@ -28,13 +28,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.hub.ClassForNameSupport;
@@ -58,7 +59,7 @@ public final class Target_java_lang_ClassLoader {
     private ArrayList<URL> path;
     @Substitute //
     private Target_java_lang_ClassLoader parent;
-    
+
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
     private HashMap<String, ?> lmap;
 
@@ -79,7 +80,6 @@ public final class Target_java_lang_ClassLoader {
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static native boolean knownToNotExist0(ClassLoader loader, String className);
-}
 
     @Substitute @TargetElement(onlyWith = JDK11OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
 
