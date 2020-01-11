@@ -1888,6 +1888,37 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "org.graalvm.compiler.truffle.jfr" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "requires" : [
+        "jdk.jfr"
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
     "org.graalvm.compiler.truffle.runtime" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1895,7 +1926,11 @@ suite = {
         "org.graalvm.compiler.truffle.common",
         "org.graalvm.compiler.truffle.options",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
+        "org.graalvm.compiler.truffle.jfr",
         "truffle:TRUFFLE_API",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2308,6 +2343,28 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_TRUFFLE_JFR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "maven": False,
+    },
+
+    "GRAAL_TRUFFLE_JFR11" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr.jdk11",
+      ],
+      "distDependencies" : [
+        "GRAAL_TRUFFLE_JFR",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TRUFFLE_OPTIONS" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2377,6 +2434,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_OPTIONS",
+        "GRAAL_TRUFFLE_JFR",
         "truffle:TRUFFLE_API",
       ],
       "maven": False,
@@ -2560,6 +2618,8 @@ suite = {
         "GRAAL_LIBGRAAL",
         "GRAAL_SERVICEPROVIDER",
         "GRAAL_TRUFFLE_COMMON",
+        "GRAAL_TRUFFLE_JFR",
+        "GRAAL_TRUFFLE_JFR11",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
         "GRAAL_TRUFFLE_OPTIONS",
@@ -2599,6 +2659,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.jfr.jdk11",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
