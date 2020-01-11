@@ -178,6 +178,11 @@ final class GraalTVMCI extends TVMCI {
         ((EngineData) runtimeData).loadOptions(optionValues);
     }
 
+    @Override
+    protected void onEngineClosed(Object runtimeData) {
+        GraalTruffleRuntime.getRuntime().onEngineClosed((EngineData) runtimeData);
+    }
+
     private static final GraalCastUnsafe CAST_UNSAFE = new GraalCastUnsafe();
 
     private static final class GraalCastUnsafe extends CastUnsafe {

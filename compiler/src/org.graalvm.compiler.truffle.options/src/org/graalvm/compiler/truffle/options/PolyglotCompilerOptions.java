@@ -105,6 +105,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Speculate on return types at call sites", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> ReturnTypeSpeculation = new OptionKey<>(true);
 
+    @Option(help = "Enable/disable builtin profiles in com.oracle.truffle.api.profiles.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> Profiling = new OptionKey<>(true);
+
     // MultiTier
 
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
@@ -159,6 +162,15 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
+
+    @Option(help = "Print Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationStatistics = new OptionKey<>(false);
+
+    @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
 
     // Inlining
 

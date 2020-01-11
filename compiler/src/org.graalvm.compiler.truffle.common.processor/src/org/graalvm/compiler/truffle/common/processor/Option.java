@@ -323,26 +323,30 @@ public class Option {
         option("TruffleCompilationStatistics")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print Truffle compilation statistics at the end of a run."),
+            .def("PolyglotCompilerOptions.CompilationStatistics.getDefaultValue()")
+            .help("Print Truffle compilation statistics at the end of a run.")
+            .deprecatedBy("CompilationStatistics"),
 
         option("TruffleCompilationStatisticDetails")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print additional more verbose Truffle compilation statistics at the end of a run."),
+            .def("PolyglotCompilerOptions.CompilationStatisticDetails.getDefaultValue()")
+            .help("Print additional more verbose Truffle compilation statistics at the end of a run.")
+            .deprecatedBy("CompilationStatisticDetails"),
 
         option("TruffleProfilingEnabled")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true")
-            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles."),
+            .def("PolyglotCompilerOptions.Profiling.getDefaultValue()")
+            .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles.")
+            .deprecatedBy("Profiling"),
 
         option("TraceTruffleTransferToInterpreter")
             .type("Boolean")
             .category("INTERNAL")
-            .def("false")
-            .help("Print stack trace on transfer to interpreter."),
+            .def("PolyglotCompilerOptions.TraceTransferToInterpreter.getDefaultValue()")
+            .help("Print stack trace on transfer to interpreter.")
+            .deprecatedBy("TraceTransferToInterpreter"),
 
         option("TruffleMultiTier")
             .type("Boolean")

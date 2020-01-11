@@ -131,6 +131,10 @@ public abstract class Accessor {
         getTVMCI().reloadEngineOptions(runtimeData, optionValues);
     }
 
+    protected void onEngineClosed(Object runtimeData) {
+        getTVMCI().onEngineClosed(runtimeData);
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
