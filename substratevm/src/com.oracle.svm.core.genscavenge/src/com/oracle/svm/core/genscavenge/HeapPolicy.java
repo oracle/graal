@@ -210,7 +210,7 @@ public class HeapPolicy {
                             .string(" ]").newline();
             return maximumYoungGenerationSize;
         }
-        long hostedValue = SubstrateOptions.hostedMaxNewSize();
+        long hostedValue = SubstrateOptions.MaxNewSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns maximumYoungGenerationSize: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
@@ -248,7 +248,7 @@ public class HeapPolicy {
             HeapPolicy.setMaximumHeapSize(WordFactory.unsigned(xmx.getValue()));
             return maximumHeapSize;
         }
-        long hostedValue = SubstrateOptions.hostedMaxHeapSize();
+        long hostedValue = SubstrateOptions.MaxHeapSize.getHostedValue();
         if (hostedValue != 0) {
             return WordFactory.unsigned(hostedValue);
         }
@@ -293,7 +293,7 @@ public class HeapPolicy {
             trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
-        long hostedValue = SubstrateOptions.hostedMinHeapSize();
+        long hostedValue = SubstrateOptions.MinHeapSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
