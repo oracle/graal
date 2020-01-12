@@ -15,7 +15,7 @@ traces = [
     ('Temp', 'sampleReading', 0.01)
 ]
 
-all_samples = [sample for sample in logs for log in logs]
+all_samples = [sample for log in logs for sample in log]
 
 if 'iterationsPerSecond' in all_samples[0]:
     max_iterations = max([s['iterationsPerSecond'] for s in all_samples])
