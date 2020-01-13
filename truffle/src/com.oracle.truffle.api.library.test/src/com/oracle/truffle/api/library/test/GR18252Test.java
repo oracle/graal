@@ -49,7 +49,7 @@ import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -102,13 +102,13 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         public static boolean is(Data receiver,
-                        @Exclusive /* @Shared("profile") */ @Cached BranchProfile profile) {
+                        @Shared("profile") @Cached BranchProfile profile) {
             return false;
         }
 
         @ExportMessage
         public static Object get(Data receiver,
-                        @Exclusive /* @Shared("profile") */ @Cached BranchProfile profile) {
+                        @Shared("profile") @Cached BranchProfile profile) {
             return null;
         }
     }
@@ -125,6 +125,37 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
         public static Object get(Data receiver) {
             return receiver.value;
         }
+    }
+
+    @ExportLibrary(value = ALibrary.class, receiverType = Data.class)
+    static class CMessages extends AMessages {
+
+        @ExportMessage
+        public static boolean is(Data receiver, @Cached BranchProfile profile, @Cached BranchProfile profile1) {
+            return true;
+        }
+
+        // TODO (pitr-ch 13-Jan-2020): fails to compile with
+        //
+        // 1. ERROR in /Users/pitr/development/labs/truffleruby-ws/graal/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/GR18252Test.java (at line 131)
+        //         static class CMessages extends AMessages {
+        //                      ^^^^^^^^^
+        // Message redirected from element com.oracle.truffle.api.library.test.GR18252Test.AMessages.get(Data, BranchProfile) parameter profile:
+        // No other cached parameters are specified as shared with the group 'profile'.
+        //
+        // If a message with shared is inherited alone the checks should be more relaxed.
+        //
+        // It also warns and suggest to share with a method from a parent
+        //
+        // 2. WARNING in /Users/pitr/development/labs/truffleruby-ws/graal/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/GR18252Test.java (at line 134)
+        //         public static boolean is(Data receiver, @Cached BranchProfile profile, @Cached BranchProfile profile1) {
+        //                                                                                ^^^^^^^
+        // The cached parameter may be shared with:
+        //   - get(..., @Cached(...) BranchProfile profile)
+        //  Annotate the parameter with @Shared("profile") or @Exclusive to allow or deny sharing of the parameter.
+        //
+        // Which could be good but it should be clear that the method is inherited
+
     }
 
     @Test
