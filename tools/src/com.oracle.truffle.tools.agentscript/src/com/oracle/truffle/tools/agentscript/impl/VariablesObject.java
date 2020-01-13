@@ -115,7 +115,7 @@ final class VariablesObject implements TruffleObject {
     }
 
     private static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {
-        if (iop.hasMembers(map)) {
+        if (map != null && iop.hasMembers(map)) {
             Object members = iop.getMembers(map);
             long size = iop.getArraySize(members);
             for (long i = 0; i < size; i++) {

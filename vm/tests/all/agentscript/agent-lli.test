@@ -1,0 +1,15 @@
+> clang -c -emit-llvm agent-sieve.c -o ${TMP_DIR}/sieve.bc
+> lli --polyglot --agentscript=agent-lli.js --experimental-options ${TMP_DIR}/sieve.bc
+Computed 97 primes in [0-9]+ ms. Last one is 509
+Computed 194 primes in [0-9]+ ms. Last one is 1181
+Computed 388 primes in [0-9]+ ms. Last one is 2677
+Computed 776 primes in [0-9]+ ms. Last one is 5897
+Computed 1552 primes in [0-9]+ ms. Last one is 13033
+Computed 3104 primes in [0-9]+ ms. Last one is 28541
+Computed 6208 primes in [0-9]+ ms. Last one is 61687
+Computed 12416 primes in [0-9]+ ms. Last one is 133033
+Computed 24832 primes in [0-9]+ ms. Last one is 284831
+Computed 49664 primes in [0-9]+ ms. Last one is 607417
+Computed 99328 primes in [0-9]+ ms. Last one is 1289927
+Hundred thousand prime numbers in [0-9]+ ms
+T-Trace: nextNatural called 1299708 times

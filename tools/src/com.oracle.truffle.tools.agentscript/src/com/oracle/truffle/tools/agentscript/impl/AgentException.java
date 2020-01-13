@@ -69,4 +69,9 @@ final class AgentException extends RuntimeException implements TruffleException 
     static AgentException notFound(TruffleFile file) {
         throw new AgentException(file.getName() + ": No such file or directory", null, 1);
     }
+
+    @TruffleBoundary
+    static AgentException notRecognized(TruffleFile file) {
+        throw new AgentException(file.getName() + ": No language to process the file. Try --polyglot", null, 1);
+    }
 }

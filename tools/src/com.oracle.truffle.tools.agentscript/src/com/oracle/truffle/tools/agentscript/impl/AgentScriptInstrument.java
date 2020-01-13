@@ -86,10 +86,13 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     String mimeType = file.getMimeType();
                     String lang = null;
                     for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
-                        if (e.getValue().getMimeTypes().contains(mimeType)) {
+                        if (mimeType != null && e.getValue().getMimeTypes().contains(mimeType)) {
                             lang = e.getKey();
                             break;
                         }
+                    }
+                    if (lang == null) {
+                        throw AgentException.notRecognized(file);
                     }
                     return Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
                 } catch (IOException ex) {
