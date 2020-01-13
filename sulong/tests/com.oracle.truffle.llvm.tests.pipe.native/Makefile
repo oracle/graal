@@ -43,16 +43,22 @@ CFLAGS+=-m64
 LDFLAGS+=-m64
 endif
 
+ifeq ($(OS), darwin)
+CXX_PREFIX=/usr/bin/xcrun --sdk macosx
+else
+CXX_PREFIX=
+endif
+
 bin/${LIBPIPE}: ${OBJECTFILES}
 	@echo LINK $@
-	@$(CXX) -std=gnu++0x -shared ${LDFLAGS} $+ -o $@
+	@$(CXX_PREFIX) $(CXX) -std=gnu++0x -shared ${LDFLAGS} $+ -o $@
 
 bin/%.d: src/%.cpp
 	@mkdir -p $(@D)
-	@$(CXX) -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
+	@$(CXX_PREFIX) $(CXX) -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
 
 bin/%.o: src/%.cpp
 	@echo CXX $@
-	@$(CXX) -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
+	@$(CXX_PREFIX) $(CXX) -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
 
 -include ${OBJECTS:%.o=bin/%.d}

@@ -374,6 +374,7 @@ suite = {
       "buildEnv" : {
         "LDFLAGS": "-lm",
         "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
       "testProject" : True,
