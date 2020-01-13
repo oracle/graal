@@ -696,21 +696,25 @@ public abstract class VMThreads {
         private static final int SYNCHRONIZE_CODE = NO_ACTION + 1;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
         public static boolean isActionPending() {
             return actionTL.getVolatile() != NO_ACTION;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
         public static boolean isSynchronizeCode() {
             return actionTL.getVolatile() == SYNCHRONIZE_CODE;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
         public static void clearActions() {
             actionTL.setVolatile(NO_ACTION);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
         public static void setSynchronizeCode(IsolateThread vmThread) {
             assert StatusSupport.isStatusCreated(vmThread) || VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
             actionTL.setVolatile(vmThread, SYNCHRONIZE_CODE);
