@@ -109,6 +109,12 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         } else {
             a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));
         }
+
+        // In JDK 14, all of the Buffer classes require MemorySegmentProxy which is accessed via
+        // reflection
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            RuntimeReflection.register(clazz(a, "jdk.internal.access.foreign.MemorySegmentProxy"));
+        }
     }
 
     private static void registerServerSocketChannelImplInitIDs(DuringAnalysisAccess a) {
