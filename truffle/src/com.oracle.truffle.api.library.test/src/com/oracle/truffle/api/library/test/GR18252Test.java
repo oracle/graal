@@ -38,11 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl.test;
+package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -52,17 +56,26 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.AbstractParametrizedLibraryTest.TestRun;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
+/*
+ * Test for GR-18252.
+ */
 @SuppressWarnings("unused")
-public class InheritanceTest {
+public class GR18252Test extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
+    }
 
     @ExportLibrary(DynamicDispatchLibrary.class)
     static class Data implements TruffleObject {
         private final Object value;
         private final Class<?> dispatchTarget;
 
-        public Data(Class<?> dispatchTarget, Object value) {
+        Data(Class<?> dispatchTarget, Object value) {
             this.dispatchTarget = dispatchTarget;
             this.value = value;
         }
@@ -74,7 +87,7 @@ public class InheritanceTest {
     }
 
     @GenerateLibrary
-    static abstract class ALibrary extends Library {
+    abstract static class ALibrary extends Library {
 
         public abstract boolean is(Object receiver);
 
@@ -87,25 +100,15 @@ public class InheritanceTest {
     @ExportLibrary(value = ALibrary.class, receiverType = Data.class)
     static class AMessages {
 
-        // TODO (pitr-ch 11-Jan-2020): if sharing is enabled it produces following error:
-        // 1. ERROR in /Users/pitr/development/labs/truffleruby-ws/graal/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/InheritanceTest.java (at line 100)
-        //         static class BMessages extends AMessages {
-        //                      ^^^^^^^^^
-        // Message redirected from element com.oracle.truffle.api.dsl.test.InheritanceTest.AMessages.is(Data, BranchProfile) parameter profile:
-        // Could not find any other cached parameter that this parameter could be shared. Cached parameters are only sharable if they declare the same type and initializer expressions and if the specialization only has a single instance. Remove the @Shared annotation or make the parameter sharable to resolve this.
-
-        // TODO (pitr-ch 11-Jan-2020): if there are no cached and shared arguments it works as expected
-        // TODO (pitr-ch 11-Jan-2020): if the is method in parent is implemented with a static class the issue will disappear
-
         @ExportMessage
         public static boolean is(Data receiver,
-                @Exclusive /*@Shared("profile")*/ @Cached BranchProfile profile) {
+                        @Exclusive /* @Shared("profile") */ @Cached BranchProfile profile) {
             return false;
         }
 
         @ExportMessage
         public static Object get(Data receiver,
-                @Exclusive /*@Shared("profile")*/ @Cached BranchProfile profile) {
+                        @Exclusive /* @Shared("profile") */ @Cached BranchProfile profile) {
             return null;
         }
     }
@@ -125,28 +128,26 @@ public class InheritanceTest {
     }
 
     @Test
-    public void DispatchingToAIs() {
+    public void testDispatchingToAIs() {
         Data dataA = new Data(AMessages.class, "value");
-        assertEquals(false, ALibraryGen.resolve(ALibrary.class).getUncached().is(dataA));
+        assertEquals(false, createLibrary(ALibrary.class, dataA).is(dataA));
     }
 
     @Test
-    public void DispatchingToBIs() {
+    public void testDispatchingToBIs() {
         Data dataB = new Data(BMessages.class, "value");
-        assertEquals(true, ALibraryGen.resolve(ALibrary.class).getUncached().is(dataB));
-        // TODO (pitr-ch 11-Jan-2020): see com.oracle.truffle.api.dsl.test.BMessagesGen.ALibraryExports.Uncached.is
-        // it uses is method from AMessages instead of BMessages
+        assertEquals(true, createLibrary(ALibrary.class, dataB).is(dataB));
     }
 
     @Test
-    public void DispatchingToAGet() {
+    public void testDispatchingToAGet() {
         Data dataA = new Data(AMessages.class, "value");
-        assertEquals(null, ALibraryGen.resolve(ALibrary.class).getUncached().get(dataA));
+        assertEquals(null, createLibrary(ALibrary.class, dataA).get(dataA));
     }
 
     @Test
-    public void DispatchingToBGet() {
+    public void testDispatchingToBGet() {
         Data dataB = new Data(BMessages.class, "value");
-        assertEquals("value", ALibraryGen.resolve(ALibrary.class).getUncached().get(dataB));
+        assertEquals("value", createLibrary(ALibrary.class, dataB).get(dataB));
     }
 }

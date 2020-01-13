@@ -201,8 +201,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     model.addError(member, error);
                     model.addError(existing.getMessageElement(), error);
                 } else if (ElementUtils.isSubtype(currentEnclosingElement.asType(), existingEnclosingElement.asType())) {
-                    // message overrides current one
+                    // new message is more concrete
                     exportedMessages.put(messageName, exportedMessage);
+                    existing.setOverriden(true);
+                } else {
+                    // keep existing exported message
+                    exportedMessage.setOverriden(true);
                 }
             } else {
                 exportedMessages.put(messageName, exportedMessage);
@@ -255,6 +259,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * available.
          */
         for (ExportMessageData exportedElement : exportedElements) {
+            if (exportedElement.isOverriden()) {
+                // must not initialize overriden elements because otherwise the parsedNodeCache gets
+                // confused.
+                continue;
+            }
             Element member = exportedElement.getMessageElement();
             if (isMethodElement(member)) {
                 initializeExportedMethod(model, exportedElement);
