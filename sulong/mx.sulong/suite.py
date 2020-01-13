@@ -90,7 +90,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
     },
     "com.oracle.truffle.llvm.tests.types" : {
       "subDir" : "tests",
@@ -350,7 +349,6 @@ suite = {
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
       "jacoco" : "exclude",
     },
 
@@ -400,7 +398,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
       "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
@@ -1049,7 +1046,6 @@ suite = {
       ],
       "license" : "BSD-new",
       "testDistribution" : True,
-      "defaultBuild" : False,
     },
 
     "LLIR_TEST_GEN" : {
