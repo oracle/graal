@@ -287,8 +287,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         protected final int prefix2;
         protected final int op;
 
-        private final boolean dstIsByte;
-        private final boolean srcIsByte;
+        final boolean dstIsByte;
+        final boolean srcIsByte;
 
         private final OpAssertion assertion;
         private final CPUFeature feature;
