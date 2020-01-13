@@ -2474,6 +2474,23 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
+        "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
+      ],
+
+      "distDependencies" : [
+        "GRAAL",
+        "GRAAL_LIBGRAAL_JNI",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
+    },
+    
     "GRAAL_LIBGRAAL_JNI": {
       "subDir" : "src",
       "dependencies" : [
