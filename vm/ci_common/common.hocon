@@ -240,7 +240,7 @@ maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribut
 maven_deploy_dry_run_sdk: [--suite, sdk, maven-deploy, --dry-run, --validate, none, --all-distribution-types, "--tags=graalvm", --with-suite-revisions-metadata, ${binaries-repository}]
 
 full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
-full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
+full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
 builds += [
