@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.meta;
+package org.graalvm.compiler.code;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,9 +35,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
-import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.util.CollectionsUtil;
 
@@ -52,14 +50,13 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.services.Services;
 
 /**
  * A provider that uses the {@code GNU objdump} utility to disassemble code.
  */
 @ServiceProvider(DisassemblerProvider.class)
-public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvider {
+public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
 
     private final String objdump = getObjdump();
 
@@ -116,8 +113,8 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
                     putAnnotation(annotations, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
-
-            Process proc = Runtime.getRuntime().exec(cmdline);
+            ProcessBuilder pb = new ProcessBuilder(cmdline);
+            Process proc = pb.start();
             InputStream is = proc.getInputStream();
             StringBuilder sb = new StringBuilder();
 
@@ -188,7 +185,8 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
         for (String candidate : new String[]{"objdump", "gobjdump"}) {
             try {
                 String[] cmd = {candidate, "--version"};
-                Process proc = Runtime.getRuntime().exec(cmd);
+                ProcessBuilder pb = new ProcessBuilder(cmd);
+                Process proc = pb.start();
                 InputStream is = proc.getInputStream();
                 int exitValue = proc.waitFor();
                 if (exitValue == 0) {
@@ -216,11 +214,11 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
 
     @Override
     public String disassembleInstalledCode(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode code) {
-        return ((HotSpotCodeCacheProvider) codeCache).disassemble(code);
+        return "<unavailable>";
     }
 
     @Override
     public String getName() {
-        return "hsdis-objdump";
+        return "objdump";
     }
 }

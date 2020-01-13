@@ -266,7 +266,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
                 String name = d.getName().toLowerCase();
                 if (arch.equals("aarch64")) {
-                    if (name.contains("hsdis-objdump")) {
+                    if (name.contains("objdump")) {
                         selected = d;
                         break;
                     }
