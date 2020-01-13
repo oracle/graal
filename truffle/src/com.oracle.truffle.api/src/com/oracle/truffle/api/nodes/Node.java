@@ -259,9 +259,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (isAdoptable()) {
-            NodeUtil.adoptChildrenHelper(this);
-        }
+        NodeUtil.adoptChildrenHelper(this);
     }
 
     @SuppressWarnings("deprecation")

@@ -204,6 +204,125 @@ public @interface ExportLibrary {
      */
     Class<?> receiverType() default Void.class;
 
+    /**
+     * Automatically forwards all messages of the library which are not exported to the value of a
+     * delegate field. This can be used to conveniently build wrapper types that do not delegate all
+     * but only some of the messages. To forward messages from unknown libraries, this can be
+     * combined with {@link ReflectionLibrary reflection proxies}.
+     * <p>
+     * The specified field name must link to a field in the specified {@link #receiverType()
+     * receiver type}, or in the annotated type if no receiver type is specified. The field must
+     * have the modifier <code>final</code>. The specified field must be visible to the generated
+     * code and therefore not private. The referenced field must not be static.
+     * <p>
+     * <h4>Usage example</h4>
+     *
+     * <pre>
+     * &#64;GenerateLibrary
+     * public abstract class ArrayLibrary extends Library {
+     *     public String toDisplayString(Object receiver) {
+     *         return receiver.toString();
+     *     }
+     *
+     *     public String otherMessage(Object receiver) {
+     *         return "otherResult";
+     *     }
+     * }
+     * </pre>
+     *
+     * In the following wrapper all messages of ArrayLibrary will be forwarded to the value of the
+     * delegate field.
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
+     * final class ArrayDelegateWrapper {
+     *
+     *     final Object delegate;
+     *
+     *     ArrayDelegateWrapper(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     * }
+     * </pre>
+     *
+     * In the following wrapper the toDisplayString will be re-exported and not delegated to the
+     * delegate field. All other messages of the ArrayLibrary are implicitly delegated to the value
+     * of the delegate field.
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
+     * final class ArrayOverrideWrapper {
+     *
+     *     final Object delegate;
+     *
+     *     ArrayOverrideWrapper(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     final String toDisplayString() {
+     *         return "Wrapped";
+     *     }
+     * }
+     *
+     * </pre>
+     *
+     * In the following wrapper the toDisplayString will be exported but forwards to the delegate
+     * manually adding brackets around the delegate value.
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
+     * final class ArrayManualDelegateWrapper {
+     *
+     *     final Object delegate;
+     *
+     *     ArrayManualDelegateWrapper(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     final String toDisplayString(
+     *                     &#64;CachedLibrary("this.delegate") ArrayLibrary arrayLibrary) {
+     *         return "Wrapped[" + arrayLibrary.toDisplayString(delegate) + "]";
+     *     }
+     * }
+     * </pre>
+     *
+     *
+     * In the following wrapper the toDisplayString message is re-exported. Other messages of the
+     * ArrayLibrary are delegated as well as all messages of any other library that supports
+     * reflection.
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = ArrayLibrary.class, delegateTo = "delegate")
+     * &#64;ExportLibrary(ReflectionLibrary.class)
+     * final class ArrayFullWrapper {
+     *
+     *     final Object delegate;
+     *
+     *     ArrayFullWrapper(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     final Object send(Message message, Object[] args,
+     *                     &#64;CachedLibrary("this.delegate") ReflectionLibrary lib)
+     *                     throws Exception {
+     *         return lib.send(delegate, message, args);
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     final String toDisplayString() {
+     *         return "Wrapped";
+     *     }
+     * }
+     * </pre>
+     *
+     * @since 20.0
+     */
+    String delegateTo() default "";
+
     /***
      * Repeat annotation for {@link ExportLibrary}.
      *
