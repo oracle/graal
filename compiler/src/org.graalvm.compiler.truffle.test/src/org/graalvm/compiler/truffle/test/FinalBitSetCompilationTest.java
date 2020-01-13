@@ -43,8 +43,6 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
         assertConstant(0, (f) -> set.length());
         assertConstant(0, (f) -> set.cardinality());
         assertConstant(true, (f) -> set.isEmpty());
-        assertConstant(-1, (f) -> set.nextSetBit(0));
-        assertConstant(0, (f) -> set.nextClearBit(0));
     }
 
     @Test
@@ -58,13 +56,6 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
         assertConstant(64, (f) -> set.length());
         assertConstant(2, (f) -> set.cardinality());
         assertConstant(false, (f) -> set.isEmpty());
-        assertConstant(63, (f) -> set.nextSetBit(63));
-        assertConstant(-1, (f) -> set.nextSetBit(64));
-        assertConstant(0, (f) -> set.nextSetBit(0));
-
-        assertConstant(1, (f) -> set.nextClearBit(0));
-        assertConstant(1, (f) -> set.nextClearBit(1));
-        assertConstant(64, (f) -> set.nextClearBit(63));
     }
 
     @Test
