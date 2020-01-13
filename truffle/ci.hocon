@@ -71,5 +71,10 @@ builds += [
     ],
     name: "bench-truffle-jmh"
   }
-
+  ${benchCommon} {
+    run: [
+      ["mx", "benchmark", "truffle:'*'", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"]
+    ],
+    name: "gate-truffle-test-benchmarks-8"
+  }
 ]
