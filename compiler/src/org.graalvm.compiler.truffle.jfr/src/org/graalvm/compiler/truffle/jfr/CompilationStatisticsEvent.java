@@ -24,21 +24,16 @@
  */
 package org.graalvm.compiler.truffle.jfr;
 
-public interface EventFactory {
+public interface CompilationStatisticsEvent extends Event {
+    void setCompiledMethods(long compiledMethods);
 
-    CompilationEvent createCompilationEvent();
+    void setBailouts(long bailouts);
 
-    DeoptimizationEvent createDeoptimizationEvent();
+    void setInvalidations(long invalidations);
 
-    InvalidationEvent createInvalidationEvent();
+    void setCompiledCodeSize(long size);
 
-    CompilationStatisticsEvent createCompilationStatisticsEvent();
+    void setTotalTime(long time);
 
-    void addPeriodicEvent(Class<? extends Event> event, Runnable producer);
-
-    void removePeriodicEvent(Class<? extends Event> event, Runnable producer);
-
-    public interface Provider {
-        EventFactory getEventFactory();
-    }
+    void setPeakTime(long time);
 }

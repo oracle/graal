@@ -32,6 +32,7 @@ import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.MemoryAddress;
 import jdk.jfr.StackTrace;
+import jdk.jfr.Unsigned;
 import com.oracle.truffle.api.RootCallTarget;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
 
@@ -45,17 +46,17 @@ class CompilationEventImpl extends Event implements CompilationEvent {
 
     @Label("Source") @Description("Compiled Source") public String source;
 
-    @Label("Compiled Code Size") @Description("Compiled Code Size") @DataAmount public int compiledCodeSize;
+    @Label("Compiled Code Size") @Description("Compiled Code Size") @DataAmount @Unsigned public int compiledCodeSize;
 
     @Label("Compiled Code Address") @Description("Compiled Code Address") @MemoryAddress public long compiledCodeAddress;
 
-    @Label("Inlined Calls") @Description("Inlined Calls") public int inlinedCalls;
+    @Label("Inlined Calls") @Description("Inlined Calls") @Unsigned public int inlinedCalls;
 
-    @Label("Dispatched Calls") @Description("Dispatched Calls") public int dispatchedCalls;
+    @Label("Dispatched Calls") @Description("Dispatched Calls") @Unsigned public int dispatchedCalls;
 
-    @Label("Graal Nodes") @Description("Graal Nodes Count") public int graalNodeCount;
+    @Label("Graal Nodes") @Description("Graal Nodes Count") @Unsigned public int graalNodeCount;
 
-    @Label("Partial Eval Nodes") @Description("Partial Evalualtion Nodes Count") public int peNodeCount;
+    @Label("Partial Eval Nodes") @Description("Partial Evalualtion Nodes Count") @Unsigned public int peNodeCount;
 
     private transient CompilationFailureEventImpl failure;
 

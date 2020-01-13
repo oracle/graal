@@ -38,6 +38,8 @@ import org.graalvm.compiler.truffle.jfr.EventFactory;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.concurrent.atomic.AtomicLong;
+import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
 import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
 import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -61,9 +63,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     private final ThreadLocal<CompilationData> currentCompilation = new ThreadLocal<>();
+    private final Statistics statistics;
 
     private JFRListener(GraalTruffleRuntime runtime) {
         super(runtime);
+        statistics = new Statistics();
+        factory.addPeriodicEvent(CompilationStatisticsEvent.class, statistics);
     }
 
     public static void install(GraalTruffleRuntime runtime) {
@@ -74,22 +79,22 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        CompilationEvent event = getCurrentEvent();
-        if (event != null) {
-            handleFailedCompilation(event, reason, false);
-        }
+        handleFailedCompilation(reason, false, false);
     }
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target) {
+        CompilationEvent event = null;
         if (factory != null) {
-            CompilationEvent event = factory.createCompilationEvent();
+            event = factory.createCompilationEvent();
             if (event.isEnabled()) {
                 event.setSource(target);
                 event.compilationStarted();
-                currentCompilation.set(new CompilationData(event));
+            } else {
+                event = null;
             }
         }
+        currentCompilation.set(new CompilationData(event));
     }
 
     @Override
@@ -106,26 +111,25 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         CompilationData data = getCurrentData();
-        if (data != null) {
+        if (data.event != null) {
             data.partialEvalNodeCount = graph.getNodeCount();
         }
     }
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        CompilationEvent event = getCurrentEvent();
-        if (event != null) {
-            handleFailedCompilation(event, reason, isPermanentFailure(bailout, permanentBailout));
-        }
+        handleFailedCompilation(reason, bailout, isPermanentFailure(bailout, permanentBailout));
     }
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         CompilationData data = getCurrentData();
-        if (data != null) {
+        int compiledCodeSize = result.getTargetCodeSize();
+        statistics.finishCompilation(data.finish(), false, compiledCodeSize);
+        if (data.event != null) {
             CompilationEvent event = data.event;
             event.succeeded();
-            event.setCompiledCodeSize(result.getTargetCodeSize());
+            event.setCompiledCodeSize(compiledCodeSize);
             if (target.getCodeAddress() != 0) {
                 event.setCompiledCodeAddress(target.getCodeAddress());
             }
@@ -155,6 +159,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
+        statistics.invalidations.incrementAndGet();
         if (factory != null) {
             InvalidationEvent event = factory.createInvalidationEvent();
             if (event.isEnabled()) {
@@ -166,26 +171,70 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     private CompilationData getCurrentData() {
-        return factory == null ? null : currentCompilation.get();
+        return currentCompilation.get();
     }
 
-    private CompilationEvent getCurrentEvent() {
+    private void handleFailedCompilation(CharSequence message, boolean bailout, boolean permanent) {
         CompilationData data = getCurrentData();
-        return data == null ? null : data.event;
-    }
-
-    private void handleFailedCompilation(CompilationEvent event, CharSequence message, boolean permanent) {
-        event.failed(permanent, message);
-        event.publish();
+        statistics.finishCompilation(data.finish(), bailout, 0);
+        if (data.event != null) {
+            data.event.failed(permanent, message);
+            data.event.publish();
+        }
         currentCompilation.remove();
     }
 
     private static final class CompilationData {
         final CompilationEvent event;
+        final long startTime;
         int partialEvalNodeCount;
 
         CompilationData(CompilationEvent event) {
             this.event = event;
+            this.startTime = System.nanoTime();
+        }
+
+        int finish() {
+            return (int) (System.nanoTime() - startTime) / 1_000_000;
+        }
+    }
+
+    private static final class Statistics implements Runnable {
+
+        private long compiledMethods;
+        private long bailouts;
+        private long compiledCodeSize;
+        private long totalTime;
+        private int peakTime;
+        final AtomicLong invalidations = new AtomicLong();
+
+        Statistics() {
+        }
+
+        synchronized void finishCompilation(int time, boolean bailout, int codeSize) {
+            compiledMethods++;
+            if (bailout) {
+                bailouts++;
+            }
+            compiledCodeSize += codeSize;
+            totalTime += time;
+            peakTime = Math.max(peakTime, time);
+        }
+
+        @Override
+        public void run() {
+            CompilationStatisticsEvent event = factory.createCompilationStatisticsEvent();
+            if (event.isEnabled()) {
+                synchronized (this) {
+                    event.setCompiledMethods(compiledMethods);
+                    event.setBailouts(bailouts);
+                    event.setInvalidations(invalidations.get());
+                    event.setCompiledCodeSize(compiledCodeSize);
+                    event.setTotalTime(totalTime);
+                    event.setPeakTime(peakTime);
+                    event.publish();
+                }
+            }
         }
     }
 

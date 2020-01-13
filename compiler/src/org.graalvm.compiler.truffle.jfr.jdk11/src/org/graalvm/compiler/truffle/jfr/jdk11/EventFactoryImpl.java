@@ -24,14 +24,27 @@
  */
 package org.graalvm.compiler.truffle.jfr.jdk11;
 
+import java.util.HashMap;
+import java.util.Map;
+import jdk.jfr.FlightRecorder;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.compiler.truffle.jfr.Event;
 import org.graalvm.compiler.truffle.jfr.EventFactory;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
+import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
 import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
 import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 
 final class EventFactoryImpl implements EventFactory {
+
+    private static final Map<Class<? extends Event>, Class<? extends jdk.jfr.Event>> spiToImpl = new HashMap<>();
+    static {
+        register(CompilationEventImpl.class);
+        register(DeoptimizationEventImpl.class);
+        register(InvalidationEventImpl.class);
+        register(CompilationStatisticsEventImpl.class);
+    }
 
     @Override
     public CompilationEvent createCompilationEvent() {
@@ -48,11 +61,42 @@ final class EventFactoryImpl implements EventFactory {
         return new InvalidationEventImpl();
     }
 
+    @Override
+    public CompilationStatisticsEvent createCompilationStatisticsEvent() {
+        return new CompilationStatisticsEventImpl();
+    }
+
+    @Override
+    public void addPeriodicEvent(Class<? extends Event> event, Runnable producer) {
+        Class<? extends jdk.jfr.Event> implClass = spiToImpl.get(event);
+        if (implClass == null) {
+            throw new IllegalArgumentException("Unknown event type: " + event);
+        }
+        FlightRecorder.addPeriodicEvent(implClass, producer);
+    }
+
+    @Override
+    public void removePeriodicEvent(Class<? extends Event> event, Runnable producer) {
+        Class<? extends jdk.jfr.Event> implClass = spiToImpl.get(event);
+        if (implClass == null) {
+            throw new IllegalArgumentException("Unknown event type: " + event);
+        }
+        FlightRecorder.removePeriodicEvent(producer);
+    }
+
     static String targetName(RootCallTarget target) {
         SourceSection sourceSection = target.getRootNode().getSourceSection();
         if (sourceSection != null && sourceSection.getSource() != null) {
             return sourceSection.getSource().getName() + ":" + sourceSection.getStartLine();
         }
         return null;
+    }
+
+    private static void register(Class<? extends Event> eventClass) {
+        for (Class<?> iface : eventClass.getInterfaces()) {
+            if (Event.class.isAssignableFrom(iface)) {
+                spiToImpl.put(iface.asSubclass(Event.class), eventClass.asSubclass(jdk.jfr.Event.class));
+            }
+        }
     }
 }
