@@ -63,6 +63,8 @@ public final class DebuggerController implements ContextsListener {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
+    public static final String DEBUG_STACK_FRAME_FIND_CURRENT_ROOT = "findCurrentRoot";
+
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
@@ -228,7 +230,7 @@ public final class DebuggerController implements ContextsListener {
             CallFrame currentFrame = susp.getStackFrames()[0];
             MethodRef method = (MethodRef) ids.fromId((int) currentFrame.getMethodId());
             if (method.isLastLine(currentFrame.getCodeIndex())) {
-                susp.getEvent().prepareStepOut(STEP_CONFIG); // .prepareStepOver(STEP_CONFIG);
+                doStepOut(susp);
             } else {
                 susp.getEvent().prepareStepOver(STEP_CONFIG);
             }
@@ -257,11 +259,35 @@ public final class DebuggerController implements ContextsListener {
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.getEvent().prepareStepOut(STEP_CONFIG);
-            susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
+            doStepOut(susp);
         } else {
             JDWPLogger.log("not STEPPING OUT for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
         }
+    }
+
+    private void doStepOut(SuspendedInfo susp) {
+        // There are two different cases for step out, 1) step out and land
+        // on the same line, enabling step into next method on line, and 2)
+        // step over the callee line when there are no further method calls
+        // on the line. Ask the guest language which one to use
+        RootNode callerRoot = susp.getCallerRootNode();
+
+        // since the below method uses stack frame iteration it must be called
+        // on the correct thread
+        ThreadJob job = new ThreadJob(susp.getThread(), new Callable<Object>() {
+            @Override
+            public Object call() {
+                return context.moreMethodCallsOnLine(callerRoot);
+            }
+        });
+        postJobForThread(job);
+        boolean hasMoreMethodCallsOnLine = (boolean) job.getResult().getResult();
+        if (hasMoreMethodCallsOnLine) {
+            susp.getEvent().prepareStepOut(STEP_CONFIG);
+        } else {
+            susp.getEvent().prepareStepOut(STEP_CONFIG).prepareStepOver(STEP_CONFIG);
+        }
+        susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
     }
 
     public void resume(Object thread, boolean sessionClosed) {
@@ -582,14 +608,12 @@ public final class DebuggerController implements ContextsListener {
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
         public static final String DEBUG_VALUE_GET = "get";
-        public static final String DEBUG_STACK_FRAME_FIND_CURRENT_ROOT = "findCurrentRoot";
         public static final String DEBUG_EXCEPTION_GET_RAW_EXCEPTION = "getRawException";
 
         @Override
         public void onSuspend(SuspendedEvent event) {
             Object currentThread = getContext().asGuestThread(Thread.currentThread());
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
-
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
 
             if (steppingInfo != null) {
@@ -605,7 +629,16 @@ public final class DebuggerController implements ContextsListener {
 
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1);
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
+            RootNode callerRootNode = null;
+            int i = 0;
+            for (DebugStackFrame stackFrame : event.getStackFrames()) {
+                if (i == 1) {
+                    callerRootNode = findCurrentRoot(stackFrame);
+                }
+                i++;
+            }
+
+            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
@@ -765,7 +798,8 @@ public final class DebuggerController implements ContextsListener {
         }
 
         private void continueStepping(SuspendedEvent event, Object thread) {
-            switch (suspendedInfos.get(thread).getStepKind()) {
+            SuspendedInfo susp = suspendedInfos.get(thread);
+            switch (susp.getStepKind()) {
                 case STEP_INTO:
                     // stepping into unwanted code which was filtered
                     // so step out and try step into again
@@ -775,7 +809,7 @@ public final class DebuggerController implements ContextsListener {
                     event.prepareStepOver(STEP_CONFIG);
                     break;
                 case STEP_OUT:
-                    event.prepareStepOut(STEP_CONFIG);
+                    doStepOut(susp);
                     break;
                 default:
                     break;
@@ -856,21 +890,6 @@ public final class DebuggerController implements ContextsListener {
             }
         }
 
-        private RootNode findCurrentRoot(DebugStackFrame frame) {
-            // TODO(Gregersen) - hacked in with reflection currently
-            // tracked by /browse/GR-19814
-            // for now just use reflection to get the current root
-            try {
-                java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
-                getRoot.setAccessible(true);
-                return (RootNode) getRoot.invoke(frame);
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                JDWPLogger.log("Failed to reflectively find current root for %s", JDWPLogger.LogLevel.ALL, frame);
-                // null signals that we're unable to retrieve the current root instance
-                return null;
-            }
-        }
-
         private Throwable getRawException(DebugException exception) {
             // TODO(Gregersen) - hacked in with reflection currently
             // tracked by /browse/GR-19815
@@ -883,6 +902,21 @@ public final class DebuggerController implements ContextsListener {
                 // null signals that we're unable to retrieve the raw exception instance
                 return null;
             }
+        }
+    }
+
+    private static RootNode findCurrentRoot(DebugStackFrame frame) {
+        // TODO(Gregersen) - hacked in with reflection currently
+        // tracked by /browse/GR-19814
+        // for now just use reflection to get the current root
+        try {
+            java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
+            getRoot.setAccessible(true);
+            return (RootNode) getRoot.invoke(frame);
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            JDWPLogger.log("Failed to reflectively find current root for %s", JDWPLogger.LogLevel.ALL, frame);
+            // null signals that we're unable to retrieve the current root instance
+            return null;
         }
     }
 

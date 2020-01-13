@@ -28,9 +28,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -532,5 +538,60 @@ public final class JDWPContextImpl implements JDWPContext {
         } else {
             return -1;
         }
+    }
+
+    @Override
+    public boolean moreMethodCallsOnLine(RootNode callerRoot) {
+        if (callerRoot instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
+            final int[] frameBCI = {-1};
+            if (espressoRootNode.isBytecodeNode()) {
+                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                    boolean first = true;
+                    boolean callerVisited = false;
+
+                    @Override
+                    public Object visitFrame(FrameInstance frameInstance) {
+                        if (first) {
+                            first = false;
+                            return null;
+                        }
+                        if (callerVisited) {
+                            return null;
+                        } else {
+                            frameBCI[0] = espressoRootNode.readBCI(frameInstance);
+                            callerVisited = true;
+                            return null;
+                        }
+                    }
+                });
+            }
+            if (frameBCI[0] != -1) {
+                int bci = frameBCI[0];
+                Method method = espressoRootNode.getMethod();
+                BytecodeStream bs = new BytecodeStream(method.getCode());
+                LineNumberTable lineNumberTable = method.getLineNumberTable();
+                if (lineNumberTable == LineNumberTable.EMPTY) {
+                    return false;
+                }
+
+                int frameLineNumber = lineNumberTable.getLineNumber(bci);
+                int nextLine = lineNumberTable.getNextLine(frameLineNumber);
+                int end = bs.endBCI();
+
+                if (nextLine != Integer.MAX_VALUE) {
+                    end = (int) lineNumberTable.getBCI(nextLine);
+                }
+
+                while (bci < end) {
+                    int opcode = bs.currentBC(bci);
+                    if (Bytecodes.isInvoke(opcode) || opcode == Bytecodes.INVOKEDYNAMIC) {
+                        return true;
+                    }
+                    bci = bs.nextBCI(bci);
+                }
+            }
+        }
+        return false;
     }
 }

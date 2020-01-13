@@ -96,6 +96,16 @@ public final class LineNumberTable extends Attribute implements LineNumberTableR
         return min;
     }
 
+    public int getNextLine(int line) {
+        int next = Integer.MAX_VALUE;
+        for (Entry entry : entries) {
+            if (entry.getLineNumber() > line) {
+                next = Math.min(next, entry.getLineNumber());
+            }
+        }
+        return next;
+    }
+
     public static final class Entry implements EntryRef {
 
         public static final Entry[] EMPTY_ARRAY = new Entry[0];

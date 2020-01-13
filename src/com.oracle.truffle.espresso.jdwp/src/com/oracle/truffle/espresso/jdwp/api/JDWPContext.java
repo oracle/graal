@@ -390,11 +390,19 @@ public interface JDWPContext {
     /**
      * Determines if the exception is caught by the method within the block containing the bci. If
      * it does it returns the exception handler bci.
-     * 
+     *
      * @param method the method
      * @param guestException the exception object
      * @param bci the code index within the method
      * @return the handler bci or -1 if exception is not caught by method
      */
     int getCatchLocation(MethodRef method, Object guestException, int bci);
+
+    /**
+     * Determines if a caller has more same-line method invocations.
+     *
+     * @param callerRoot the root node of the caller frame
+     * @return true if the caller method has further method invocations on the current line
+     */
+    boolean moreMethodCallsOnLine(RootNode callerRoot);
 }
