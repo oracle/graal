@@ -24,7 +24,7 @@ benchCommon: ${linux-amd64} ${oraclejdk8} {
 
 benchWeekly: ${benchCommon} {
   targets: [bench, weekly],
-  timelimit: "1:00:00",
+  timelimit: "3:00:00",
   teardown : [
     ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
   ]
@@ -70,13 +70,13 @@ builds += [
   # BENCHMARKS
   ${benchWeekly} ${truffle-bench-notifications} {
     run: [
-      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle.api.benchmark*"]
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle.api.benchmark"]
     ],
     name: "bench-truffle-jmh"
   },
   ${benchCommon} {
     run: [
-      ["mx", "benchmark", "truffle:'*'", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"]
+      ["mx", "benchmark", "truffle:'*'", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"]
     ],
     targets: [gate],
     name: "gate-truffle-test-benchmarks-8"
