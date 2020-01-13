@@ -56,6 +56,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public final class FinalBitSet {
 
+    /**
+     * An empty bit set of size 0.
+     *
+     * @since 20.0
+     */
     public static final FinalBitSet EMPTY = new FinalBitSet(new long[0]);
 
     /*
