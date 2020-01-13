@@ -44,13 +44,13 @@ builds += [
   },
   ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-solaris-lite-8"
-  }
+  },
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
-  }
+  },
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
-  }
+  },
   ${windows-amd64} ${oraclejdk8} ${truffleCommon} {
     # TODO make that a full gate run
     # currently, some truffle unittests fail on windows
@@ -63,14 +63,8 @@ builds += [
     }
     targets : [gate],
     name: "gate-truffle-nfi-windows-8",
-  }
+  },
   # BENCHMARKS
-  ${benchCommon} ${truffle-bench-notifications} {
-    run: [
-      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle.api.benchmark*"]
-    ],
-    name: "bench-truffle-jmh"
-  }
   ${benchCommon} {
     run: [
       ["mx", "benchmark", "truffle:'*'", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"]
