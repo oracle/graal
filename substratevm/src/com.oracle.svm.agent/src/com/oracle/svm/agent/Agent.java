@@ -133,10 +133,11 @@ public final class Agent {
         ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean restrict = false;
-        boolean builtinFilter = true;
+        boolean builtinCallerFilter = true;
+        boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
         boolean build = false;
-        if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
+        if (options.isNonNull()) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
                 System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
@@ -165,12 +166,20 @@ public final class Agent {
                     restrict = true;
                 } else if (token.startsWith("restrict=")) {
                     restrict = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-builtin-caller-filter") || /* legacy: */ token.equals("no-filter")) {
-                    builtinFilter = false;
+                } else if (token.equals("no-builtin-caller-filter")) {
+                    builtinCallerFilter = false;
                 } else if (token.startsWith("builtin-caller-filter=")) {
-                    builtinFilter = Boolean.parseBoolean(getTokenValue(token));
+                    builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-builtin-heuristic-filter")) {
+                    builtinHeuristicFilter = false;
+                } else if (token.startsWith("builtin-heuristic-filter=")) {
+                    builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-filter")) { // legacy
+                    builtinCallerFilter = false;
+                    builtinHeuristicFilter = false;
                 } else if (token.startsWith("no-filter=")) { // legacy
-                    builtinFilter = !Boolean.parseBoolean(getTokenValue(token));
+                    builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
+                    builtinHeuristicFilter = builtinCallerFilter;
                 } else if (token.startsWith("caller-filter-file=")) {
                     callerFilterFiles.add(getTokenValue(token));
                 } else if (token.equals("build")) {
@@ -182,14 +191,17 @@ public final class Agent {
                     return 1;
                 }
             }
-        } else {
+        }
+
+        if (traceOutputFile == null && configOutputDir == null && !restrict && restrictConfigs.isEmpty() && !build) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
-            System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
+            System.err.println(MESSAGE_PREFIX + "no output/restrict/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
         }
 
         RuleNode callersFilter = null;
-        if (!builtinFilter) {
+        if (!builtinCallerFilter) {
             callersFilter = RuleNode.createRoot();
+            callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
         }
         if (!callerFilterFiles.isEmpty()) {
             if (callersFilter == null) {
@@ -226,7 +238,7 @@ public final class Agent {
                 };
                 TraceProcessor processor = new TraceProcessor(mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
-                processor.setHeuristicsEnabled(builtinFilter);
+                processor.setHeuristicsEnabled(builtinHeuristicFilter);
                 if (callersFilter != null) {
                     processor.setCallerFilterTree(callersFilter);
                 }
@@ -266,6 +278,7 @@ public final class Agent {
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
         accessAdvisor = new AccessAdvisor();
+        accessAdvisor.setHeuristicsEnabled(builtinHeuristicFilter);
         TypeAccessChecker reflectAccessChecker = null;
         try {
             ReflectAccessVerifier verifier = null;

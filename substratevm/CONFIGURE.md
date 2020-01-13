@@ -25,7 +25,33 @@ The generated configuration files can be supplied to the `native-image` tool by 
 
 ## Advanced Usage
 
+### Caller-based Filters
+
+By default, the agent filters dynamic accesses which native-image supports without configuration. The filter mechanism works by identifying the Java method performing the access, also referred to as _caller_ method, and matching it against a sequence of filter rules. The built-in filter rules exclude dynamic accesses which originate in the Java VM or in parts of the Java class library directly supported by native-image (such as `java.nio`) from the generated configuration files. Which item (class, method, field, resource, ...) is being accessed is not relevant for filtering.
+
+In addition to the built-in filter, custom filter files with additional rules can be specified using the `caller-filter-file` option, for example: `-agentlib:caller-filter-file=/path/to/filter-file,config-output-dir=...`
+
+Filter files have the following structure:
+```
+{ "rules": [
+    {"excludeClasses": "com.oracle.svm.**"},
+    {"includeClasses": "com.oracle.svm.tutorial.*"},
+    {"excludeClasses": "com.oracle.svm.tutorial.HostedHelper"}
+  ]
+}
+```
+
+The `rules` section contains a sequence of rules. Each rule specifies either `includeClasses`, which means that lookups originating in matching classes will be included in the resulting configuration, or `excludeClasses`, which excludes lookups originating in matching classes from the configuration. Each rule defines a pattern for the set of matching classes, which can end in `.*` or `.**`: a `.*` ending matches all classes in a package and that package only, while a `.**` ending matches all classes in the package as well as in all subpackages at any depth. Without `.*` or `.**`, the rule applies only to a single class with the qualified name that matches the pattern. All rules are processed in the sequence in which they are specified, so later rules can partially or entirely override earlier ones. When multiple filter files are provided, their rules are chained together in the order in which the files are specified. The rules of the built-in caller filter are always processed first, so they can be overridden in custom filter files.
+
+In the example above, the first rule excludes lookups originating in all classes from package `com.oracle.svm` and from all of its subpackages (and their subpackages, etc.) from the generated configuration. In the next rule however, lookups from those classes that are directly in package `com.oracle.svm.tutorial` are included again. Finally, lookups from the `HostedHelper` class is excluded again. Each of these rules partially overrides the previous ones. For example, if the rules were in the reverse order, the exclusion of `com.oracle.svm.**` would be the last rule and would override all other rules.
+
+For testing purposes, the built-in filter for Java class library lookups can be disabled by adding the `no-builtin-caller-filter` option, but the resulting configuration files are generally unsuitable for a native image build. Similarly, the built-in filter for Java VM-internal accesses based on heuristics can be disabled with `no-builtin-heuristic-filter` and will also generally lead to less usable configuration files. For example: `-agentlib:native-image-agent=no-builtin-caller-filter,no-builtin-heuristic-filter,config-output-dir=...`
+
+### Specifying Configuration Files as native-image Arguments
+
 A directory containing configuration files that is not part of the class path can be specified to `native-image` via `-H:ConfigurationFileDirectories=/path/to/config-dir/`. This directory must directly contain all four files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`. A directory with the same four configuration files that is on the class path, but not in `META-INF/native-image/`, can be provided via `-H:ConfigurationResourceRoots=path/to/resources/`. Both `-H:ConfigurationFileDirectories` and `-H:ConfigurationResourceRoots` can also take a comma-separated list of directories.
+
+### Injecting the agent via the process environment
 
 Altering the `java` command line to inject the agent can prove to be difficult if the Java process is launched by an application or script file or if Java is even embedded in an existing process. In that case, it is also possible to inject the agent via the `JAVA_TOOL_OPTIONS` environment variable. This environment variable can be picked up by multiple Java processes which run at the same time, in which case each agent must write to a separate output directory with `config-output-dir`. (The next section describes how to merge sets of configuration files.) In order to use separate paths with a single global `JAVA_TOOL_OPTIONS` variable, the agent's output path options support placeholders:
 ```
@@ -33,8 +59,6 @@ export JAVA_TOOL_OPTIONS="java -agentlib:native-image-agent=config-output-dir=/p
 ```
 
 The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601. For the above example, the resulting path could be: `/path/to/config-output-dir-31415-20181231T235950Z/`.
-
-The agent also tracks failed lookups of classes, methods, fields or resources, but by default, it does not include them in the generated configuration files. Likewise, it filters lookups that originate inside the Java class library or the Java VM (such as in `java.nio`) by default. For testing purposes, filtering can be disabled by adding the `no-builtin-caller-filter` option, but the resulting configuration files are generally unsuitable for a native image build. For example: `-agentlib:native-image-agent=no-builtin-caller-filter,config-output-dir=...`
 
 ### The Configuration Tool
 

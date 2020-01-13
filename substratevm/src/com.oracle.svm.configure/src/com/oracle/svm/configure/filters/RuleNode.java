@@ -238,8 +238,9 @@ public final class RuleNode {
     private void printJsonEntries(JsonWriter writer, boolean[] isFirstRule, String parentQualified) throws IOException {
         String qualified = parentQualified.isEmpty() ? name : (parentQualified + '.' + name);
         // NOTE: the order in which these rules are printed is important!
-        printJsonRule(writer, isFirstRule, qualified + "." + DESCENDANTS_PATTERN, descendantsInclusion);
-        printJsonRule(writer, isFirstRule, qualified + "." + CHILDREN_PATTERN, childrenInclusion);
+        String patternBegin = qualified.isEmpty() ? qualified : (qualified + ".");
+        printJsonRule(writer, isFirstRule, patternBegin + DESCENDANTS_PATTERN, descendantsInclusion);
+        printJsonRule(writer, isFirstRule, patternBegin + CHILDREN_PATTERN, childrenInclusion);
         printJsonRule(writer, isFirstRule, qualified, inclusion);
         if (children != null) {
             RuleNode[] sorted = children.values().toArray(new RuleNode[0]);
