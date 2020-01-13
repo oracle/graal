@@ -227,7 +227,6 @@ public final class CacheExpression extends MessageContainer {
     }
 
     public String getMergedLibraryIdentifier() {
-        String libraryName = ElementUtils.getSimpleName(getParameter().getType());
         DSLExpression identifierExpression = getDefaultExpression().reduce(new DSLExpressionReducer() {
 
             public DSLExpression visitVariable(Variable binary) {
@@ -255,15 +254,26 @@ public final class CacheExpression extends MessageContainer {
         });
         String expressionText = identifierExpression.asString();
         StringBuilder b = new StringBuilder(expressionText);
-        for (int i = 0; i < b.length(); i++) {
+        boolean nextUpperCase = false;
+        int i = 0;
+        while (i < b.length()) {
             char charAt = b.charAt(i);
-            if (i == '.') {
-                b.setCharAt(i, '_');
-            } else if (!Character.isJavaIdentifierPart(charAt)) {
+            if (!Character.isJavaIdentifierPart(charAt)) {
                 b.deleteCharAt(i);
+                nextUpperCase = true;
+            } else if (nextUpperCase) {
+                nextUpperCase = false;
+                if (i != 0) {
+                    b.setCharAt(i, Character.toUpperCase(b.charAt(i)));
+                }
+                i++;
+            } else {
+                i++;
             }
         }
-        return b.toString() + libraryName;
+        String libraryName = ElementUtils.getSimpleName(getParameter().getType());
+
+        return b.toString() + libraryName + "_";
     }
 
 }

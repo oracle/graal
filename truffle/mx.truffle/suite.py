@@ -218,7 +218,7 @@ suite = {
     "com.oracle.truffle.api.library" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.dsl"],
+      "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
