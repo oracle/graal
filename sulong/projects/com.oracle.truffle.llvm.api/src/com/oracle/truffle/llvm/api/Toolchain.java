@@ -55,6 +55,22 @@ public interface Toolchain {
      * <dd>A C++ compiler with a <code>clang++</code>-like command line interface.</dd>
      * <dt><code>LD</code></dt>
      * <dd>A linker that can deal with object files and bitcode files.</dd>
+     * <dt><code>AR</code></dt>
+     * <dd>Archiver</dd>
+     * <dt><code>NM</code></dt>
+     * <dd>Symbol table lister</dd>
+     * <dt><code>OBJCOPY</code></dt>
+     * <dd>Object copying and editing tool</dd>
+     * <dt><code>OBJDUMP</code></dt>
+     * <dd>Object file dumper</dd>
+     * <dt><code>RANLIB</code></dt>
+     * <dd>Archive index generator</dd>
+     * <dt><code>READELF</code></dt>
+     * <dd>GNU-style object reader</dd>
+     * <dt><code>READOBJ</code></dt>
+     * <dd>Object reader</dd>
+     * <dt><code>STRIP</code></dt>
+     * <dd>Object stripping tool</dd>
      * </dl>
      *
      * Note that not all toolchains support all tools.
