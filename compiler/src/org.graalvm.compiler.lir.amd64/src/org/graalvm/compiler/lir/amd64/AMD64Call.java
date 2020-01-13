@@ -201,7 +201,7 @@ public class AMD64Call {
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
             // This is an implicit contract between the backend and the jvmci code installer. The
-            // later expects a mov instruction immediately preceding a call instruction. The jcc
+            // latter expects a mov instruction immediately preceding a call instruction. The jcc
             // erratum padding should be inserted before the mov instruction.
             before = masm.directCall(0L, scratch);
         } else {

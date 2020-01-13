@@ -395,9 +395,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             }
         }
 
-        protected final int immediateSize(OperandSize size) {
+        public final int immediateSize(OperandSize size) {
             if (immIsByte) {
                 return 1;
+            } else if (size == QWORD) {
+                // TODO confirm this
+                return 4;
             } else {
                 return size.getBytes();
             }
@@ -2053,6 +2056,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 // 0111 tttn #8-bit disp
                 emitByte(0x70 | cc.getValue());
                 emitByte((int) ((disp - shortSize) & 0xFF));
+                return;
             }
         }
 
