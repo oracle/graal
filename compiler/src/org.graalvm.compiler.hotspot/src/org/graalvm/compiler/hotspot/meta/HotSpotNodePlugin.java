@@ -90,7 +90,7 @@ import sun.misc.Unsafe;
  */
 public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
     public static class Options {
-        @Option(help = "Emit deopts for exception throws", type = OptionType.Expert)//
+        @Option(help = "Testing only option that forces deopts for exception throws", type = OptionType.Expert)//
         public static final OptionKey<Boolean> HotSpotPostOnExceptions = new OptionKey<>(false);
     }
 
