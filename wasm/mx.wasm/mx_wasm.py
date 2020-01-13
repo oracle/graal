@@ -315,6 +315,13 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     f.write(name)
                     f.write("\n")
 
+    def to_int(self, string):
+        fv = float(string)
+        iv = int(fv)
+        if float(iv) != fv:
+            mx.abort("Cannot parse initialization directive: " + string);
+        return iv
+
     def extractInitialization(self, output_js_path):
         global_vars = {}
         stores = []
@@ -324,8 +331,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 line = f.readline()
                 match = re.match(r"var DYNAMIC_BASE = (.*), DYNAMICTOP_PTR = (.*).*;\n", line)
                 if match:
-                    global_vars["DYNAMIC_BASE"] = int(match.group(1))
-                    global_vars["DYNAMICTOP_PTR"] = int(match.group(2))
+                    global_vars["DYNAMIC_BASE"] = self.to_int(match.group(1))
+                    global_vars["DYNAMICTOP_PTR"] = self.to_int(match.group(2))
                     break
                 if not line:
                     break
