@@ -71,7 +71,7 @@ public class CompilationResult {
      */
     public abstract static class CodeAnnotation {
 
-        public final int position;
+        private int position;
 
         public CodeAnnotation(int position) {
             this.position = position;
@@ -89,6 +89,14 @@ public class CompilationResult {
 
         @Override
         public abstract boolean equals(Object obj);
+
+        public int getPosition() {
+            return position;
+        }
+
+        void setPosition(int position) {
+            this.position = position;
+        }
     }
 
     /**
@@ -110,7 +118,7 @@ public class CompilationResult {
             }
             if (obj instanceof CodeComment) {
                 CodeComment that = (CodeComment) obj;
-                if (this.position == that.position && this.value.equals(that.value)) {
+                if (this.getPosition() == that.getPosition() && this.value.equals(that.value)) {
                     return true;
                 }
             }
@@ -119,7 +127,7 @@ public class CompilationResult {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": " + value;
+            return getClass().getSimpleName() + "@" + getPosition() + ": " + value;
         }
     }
 
@@ -163,7 +171,7 @@ public class CompilationResult {
             }
             if (obj instanceof JumpTable) {
                 JumpTable that = (JumpTable) obj;
-                if (this.position == that.position && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
+                if (this.getPosition() == that.getPosition() && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
                     return true;
                 }
             }
@@ -172,7 +180,7 @@ public class CompilationResult {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "@" + position + ": [" + low + " .. " + high + "]";
+            return getClass().getSimpleName() + "@" + getPosition() + ": [" + low + " .. " + high + "]";
         }
     }
 
@@ -781,9 +789,14 @@ public class CompilationResult {
         iterateAndReplace(dataPatches, pos, site -> new DataPatch(site.pcOffset + bytesToShift, site.reference, site.note));
         iterateAndReplace(exceptionHandlers, pos, site -> new ExceptionHandler(site.pcOffset + bytesToShift, site.handlerPos));
         iterateAndReplace(marks, pos, site -> new Mark(site.pcOffset + bytesToShift, site.id));
-        // TODO (yz) check sourceMapping
-        // TODO (yz) check dataSection
-        // TODO (yz) check annotations
+        if (annotations != null) {
+            for (CodeAnnotation annotation : annotations) {
+                int annotationPos = annotation.position;
+                if (pos <= annotationPos) {
+                    annotation.setPosition(annotationPos + bytesToShift);
+                }
+            }
+        }
     }
 
     private static <T extends Site> void iterateAndReplace(List<T> sites, int pos, Function<T, T> replacement) {

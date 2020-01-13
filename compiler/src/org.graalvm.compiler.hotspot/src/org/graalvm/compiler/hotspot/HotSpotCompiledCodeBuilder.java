@@ -103,7 +103,7 @@ public class HotSpotCompiledCodeBuilder {
                 } else {
                     text = annotation.toString();
                 }
-                comments[i] = new Comment(annotation.position, text);
+                comments[i] = new Comment(annotation.getPosition(), text);
             }
         }
 

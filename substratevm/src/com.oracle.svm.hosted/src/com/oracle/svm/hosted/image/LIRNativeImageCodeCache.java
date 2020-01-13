@@ -142,7 +142,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             Map<Integer, HostedPatcher> patches = new HashMap<>();
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
                 if (codeAnnotation instanceof HostedPatcher) {
-                    patches.put(codeAnnotation.position, (HostedPatcher) codeAnnotation);
+                    patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
                 }
             }
             // ... patch direct call sites.

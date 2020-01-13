@@ -101,7 +101,7 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
                 putAnnotation(annotations, mark.pcOffset, codeCache.getMarkName(mark));
             }
             for (CodeAnnotation a : compResult.getCodeAnnotations()) {
-                putAnnotation(annotations, a.position, a.toString());
+                putAnnotation(annotations, a.getPosition(), a.toString());
             }
             for (Infopoint infopoint : compResult.getInfopoints()) {
                 if (infopoint instanceof Call) {
