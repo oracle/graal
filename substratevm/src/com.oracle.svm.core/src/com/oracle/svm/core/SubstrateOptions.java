@@ -394,6 +394,9 @@ public class SubstrateOptions {
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
 
+    @Option(help = "Provide a path for the libmusl bundle so the resulting object file is linked against it.", type = OptionType.Expert)//
+    public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
+
     /**
      * The alignment for AOT and JIT compiled methods. The value is constant folded during image
      * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible

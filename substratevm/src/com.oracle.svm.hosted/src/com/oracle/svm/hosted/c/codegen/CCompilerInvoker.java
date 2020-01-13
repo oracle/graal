@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.c.libc.LibCBase;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -125,6 +127,8 @@ public class CCompilerInvoker {
                 command.add(target.normalize().toString());
             }
         }
+        LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
+        command.addAll(currentLibc.getCCompilerOptions());
         return startCommand(command);
     }
 

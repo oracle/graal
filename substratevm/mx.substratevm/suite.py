@@ -47,6 +47,11 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
+
+        "JDK11_LIBMUSL_STATIC_LIBS" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/jdk11.0.5+10-muslc-static-libs-dev-linux-amd64.tar.gz"],
+            "sha1" : "56baa3cf169cfcff04345202a0eff6d083b8e0f3",
+        }
     },
 
     "projects": {
@@ -391,6 +396,10 @@ suite = {
             ],
             "workingSets": "SVM",
         },
+        # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
+        # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
+        # functions with extra checking that are not available in all libc implementations. Different distros use
+        # different defaults for this constant (e.g., gcc on Ubuntu 18.04 sets it to 2), so we set it to 0 here.
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",
@@ -410,7 +419,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -435,7 +444,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
+                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -457,7 +466,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
                 "<others>": {
@@ -1126,6 +1135,22 @@ suite = {
             "description" : "Native-image based junit testing support",
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
+            },
+        },
+
+        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "Static JDK11 libraries required for building images with musl",
+            "javaCompliance" : "11",
+            "os_arch" : {
+                "linux" : {
+                    "amd64" : {
+                        "layout" : {
+                            "musl/" : ["extracted-dependency:substratevm:JDK11_LIBMUSL_STATIC_LIBS"],
+                        },
+                    },
+                },
             },
         },
 

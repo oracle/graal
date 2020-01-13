@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import com.oracle.svm.core.c.libc.GLibc;
+import com.oracle.svm.core.c.libc.Libc;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -59,26 +61,32 @@ public class Locale {
     @CConstant
     public static native int LC_MESSAGES();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_PAPER();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_NAME();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_ADDRESS();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
+    @Libc(value = GLibc.class)
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_IDENTIFICATION();
