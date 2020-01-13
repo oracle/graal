@@ -38,6 +38,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -120,4 +122,9 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     public NodeInputList<ValueNode> getArguments() {
         return arguments;
     }
+
+    public FrameState createStateDuring() {
+        return stateAfter.duplicateModified(graph(), stateAfter.bci, false, true, JavaKind.Object, null, null);
+    }
+
 }

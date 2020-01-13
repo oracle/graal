@@ -76,6 +76,7 @@ import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
+import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotSerialWriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HubGetClassNode;
@@ -84,7 +85,6 @@ import org.graalvm.compiler.hotspot.replacements.InstanceOfSnippets;
 import org.graalvm.compiler.hotspot.replacements.KlassLayoutHelperNode;
 import org.graalvm.compiler.hotspot.replacements.LoadExceptionObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.MonitorSnippets;
-import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
@@ -722,7 +722,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
         StructuredGraph graph = node.graph();
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
-        foreignCallNode.setStateAfter(node.stateAfter());
+        foreignCallNode.setStateAfter(node.createStateDuring());
         graph.replaceFixedWithFixed(node, foreignCallNode);
     }
 

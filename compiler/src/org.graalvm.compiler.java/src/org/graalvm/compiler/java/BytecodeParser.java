@@ -1611,7 +1611,7 @@ public class BytecodeParser implements GraphBuilderContext {
         append(new IfNode(condition, trueSuccessor, falseSuccessor, passingOnTrue ? LUDICROUSLY_FAST_PATH_PROBABILITY : LUDICROUSLY_SLOW_PATH_PROBABILITY));
         lastInstr = passingSuccessor;
 
-        exception.setStateAfter(createFrameState(bci(), exception));
+        exception.setStateAfter(createBytecodeExceptionFrameState(bci(), exception));
         exception.setNext(handleException(exception, bci(), false));
         EXPLICIT_EXCEPTIONS.increment(debug);
 
@@ -3913,10 +3913,22 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private FrameState createFrameState(int bci, StateSplit forStateSplit) {
+        assert !(forStateSplit instanceof BytecodeExceptionNode);
         if (currentBlock != null && bci > currentBlock.endBci) {
             frameState.clearNonLiveLocals(currentBlock, liveness, false);
         }
         return frameState.create(bci, forStateSplit);
+    }
+
+    private FrameState createBytecodeExceptionFrameState(int bci, BytecodeExceptionNode bytecodeException) {
+        if (currentBlock != null && bci > currentBlock.endBci) {
+            frameState.clearNonLiveLocals(currentBlock, liveness, false);
+        }
+        FrameStateBuilder copy = frameState.copy();
+        copy.clearStack();
+        copy.setRethrowException(true);
+        copy.push(JavaKind.Object, bytecodeException);
+        return copy.create(bci, bytecodeException);
     }
 
     @Override
@@ -4751,7 +4763,7 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
         BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind));
-        exceptionNode.setStateAfter(createFrameState(bci(), exceptionNode));
+        exceptionNode.setStateAfter(createBytecodeExceptionFrameState(bci(), exceptionNode));
         AbstractBeginNode exceptionDispatch = handleException(exceptionNode, bci(), false);
         exceptionNode.setNext(exceptionDispatch);
         return BeginNode.begin(exceptionNode);
