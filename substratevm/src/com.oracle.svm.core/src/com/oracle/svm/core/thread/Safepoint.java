@@ -414,6 +414,7 @@ public final class Safepoint {
         StatusSupport.setStatusVM();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void transitionVMToNative() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
@@ -427,9 +428,9 @@ public final class Safepoint {
     private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus);
 
     /**
-     * Block until I can transition from native to Java. This is not inlined and need not be fast.
-     * In fact, it often blocks. But it can not do much except block, since it starts out running
-     * with "native" thread status.
+     * Block until I can transition from native to a new thread status. This is not inlined and need
+     * not be fast. In fact, it often blocks. But it can not do much except block, since it starts
+     * out running with "native" thread status.
      *
      * Foreign call: {@link #ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS}.
      */

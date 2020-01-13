@@ -106,7 +106,7 @@ public final class ThreadLocalAllocation {
     public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize);
 
     /** A thread-local free list of aligned chunks. */
-    private static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
+    protected static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
 
     private static final OutOfMemoryError arrayAllocationTooLarge = new OutOfMemoryError("Array allocation too large.");
 
@@ -127,8 +127,7 @@ public final class ThreadLocalAllocation {
     /** Slow path of instance allocation snippet. */
     @SubstrateForeignCallTarget
     private static Object slowPathNewInstance(Word objectHeader) {
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        DynamicHub hub = ohi.dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         /* Allocation might cause a collection. */
         final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
         /* Allocate the requested instance. */
@@ -206,8 +205,7 @@ public final class ThreadLocalAllocation {
         /* Allocation might cause a collection. */
         final UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
         /* Allocate the requested array. */
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        DynamicHub hub = ohi.dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         final Object result = slowPathNewArrayWithoutAllocating(hub, length);
         /* Allow the collector to do stuff now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);

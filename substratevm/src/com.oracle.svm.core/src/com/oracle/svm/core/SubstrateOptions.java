@@ -144,6 +144,9 @@ public class SubstrateOptions {
     @Option(help = "Print more information about the heap before and after each collection")//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Verify the heap before and after each collection.")//
+    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
+
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
         @Override
@@ -388,25 +391,5 @@ public class SubstrateOptions {
     @Fold
     public static int codeAlignment() {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
-    }
-
-    @Fold
-    public static long hostedMinHeapSize() {
-        return MinHeapSize.getValue();
-    }
-
-    @Fold
-    public static long hostedMaxHeapSize() {
-        return MaxHeapSize.getValue();
-    }
-
-    @Fold
-    public static long hostedMaxNewSize() {
-        return MaxNewSize.getValue();
-    }
-
-    @Fold
-    public static long hostedStackSize() {
-        return StackSize.getValue();
     }
 }

@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
@@ -193,28 +192,5 @@ class XOptionAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(XOptions.class, new XOptions());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /*
-         * By default, all RuntimeOptionKeys that correspond to XOptions are unused. This happens
-         * because we never use those options directly but instead rely on 'onValueUpdate()' to
-         * update the corresponding XOption when the value of the runtime option changes. To enable
-         * the use of -XX:OptionName at runtime, it is therefore necessary to explicitly register
-         * all those options.
-         */
-        registerOptionAsAccessed(access, SubstrateOptions.class, SubstrateOptions.MaxHeapSize.getName());
-        registerOptionAsAccessed(access, SubstrateOptions.class, SubstrateOptions.MinHeapSize.getName());
-        registerOptionAsAccessed(access, SubstrateOptions.class, SubstrateOptions.MaxNewSize.getName());
-        registerOptionAsAccessed(access, SubstrateOptions.class, SubstrateOptions.StackSize.getName());
-    }
-
-    private static void registerOptionAsAccessed(BeforeAnalysisAccess access, Class<?> clazz, String fieldName) {
-        try {
-            access.registerAsAccessed(clazz.getField(fieldName));
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
     }
 }
