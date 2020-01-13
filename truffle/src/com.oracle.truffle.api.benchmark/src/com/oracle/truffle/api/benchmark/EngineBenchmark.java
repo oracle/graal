@@ -289,9 +289,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         result += (int) state.callTarget.call(state.intValue, state.intValue);
         result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue);
         result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue, state.intValue);
-        if (result < 0) {
-            throw new AssertionError();
-        }
         return result;
     }
 
