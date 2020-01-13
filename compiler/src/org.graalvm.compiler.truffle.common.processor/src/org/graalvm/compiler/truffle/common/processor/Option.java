@@ -267,7 +267,7 @@ public class Option {
         option("TruffleCompilationExceptionsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
-            .def("PolyglotCompilerOptions.PerformanceWarningsAreFatal.getDefaultValue()")
+            .def("false")
             .help("Treat compilation exceptions as fatal exceptions that will exit the application")
             .deprecatedBy("PerformanceWarningsAreFatal"), // COMPILER
 

@@ -107,6 +107,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.
@@ -711,21 +712,21 @@ public class TruffleGraphBuilderPlugins {
 
     @SuppressWarnings("try")
     static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
-        if (!PartialEvaluator.PerformanceInformationHandler.isEnabled()) {
-            return;
-        }
-        StructuredGraph graph = location.graph();
-        DebugContext debug = access.getDebug();
-        try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-            TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-            String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("location", location);
-            properties.put("method", targetMethod.format("%h.%n"));
-            PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(callTargetName, Collections.singletonList(access), "location argument not PE-constant", properties);
-            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
-        } catch (Throwable t) {
-            debug.handle(t);
+        if (PartialEvaluator.PerformanceInformationHandler.isEnabled(PolyglotCompilerOptions.PerformanceWarningKind.STORE)) {
+            StructuredGraph graph = location.graph();
+            DebugContext debug = access.getDebug();
+            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
+                String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
+                Map<String, Object> properties = new LinkedHashMap<>();
+                properties.put("location", location);
+                properties.put("method", targetMethod.format("%h.%n"));
+                PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.STORE, callTargetName, Collections.singletonList(access),
+                                "location argument not PE-constant", properties);
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
+            } catch (Throwable t) {
+                debug.handle(t);
+            }
         }
     }
 

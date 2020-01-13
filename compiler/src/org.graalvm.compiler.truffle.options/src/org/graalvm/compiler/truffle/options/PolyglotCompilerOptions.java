@@ -34,6 +34,9 @@ import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -59,6 +62,36 @@ public final class PolyglotCompilerOptions {
                                 return EngineModeEnum.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
                                 throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
+                            }
+                        }
+                    });
+
+    public enum PerformanceWarningKind {
+        INLINE,
+        INSTANCEOF,
+        UNREACHABLEDIRECTCALL,
+        CALLTARGETCHANGE,
+        STORE
+    }
+
+    static final OptionType<Set<? extends PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
+                    new Function<String, Set<? extends PerformanceWarningKind>>() {
+                        @Override
+                        public Set<? extends PerformanceWarningKind> apply(String value) {
+                            if ("none".equals(value)) {
+                                return EnumSet.noneOf(PerformanceWarningKind.class);
+                            } else if ("all".equals(value)) {
+                                return EnumSet.allOf(PerformanceWarningKind.class);
+                            } else {
+                                Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
+                                for (String name : value.split(",")) {
+                                    try {
+                                        result.add(Enum.valueOf(PerformanceWarningKind.class, name));
+                                    } catch (IllegalArgumentException e) {
+                                        throw new IllegalArgumentException("\"" + name + "\" is not a valid option. Valid values are " + EnumSet.allOf(PerformanceWarningKind.class));
+                                    }
+                                }
+                                return result;
                             }
                         }
                     });
@@ -132,7 +165,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
 
     @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> PerformanceWarningsAreFatal = new OptionKey<>(false);
+    public static final OptionKey<Set<? extends PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     // Tracing
 
@@ -261,7 +294,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
 
     @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TracePerformanceWarnings = new OptionKey<>(false);
+    public static final OptionKey<Set<? extends PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
