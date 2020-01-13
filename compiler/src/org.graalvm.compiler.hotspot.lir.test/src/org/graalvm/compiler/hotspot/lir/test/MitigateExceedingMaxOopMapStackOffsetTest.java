@@ -45,6 +45,7 @@ import org.junit.Test;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.sparc.SPARC;
 
 /**
  * Tests the mitigation against overflowing the max size limit for a HotSpot OopMap. The mitigation
@@ -155,6 +156,7 @@ public class MitigateExceedingMaxOopMapStackOffsetTest extends LIRTest {
     public void runStackObjects() {
         int max = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig().maxOopMapStackOffset;
         Assume.assumeFalse("no limit on oop map size", max == Integer.MAX_VALUE);
+        Assume.assumeFalse(getTarget().arch instanceof SPARC);
         numPrimitiveSlots = (max / 8) * 2;
         numReferenceSlots = (max / 8) - 100; // Should be enough margin for all platforms
         runTest("testStackObjects");
