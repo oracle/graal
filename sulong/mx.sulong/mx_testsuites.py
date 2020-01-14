@@ -175,6 +175,8 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        if 'OS' not in env:
+            env['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
