@@ -88,13 +88,14 @@ char **getEnviron() {
     return 0;
 }
 
+#if _MSC_VER <= 1600
 /*
  * __report_rangecheckfailure is not available in the VS 2010 MSVCRT library
- * so we declare it here to allow us to link JDK libraries built with
- * later VS versions.  This can be removed once we build with as later
- * VS version.
+ * so we declare it here, if we are building with VS 2010, to allow us to
+ * link libraries built with later VS versions.
  */
 void __report_rangecheckfailure() {
 }
+#endif
 #endif
 
