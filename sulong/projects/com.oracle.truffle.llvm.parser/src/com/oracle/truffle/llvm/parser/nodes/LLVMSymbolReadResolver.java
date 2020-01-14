@@ -66,6 +66,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -75,7 +76,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.IndexVectorBroadcastNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.ResultVectorBroadcastNodeGen;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -404,13 +404,13 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable()));
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable()));
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
@@ -418,7 +418,7 @@ public final class LLVMSymbolReadResolver {
         public void visit(GlobalAlias alias) {
             LLVMSymbol symbol = runtime.lookupSymbol(alias.getName(), alias.isOverridable());
             if (symbol.isFunction()) {
-                LLVMManagedPointer value = LLVMManagedPointer.create(symbol.asFunction());
+                LLVMFunction value = symbol.asFunction();
                 resolvedNode = nodeFactory.createLiteral(value, alias.getType());
             } else if (symbol.isGlobalVariable()) {
                 LLVMGlobal value = symbol.asGlobalVariable();

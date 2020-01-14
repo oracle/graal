@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -128,7 +127,7 @@ public final class LLVMParser {
     private void defineGlobal(GlobalVariable global, List<String> importedSymbols) {
         assert !global.isExternal();
         // handle the file scope
-        LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getID());
+        LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getbitcodeID());
         descriptor.define(global.getType(), library);
         runtime.getFileScope().register(descriptor);
 
@@ -153,17 +152,14 @@ public final class LLVMParser {
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
-        LLVMFunction descriptor = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getID(), functionSymbol.getIndex());
+        LLVMFunction descriptor = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getbitcodeID(), functionSymbol.getIndex());
         runtime.getFileScope().register(descriptor);
-        LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(descriptor);
-        runtime.getFileScope().registerFD(functionDescriptor);
 
         // handle the global scope
         if (functionSymbol.isExported()) {
             LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(functionSymbol.getName());
             if (exportedDescriptor == null) {
                 runtime.getGlobalScope().register(descriptor);
-                runtime.getGlobalScope().registerFD(functionDescriptor);
             } else if (exportedDescriptor.isFunction()) {
                 importedSymbols.add(functionSymbol.getName());
             } else {

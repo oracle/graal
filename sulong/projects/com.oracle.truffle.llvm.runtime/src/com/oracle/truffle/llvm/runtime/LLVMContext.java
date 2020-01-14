@@ -135,7 +135,7 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
     // private for storing the globals of each bcode file;
-    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] globalStorage;
+    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -203,7 +203,7 @@ public final class LLVMContext {
 
         pThreadContext = new LLVMPThreadContext(this);
 
-        globalStorage = new AssumedValue[10][];
+        symbolStorage = new AssumedValue[10][];
     }
 
     boolean patchContext(Env newEnv) {
@@ -231,7 +231,8 @@ public final class LLVMContext {
         InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
-            LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunctionDescriptor("__sulong_init_context");
+            LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
+            LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
             RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
@@ -286,7 +287,6 @@ public final class LLVMContext {
             LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
             functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
             globalScope.register(functionDetail);
-            globalScope.registerFD(functionDescriptor);
         }
     }
 
@@ -406,9 +406,18 @@ public final class LLVMContext {
         // - _exit(), _Exit(), or abort(): no cleanup necessary
         if (cleanupNecessary) {
             try {
-                RootCallTarget disposeContext = globalScope.getFunctionDescriptor("__sulong_dispose_context").getLLVMIRFunctionSlowPath();
-                try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
-                    disposeContext.call(stackPointer);
+                LLVMFunction function = globalScope.getFunction("__sulong_dispose_context");
+                AssumedValue<LLVMPointer>[] functions = findSymbolTable(function.getBitcodeID(false));
+                int index = function.getSymbolIndex(false);
+                LLVMPointer pointer = functions[index].get();
+                if (LLVMManagedPointer.isInstance(pointer)) {
+                    LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
+                    RootCallTarget disposeContext = functionDescriptor.getLLVMIRFunctionSlowPath();
+                    try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
+                        disposeContext.call(stackPointer);
+                    }
+                } else {
+                    throw new IllegalStateException("Context cannot be disposed: Function _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer.");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined
@@ -606,7 +615,7 @@ public final class LLVMContext {
     }
 
     List<Path> getLibraryPaths() {
-        // TODO (je) should this be unmodifiable?
+        // TODO (je) should this be unmodifiable?done
         synchronized (libraryPathsLock) {
             return libraryPaths;
         }
@@ -624,22 +633,29 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    public AssumedValue<LLVMPointer>[] findGlobalTable(int id) {
-        return globalStorage[id];
+    public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
+        return symbolStorage[id];
+    }
+
+    public boolean symbolTableExists(int id) {
+        return id < symbolStorage.length && symbolStorage[id] != null;
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    public void registerGlobalTable(int index, AssumedValue<LLVMPointer>[] target) {
+    public void registerSymbolTable(int index, AssumedValue<LLVMPointer>[] target) {
         synchronized (this) {
-            if (index < globalStorage.length) {
-                globalStorage[index] = target;
-            } else {
+            if (index < symbolStorage.length && symbolStorage[index] == null) {
+                symbolStorage[index] = target;
+            } else if (index >= symbolStorage.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
                 AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
-                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
-                globalStorage = temp;
-                globalStorage[index] = target;
+                System.arraycopy(symbolStorage, 0, temp, 0, symbolStorage.length);
+                symbolStorage = temp;
+                symbolStorage[index] = target;
+            } else {
+                throw new IllegalStateException("Registering a new symbol table for an existing id. ");
+                // return;
             }
         }
     }

@@ -108,9 +108,9 @@ public final class LLVMDebuggerScopeFactory {
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
                 final LLVMGlobal global = symbol.asGlobalVariable();
-                int id = global.getID(false);
-                int index = global.getIndex(false);
-                AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+                int id = global.getBitcodeID(false);
+                int index = global.getSymbolIndex(false);
+                AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
                 final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }

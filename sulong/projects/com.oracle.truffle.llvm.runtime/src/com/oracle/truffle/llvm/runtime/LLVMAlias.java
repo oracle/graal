@@ -74,6 +74,11 @@ public class LLVMAlias extends LLVMSymbol {
     }
 
     @Override
+    public boolean isAlias() {
+        return true;
+    }
+
+    @Override
     public LLVMFunction asFunction() {
         return target.asFunction();
     }

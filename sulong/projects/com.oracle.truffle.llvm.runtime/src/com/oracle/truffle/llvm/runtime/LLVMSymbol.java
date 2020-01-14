@@ -37,14 +37,14 @@ public abstract class LLVMSymbol {
 
     @CompilationFinal private String name;
     @CompilationFinal private ExternalLibrary library;
-    private final int id;
-    private final int index;
+    private final int bitcodeID;
+    private final int symbolIndex;
 
-    public LLVMSymbol(String name, ExternalLibrary library, int id, int index) {
+    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex) {
         this.name = name;
         this.library = library;
-        this.id = id;
-        this.index = index;
+        this.bitcodeID = bitcodeID;
+        this.symbolIndex = symbolIndex;
     }
 
     public String getName() {
@@ -63,18 +63,18 @@ public abstract class LLVMSymbol {
         this.library = library;
     }
 
-    public int getIndex(boolean illegalOK) {
-        if (index >= 0 || illegalOK) {
-            return index;
+    public int getSymbolIndex(boolean illegalOK) {
+        if (symbolIndex >= 0 || illegalOK) {
+            return symbolIndex;
         }
-        throw new IllegalStateException("Invalid function index: " + index);
+        throw new IllegalStateException("Invalid function index: " + symbolIndex);
     }
 
-    public int getID(boolean illegalOK) {
-        if (id >= 0 || illegalOK) {
-            return id;
+    public int getBitcodeID(boolean illegalOK) {
+        if (bitcodeID >= 0 || illegalOK) {
+            return bitcodeID;
         }
-        throw new IllegalStateException("Invalid function ID: " + id);
+        throw new IllegalStateException("Invalid function ID: " + bitcodeID);
     }
 
     public abstract boolean isDefined();
@@ -82,6 +82,8 @@ public abstract class LLVMSymbol {
     public abstract boolean isGlobalVariable();
 
     public abstract boolean isFunction();
+
+    public abstract boolean isAlias();
 
     public abstract LLVMFunction asFunction();
 

@@ -224,7 +224,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             }
 
             if (wrapper == null) {
-                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.functionId.getRight()));
+                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.getFunctionID().getRight()));
                 wrapper = pointer;
             }
 
@@ -333,6 +333,10 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         return function.get();
     }
 
+    public Pair<Integer, Integer> getFunctionID() {
+        return functionId;
+    }
+
     public LLVMFunction getFunctionDetail() {
         return functionDetail;
     }
@@ -340,7 +344,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction functionDetail) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
-        this.functionId = Pair.create(functionDetail.getID(true), functionDetail.getIndex(true));
+        this.functionId = Pair.create(functionDetail.getBitcodeID(true), functionDetail.getSymbolIndex(true));
         this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", functionDetail.getFunction());
         this.functionDetail = functionDetail;
     }
@@ -452,15 +456,15 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     public String toString() {
         String name = functionDetail.getName();
         if (name != null) {
-            return String.format("function@%d '%s'", functionId.getRight(), name);
+            return String.format("function@%d '%s'", getFunctionID().getRight(), name);
         } else {
-            return String.format("function@%d (anonymous)", functionId.getRight());
+            return String.format("function@%d (anonymous)", getFunctionID().getRight());
         }
     }
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Long.compare(functionId.getLeft() + functionId.getRight(), o.functionId.getLeft() + o.functionId.getLeft());
+        return Long.compare(getFunctionID().getLeft() + getFunctionID().getRight(), o.getFunctionID().getLeft() + o.getFunctionID().getLeft());
     }
 
     public LLVMContext getContext() {
@@ -492,7 +496,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             try {
                 nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
             } catch (UnsupportedMessageException ex) {
-                nativePointer = tagSulongFunctionPointer(functionId.getRight());
+                nativePointer = tagSulongFunctionPointer(getFunctionID().getRight());
             }
         }
         return this;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,34 +30,56 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
+public abstract class LLVMAccessSymbolVariableStorageNode extends LLVMExpressionNode {
 
-    public abstract void execute(LLVMPointer pointer, LLVMGlobal descriptor);
+    protected final LLVMSymbol descriptor;
+
+    public LLVMAccessSymbolVariableStorageNode(LLVMSymbol descriptor) {
+        this.descriptor = descriptor;
+    }
+
+    @Override
+    public String toString() {
+        return getShortString("descriptor");
+    }
+
+    public LLVMSymbol getDescriptor() {
+        return descriptor;
+    }
+
+    public abstract LLVMPointer execute();
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"descriptor.isAlias()"})
+    LLVMPointer doAliasAccess(
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
+        while (target.isAlias()) {
+            target = ((LLVMAlias) target).getTarget();
+        }
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
+        int index = target.getSymbolIndex(false);
+        return symbols[index].get();
+    }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
+    LLVMPointer doFallback(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
-        synchronized (globals) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            try {
-                int index = descriptor.getIndex(false);
-                globals[index] = new AssumedValue<>("LLVMGlobal." + descriptor.getName(), pointer);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global write is inconsistent.");
-            }
-        }
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        int index = descriptor.getSymbolIndex(false);
+        return symbols[index].get();
     }
 }

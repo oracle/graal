@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceGlobalVariableStorageNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceGlobalVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceSymbolVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceSymbolVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -56,7 +56,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
-    @Child LLVMReplaceGlobalVariableStorageNode globalReplace = LLVMReplaceGlobalVariableStorageNodeGen.create();
+    @Child LLVMReplaceSymbolVariableStorageNode globalReplace = LLVMReplaceSymbolVariableStorageNodeGen.create();
 
     @TruffleBoundary
     @Specialization

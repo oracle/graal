@@ -33,28 +33,38 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMCheckGlobalVariableStorageNode extends LLVMNode {
+public abstract class LLVMCheckSymbolVariableStorageNode extends LLVMNode {
 
-    public abstract boolean execute(LLVMGlobal descriptor);
+    public abstract boolean execute(LLVMSymbol descriptor);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "descriptor.isAlias()")
+    boolean doCheckAlias(LLVMAlias descriptor,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        LLVMSymbol target = descriptor.getTarget();
+        while (target.isAlias()) {
+            target = ((LLVMAlias) target).getTarget();
+        }
+        return doCheck(target, context);
+    }
 
     @SuppressWarnings("unused")
     @Specialization
-    boolean doCheck(LLVMGlobal descriptor,
+    boolean doCheck(LLVMSymbol descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-        int index = descriptor.getIndex(false);
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
-
-        if (globals[index] == null) {
+        int index = descriptor.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        if (symbols[index] == null) {
             return false;
         }
-
-        return globals[index].get() == null ? false : true;
+        return symbols[index].get() != null;
     }
 }

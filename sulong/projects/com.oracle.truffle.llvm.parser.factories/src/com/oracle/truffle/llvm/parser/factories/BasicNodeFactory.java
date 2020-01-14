@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -249,7 +250,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI3
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI8ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMIVarBitArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVM80BitFloatSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMDoubleSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMFloatSelectNodeGen;
@@ -845,8 +846,8 @@ public class BasicNodeFactory implements NodeFactory {
                 return new LLVMNativePointerLiteralNode(LLVMNativePointer.cast(value));
             } else if (LLVMManagedPointer.isInstance(value)) {
                 return new LLVMManagedPointerLiteralNode(LLVMManagedPointer.cast(value));
-            } else if (value instanceof LLVMGlobal) {
-                return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobal) value);
+            } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
+                return LLVMAccessSymbolVariableStorageNodeGen.create((LLVMSymbol) value);
             } else {
                 throw new AssertionError(value.getClass());
             }

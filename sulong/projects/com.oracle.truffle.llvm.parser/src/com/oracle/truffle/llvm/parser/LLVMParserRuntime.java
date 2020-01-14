@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -42,14 +42,14 @@ public final class LLVMParserRuntime {
     private final ExternalLibrary library;
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
-    private final int bcID;
+    private final int bitcodeID;
 
-    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory, int bcID) {
+    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID) {
         this.context = context;
         this.library = library;
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
-        this.bcID = bcID;
+        this.bitcodeID = bitcodeID;
     }
 
     public ExternalLibrary getLibrary() {
@@ -72,14 +72,14 @@ public final class LLVMParserRuntime {
         return nodeFactory;
     }
 
-    public int getID() {
-        return bcID;
+    public int getbitcodeID() {
+        return bitcodeID;
     }
 
-    public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {
+    public LLVMFunction lookupFunction(String name, boolean preferGlobalScope) {
         LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
         if (symbol != null && symbol.isFunction()) {
-            return lookupFunctionImpl(symbol.asFunction().getName(), preferGlobalScope);
+            return symbol.asFunction();
         }
         throw new IllegalStateException("Unknown function: " + name);
     }
@@ -109,16 +109,5 @@ public final class LLVMParserRuntime {
             symbol = fileScope.get(name);
         }
         return symbol;
-    }
-
-    private LLVMFunctionDescriptor lookupFunctionImpl(String name, boolean preferGlobalScope) {
-        LLVMFunctionDescriptor function = null;
-        if (preferGlobalScope) {
-            function = getGlobalScope().getFunctionDescriptor(name);
-        }
-        if (function == null) {
-            function = fileScope.getFunctionDescriptor(name);
-        }
-        return function;
     }
 }

@@ -47,7 +47,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -59,17 +62,24 @@ public final class SulongLibrary implements TruffleObject {
     private final String name;
     private final LLVMScope scope;
     private final CallTarget main;
+    private final LLVMContext context;
 
-    public SulongLibrary(String name, LLVMScope scope, CallTarget main) {
+    public SulongLibrary(String name, LLVMScope scope, CallTarget main, LLVMContext context) {
         this.name = name;
         this.scope = scope;
         this.main = main;
+        this.context = context;
     }
 
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-        LLVMFunctionDescriptor function = scope.getFunctionDescriptor(symbolName);
-        if (function != null) {
-            return function;
+        LLVMFunction function = scope.getFunction(symbolName);
+        int index = function.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
+        LLVMPointer pointer = symbols[index].get();
+        LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
+
+        if (functionDescriptor != null) {
+            return functionDescriptor;
         }
         return null;
     }

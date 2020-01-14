@@ -150,6 +150,11 @@ public final class LLVMGlobal extends LLVMSymbol {
     }
 
     @Override
+    public boolean isAlias() {
+        return false;
+    }
+
+    @Override
     public LLVMFunction asFunction() {
         throw new IllegalStateException("Global " + name + " is not a function.");
     }

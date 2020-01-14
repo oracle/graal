@@ -40,12 +40,12 @@ public final class LLVMFunction extends LLVMSymbol {
     private final FunctionType type;
     private final Function function;
 
-    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int id, int index) {
-        return new LLVMFunction(name, library, function, type, index, id);
+    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
+        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex);
     }
 
-    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int id, int index) {
-        super(name, library, id, index);
+    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
+        super(name, library, bitcodeID, symbolIndex);
         this.type = type;
         this.function = function;
     }
@@ -70,6 +70,11 @@ public final class LLVMFunction extends LLVMSymbol {
 
     @Override
     public boolean isGlobalVariable() {
+        return false;
+    }
+
+    @Override
+    public boolean isAlias() {
         return false;
     }
 

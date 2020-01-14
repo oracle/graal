@@ -34,29 +34,70 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
+public abstract class LLVMReplaceSymbolVariableStorageNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer value, LLVMGlobal descriptor);
+    public abstract void execute(LLVMPointer value, LLVMSymbol descriptor);
 
     @SuppressWarnings("unused")
     @Specialization
-    void doReplacee(LLVMPointer value, LLVMGlobal descriptor,
+    void doReplace(LLVMPointer value, LLVMGlobal descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
-        synchronized (globals) {
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        synchronized (symbols) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
-                int index = descriptor.getIndex(false);
-                globals[index].set(value);
+                int index = descriptor.getSymbolIndex(false);
+                symbols[index].set(value);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global replace is inconsistent.");
+                throw new RuntimeException("Global replacement is inconsistent.");
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    void doReplace(LLVMPointer value, LLVMFunction descriptor,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        synchronized (symbols) {
+            CompilerAsserts.partialEvaluationConstant(descriptor);
+            try {
+                int index = descriptor.getSymbolIndex(false);
+                symbols[index].set(value);
+            } catch (Exception e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException("Function replacement is inconsistent.");
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    void doReplace(LLVMPointer value, LLVMAlias descriptor,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        LLVMSymbol target = descriptor.getTarget();
+        while (target.isAlias()) {
+            target = ((LLVMAlias) target).getTarget();
+        }
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
+        synchronized (symbols) {
+            CompilerAsserts.partialEvaluationConstant(target);
+            try {
+                int index = target.getSymbolIndex(false);
+                symbols[index].set(value);
+            } catch (Exception e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException("Function replacement is inconsistent.");
             }
         }
     }
