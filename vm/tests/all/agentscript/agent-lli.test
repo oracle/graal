@@ -1,5 +1,5 @@
 >[0?] export TOOLCHAIN_PATH=`"lli --print-toolchain-path"`
-> ${TOOLCHAIN_PATH}/clang agent-sieve.c -o ${TMP_DIR}/sieve
+> ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o ${TMP_DIR}/sieve
 > lli --polyglot --agentscript=agent-lli.js --experimental-options ${TMP_DIR}/sieve
 Computed 97 primes in [0-9]+ ms. Last one is 509
 Computed 194 primes in [0-9]+ ms. Last one is 1181
