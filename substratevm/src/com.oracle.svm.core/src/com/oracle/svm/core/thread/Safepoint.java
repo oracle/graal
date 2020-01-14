@@ -54,6 +54,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -61,6 +62,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -202,6 +204,11 @@ public final class Safepoint {
             // Resetting the safepoint counter or executing the recurring callback must only be done
             // if the thread is in Java state.
             ThreadingSupportImpl.onSafepointCheckSlowpath();
+            if (ActionOnTransitionToJavaSupport.isActionPending()) {
+                assert ActionOnTransitionToJavaSupport.isSynchronizeCode() : "Unexpected action pending.";
+                CodeSynchronizationNode.synchronizeCode();
+                ActionOnTransitionToJavaSupport.clearActions();
+            }
         }
     }
 

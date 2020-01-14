@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -52,8 +53,12 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
         } else if (n instanceof RemNode) {
             /* No lowering necessary. */
         } else if (n instanceof FloatConvertNode) {
-            // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
-            // to see a ConvertNode and throws an error, just do nothing here.
+            // AMD64 has custom lowerings for ConvertNodes, SubstrateLoweringProvider does not
+            // expect to see a ConvertNode and throws an error, just do nothing here.
+        } else if (n instanceof CodeSynchronizationNode) {
+            /* Remove node */
+            CodeSynchronizationNode syncNode = (CodeSynchronizationNode) n;
+            syncNode.graph().removeFixed(syncNode);
         } else {
             super.lower(n, tool);
         }

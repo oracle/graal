@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +23,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.nodes;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-public interface SubstrateLIRGenerator {
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip);
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+public class CodeSynchronizationNode extends FixedWithNextNode implements Lowerable {
+    public static final NodeClass<CodeSynchronizationNode> TYPE = NodeClass.create(CodeSynchronizationNode.class);
 
-    void emitDeadEnd();
+    public CodeSynchronizationNode() {
+        super(TYPE, StampFactory.forVoid());
+    }
 
-    void emitVerificationMarker(Object marker);
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
+    }
 
-    void emitInstructionSynchronizationBarrier();
+    @NodeIntrinsic
+    public static native void synchronizeCode();
 }
