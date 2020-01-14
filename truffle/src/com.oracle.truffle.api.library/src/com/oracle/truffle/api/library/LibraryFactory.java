@@ -135,7 +135,7 @@ public abstract class LibraryFactory<T extends Library> {
     private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private final ProxyExports proxyExports = new ProxyExports();
     final Map<String, Message> nameToMessages;
-    @CompilationFinal private T uncachedDispatch;
+    @CompilationFinal private volatile T uncachedDispatch;
 
     final DynamicDispatchLibrary dispatchLibrary;
 
@@ -262,6 +262,10 @@ public abstract class LibraryFactory<T extends Library> {
 
     final void ensureInitialized() {
         if (this.uncachedDispatch == null) {
+            /*
+             * We deliberately don't lock here. We don't care if we have multiple different
+             * instances of uncachedDispatch.
+             */
             this.uncachedDispatch = createUncachedDispatch();
         }
     }
