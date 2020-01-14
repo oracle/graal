@@ -85,6 +85,16 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1, WordBase arg2);
     }
 
+    public interface CallObjectMethod4FunctionPointer extends CallObjectMethodFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1, WordBase arg2, WordBase arg3);
+    }
+
+    public interface CallObjectMethod5FunctionPointer extends CallObjectMethodFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1, WordBase arg2, WordBase arg3, WordBase arg4);
+    }
+
     public interface CallBooleanMethodFunctionPointer extends CFunctionPointer {
     }
 
