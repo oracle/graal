@@ -655,7 +655,6 @@ public final class LLVMContext {
                 symbolStorage[index] = target;
             } else {
                 throw new IllegalStateException("Registering a new symbol table for an existing id. ");
-                // return;
             }
         }
     }

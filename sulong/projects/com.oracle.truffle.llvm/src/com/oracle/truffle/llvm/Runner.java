@@ -213,11 +213,11 @@ final class Runner {
             this.initModules = new InitializeModuleNode[libCount];
         }
 
-        static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, LLVMContext context) {
+        static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, LLVMContext context, boolean lazyParsing) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, context);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, context);
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, context, lazyParsing);
+                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, context, lazyParsing);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -225,10 +225,10 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules, LLVMContext context) throws TypeOverflowException {
+                        InitializeModuleNode[] initModules, LLVMContext context, boolean lazyParsing) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), context);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), context, lazyParsing);
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -262,6 +262,10 @@ final class Runner {
 
         @ExplodeLoop
         private void doInitSymbols(LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections) {
+            for (int i = 0; i < initSymbols.length; i++) {
+                initSymbols[i].initializeSymbolTable(ctx);
+            }
+
             for (int i = 0; i < initSymbols.length; i++) {
                 if (initSymbols[i].shouldInitialize(ctx)) {
                     shouldInit.set(i);
@@ -475,7 +479,7 @@ final class Runner {
         private final int globalLength;
 
         @SuppressWarnings("unchecked")
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context) throws TypeOverflowException {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context, boolean lazyParsing) throws TypeOverflowException {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
@@ -507,7 +511,7 @@ final class Runner {
                 if (intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory));
                 } else {
-                    allocFunctionsList.add(new AllocLLVMFunctionNode(function, context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)));
+                    allocFunctionsList.add(new AllocLLVMFunctionNode(function, lazyParsing));
                 }
             }
 
@@ -519,7 +523,6 @@ final class Runner {
 
             this.bitcodeID = res.getRuntime().getbitcodeID();
             this.globalLength = res.getDefinedGlobals().size() + res.getExternalGlobals().size() + res.getDefinedFunctions().size() + res.getExternalFunctions().size();
-            // context.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {
@@ -527,10 +530,13 @@ final class Runner {
         }
 
         @SuppressWarnings("unchecked")
+        public void initializeSymbolTable(LLVMContext context) {
+            context.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
+        }
+
         public LLVMPointer execute(LLVMContext ctx) {
             LLVMPointer roBase = allocOrNull(allocRoSection);
             LLVMPointer rwBase = allocOrNull(allocRwSection);
-            ctx.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
 
             allocGlobals(ctx, roBase, rwBase);
             allocFunctions(ctx);
@@ -1256,7 +1262,8 @@ final class Runner {
             SulongLibrary lib = new SulongLibrary(name, scope, mainFunctionCallTarget, context);
 
             FrameDescriptor rootFrame = StackManager.createRootFrame();
-            LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib, context);
+            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
+            LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib, context, lazyParsing);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }
