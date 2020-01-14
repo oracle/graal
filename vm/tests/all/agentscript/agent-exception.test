@@ -31,6 +31,10 @@ good you are?
 .*at <js> log.log.js:1-6:.*
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
+>[1] js --jvm --experimental-options --agentscript=agent-error2.js log.js
+agentscript: Unknown attribute misnamedAttribute
+>[1] js --jvm --experimental-options --agentscript=agent-error3.js log.js
+agentscript: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --experimental-options --agentscript=agent-error.js log.js
 Error while initializing Object
 .*at <js> .*program.*

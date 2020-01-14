@@ -31,6 +31,10 @@ enum AgentType {
     CLOSE;
 
     static AgentType find(String str) {
-        return valueOf(str.toUpperCase());
+        try {
+            return valueOf(str.toUpperCase());
+        } catch (IllegalArgumentException missingType) {
+            throw AgentException.unknownType(missingType, str, AgentType.values());
+        }
     }
 }
