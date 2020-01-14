@@ -357,7 +357,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected static boolean needsRex(Register reg) {
-        return reg.encoding >= MinEncodingNeedsRex;
+        return reg.encoding >= MinEncodingNeedsRex || reg == AMD64.rip;
     }
 
     protected final void prefix(AMD64Address adr) {
