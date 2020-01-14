@@ -1973,54 +1973,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         INC.emit(this, DWORD, dst);
     }
 
-    private int skipOperandsFromModRM(int modRMOffset, byte[] lastInstruction) {
-        int offset = modRMOffset;
-        int modrm = lastInstruction[offset++] & 0xFF;
-        int mode = (modrm >> 6) & 0b11;
-        int reg = modrm & 0x07;
-        switch (mode) {
-            case 0b00:
-                if (reg == 0b100) {
-                    int base = lastInstruction[offset++] & 0b111;
-                    if (base == 0b101) {
-                        return offset + 4;
-                    } else {
-                        return offset;
-                    }
-                } else if (reg == 0b101) {
-                    // be conservative when code patching is needed
-                    return codePatchingAnnotationConsumer != null ? -1 : offset + 4;
-                } else {
-                    return offset;
-                }
-            case 0b01:
-                if (reg == 0b100) {
-                    return offset + 2;
-                } else {
-                    return offset + 1;
-                }
-            case 0b10:
-                if (reg == 0b100) {
-                    return offset + 5;
-                } else {
-                    return offset + 4;
-                }
-            default:
-                // case 0b11:
-                return offset;
-        }
-    }
-
-    @Override
-    protected void annotatePatchingImmediate(int operandOffset, int operandSize) {
-        super.annotatePatchingImmediate(operandOffset, operandSize);
-    }
-
     protected boolean mayCrossBoundary(int opStart, int opEnd) {
         return (opStart / JCC_ERRATUM_MITIGATION_BOUNDARY) != ((opEnd - 1) / JCC_ERRATUM_MITIGATION_BOUNDARY) || (opEnd % JCC_ERRATUM_MITIGATION_BOUNDARY) == 0;
     }
 
-    private int bytesUntilBoundary(int pos) {
+    private static int bytesUntilBoundary(int pos) {
         return JCC_ERRATUM_MITIGATION_BOUNDARY - (pos % JCC_ERRATUM_MITIGATION_BOUNDARY);
     }
 
@@ -2038,11 +1995,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    /**
-     * Emit a jcc instruction given a known target address. AMD64AssemblerFuseableInstructionTest*
-     * 
-     * @return the position where the jcc instruction starts.
-     */
     public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
         final int shortSize = 2;
         final int longSize = 6;

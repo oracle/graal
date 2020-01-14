@@ -703,8 +703,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void cmpAndJcc(OperandSize size, Register src1, Constant src2, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb) {
+        AMD64Address placeHolder = getPlaceholder(position());
+        final AMD64RMOp op = CMP.getRMOpcode(size);
+        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, placeHolder) + OPCODE_IN_BYTES + addressInBytes(placeHolder);
+        alignFusedPair(branchTarget, false, bytesToEmit);
+        final int beforeFusedPair = position();
         AMD64Address src2AsAddress = (AMD64Address) crb.recordDataReferenceInCode(src2, size.getBytes());
-        cmpAndJcc(size, src1, src2AsAddress, cc, branchTarget, false, crb, null);
+        op.emit(this, size, src1, src2AsAddress);
+        assert beforeFusedPair + bytesToEmit == position();
+        jcc(cc, branchTarget, false);
+        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
     }
 
     public final void andlAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
