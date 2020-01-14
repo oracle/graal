@@ -34,7 +34,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
  *
  * Fields are grouped according to the most recent JBS issue showing why they are versioned.
  *
- * JDK Version: 14+
+ * JDK Version: 15+
  */
 final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
 
@@ -94,6 +94,6 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     boolean threadLocalHandshakes = true;
 
     // JDK-8236224
-    boolean compactFields = getFlag("CompactFields", Boolean.class);
-    int fieldsAllocationStyle = getFlag("FieldsAllocationStyle", Integer.class);
+    boolean compactFields = true;
+    int fieldsAllocationStyle = 1;
 }

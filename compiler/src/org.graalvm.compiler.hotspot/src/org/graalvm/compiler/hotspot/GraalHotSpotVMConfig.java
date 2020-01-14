@@ -70,8 +70,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final boolean enableContended = getFlag("EnableContended", Boolean.class);
     public final boolean restrictContended = getFlag("RestrictContended", Boolean.class);
     public final int contendedPaddingWidth = getFlag("ContendedPaddingWidth", Integer.class);
-    public final int fieldsAllocationStyle = getFlag("FieldsAllocationStyle", Integer.class);
-    public final boolean compactFields = getFlag("CompactFields", Boolean.class);
+    public final int fieldsAllocationStyle = versioned.fieldsAllocationStyle;
+    public final boolean compactFields = versioned.compactFields;
     public final boolean verifyOops = getFlag("VerifyOops", Boolean.class);
     public final boolean ciTime = getFlag("CITime", Boolean.class);
     public final boolean ciTimeEach = getFlag("CITimeEach", Boolean.class);
