@@ -494,8 +494,16 @@ public class BinaryParser extends BinaryStreamParser {
                     int unwindLevel = readLabelIndex(bytesConsumed);
                     state.useLongConstant(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
-                    state.useIntConstant(state.getStackState(unwindLevel));
-                    state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
+                    final int targetStackSize = state.getStackState(unwindLevel);
+                    state.useIntConstant(targetStackSize);
+                    final int continuationReturnLength = state.getContinuationReturnLength(unwindLevel);
+                    state.useIntConstant(continuationReturnLength);
+                    // This instruction is stack-polymorphic.
+                    if ((peek1() & 0xFF) == Instructions.END) {
+                        while (state.stackSize() > targetStackSize + continuationReturnLength) {
+                            state.pop();
+                        }
+                    }
                     break;
                 }
                 case Instructions.BR_IF: {
@@ -544,11 +552,20 @@ public class BinaryParser extends BinaryStreamParser {
                     branchTable[0] = returnLength;
                     // The offset to the branch table.
                     state.saveBranchTable(branchTable);
+                    // This instruction is stack-polymorphic.
+                    if ((peek1() & 0xFF) == Instructions.END) {
+                        final int targetStackSize = state.getStackState(0);
+                        final int continuationReturnLength = state.getContinuationReturnLength(0);
+                        while (state.stackSize() > targetStackSize + continuationReturnLength) {
+                            state.pop();
+                        }
+                    }
                     break;
                 }
                 case Instructions.RETURN: {
                     state.useLongConstant(state.stackStateCount());
                     state.useIntConstant(state.getRootBlockReturnLength());
+                    // TODO: Pop values from the stack if necessary.
                     break;
                 }
                 case Instructions.CALL: {
