@@ -123,6 +123,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
@@ -340,7 +341,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         if (mode == ParseMode.DEFAULT) {
             boolean emitWarnings = Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
-            node.setSharedCaches(computeSharing(Arrays.asList(node), emitWarnings));
+            node.setSharedCaches(computeSharing(node.getTemplateType(), Arrays.asList(node), emitWarnings));
         } else {
             // sharing is computed by the ExportsParser
         }
@@ -354,7 +355,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return node;
     }
 
-    public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes, boolean emitSharingWarnings) {
+    public static Map<CacheExpression, String> computeSharing(Element templateType, Collection<NodeData> nodes, boolean emitSharingWarnings) {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         Map<SharableCache, Collection<CacheExpression>> groups = computeSharableCaches(nodes);
         // compute unnecessary sharing.
@@ -381,11 +382,32 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (cache.isAlwaysInitialized()) {
                         continue;
                     }
+                    Element declaringElement;
+                    if (node.getTemplateType() instanceof GeneratedElement) {
+                        // generated node
+                        declaringElement = node.getTemplateType().getEnclosingElement();
+                        if (declaringElement.getKind() != ElementKind.CLASS) {
+                            throw new AssertionError("Unexpected declared element for generated element: " + declaringElement.toString());
+                        }
+                    } else {
+                        declaringElement = node.getTemplateType();
+                    }
+
                     String group = cache.getSharedGroup();
                     SharableCache sharable = new SharableCache(specialization, cache);
                     Collection<CacheExpression> expressions = groups.get(sharable);
                     List<SharableCache> declaredSharing = declaredGroups.get(group);
                     if (group != null) {
+                        if (declaredSharing.size() <= 1) {
+                            if (!ElementUtils.elementEquals(templateType, declaringElement)) {
+                                // ignore errors for single declared sharing as its not in the same
+                                // class but only happens between class and superclass. These
+                                // errors might not be resolvable if the base class is not
+                                // modifiable.
+                                continue;
+                            }
+                        }
+
                         if (declaredSharing.size() <= 1 && (expressions == null || expressions.size() <= 1)) {
                             cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(),
                                             "Could not find any other cached parameter that this parameter could be shared. " +
@@ -394,6 +416,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                             types.Cached_Shared.asElement().getSimpleName().toString());
                         } else {
                             if (declaredSharing.size() <= 1) {
+
                                 String error = String.format("No other cached parameters are specified as shared with the group '%s'.", group);
                                 Set<String> similarGroups = new LinkedHashSet<>(declaredGroups.keySet());
                                 similarGroups.remove(group);
@@ -434,25 +457,38 @@ public final class NodeParser extends AbstractParser<NodeData> {
                             }
                         }
                     } else if (expressions != null && expressions.size() > 1) {
-                        if (emitSharingWarnings && findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached_Exclusive) == null) {
-                            StringBuilder sharedCaches = new StringBuilder();
-                            Set<String> recommendedGroups = new LinkedHashSet<>();
-                            for (CacheExpression cacheExpression : expressions) {
-                                if (cacheExpression != cache) {
-                                    String signature = formatCacheExpression(cacheExpression);
-                                    sharedCaches.append(String.format("  - %s%n", signature));
-
-                                    String otherGroup = cacheExpression.getSharedGroup();
-                                    if (otherGroup != null) {
-                                        recommendedGroups.add(otherGroup);
-                                    }
+                        if (emitSharingWarnings) {
+                            /*
+                             * We only emit sharing warnings for the same declaring type, because
+                             * otherwise sharing warnings might not be resolvable if the base type
+                             * is not modifiable.
+                             */
+                            List<CacheExpression> declaredInExpression = new ArrayList<>();
+                            for (CacheExpression expression : expressions) {
+                                if (ElementUtils.isDeclaredIn(expression.getParameter().getVariableElement(), declaringElement)) {
+                                    declaredInExpression.add(expression);
                                 }
                             }
-                            String recommendedGroup = recommendedGroups.size() == 1 ? recommendedGroups.iterator().next() : "group";
-                            cache.addWarning("The cached parameter may be shared with: %n%s Annotate the parameter with @%s(\"%s\") or @%s to allow or deny sharing of the parameter.",
-                                            sharedCaches, types.Cached_Shared.asElement().getSimpleName().toString(),
-                                            recommendedGroup,
-                                            types.Cached_Exclusive.asElement().getSimpleName().toString());
+                            if (declaredInExpression.size() > 1 && findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached_Exclusive) == null) {
+                                StringBuilder sharedCaches = new StringBuilder();
+                                Set<String> recommendedGroups = new LinkedHashSet<>();
+                                for (CacheExpression cacheExpression : declaredInExpression) {
+                                    if (cacheExpression != cache) {
+                                        String signature = formatCacheExpression(cacheExpression);
+                                        sharedCaches.append(String.format("  - %s%n", signature));
+                                        String otherGroup = cacheExpression.getSharedGroup();
+                                        if (otherGroup != null) {
+                                            recommendedGroups.add(otherGroup);
+                                        }
+                                    }
+                                }
+
+                                String recommendedGroup = recommendedGroups.size() == 1 ? recommendedGroups.iterator().next() : "group";
+                                cache.addWarning("The cached parameter may be shared with: %n%s Annotate the parameter with @%s(\"%s\") or @%s to allow or deny sharing of the parameter.",
+                                                sharedCaches, types.Cached_Shared.asElement().getSimpleName().toString(),
+                                                recommendedGroup,
+                                                types.Cached_Exclusive.asElement().getSimpleName().toString());
+                            }
                         }
                     }
                 }

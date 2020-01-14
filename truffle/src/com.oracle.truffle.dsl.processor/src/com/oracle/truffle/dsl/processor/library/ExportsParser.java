@@ -148,7 +148,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     StringBuilder b = new StringBuilder();
                     for (Element invisibleMember : foundInvisibleMembers) {
                         b.append(System.lineSeparator()).append("   - ");
-                        b.append(ElementUtils.getReadableReference(invisibleMember, false));
+                        b.append(ElementUtils.getReadableReference(element, invisibleMember));
                     }
                     model.addError("Found invisible exported elements in super type '%s': %s%nIncrease their visibility to resolve this problem.", ElementUtils.getSimpleName(currentType),
                                     b.toString());
@@ -352,7 +352,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     exportedMessages.add(export);
                 }
             }
-            libraryExports.setSharedExpressions(NodeParser.computeSharing(cachedSharedNodes, true));
+            libraryExports.setSharedExpressions(NodeParser.computeSharing(libraryExports.getTemplateType(), cachedSharedNodes, true));
 
             // redirect errors on generated elements to the outer element
             // JDT will otherwise just ignore those messages and not display anything.
@@ -875,7 +875,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (!cachedNodes.isEmpty() || !cachedLibraries.isEmpty()) {
             String nodeName = firstLetterUpperCase(exportedMethod.getSimpleName().toString()) + "Node_";
             CodeTypeElement type = GeneratorUtils.createClass(model, null, modifiers(PUBLIC, STATIC), nodeName, types.Node);
-
             AnnotationMirror importStatic = findAnnotationMirror(model.getMessageElement(), types.ImportStatic);
             if (importStatic != null) {
                 type.getAnnotationMirrors().add(importStatic);
@@ -898,12 +897,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
             type.add(element);
             NodeData parsedNodeData = parseNode(type, exportedElement, Collections.emptyList());
-            element.setEnclosingElement(exportedMethod.getEnclosingElement());
-
             if (parsedNodeData == null) {
                 exportedElement.addError("Error could not parse synthetic node: %s", element);
             }
-
+            element.setEnclosingElement(exportedMethod.getEnclosingElement());
             exportedElement.setSpecializedNode(parsedNodeData);
         }
 
@@ -946,6 +943,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         CodeTypeElement clonedType = CodeTypeElement.cloneShallow(nodeType);
         // make the node parser happy
         clonedType.setSuperClass(types.Node);
+        clonedType.setEnclosingElement(exportedMessage.getMessageElement().getEnclosingElement());
 
         syntheticExecute = CodeExecutableElement.clone(message.getExecutable());
         // temporarily set to execute* to allow the parser to parse it
