@@ -406,7 +406,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     @SuppressWarnings("unused")
     private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
-        if (returnTypeId == 0x40) {
+        if (returnTypeId == ValueTypes.VOID_TYPE) {
             Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
         } else {
             Assert.assertIntEqual(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack");
@@ -500,7 +500,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.useIntConstant(continuationReturnLength);
                     // This instruction is stack-polymorphic.
                     if ((peek1() & 0xFF) == Instructions.END) {
-                        while (state.stackSize() > targetStackSize + continuationReturnLength) {
+                        while (state.stackSize() > state.getStackState(0) + state.getContinuationReturnLength(0)) {
                             state.pop();
                         }
                     }
@@ -563,9 +563,20 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.RETURN: {
+                    // Pop the stack values used as the return values.
+                    for (int i = 0; i < codeEntry.function().returnTypeLength(); i++) {
+                        state.pop();
+                    }
                     state.useLongConstant(state.stackStateCount());
                     state.useIntConstant(state.getRootBlockReturnLength());
-                    // TODO: Pop values from the stack if necessary.
+                    // Pop values from the stack if in the block-end position.
+                    if ((peek1() & 0xFF) == Instructions.END) {
+                        final int targetStackSize = state.getStackState(0);
+                        final int continuationReturnLength = state.getContinuationReturnLength(0);
+                        while (state.stackSize() > targetStackSize + continuationReturnLength) {
+                            state.pop();
+                        }
+                    }
                     break;
                 }
                 case Instructions.CALL: {
