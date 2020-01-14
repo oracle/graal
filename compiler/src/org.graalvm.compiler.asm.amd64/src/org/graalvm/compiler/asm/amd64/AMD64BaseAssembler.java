@@ -360,6 +360,10 @@ public abstract class AMD64BaseAssembler extends Assembler {
         return reg.encoding >= MinEncodingNeedsRex || AMD64.rip.equals(reg);
     }
 
+    protected static boolean needsRex(Register src, boolean srcIsByte) {
+        return srcIsByte ? src.encoding >= 4 : needsRex(src);
+    }
+
     protected final void prefix(AMD64Address adr) {
         if (needsRex(adr.getBase())) {
             if (needsRex(adr.getIndex())) {

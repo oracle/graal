@@ -37,6 +37,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import java.util.function.IntConsumer;
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -230,29 +233,32 @@ public class AMD64ControlFlow {
                     masm.testAndJcc(size, asRegister(x), asRegister(y), condition, trueDestination.label(), false);
                     masm.jmp(falseDestination.label());
                 }
-            } else if (isStackSlot(y)) {
+                return;
+            }
+            IntConsumer applyBeforeFusedPair = state == null ? null : pos -> crb.recordImplicitException(pos, state);
+            if (isStackSlot(y)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue yAddress = (AMD64AddressValue) y;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -305,29 +311,32 @@ public class AMD64ControlFlow {
                     masm.testAndJcc(size, asRegister(x), y, condition, trueDestination.label(), false);
                     masm.jmp(falseDestination.label());
                 }
-            } else if (isStackSlot(x)) {
+                return;
+            }
+            IntConsumer applyBeforeFusedPair = state == null ? null : pos -> crb.recordImplicitException(pos, state);
+            if (isStackSlot(x)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, crb, state);
+                    masm.testAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -379,29 +388,32 @@ public class AMD64ControlFlow {
                     masm.cmpAndJcc(size, asRegister(x), asRegister(y), condition, trueDestination.label(), false);
                     masm.jmp(falseDestination.label());
                 }
-            } else if (isStackSlot(y)) {
+                return;
+            }
+            IntConsumer applyBeforeFusedPair = state == null ? null : pos -> crb.recordImplicitException(pos, state);
+            if (isStackSlot(y)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), (AMD64Address) crb.asAddress(y), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue yAddress = (AMD64AddressValue) y;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, asRegister(x), yAddress.toAddress(), condition, trueDestination.label(), false, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -453,42 +465,53 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            final boolean inlineDataInCode = inlinedY != null;
+            IntConsumer applyBeforeFusedPair = null;
+            if (inlineDataInCode) {
+                applyBeforeFusedPair = pos -> crb.recordInlineDataInCode(inlinedY);
+            }
             if (isRegister(x)) {
                 assert state == null;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), y, inlinedY, condition.negate(), falseDestination.label(), false, crb);
+                    masm.cmpAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, asRegister(x), y, inlinedY, condition, trueDestination.label(), false, crb);
+                    masm.cmpAndJcc(size, asRegister(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, asRegister(x), y, inlinedY, condition.negate(), falseDestination.label(), false, crb);
+                    masm.cmpAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, asRegister(x), y, inlinedY, condition, trueDestination.label(), false, crb);
+                    masm.cmpAndJcc(size, asRegister(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
-            } else if (isStackSlot(x)) {
+                return;
+            }
+            if (state != null) {
+                IntConsumer implicitException = pos -> crb.recordImplicitException(pos, state);
+                applyBeforeFusedPair = applyBeforeFusedPair == null ? implicitException : applyBeforeFusedPair.andThen(implicitException);
+            }
+            if (isStackSlot(x)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, inlinedY, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, inlinedY, condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, inlinedY, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, inlinedY, condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, inlinedY, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, inlinedY, condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, inlinedY, condition.negate(), falseDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, xAddress.toAddress(), y, inlinedY, condition, trueDestination.label(), false, crb, state);
+                    masm.cmpAndJcc(size, xAddress.toAddress(), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -514,15 +537,16 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            Supplier<AMD64Address> applyBeforeConsumer = () -> (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes());
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.cmpAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label(), crb);
+                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition.negate(), falseDestination.label());
             } else if (crb.isSuccessorEdge(falseDestination)) {
-                masm.cmpAndJcc(size, asRegister(x), y, condition, trueDestination.label(), crb);
+                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition, trueDestination.label());
             } else if (trueDestinationProbability < 0.5) {
-                masm.cmpAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label(), crb);
+                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition.negate(), falseDestination.label());
                 masm.jmp(trueDestination.label());
             } else {
-                masm.cmpAndJcc(size, asRegister(x), y, condition, trueDestination.label(), crb);
+                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition, trueDestination.label());
                 masm.jmp(falseDestination.label());
             }
         }

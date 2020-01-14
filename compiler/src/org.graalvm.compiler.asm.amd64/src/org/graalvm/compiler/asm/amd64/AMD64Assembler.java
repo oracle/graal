@@ -112,8 +112,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:on
     }
 
-    private static final int JCC_ERRATUM_MITIGATION_BOUNDARY = 0x20;
-    protected final boolean useBranchesWithin32ByteBoundary;
+    private final boolean useBranchesWithin32ByteBoundary;
 
     public interface CodePatchShifter {
         void shift(int pos, int bytesToShift);
@@ -1973,12 +1972,55 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         INC.emit(this, DWORD, dst);
     }
 
+    public static final int JCC_ERRATUM_MITIGATION_BOUNDARY = 0x20;
+    public static final int OPCODE_IN_BYTES = 1;
+    public static final int MODRM_IN_BYTES = 1;
+
+    protected static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte) {
+        boolean needsRex = needsRex(dst, dstIsByte);
+        if (size == WORD) {
+            return needsRex ? 2 : 1;
+        }
+        return size == QWORD || needsRex ? 1 : 0;
+    }
+
+    protected static int getPrefixInBytes(OperandSize size, AMD64Address src) {
+        boolean needsRex = needsRex(src.getBase()) || needsRex(src.getIndex());
+        if (size == WORD) {
+            return needsRex ? 2 : 1;
+        }
+        return size == QWORD || needsRex ? 1 : 0;
+    }
+
+    protected static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, Register src, boolean srcIsByte) {
+        boolean needsRex = needsRex(dst, dstIsByte) || needsRex(src, srcIsByte);
+        if (size == WORD) {
+            return needsRex ? 2 : 1;
+        }
+        return size == QWORD || needsRex ? 1 : 0;
+    }
+
+    protected static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, AMD64Address src) {
+        boolean needsRex = needsRex(dst, dstIsByte) || needsRex(src.getBase()) || needsRex(src.getIndex());
+        if (size == WORD) {
+            return needsRex ? 2 : 1;
+        }
+        return size == QWORD || needsRex ? 1 : 0;
+    }
+
     protected boolean mayCrossBoundary(int opStart, int opEnd) {
         return (opStart / JCC_ERRATUM_MITIGATION_BOUNDARY) != ((opEnd - 1) / JCC_ERRATUM_MITIGATION_BOUNDARY) || (opEnd % JCC_ERRATUM_MITIGATION_BOUNDARY) == 0;
     }
 
     private static int bytesUntilBoundary(int pos) {
         return JCC_ERRATUM_MITIGATION_BOUNDARY - (pos % JCC_ERRATUM_MITIGATION_BOUNDARY);
+    }
+
+    protected boolean ensureWithinBoundary(int opStart) {
+        if (useBranchesWithin32ByteBoundary) {
+            assert !mayCrossBoundary(opStart, position());
+        }
+        return true;
     }
 
     protected final void testAndAlign(int bytesToEmit) {
@@ -2055,6 +2097,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public final void jcc(ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        if (branchTarget == null) {
+            // jump to placeholder
+            jcc(cc, 0, true);
+        } else if (isShortJmp) {
+            jccb(cc, branchTarget);
+        } else {
+            jcc(cc, branchTarget);
+        }
+    }
+
     /**
      * Emit a jmp instruction given a known target address.
      *
@@ -2117,7 +2170,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void jmp(AMD64Address adr) {
-        int bytesToEmit = (needsRex(adr.getBase()) || needsRex(adr.getIndex()) ? 2 : 1) + addressInBytes(adr);
+        int bytesToEmit = getPrefixInBytes(DWORD, adr) + OPCODE_IN_BYTES + addressInBytes(adr);
         testAndAlign(bytesToEmit);
         int beforeJmp = position();
         prefix(adr);
