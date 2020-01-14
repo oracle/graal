@@ -29,7 +29,6 @@ import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -37,29 +36,20 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.RuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 
 @AutomaticFeature
 @Platforms(Platform.AMD64.class)
-class AMD64RuntimeCodeInstallerFeature implements Feature {
+class AMD64RuntimeCodeInstallerPlatformHelperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInstaller.RuntimeCodeInstallerFactory.class, new RuntimeCodeInstaller.RuntimeCodeInstallerFactory() {
-            @Override
-            public RuntimeCodeInstaller newInstance(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps) {
-                return new AMD64RuntimeCodeInstaller(method, compilation, testTrampolineJumps);
-            }
-        });
+        ImageSingletons.add(RuntimeCodeInstallerPlatformHelper.class, new AMD64RuntimeCodeInstallerPlatformHelper());
     }
 }
 
-public class AMD64RuntimeCodeInstaller extends RuntimeCodeInstaller {
-
-    protected AMD64RuntimeCodeInstaller(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps) {
-        super(method, compilation, testTrampolineJumps);
-    }
+public class AMD64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
 
     /**
      * The size for trampoline jumps: jmp [rip+offset]
@@ -69,7 +59,7 @@ public class AMD64RuntimeCodeInstaller extends RuntimeCodeInstaller {
      * the jumps.
      */
     @Override
-    protected int getTrampolineCallSize() {
+    public int getTrampolineCallSize() {
         return 6;
     }
 
@@ -77,7 +67,7 @@ public class AMD64RuntimeCodeInstaller extends RuntimeCodeInstaller {
      * Checking if the pc displacement is within a signed 32 bit range.
      */
     @Override
-    protected boolean targetWithinPCDisplacement(long pcDisplacement) {
+    public boolean targetWithinPCDisplacement(long pcDisplacement) {
         return pcDisplacement == (int) pcDisplacement;
     }
 
@@ -86,7 +76,7 @@ public class AMD64RuntimeCodeInstaller extends RuntimeCodeInstaller {
      * trivial because these instructions need one byte more than the original PC relative calls.
      */
     @Override
-    protected int insertTrampolineCalls(int initialPos, Map<Long, Integer> directTargets) {
+    public int insertTrampolineCalls(byte[] compiledBytes, int initialPos, Map<Long, Integer> directTargets) {
         /*
          * Insert trampoline jumps. Note that this is only a fail-safe, because usually the code
          * should be within a 32-bit address range.
@@ -107,5 +97,10 @@ public class AMD64RuntimeCodeInstaller extends RuntimeCodeInstaller {
             currentPos += 8;
         }
         return currentPos;
+    }
+
+    @Override
+    public void performCodeSynchronization(CodeInfo codeInfo) {
+
     }
 }

@@ -85,7 +85,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Handles the installation of runtime-compiled code, allocating memory for code, data, and metadata
  * and patching call and jump targets, primitive constants, and object constants.
  */
-public abstract class RuntimeCodeInstaller {
+public class RuntimeCodeInstaller {
 
     /** Installs the code in the current isolate, in a single step. */
     public static void install(SharedRuntimeMethod method, CompilationResult compilation, SubstrateInstalledCode installedCode) {
@@ -93,11 +93,7 @@ public abstract class RuntimeCodeInstaller {
     }
 
     public static void install(SharedRuntimeMethod method, CompilationResult compilation, SubstrateInstalledCode installedCode, boolean testTrampolineJumps) {
-        ImageSingletons.lookup(RuntimeCodeInstallerFactory.class).newInstance(method, compilation, testTrampolineJumps).doInstall(installedCode);
-    }
-
-    public abstract static class RuntimeCodeInstallerFactory {
-        public abstract RuntimeCodeInstaller newInstance(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps);
+        new RuntimeCodeInstaller(method, compilation, testTrampolineJumps).doInstall(installedCode);
     }
 
     protected final SharedRuntimeMethod method;
@@ -110,15 +106,6 @@ public abstract class RuntimeCodeInstaller {
     private int constantsOffset;
     private InstalledCodeObserver[] codeObservers;
     protected byte[] compiledBytes;
-
-    /**
-     * Methods which are platform specific.
-     */
-    protected abstract boolean targetWithinPCDisplacement(long pcDisplacement);
-
-    protected abstract int getTrampolineCallSize();
-
-    protected abstract int insertTrampolineCalls(int currentPos, Map<Long, Integer> directTargets);
 
     protected RuntimeCodeInstaller(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps) {
         this.method = method;
@@ -160,7 +147,7 @@ public abstract class RuntimeCodeInstaller {
                     Call call = (Call) infopoint;
                     long targetAddress = getTargetCodeAddress(call);
                     long pcDisplacement = targetAddress - (code.rawValue() + call.pcOffset);
-                    if (!targetWithinPCDisplacement(pcDisplacement)) {
+                    if (!platformHelper().targetWithinPCDisplacement(pcDisplacement)) {
                         needTrampolineJumps = true;
                     }
                     directTargets.add(targetAddress);
@@ -177,7 +164,7 @@ public abstract class RuntimeCodeInstaller {
                 releaseCodeMemory(code, tmpMemorySize);
 
                 // Add space for the actual trampoline jump instructions
-                tmpConstantsOffset = NumUtil.roundUp(codeSize + directTargets.size() * getTrampolineCallSize(), 8);
+                tmpConstantsOffset = NumUtil.roundUp(codeSize + directTargets.size() * platformHelper().getTrampolineCallSize(), 8);
                 // Add space for the target addresses
                 // (which are referenced from the jump instructions)
                 tmpConstantsOffset = NumUtil.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
@@ -237,7 +224,7 @@ public abstract class RuntimeCodeInstaller {
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
         CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
         doPrepareInstall(adjuster, codeInfo);
-        doInstallPrepared(codeInfo, installedCode);
+        doInstallPrepared(method, codeInfo, installedCode);
     }
 
     protected void doPrepareInstall(ReferenceAdjuster adjuster, CodeInfo codeInfo) {
@@ -291,16 +278,7 @@ public abstract class RuntimeCodeInstaller {
         compilation = null;
     }
 
-    /**
-     * Method to enable platforms to perform any needed operations before code becomes visible.
-     *
-     * @param codeInfo the new code to be installed
-     */
-    protected void performCodeSynchronization(@SuppressWarnings("unused") CodeInfo codeInfo) {
-
-    }
-
-    protected void doInstallPrepared(CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
+    protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
         // The tether is acquired when it is created.
         Object tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
         try {
@@ -313,7 +291,7 @@ public abstract class RuntimeCodeInstaller {
                      * it immediately. So all metadata must be registered at this point.
                      */
                     CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                    performCodeSynchronization(codeInfo);
+                    platformHelper().performCodeSynchronization(codeInfo);
                     installedCode.setAddress(codeStart.rawValue(), method);
                 } catch (Throwable e) {
                     errorBox[0] = e;
@@ -379,7 +357,7 @@ public abstract class RuntimeCodeInstaller {
                 Call call = (Call) infopoint;
                 long targetAddress = getTargetCodeAddress(call);
                 long pcDisplacement = targetAddress - (code.rawValue() + call.pcOffset);
-                if (!targetWithinPCDisplacement(pcDisplacement) || testTrampolineJumps) {
+                if (!platformHelper().targetWithinPCDisplacement(pcDisplacement) || testTrampolineJumps) {
                     /*
                      * In case a trampoline jump is needed we just "call" the trampoline jump at the
                      * end of the code.
@@ -389,20 +367,24 @@ public abstract class RuntimeCodeInstaller {
                     if (trampolineOffset == null) {
                         trampolineOffset = currentPos;
                         directTargets.put(destAddr, trampolineOffset);
-                        currentPos += getTrampolineCallSize();
+                        currentPos += platformHelper().getTrampolineCallSize();
                     }
                     pcDisplacement = trampolineOffset - call.pcOffset;
                 }
-                assert targetWithinPCDisplacement(pcDisplacement) : "target not within pc displacement";
+                assert platformHelper().targetWithinPCDisplacement(pcDisplacement) : "target not within pc displacement";
 
                 // Patch a PC-relative call.
                 patches.get(call.pcOffset).patchCode((int) pcDisplacement, compiledBytes);
             }
         }
         if (directTargets.size() > 0) {
-            currentPos = insertTrampolineCalls(currentPos, directTargets);
+            currentPos = platformHelper().insertTrampolineCalls(compiledBytes, currentPos, directTargets);
         }
         return currentPos;
+    }
+
+    protected static RuntimeCodeInstallerPlatformHelper platformHelper() {
+        return ImageSingletons.lookup(RuntimeCodeInstallerPlatformHelper.class);
     }
 
     private static long getTargetCodeAddress(Call callInfo) {
@@ -432,5 +414,23 @@ public abstract class RuntimeCodeInstaller {
 
     protected void releaseCodeMemory(Pointer start, long size) {
         RuntimeCodeInfoAccess.releaseCodeMemory((CodePointer) start, WordFactory.unsigned(size));
+    }
+
+    /**
+     * Methods which are platform specific.
+     */
+    public interface RuntimeCodeInstallerPlatformHelper {
+        boolean targetWithinPCDisplacement(long pcDisplacement);
+
+        int getTrampolineCallSize();
+
+        int insertTrampolineCalls(byte[] compiledBytes, int currentPos, Map<Long, Integer> directTargets);
+
+        /**
+         * Method to enable platforms to perform any needed operations before code becomes visible.
+         *
+         * @param codeInfo the new code to be installed
+         */
+        void performCodeSynchronization(CodeInfo codeInfo);
     }
 }

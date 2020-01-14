@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,33 +43,22 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.RuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 
 import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)
-class AArch64RuntimeCodeInstallerFeature implements Feature {
+class AArch64RuntimeCodeInstallerPlatformHelperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInstaller.RuntimeCodeInstallerFactory.class, new RuntimeCodeInstaller.RuntimeCodeInstallerFactory() {
-            @Override
-            public RuntimeCodeInstaller newInstance(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps) {
-                return new AArch64RuntimeCodeInstaller(method, compilation, testTrampolineJumps);
-            }
-        });
+        ImageSingletons.add(RuntimeCodeInstallerPlatformHelper.class, new AArch64RuntimeCodeInstallerPlatformHelper());
     }
 }
 
-public class AArch64RuntimeCodeInstaller extends RuntimeCodeInstaller {
-
-    protected AArch64RuntimeCodeInstaller(SharedRuntimeMethod method, CompilationResult compilation, boolean testTrampolineJumps) {
-        super(method, compilation, testTrampolineJumps);
-    }
-
+public class AArch64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
     /**
      * The size for trampoline jumps. The sequence of instructions is:
      * <ul>
@@ -85,7 +73,7 @@ public class AArch64RuntimeCodeInstaller extends RuntimeCodeInstaller {
      * after the trampolines.
      */
     @Override
-    protected int getTrampolineCallSize() {
+    public int getTrampolineCallSize() {
         return 12;
     }
 
@@ -93,7 +81,7 @@ public class AArch64RuntimeCodeInstaller extends RuntimeCodeInstaller {
      * Checking if the pc displacement is within a signed 28 bit range.
      */
     @Override
-    protected boolean targetWithinPCDisplacement(long pcDisplacement) {
+    public boolean targetWithinPCDisplacement(long pcDisplacement) {
         assert (pcDisplacement & 0x3) == 0 : "Immediate has to be half word aligned";
         VMError.guarantee((pcDisplacement & 0x3) == 0, "Immediate has to be half word aligned");
         return NumUtil.isSignedNbit(28, pcDisplacement);
@@ -137,10 +125,7 @@ public class AArch64RuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     @Override
-    protected int insertTrampolineCalls(int initialPos, Map<Long, Integer> directTargets) {
-        /*
-         * Insert trampoline jumps.
-         */
+    public int insertTrampolineCalls(byte[] compiledBytes, int initialPos, Map<Long, Integer> directTargets) {
         int currentPos = NumUtil.roundUp(initialPos, 8);
         ByteOrder byteOrder = ConfigurationValues.getTarget().arch.getByteOrder();
         ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(byteOrder);
@@ -165,7 +150,7 @@ public class AArch64RuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     @Override
-    protected void performCodeSynchronization(CodeInfo codeInfo) {
+    public void performCodeSynchronization(CodeInfo codeInfo) {
         CodeSynchronizationOperations.clearCache(CodeInfoAccess.getCodeStart(codeInfo).rawValue(), CodeInfoAccess.getCodeSize(codeInfo).rawValue());
         VMThreads.ActionOnTransitionToJavaSupport.requestAllThreadsSynchronizeCode();
     }
