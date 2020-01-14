@@ -105,7 +105,7 @@ public interface MethodRef {
      * 
      * @return the byte array for the bytecode of the method
      */
-    byte[] getCode();
+    byte[] getOriginalCode();
 
     /**
      * Returns all declared parameter types of the method.

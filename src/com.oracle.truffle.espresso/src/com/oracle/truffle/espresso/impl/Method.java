@@ -260,6 +260,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return codeAttribute.getCode();
     }
 
+    public byte[] getOriginalCode() {
+        return codeAttribute.getOriginalCode();
+    }
+
     public CodeAttribute getCodeAttribute() {
         return codeAttribute;
     }

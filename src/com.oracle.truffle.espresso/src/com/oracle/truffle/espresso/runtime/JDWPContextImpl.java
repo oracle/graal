@@ -569,7 +569,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (frameBCI[0] != -1) {
                 int bci = frameBCI[0];
                 Method method = espressoRootNode.getMethod();
-                BytecodeStream bs = new BytecodeStream(method.getCode());
+                BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
                 LineNumberTable lineNumberTable = method.getLineNumberTable();
                 if (lineNumberTable == LineNumberTable.EMPTY) {
                     return false;
@@ -582,6 +582,8 @@ public final class JDWPContextImpl implements JDWPContext {
                 if (nextLine != Integer.MAX_VALUE) {
                     end = (int) lineNumberTable.getBCI(nextLine);
                 }
+                // don't check the current opcode, since this is the invoke
+                bci = bs.nextBCI(bci);
 
                 while (bci < end) {
                     int opcode = bs.currentBC(bci);

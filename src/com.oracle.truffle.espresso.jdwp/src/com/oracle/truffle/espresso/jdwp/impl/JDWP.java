@@ -1327,7 +1327,7 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                byte[] code = method.getCode();
+                byte[] code = method.getOriginalCode();
 
                 reply.writeInt(code.length);
                 reply.writeByteArray(code);
