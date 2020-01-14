@@ -75,6 +75,7 @@ public @interface HotSpotToSVM {
         IsBasicDumpEnabled,
         IsDumpChannelOpen,
         Log,
+        NewCompiler,
         OpenCompilation,
         OpenDebugContext,
         OpenDebugContextScope,

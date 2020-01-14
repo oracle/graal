@@ -53,6 +53,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsBasicDumpEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsDumpChannelOpen;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Log;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContextScope;
@@ -80,8 +81,11 @@ final class HotSpotToSVMCalls {
     @HotSpotToSVM(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId);
 
+    @HotSpotToSVM(NewCompiler)
+    static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
+
     @HotSpotToSVM(InitializeCompiler)
-    static native long initializeCompiler(long isolateThreadId, long truffleRuntimeHandle);
+    static native void initializeCompiler(long isolateThreadId, long compilerHandle);
 
     @HotSpotToSVM(GetInitialOptions)
     static native byte[] getInitialOptions(long isolateThreadId, long truffleRuntimeHandle);

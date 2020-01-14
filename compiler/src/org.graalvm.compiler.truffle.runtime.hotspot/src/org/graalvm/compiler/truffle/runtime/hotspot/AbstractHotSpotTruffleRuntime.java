@@ -230,6 +230,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         if (!truffleCompilerInitialized) {
             try {
                 truffleCompiler = newTruffleCompiler();
+                truffleCompiler.initialize();
             } catch (Throwable e) {
                 // This should never happen so report it (once)
                 log(printStackTraceToString(e));

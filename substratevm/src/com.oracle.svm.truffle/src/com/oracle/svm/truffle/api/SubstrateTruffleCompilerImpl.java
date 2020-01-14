@@ -77,7 +77,8 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     }
 
     @Override
-    public void initializeAtRuntime() {
+    public void initialize() {
+        super.initialize();
         SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(getBackend());
     }
 

@@ -119,6 +119,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final TrufflePostCodeInstallationTaskFactory codeInstallationTaskFactory;
+    private volatile boolean checkedDeprecatedOptionsUsage;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -266,6 +267,22 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e);
+            }
+        }
+    }
+
+    @Override
+    public void initialize() {
+        if (!checkedDeprecatedOptionsUsage) {
+            boolean doCheck = false;
+            synchronized (this) {
+                if (!checkedDeprecatedOptionsUsage) {
+                    checkedDeprecatedOptionsUsage = true;
+                    doCheck = Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION"));
+                }
+            }
+            if (doCheck) {
+                TruffleCompilerOptions.checkDeprecation();
             }
         }
     }
