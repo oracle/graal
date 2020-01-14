@@ -181,11 +181,9 @@ public class GraalCompiler {
             }
             if (crashLabel == null) {
                 ResolvedJavaMethod method = graph.method();
-                MethodFilter[] filters = MethodFilter.parse(methodPattern);
-                for (MethodFilter filter : filters) {
-                    if (filter.matches(method)) {
-                        crashLabel = method.format("%H.%n(%p)");
-                    }
+                MethodFilter filter = MethodFilter.parse(methodPattern);
+                if (filter.matches(method)) {
+                    crashLabel = method.format("%H.%n(%p)");
                 }
             }
             if (crashLabel != null) {

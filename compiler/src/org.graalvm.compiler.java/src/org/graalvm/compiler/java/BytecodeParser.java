@@ -950,8 +950,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         String filterValue = DebugOptions.MethodFilter.getValue(options);
         if (filterValue != null) {
-            MethodFilter[] filters = MethodFilter.parse(filterValue);
-            if (!MethodFilter.matches(filters, tmethod)) {
+            MethodFilter filter = MethodFilter.parse(filterValue);
+            if (!filter.matches(tmethod)) {
                 return 0;
             }
         }

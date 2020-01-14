@@ -1,12 +1,18 @@
-Pattern for filtering debug scope output based on method context.
-The syntax for a pattern is:
+Pattern for matching methods. The syntax for a pattern is:
 
   SourcePatterns = SourcePattern ["," SourcePatterns] .
-  SourcePattern = [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .
+  SourcePattern = [ "~" ] [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .
   Parameter = Class | "int" | "long" | "float" | "double" | "short" | "char" | "boolean" .
   Class = { package "." } class .
  
 Glob pattern matching (*, ?) is allowed in all parts of the source pattern.
+The "~" prefix negates the pattern.
+
+Positive patterns are joined by an "or" operator: "A,B" matches anything
+matched by "A" or "B". Negative patterns are joined by "and not": "~A,~B"
+matches anything not matched by "A" and not matched by "B". "A,~B,~C,D"
+matches anything matched by "A" or "D" and not matched by "B" and not
+matched by "C".
 
 Examples of method filters:
 --------- 
@@ -38,3 +44,15 @@ Examples of method filters:
   arraycopy,toString
  
   Matches all methods named "arraycopy" or "toString", meaning that ',' acts as an or operator.
+---------
+  java.util.*.*.,~java.util.*Array*.*
+
+  Matches all methods in the package "java.util" except for classes that
+  have "Array" in their name.
+  The following simpler pattern is equivalent:
+  java.util.*.*.,~*Array*.*
+---------
+  ~java.util.*.*
+
+  Matches all methods in all classes in all packages except for anything in
+  the "java.util" package.

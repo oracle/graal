@@ -88,7 +88,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                     asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
     };
     private final Instrumentation instrumentation;
-    protected final MethodFilter[] methodFilter;
+    protected final MethodFilter methodFilter;
     protected final SnippetReflectionProvider snippetReflection;
 
     public InstrumentPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
@@ -96,7 +96,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
-            methodFilter = new MethodFilter[0];
+            methodFilter = MethodFilter.matchNothing();
         }
         this.snippetReflection = snippetReflection;
         this.instrumentation = instrumentation;
@@ -195,10 +195,10 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
          * we discriminate nodes by their inlining site, or only by the method in which they were
          * defined.
          */
-        private static String filterAndEncode(MethodFilter[] methodFilter, Node node, InstrumentPhase phase) {
+        private static String filterAndEncode(MethodFilter methodFilter, Node node, InstrumentPhase phase) {
             NodeSourcePosition pos = node.getNodeSourcePosition();
             if (pos != null) {
-                if (!MethodFilter.matches(methodFilter, pos.getMethod())) {
+                if (!methodFilter.matches(pos.getMethod())) {
                     return null;
                 }
                 if (phase.instrumentPerInlineSite(node.getOptions())) {
@@ -340,7 +340,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        public synchronized Point getOrCreatePoint(MethodFilter[] methodFilter, Node n, InstrumentPhase phase) {
+        public synchronized Point getOrCreatePoint(MethodFilter methodFilter, Node n, InstrumentPhase phase) {
             String key = filterAndEncode(methodFilter, n, phase);
             if (key == null) {
                 return null;
