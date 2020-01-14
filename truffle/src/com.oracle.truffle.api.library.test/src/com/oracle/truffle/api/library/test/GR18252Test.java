@@ -97,6 +97,28 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
         }
     }
 
+    public static enum Foobar {
+
+        FOO,
+        BAR;
+
+        @ExportLibrary(value = ALibrary.class, receiverType = Data.class)
+        static class AMessages2 {
+
+            @ExportMessage
+            public static boolean is(Data receiver,
+                            @Shared("profile") @Cached BranchProfile profile) {
+                return false;
+            }
+
+            @ExportMessage
+            public static Object get(Data receiver,
+                            @Shared("profile") @Cached BranchProfile profile) {
+                return null;
+            }
+        }
+    }
+
     @ExportLibrary(value = ALibrary.class, receiverType = Data.class)
     static class AMessages {
 
