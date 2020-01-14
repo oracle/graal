@@ -491,11 +491,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private static final int OPCODE_IN_BYTES = 1;
     private static final int MODRM_IN_BYTES = 1;
 
-    private static final boolean needsRex(Register src, boolean srcIsByte) {
+    private static boolean needsRex(Register src, boolean srcIsByte) {
         return srcIsByte ? src.encoding >= 4 : needsRex(src);
     }
 
-    private static final int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte) {
+    private static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte) {
         boolean needsRex = needsRex(dst, dstIsByte);
         if (size == WORD) {
             return needsRex ? 2 : 1;
@@ -503,7 +503,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return size == QWORD || needsRex ? 1 : 0;
     }
 
-    private static final int getPrefixInBytes(OperandSize size, AMD64Address src) {
+    private static int getPrefixInBytes(OperandSize size, AMD64Address src) {
         boolean needsRex = needsRex(src.getBase()) || needsRex(src.getIndex());
         if (size == WORD) {
             return needsRex ? 2 : 1;
@@ -511,7 +511,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return size == QWORD || needsRex ? 1 : 0;
     }
 
-    private static final int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, Register src, boolean srcIsByte) {
+    private static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, Register src, boolean srcIsByte) {
         boolean needsRex = needsRex(dst, dstIsByte) || needsRex(src, srcIsByte);
         if (size == WORD) {
             return needsRex ? 2 : 1;
@@ -519,7 +519,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return size == QWORD || needsRex ? 1 : 0;
     }
 
-    private static final int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, AMD64Address src) {
+    private static int getPrefixInBytes(OperandSize size, Register dst, boolean dstIsByte, AMD64Address src) {
         boolean needsRex = needsRex(dst, dstIsByte) || needsRex(src.getBase()) || needsRex(src.getIndex());
         if (size == WORD) {
             return needsRex ? 2 : 1;
@@ -527,8 +527,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return size == QWORD || needsRex ? 1 : 0;
     }
 
-    public final void testAndJcc(OperandSize size, Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MIOp op = AMD64MIOp.TEST;
+    private void applyMIOpAndJcc(AMD64MIOp op, OperandSize size, Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         final int bytesToEmit = getPrefixInBytes(size, src, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES + op.immediateSize(size);
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
@@ -538,12 +537,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
     }
 
-    public final void testlAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        testAndJcc(DWORD, src, imm32, cc, branchTarget, isShortJmp);
-    }
-
-    public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
-        final AMD64MIOp op = AMD64MIOp.TEST;
+    private void applyMIOpAndJcc(AMD64MIOp op, OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb,
+                    LIRFrameState state) {
         final int bytesToEmit = getPrefixInBytes(size, src) + OPCODE_IN_BYTES + addressInBytes(src) + op.immediateSize(size);
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
@@ -556,8 +551,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
     }
 
-    public final int testAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64RMOp op = AMD64RMOp.TEST;
+    private int applyRMOpAndJcc(AMD64RMOp op, OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
@@ -569,16 +563,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return beforeJcc;
     }
 
-    public final void testlAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        testAndJcc(DWORD, src1, src2, cc, branchTarget, isShortJmp);
-    }
-
-    public final int testqAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return testAndJcc(QWORD, src1, src2, cc, branchTarget, isShortJmp);
-    }
-
-    public final void testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
-        final AMD64RMOp op = AMD64RMOp.TEST;
+    private int applyRMOpAndJcc(AMD64RMOp op, OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp,
+                    CompilationResultBuilder crb, LIRFrameState state) {
         final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2) + OPCODE_IN_BYTES + addressInBytes(src2);
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
@@ -586,35 +572,62 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             crb.recordImplicitException(position(), state);
         }
         op.emit(this, size, src1, src2);
+        final int beforeJcc = position();
+        assert beforeFusedPair + bytesToEmit == beforeJcc;
+        jcc(cc, branchTarget, isShortJmp);
+        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        return beforeJcc;
+    }
+
+    public void applyMOpAndJcc(AMD64MOp op, OperandSize size, Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        final int bytesToEmit = getPrefixInBytes(size, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
+        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
+        final int beforeFusedPair = position();
+        op.emit(this, size, dst);
         assert beforeFusedPair + bytesToEmit == position();
         jcc(cc, branchTarget, isShortJmp);
         assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+    }
+
+    public final void testAndJcc(OperandSize size, Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp);
+    }
+
+    public final void testlAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMIOpAndJcc(AMD64MIOp.TEST, DWORD, src, imm32, cc, branchTarget, isShortJmp);
+    }
+
+    public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
+        applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp, crb, state);
+    }
+
+    public final void testAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyRMOpAndJcc(AMD64RMOp.TEST, size, src1, src2, cc, branchTarget, isShortJmp);
+    }
+
+    public final void testlAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyRMOpAndJcc(AMD64RMOp.TEST, DWORD, src1, src2, cc, branchTarget, isShortJmp);
+    }
+
+    public final int testqAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        return applyRMOpAndJcc(AMD64RMOp.TEST, QWORD, src1, src2, cc, branchTarget, isShortJmp);
+    }
+
+    public final void testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
+        applyRMOpAndJcc(AMD64RMOp.TEST, size, src1, src2, cc, branchTarget, isShortJmp, crb, state);
     }
 
     public final void testbAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64RMOp op = AMD64RMOp.TESTB;
-        final int bytesToEmit = getPrefixInBytes(OperandSize.BYTE, src1, op.dstIsByte, src2, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, OperandSize.BYTE, src1, src2);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyRMOpAndJcc(AMD64RMOp.TESTB, OperandSize.BYTE, src1, src2, cc, branchTarget, isShortJmp);
     }
 
     public final void testbAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64RMOp op = AMD64RMOp.TESTB;
-        final int bytesToEmit = getPrefixInBytes(OperandSize.BYTE, src1, op.dstIsByte, src2) + OPCODE_IN_BYTES + addressInBytes(src2);
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, OperandSize.BYTE, src1, src2);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyRMOpAndJcc(AMD64RMOp.TESTB, OperandSize.BYTE, src1, src2, cc, branchTarget, isShortJmp, null, null);
     }
 
     public final int cmpAndJcc(OperandSize size, Register src, int imm32, VMConstant inlinedConstant, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb) {
         final AMD64MIOp op = CMP.getMIOpcode(size, isByte(imm32));
+
         final int bytesToEmit = getPrefixInBytes(size, src, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES + op.immediateSize(size);
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
@@ -657,49 +670,28 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
     }
 
-    public final int cmpAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64RMOp op = CMP.getRMOpcode(size);
-        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, size, src1, src2);
-        final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
-        return beforeJcc;
+    public final void cmpAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyRMOpAndJcc(CMP.getRMOpcode(size), size, src1, src2, cc, branchTarget, isShortJmp);
     }
 
     public final void cmplAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        cmpAndJcc(DWORD, src1, src2, cc, branchTarget, isShortJmp);
+        applyRMOpAndJcc(CMP.getRMOpcode(DWORD), DWORD, src1, src2, cc, branchTarget, isShortJmp);
     }
 
     public final int cmpqAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return cmpAndJcc(QWORD, src1, src2, cc, branchTarget, isShortJmp);
+        return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp);
     }
 
-    public final int cmpAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
-        final AMD64RMOp op = CMP.getRMOpcode(size);
-        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2) + OPCODE_IN_BYTES + addressInBytes(src2);
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        if (crb != null && state != null) {
-            crb.recordImplicitException(position(), state);
-        }
-        op.emit(this, size, src1, src2);
-        final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
-        return beforeJcc;
+    public final void cmpAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, CompilationResultBuilder crb, LIRFrameState state) {
+        applyRMOpAndJcc(CMP.getRMOpcode(size), size, src1, src2, cc, branchTarget, isShortJmp, crb, state);
     }
 
     public final void cmplAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        cmpAndJcc(DWORD, src1, src2, cc, branchTarget, isShortJmp, null, null);
+        applyRMOpAndJcc(CMP.getRMOpcode(DWORD), DWORD, src1, src2, cc, branchTarget, isShortJmp, null, null);
     }
 
     public final int cmpqAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return cmpAndJcc(QWORD, src1, src2, cc, branchTarget, isShortJmp, null, null);
+        return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp, null, null);
     }
 
     public final void cmpAndJcc(OperandSize size, Register src1, Constant src2, ConditionFlag cc, Label branchTarget, CompilationResultBuilder crb) {
@@ -716,85 +708,34 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void andlAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MIOp op = AND.getMIOpcode(DWORD, isByte(imm32));
-        final int bytesToEmit = getPrefixInBytes(DWORD, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES + op.immediateSize(DWORD);
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, DWORD, dst, imm32);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyMIOpAndJcc(AND.getMIOpcode(DWORD, isByte(imm32)), DWORD, dst, imm32, cc, branchTarget, isShortJmp);
     }
 
     public final void addqAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MIOp op = ADD.getMIOpcode(QWORD, isByte(imm32));
-        final int bytesToEmit = getPrefixInBytes(QWORD, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES + op.immediateSize(QWORD);
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, QWORD, dst, imm32);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
-    }
-
-    public final void subAndJcc(OperandSize size, Register dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64RMOp op = SUB.getRMOpcode(size);
-        final int bytesToEmit = getPrefixInBytes(size, dst, op.dstIsByte, src, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, size, dst, src);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyMIOpAndJcc(ADD.getMIOpcode(QWORD, isByte(imm32)), QWORD, dst, imm32, cc, branchTarget, isShortJmp);
     }
 
     public final void sublAndJcc(Register dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        subAndJcc(DWORD, dst, src, cc, branchTarget, isShortJmp);
+        applyRMOpAndJcc(SUB.getRMOpcode(DWORD), DWORD, dst, src, cc, branchTarget, isShortJmp);
     }
 
     public final void subqAndJcc(Register dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        subAndJcc(QWORD, dst, src, cc, branchTarget, isShortJmp);
-    }
-
-    public final void subAndJcc(OperandSize size, Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MIOp op = SUB.getMIOpcode(size, isByte(imm32));
-        final int bytesToEmit = getPrefixInBytes(size, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES + op.immediateSize(size);
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, size, dst, imm32);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyRMOpAndJcc(SUB.getRMOpcode(QWORD), QWORD, dst, src, cc, branchTarget, isShortJmp);
     }
 
     public final void sublAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        subAndJcc(DWORD, dst, imm32, cc, branchTarget, isShortJmp);
+        applyMIOpAndJcc(SUB.getMIOpcode(DWORD, isByte(imm32)), DWORD, dst, imm32, cc, branchTarget, isShortJmp);
     }
 
     public final void subqAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        subAndJcc(QWORD, dst, imm32, cc, branchTarget, isShortJmp);
+        applyMIOpAndJcc(SUB.getMIOpcode(QWORD, isByte(imm32)), QWORD, dst, imm32, cc, branchTarget, isShortJmp);
     }
 
     public final void incqAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MOp op = INC;
-        final int bytesToEmit = getPrefixInBytes(QWORD, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, QWORD, dst);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyMOpAndJcc(INC, QWORD, dst, cc, branchTarget, isShortJmp);
     }
 
     public final void decqAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        final AMD64MOp op = DEC;
-        final int bytesToEmit = getPrefixInBytes(QWORD, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
-        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
-        final int beforeFusedPair = position();
-        op.emit(this, QWORD, dst);
-        assert beforeFusedPair + bytesToEmit == position();
-        jcc(cc, branchTarget, isShortJmp);
-        assert useBranchesWithin32ByteBoundary && !mayCrossBoundary(beforeFusedPair, position());
+        applyMOpAndJcc(DEC, QWORD, dst, cc, branchTarget, isShortJmp);
     }
-
 }
