@@ -115,7 +115,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isValidThreadGroup(Object threadGroup) {
-        return context.isValidThreadGroup(threadGroup);
+        if (threadGroup instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) threadGroup;
+            return context.getMeta().ThreadGroup.isAssignableFrom(staticObject.getKlass());
+        } else {
+            return false;
+        }
     }
 
     @Override

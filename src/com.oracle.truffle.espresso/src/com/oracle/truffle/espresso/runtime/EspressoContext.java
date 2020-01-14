@@ -625,12 +625,6 @@ public final class EspressoContext {
         return threadManager.getMainThread();
     }
 
-    @SuppressWarnings("static-method")
-    public boolean isValidThreadGroup(@SuppressWarnings("unused") Object threadGroup) {
-        // TODO(Gregersen) - validate if this is a valid threadgroup
-        return true;
-    }
-
     public StaticObject getMainThreadGroup() {
         return mainThreadGroup;
     }
