@@ -134,9 +134,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
     public abstract static class LLVMFree extends LLVMMemoryIntrinsic implements LLVMMemoryOpNode {
 
         @Specialization(guards = "address.isNull()")
-        @SuppressWarnings("unused")
-        protected Object doNull(LLVMNativePointer address,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+        protected Object doNull(@SuppressWarnings("unused") LLVMNativePointer address) {
             // nothing to do
             return null;
         }
