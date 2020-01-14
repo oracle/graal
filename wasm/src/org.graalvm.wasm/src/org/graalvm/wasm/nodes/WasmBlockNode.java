@@ -337,10 +337,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return startOffset;
     }
 
-    public Node[] callNodeTable() {
-        return callNodeTable;
-    }
-
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public TargetOffset execute(WasmContext context, VirtualFrame frame) {
@@ -598,6 +594,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
                     // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT instruction.
+                    // TODO: Add validation that this is really zero.
                     offset += 1;
 
                     // Validate that the function type matches the expected type.

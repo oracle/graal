@@ -360,11 +360,15 @@ public class BinaryParser extends BinaryStreamParser {
         initCodeEntryLocals(funcIndex);
 
         /* Read (parse) and abstractly interpret the code entry */
-        byte returnTypeId = module.symbolTable().function(funcIndex).returnType();
+        final WasmFunction function = module.symbolTable().function(funcIndex);
+        final byte returnTypeId = function.returnType();
+        final int returnTypeLength = function.returnTypeLength();
         ExecutionState state = new ExecutionState();
         state.pushStackState(0);
         WasmBlockNode bodyBlock = readBlockBody(context, rootNode.codeEntry(), state, returnTypeId, returnTypeId);
         state.popStackState();
+        Assert.assertIntEqual(state.stackSize(), returnTypeLength,
+                        "Stack size must match the return type length at the function end");
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
@@ -446,7 +450,8 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.BLOCK: {
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
-                    state.pushStackState(state.stackSize());
+                    int stackSize = state.stackSize();
+                    state.pushStackState(stackSize);
                     WasmBlockNode nestedBlock = readBlock(context, codeEntry, state);
                     nestedControlTable.add(nestedBlock);
                     state.popStackState();
@@ -515,9 +520,9 @@ public class BinaryParser extends BinaryStreamParser {
                     int numLabels = readVectorLength();
                     // We need to save three tables here, to maintain the mapping target -> state
                     // mapping:
+                    // - the length of the return type
                     // - a table containing the branch targets for the instruction
                     // - a table containing the stack state for each corresponding branch target
-                    // - the length of the return type
                     // We encode this in a single array.
                     int[] branchTable = new int[2 * (numLabels + 1) + 1];
                     int returnLength = -1;
