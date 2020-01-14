@@ -263,14 +263,14 @@ final class Runner {
         @ExplodeLoop
         private void doInitSymbols(LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections) {
             for (int i = 0; i < initSymbols.length; i++) {
-                initSymbols[i].initializeSymbolTable(ctx);
-            }
-
-            for (int i = 0; i < initSymbols.length; i++) {
                 if (initSymbols[i].shouldInitialize(ctx)) {
                     shouldInit.set(i);
-                    roSections[i] = initSymbols[i].execute(ctx);
+                    initSymbols[i].initializeSymbolTable(ctx);
                 }
+            }
+
+            for (int i = shouldInit.nextSetBit(0); i >= 0; i = shouldInit.nextSetBit(i+1)) {
+                roSections[i] = initSymbols[i].execute(ctx);
             }
         }
 
@@ -532,6 +532,7 @@ final class Runner {
         @SuppressWarnings("unchecked")
         public void initializeSymbolTable(LLVMContext context) {
             context.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
+            context.registerScope(fileScope);
         }
 
         public LLVMPointer execute(LLVMContext ctx) {
@@ -547,10 +548,7 @@ final class Runner {
             if (allocRwSection != null) {
                 ctx.registerGlobals(rwBase, nodeFactory);
             }
-
             bindUnresolvedSymbols(ctx);
-            ctx.registerScope(fileScope);
-
             return roBase; // needed later to apply memory protection after initialization
         }
 
