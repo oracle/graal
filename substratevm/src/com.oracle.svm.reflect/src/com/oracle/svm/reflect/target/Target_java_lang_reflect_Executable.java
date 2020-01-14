@@ -104,6 +104,13 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     @Substitute
+    @SuppressWarnings({"unused", "hiding"})
+    Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
+        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
+        return ReflectionHelper.requireNonNull(holder.parseParameterAnnotations(parameterAnnotations), "Parameter annotations must be computed during native image generation");
+    }
+
+    @Substitute
     public AnnotatedType getAnnotatedReceiverType() {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         /* The annotatedReceiverType can be null. */
