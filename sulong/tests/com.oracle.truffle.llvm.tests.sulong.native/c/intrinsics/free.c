@@ -35,7 +35,7 @@ typedef struct pointstruct {
 } Point;
 
 Point *createPoint(int px, int py) {
-  Point *p = (Point *)malloc(sizeof(Point *));
+  Point *p = (Point *)malloc(sizeof(Point));
   p->x = px;
   p->y = py;
   return p;
