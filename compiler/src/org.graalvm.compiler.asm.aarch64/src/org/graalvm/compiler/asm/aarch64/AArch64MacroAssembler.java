@@ -2253,11 +2253,28 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         @Override
         public void patch(int codePos, int relative, byte[] code) {
-            int shiftSize = srcSize == 64 ? 3 : 2; // srcSize is either 64 or 32
+            int shiftSize = 0;
+            switch (srcSize) {
+                case 64:
+                    shiftSize = 3;
+                    break;
+                case 32:
+                    shiftSize = 2;
+                    break;
+                case 16:
+                    shiftSize = 1;
+                    break;
+                case 8:
+                    shiftSize = 0;
+                    break;
+                default:
+                    assert false : "srcSize must be either 8, 16, 32, or 64";
+            }
+
             int pos = instructionPosition;
 
             int targetAddress = pos + relative;
-            assert (targetAddress & ((1 << shiftSize) - 1)) == 0 : "shift bits must be zero";
+            assert shiftSize == 0 || (targetAddress & ((1 << shiftSize) - 1)) == 0 : "shift bits must be zero";
 
             int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
 
