@@ -92,4 +92,8 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
 
     // JDK-8220049
     boolean threadLocalHandshakes = getFlag("ThreadLocalHandshakes", Boolean.class, false);
+
+    // JDK-8236224
+    boolean compactFields = getFlag("CompactFields", Boolean.class);
+    int fieldsAllocationStyle = getFlag("FieldsAllocationStyle", Integer.class);
 }

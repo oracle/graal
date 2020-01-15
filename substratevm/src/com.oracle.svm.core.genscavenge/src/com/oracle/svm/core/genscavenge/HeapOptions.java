@@ -47,9 +47,6 @@ public class HeapOptions {
     public static final HostedOptionKey<Boolean> TraceObjectPromotion = new HostedOptionKey<>(false);
 
     @Option(help = "Verify the heap before and after each collection.")//
-    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
-
-    @Option(help = "Verify the heap before and after each collection.")//
     public static final RuntimeOptionKey<Boolean> HeapVerificationFailureIsFatal = new RuntimeOptionKey<>(true);
 
     @Option(help = "Verify the heap before each collection.")//

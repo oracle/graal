@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -259,6 +259,8 @@ public abstract class VMThreads {
             nextTL.set(thread, head);
             head = thread;
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
+            /* On the initial transition to java code this thread should be synchronized. */
+            ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
             StatusSupport.setStatusNative(thread);
             VMThreads.THREAD_LIST_CONDITION.broadcast();
         } finally {
@@ -552,6 +554,7 @@ public abstract class VMThreads {
         public static final int STATUS_IN_VM = STATUS_IN_NATIVE + 1;
         private static final int MAX_STATUS = STATUS_IN_VM;
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static String statusToString(int status, boolean safepointsDisabled) {
             switch (status) {
                 case STATUS_CREATED:
@@ -572,6 +575,7 @@ public abstract class VMThreads {
         /* Access methods to treat VMThreads.statusTL as a volatile int. */
 
         /** For debugging. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static String getStatusString(IsolateThread vmThread) {
             return statusToString(statusTL.getVolatile(vmThread), isStatusIgnoreSafepoints(vmThread));
         }
@@ -611,6 +615,7 @@ public abstract class VMThreads {
             return (statusTL.getVolatile() == STATUS_IN_VM);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusNative() {
             statusTL.setVolatile(STATUS_IN_NATIVE);
         }
@@ -654,6 +659,10 @@ public abstract class VMThreads {
 
         public static void setStatusVM() {
             statusTL.setVolatile(STATUS_IN_VM);
+        }
+
+        public static void setStatusVM(IsolateThread thread) {
+            statusTL.setVolatile(thread, STATUS_IN_VM);
         }
 
         /** A guarded transition from native to another status. */
@@ -705,6 +714,55 @@ public abstract class VMThreads {
                     return StatusSupport.STATUS_IN_VM;
                 default:
                     throw VMError.shouldNotReachHere("Unknown transition type " + transition);
+            }
+        }
+    }
+
+    /**
+     * A thread-local enum conveying any actions needed before thread begins executing Java code.
+     */
+    public static class ActionOnTransitionToJavaSupport {
+
+        /** The actions to be performed. */
+        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt();
+
+        /** The thread does not need to take any action. */
+        private static final int NO_ACTION = 0;
+        /** Code synchronization should be performed due to newly installed code. */
+        private static final int SYNCHRONIZE_CODE = NO_ACTION + 1;
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
+        public static boolean isActionPending() {
+            return actionTL.getVolatile() != NO_ACTION;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
+        public static boolean isSynchronizeCode() {
+            return actionTL.getVolatile() == SYNCHRONIZE_CODE;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
+        public static void clearActions() {
+            actionTL.setVolatile(NO_ACTION);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @ForceFixedRegisterReads
+        public static void setSynchronizeCode(IsolateThread vmThread) {
+            assert StatusSupport.isStatusCreated(vmThread) || VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
+            actionTL.setVolatile(vmThread, SYNCHRONIZE_CODE);
+        }
+
+        public static void requestAllThreadsSynchronizeCode() {
+            final IsolateThread myself = CurrentIsolate.getCurrentThread();
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (myself == vmThread) {
+                    continue;
+                }
+                setSynchronizeCode(vmThread);
             }
         }
     }

@@ -34,6 +34,8 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.getLLVMRealCond;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -64,71 +66,203 @@ public class LLVMIRBuilder {
     private LLVMModuleRef module;
     private LLVMValueRef function;
     private LLVMBuilderRef builder;
+    private LLVMBasicBlockRef currentBlock;
 
     private String functionName;
+    private Map<Integer, LLVMValueRef> compressFunctions;
+    private Map<Integer, LLVMValueRef> nonNullCompressFunctions;
+    private Map<Integer, LLVMValueRef> uncompressFunctions;
+    private Map<Integer, LLVMValueRef> nonNullUncompressFunctions;
     private LLVMValueRef gcRegisterFunction;
+    private LLVMValueRef gcRegisterCompressedFunction;
     private LLVMValueRef atomicObjectXchgFunction;
+    private LLVMValueRef atomicCompressedObjectXchgFunction;
     private LLVMValueRef loadObjectFromUntrackedPointerFunction;
+    private LLVMValueRef loadCompressedObjectFromUntrackedPointerFunction;
 
-    public LLVMIRBuilder(String functionName, LLVMContextRef context) {
+    public LLVMIRBuilder(String functionName, LLVMContextRef context, boolean useCompressedPointers) {
         this.context = context;
         this.functionName = functionName;
 
         this.module = LLVM.LLVMModuleCreateWithNameInContext(functionName, context);
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
 
-        createGCRegisterFunction();
-        createAtomicObjectXchgFunction();
-        createLoadObjectFromUntrackedPointerFunction();
+        if (useCompressedPointers) {
+            compressFunctions = new HashMap<>();
+            nonNullCompressFunctions = new HashMap<>();
+            uncompressFunctions = new HashMap<>();
+            nonNullUncompressFunctions = new HashMap<>();
+        }
+
+        createGCRegisterFunction(useCompressedPointers);
+        createAtomicObjectXchgFunction(useCompressedPointers);
+        createLoadObjectFromUntrackedPointerFunction(useCompressedPointers);
+
     }
 
-    private void createGCRegisterFunction() {
+    private void createGCRegisterFunction(boolean useCompressedPointers) {
         /*
          * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
          * the statepoint emission pass, which tracks live references in the function, doesn't
          * recognize an address space cast (see pointerType()) as declaring a new reference, but it
          * does a function return value.
          */
-        gcRegisterFunction = addFunction(LLVMUtils.GC_REGISTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
-        LLVM.LLVMSetLinkage(gcRegisterFunction, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
-        setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
-
-        LLVMBasicBlockRef block = appendBasicBlock("main", gcRegisterFunction);
-        positionAtEnd(block);
-        LLVMValueRef arg = getParam(gcRegisterFunction, 0);
-        LLVMValueRef ref = buildAddrSpaceCast(arg, objectType());
-        buildRet(ref);
+        gcRegisterFunction = buildGCRegisterFunction(false);
+        if (useCompressedPointers) {
+            gcRegisterCompressedFunction = buildGCRegisterFunction(true);
+        }
     }
 
-    private void createAtomicObjectXchgFunction() {
-        atomicObjectXchgFunction = addFunction(LLVMUtils.ATOMIC_OBJECT_XCHG_FUNCTION_NAME, functionType(objectType(), objectType(), objectType()));
-        LLVM.LLVMSetLinkage(atomicObjectXchgFunction, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(atomicObjectXchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
-        setAttribute(atomicObjectXchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+    private void createAtomicObjectXchgFunction(boolean useCompressedPointers) {
+        atomicObjectXchgFunction = buildAtomicObjectXchgFunction(false);
+        if (useCompressedPointers) {
+            atomicCompressedObjectXchgFunction = buildAtomicObjectXchgFunction(true);
+        }
+    }
 
-        LLVMBasicBlockRef block = appendBasicBlock("main", atomicObjectXchgFunction);
+    private void createLoadObjectFromUntrackedPointerFunction(boolean useCompressedPointers) {
+        /*
+         * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
+         * the statepoint emission pass, which tracks live references in the function, doesn't
+         * recognize an address space cast (see pointerType()) as declaring a new reference, but it
+         * does a function return value.
+         */
+        loadObjectFromUntrackedPointerFunction = buildLoadObjectFromUntrackedPointerFunction(false);
+        if (useCompressedPointers) {
+            loadCompressedObjectFromUntrackedPointerFunction = buildLoadObjectFromUntrackedPointerFunction(true);
+        }
+    }
+
+    private LLVMValueRef buildGCRegisterFunction(boolean compressed) {
+        String funcName = compressed ? LLVMUtils.GC_REGISTER_COMPRESSED_FUNCTION_NAME : LLVMUtils.GC_REGISTER_FUNCTION_NAME;
+        LLVMValueRef func = addFunction(funcName, functionType(objectType(compressed), rawPointerType()));
+        LLVM.LLVMSetLinkage(func, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", func);
         positionAtEnd(block);
-        LLVMValueRef address = getParam(atomicObjectXchgFunction, 0);
-        LLVMValueRef value = getParam(atomicObjectXchgFunction, 1);
+        LLVMValueRef arg = getParam(func, 0);
+        LLVMValueRef ref = buildAddrSpaceCast(arg, objectType(compressed));
+        buildRet(ref);
+
+        return func;
+    }
+
+    private LLVMValueRef buildCompressFunction(int shift) {
+        return buildCompressFunction(false, shift);
+    }
+
+    private LLVMValueRef buildNonNullCompressFunction(int shift) {
+        return buildCompressFunction(true, shift);
+    }
+
+    private LLVMValueRef buildCompressFunction(boolean nonNull, int shift) {
+        LLVMBasicBlockRef previousBlock = currentBlock;
+
+        String funcName = LLVMUtils.COMPRESS_FUNCTION_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
+        LLVMValueRef func = addFunction(funcName, functionType(objectType(true), objectType(false), longType()));
+        LLVM.LLVMSetLinkage(func, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", func);
+        positionAtEnd(block);
+        LLVMValueRef uncompressed = buildPtrToInt(getParam(func, 0), longType());
+        LLVMValueRef heapBase = getParam(func, 1);
+        LLVMValueRef compressed = buildSub(uncompressed, heapBase);
+
+        if (!nonNull) {
+            LLVMValueRef isNull = buildIsNull(uncompressed);
+            compressed = buildSelect(isNull, uncompressed, compressed);
+        }
+
+        if (shift != 0) {
+            compressed = buildShr(compressed, constantInt(shift));
+        }
+
+        compressed = buildIntToPtr(compressed, objectType(true));
+        buildRet(compressed);
+
+        positionAtEnd(previousBlock);
+
+        return func;
+    }
+
+    private LLVMValueRef buildUncompressFunction(int shift) {
+        return buildUncompressFunction(false, shift);
+    }
+
+    private LLVMValueRef buildNonNullUncompressFunction(int shift) {
+        return buildUncompressFunction(true, shift);
+    }
+
+    private LLVMValueRef buildUncompressFunction(boolean nonNull, int shift) {
+        LLVMBasicBlockRef previousBlock = currentBlock;
+
+        String funcName = LLVMUtils.UNCOMPRESS_FUNCTION_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
+        LLVMValueRef func = addFunction(funcName, functionType(objectType(false), objectType(true), longType()));
+        LLVM.LLVMSetLinkage(func, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", func);
+        positionAtEnd(block);
+        LLVMValueRef compressed = buildPtrToInt(getParam(func, 0), longType());
+        LLVMValueRef heapBase = getParam(func, 1);
+
+        if (shift != 0) {
+            compressed = buildShl(compressed, constantInt(shift));
+        }
+
+        LLVMValueRef uncompressed = buildAdd(compressed, heapBase);
+        if (!nonNull) {
+            LLVMValueRef isNull = buildIsNull(compressed);
+            uncompressed = buildSelect(isNull, compressed, uncompressed);
+        }
+
+        uncompressed = buildIntToPtr(uncompressed, objectType(false));
+        buildRet(uncompressed);
+
+        positionAtEnd(previousBlock);
+
+        return func;
+    }
+
+    private LLVMValueRef buildAtomicObjectXchgFunction(boolean compressed) {
+        String funcName = compressed ? LLVMUtils.ATOMIC_COMPRESSED_OBJECT_XCHG_FUNCTION_NAME : LLVMUtils.ATOMIC_OBJECT_XCHG_FUNCTION_NAME;
+        LLVMValueRef func = addFunction(funcName, functionType(objectType(compressed), objectType(false), objectType(compressed)));
+        LLVM.LLVMSetLinkage(func, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", func);
+        positionAtEnd(block);
+        LLVMValueRef address = getParam(func, 0);
+        LLVMValueRef value = getParam(func, 1);
         LLVMValueRef castedValue = buildPtrToInt(value, longType());
         LLVMValueRef ret = buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpXchg, address, castedValue);
-        ret = buildIntToPtr(ret, objectType());
+        ret = buildIntToPtr(ret, objectType(compressed));
         buildRet(ret);
+
+        return func;
     }
 
-    private void createLoadObjectFromUntrackedPointerFunction() {
-        loadObjectFromUntrackedPointerFunction = addFunction(LLVMUtils.LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
-        LLVM.LLVMSetLinkage(loadObjectFromUntrackedPointerFunction, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(loadObjectFromUntrackedPointerFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
-        setAttribute(loadObjectFromUntrackedPointerFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+    private LLVMValueRef buildLoadObjectFromUntrackedPointerFunction(boolean compressed) {
+        String funcName = compressed ? LLVMUtils.LOAD_COMPRESSED_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME : LLVMUtils.LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME;
+        LLVMValueRef func = addFunction(funcName, functionType(objectType(compressed), rawPointerType()));
+        LLVM.LLVMSetLinkage(func, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(func, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
-        LLVMBasicBlockRef block = appendBasicBlock("main", loadObjectFromUntrackedPointerFunction);
+        LLVMBasicBlockRef block = appendBasicBlock("main", func);
         positionAtEnd(block);
-        LLVMValueRef address = getParam(loadObjectFromUntrackedPointerFunction, 0);
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(objectType(), false));
+        LLVMValueRef address = getParam(func, 0);
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(objectType(compressed), false, false));
         LLVMValueRef loadedValue = buildLoad(castedAddress);
         buildRet(loadedValue);
+
+        return func;
     }
 
     public LLVMModuleRef getModule() {
@@ -167,7 +301,7 @@ public class LLVMIRBuilder {
 
     public void addMainFunction(LLVMTypeRef type) {
         this.function = addFunction(functionName, type);
-        LLVM.LLVMSetGC(function, "statepoint-example");
+        LLVM.LLVMSetGC(function, "compressed-pointer");
         setLinkage(function, LLVM.LLVMExternalLinkage);
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noinline");
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noredzone");
@@ -225,15 +359,18 @@ public class LLVMIRBuilder {
      * native callee, and the arguments to the callee.
      */
     @SuppressWarnings("unused")
-    public LLVMValueRef createJNIWrapper(LLVMValueRef callee, long statepointId, int numArgs, int anchorIPOffset, LLVMBasicBlockRef currentBlock) {
+    public LLVMValueRef createJNIWrapper(LLVMValueRef callee, long statepointId, int numArgs, int anchorIPOffset) {
         LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(typeOf(callee));
         String wrapperName = LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType);
 
         LLVMValueRef transitionWrapper = LLVM.LLVMGetNamedFunction(module, wrapperName);
         if (transitionWrapper == null) {
+            LLVMBasicBlockRef previousBlock = currentBlock;
+
             LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
             transitionWrapper = addFunction(wrapperName, wrapperType);
             LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
+            LLVM.LLVMSetGC(transitionWrapper, "compressed-pointer");
             setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
             LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
@@ -258,7 +395,7 @@ public class LLVMIRBuilder {
                 buildRet(ret);
             }
 
-            positionAtEnd(currentBlock);
+            positionAtEnd(previousBlock);
         }
         return transitionWrapper;
     }
@@ -272,18 +409,17 @@ public class LLVMIRBuilder {
     }
 
     void positionAtStart() {
-        LLVMValueRef firstInstruction = LLVM.LLVMGetFirstInstruction(LLVM.LLVMGetFirstBasicBlock(function));
+        LLVMBasicBlockRef firstBlock = LLVM.LLVMGetFirstBasicBlock(function);
+        LLVMValueRef firstInstruction = LLVM.LLVMGetFirstInstruction(firstBlock);
         if (firstInstruction != null) {
-            positionBefore(firstInstruction);
+            LLVM.LLVMPositionBuilderBefore(builder, firstInstruction);
+            currentBlock = firstBlock;
         }
-    }
-
-    private void positionBefore(LLVMValueRef instr) {
-        LLVM.LLVMPositionBuilderBefore(builder, instr);
     }
 
     public void positionAtEnd(LLVMBasicBlockRef block) {
         LLVM.LLVMPositionBuilderAtEnd(builder, block);
+        currentBlock = block;
     }
 
     LLVMValueRef blockTerminator(LLVMBasicBlockRef block) {
@@ -293,10 +429,10 @@ public class LLVMIRBuilder {
     /* Types */
 
     LLVMTypeRef getLLVMStackType(JavaKind kind) {
-        return getLLVMType(kind.getStackKind());
+        return getLLVMType(kind.getStackKind(), false);
     }
 
-    LLVMTypeRef getLLVMType(JavaKind kind) {
+    LLVMTypeRef getLLVMType(JavaKind kind, boolean compressedObjects) {
         switch (kind) {
             case Boolean:
                 return booleanType();
@@ -315,7 +451,7 @@ public class LLVMIRBuilder {
             case Double:
                 return doubleType();
             case Object:
-                return objectType();
+                return objectType(compressedObjects);
             case Void:
                 return voidType();
             case Illegal:
@@ -370,20 +506,21 @@ public class LLVMIRBuilder {
      * at call sites. Regular pointers are not tracked and represent non-java pointers. They are
      * distinguished by the pointer address space they live in (1, resp. 0).
      */
-    public LLVMTypeRef pointerType(LLVMTypeRef type, boolean tracked) {
-        return LLVM.LLVMPointerType(type, pointerAddressSpace(tracked));
+    public LLVMTypeRef pointerType(LLVMTypeRef type, boolean tracked, boolean compressed) {
+        return LLVM.LLVMPointerType(type, pointerAddressSpace(tracked, compressed));
     }
 
-    private static int pointerAddressSpace(boolean tracked) {
-        return tracked ? LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE : LLVMUtils.UNTRACKED_POINTER_ADDRESS_SPACE;
+    private static int pointerAddressSpace(boolean tracked, boolean compressed) {
+        assert tracked || !compressed;
+        return tracked ? (compressed ? LLVMUtils.COMPRESSED_POINTER_ADDRESS_SPACE : LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE) : LLVMUtils.UNTRACKED_POINTER_ADDRESS_SPACE;
     }
 
-    public LLVMTypeRef objectType() {
-        return pointerType(byteType(), true);
+    public LLVMTypeRef objectType(boolean compressed) {
+        return pointerType(byteType(), true, compressed);
     }
 
     public LLVMTypeRef rawPointerType() {
-        return pointerType(byteType(), false);
+        return pointerType(byteType(), false, false);
     }
 
     public LLVMTypeRef arrayType(LLVMTypeRef type, int length) {
@@ -470,7 +607,14 @@ public class LLVMIRBuilder {
     }
 
     private static boolean isTracked(LLVMTypeRef pointerType) {
-        return LLVM.LLVMGetPointerAddressSpace(pointerType) == LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE;
+        int addressSpace = LLVM.LLVMGetPointerAddressSpace(pointerType);
+        return addressSpace == LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE || addressSpace == LLVMUtils.COMPRESSED_POINTER_ADDRESS_SPACE;
+    }
+
+    static boolean isCompressed(LLVMTypeRef pointerType) {
+        int addressSpace = LLVM.LLVMGetPointerAddressSpace(pointerType);
+        assert addressSpace == LLVMUtils.COMPRESSED_POINTER_ADDRESS_SPACE || addressSpace == LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE;
+        return addressSpace == LLVMUtils.COMPRESSED_POINTER_ADDRESS_SPACE;
     }
 
     private static LLVMTypeRef getElementType(LLVMTypeRef pointerType) {
@@ -614,10 +758,10 @@ public class LLVMIRBuilder {
      * code, while unique globals are values created by the LLVM backend, potentially in multiple
      * functions, and are then conflated by the LLVM linker.
      */
-    LLVMValueRef getExternalObject(String name) {
+    LLVMValueRef getExternalObject(String name, boolean compressed) {
         LLVMValueRef val = getGlobal(name);
         if (val == null) {
-            val = LLVM.LLVMAddGlobalInAddressSpace(module, objectType(), name, LLVMUtils.TRACKED_POINTER_ADDRESS_SPACE);
+            val = LLVM.LLVMAddGlobalInAddressSpace(module, objectType(compressed), name, pointerAddressSpace(true, false));
             setLinkage(val, LLVM.LLVMExternalLinkage);
         }
         return val;
@@ -635,7 +779,7 @@ public class LLVMIRBuilder {
     public LLVMValueRef getUniqueGlobal(String name, LLVMTypeRef type, boolean zeroInitialized) {
         LLVMValueRef global = getGlobal(name);
         if (global == null) {
-            global = LLVM.LLVMAddGlobalInAddressSpace(module, type, name, pointerAddressSpace(isObject(type)));
+            global = LLVM.LLVMAddGlobalInAddressSpace(module, type, name, pointerAddressSpace(isObject(type), false));
             if (zeroInitialized) {
                 setInitializer(global, LLVM.LLVMConstNull(type));
             }
@@ -817,7 +961,7 @@ public class LLVMIRBuilder {
         return LLVM.LLVMBuildFCmp(builder, getLLVMRealCond(cond, unordered), a, b, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildSelect(LLVMValueRef condition, LLVMValueRef trueVal, LLVMValueRef falseVal) {
+    public LLVMValueRef buildSelect(LLVMValueRef condition, LLVMValueRef trueVal, LLVMValueRef falseVal) {
         return LLVM.LLVMBuildSelect(builder, condition, trueVal, falseVal, DEFAULT_INSTR_NAME);
     }
 
@@ -850,7 +994,7 @@ public class LLVMIRBuilder {
         return unaryBuilder.build(builder, a, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildAdd(LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildAdd(LLVMValueRef a, LLVMValueRef b) {
         return buildBinaryNumberOp(a, b, LLVM::LLVMBuildAdd, LLVM::LLVMBuildFAdd);
     }
 
@@ -1011,11 +1155,11 @@ public class LLVMIRBuilder {
         return LLVM.LLVMBuildXor(builder, a, b, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildShl(LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildShl(LLVMValueRef a, LLVMValueRef b) {
         return buildShift(LLVM::LLVMBuildShl, a, b);
     }
 
-    LLVMValueRef buildShr(LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildShr(LLVMValueRef a, LLVMValueRef b) {
         return buildShift(LLVM::LLVMBuildAShr, a, b);
     }
 
@@ -1050,12 +1194,12 @@ public class LLVMIRBuilder {
         return LLVM.LLVMBuildBitCast(builder, value, type, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildAddrSpaceCast(LLVMValueRef value, LLVMTypeRef type) {
+    public LLVMValueRef buildAddrSpaceCast(LLVMValueRef value, LLVMTypeRef type) {
         return LLVM.LLVMBuildAddrSpaceCast(builder, value, type, DEFAULT_INSTR_NAME);
     }
 
-    LLVMValueRef buildRegisterObject(LLVMValueRef pointer) {
-        return buildCall(gcRegisterFunction, pointer);
+    public LLVMValueRef buildRegisterObject(LLVMValueRef pointer, boolean compressed) {
+        return buildCall(compressed ? gcRegisterCompressedFunction : gcRegisterFunction, pointer);
     }
 
     public LLVMValueRef buildIntToPtr(LLVMValueRef value, LLVMTypeRef type) {
@@ -1101,6 +1245,18 @@ public class LLVMIRBuilder {
         return LLVM.LLVMBuildZExt(builder, value, integerType(toBits), DEFAULT_INSTR_NAME);
     }
 
+    public LLVMValueRef buildCompress(LLVMValueRef uncompressed, LLVMValueRef heapBase, boolean nonNull, int shift) {
+        LLVMValueRef compressFunction = nonNull ? nonNullCompressFunctions.computeIfAbsent(shift, this::buildNonNullCompressFunction)
+                        : compressFunctions.computeIfAbsent(shift, this::buildCompressFunction);
+        return buildCall(compressFunction, uncompressed, heapBase);
+    }
+
+    public LLVMValueRef buildUncompress(LLVMValueRef compressed, LLVMValueRef heapBase, boolean nonNull, int shift) {
+        LLVMValueRef uncompressFunction = nonNull ? nonNullUncompressFunctions.computeIfAbsent(shift, this::buildNonNullUncompressFunction)
+                        : uncompressFunctions.computeIfAbsent(shift, this::buildUncompressFunction);
+        return buildCall(uncompressFunction, compressed, heapBase);
+    }
+
     /* Memory */
 
     public LLVMValueRef buildGEP(LLVMValueRef base, LLVMValueRef... indices) {
@@ -1110,9 +1266,10 @@ public class LLVMIRBuilder {
     public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
         LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
         if (isObject(type) && !isObject(addressType)) {
-            return buildCall(loadObjectFromUntrackedPointerFunction, address);
+            boolean compressed = isCompressed(type);
+            return buildCall(compressed ? loadCompressedObjectFromUntrackedPointerFunction : loadObjectFromUntrackedPointerFunction, address);
         }
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(type, isObject(addressType)));
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(type, isObject(addressType), false));
         return buildLoad(castedAddress);
     }
 
@@ -1128,7 +1285,7 @@ public class LLVMIRBuilder {
             valueType = rawPointerType();
             castedValue = buildAddrSpaceCast(value, rawPointerType());
         }
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObject(addressType)));
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObject(addressType), false));
         LLVM.LLVMBuildStore(builder, castedValue, castedAddress);
     }
 
@@ -1174,14 +1331,42 @@ public class LLVMIRBuilder {
         LLVMTypeRef newType = LLVM.LLVMTypeOf(newValue);
         assert compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
 
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(expectedType, isTracked(typeOf(address))));
-        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, castedAddress, expectedValue, newValue, LLVM.LLVMAtomicOrderingMonotonic, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
-        return buildExtractValue(cas, resultIndex);
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(expectedType, isTracked(typeOf(address)), false));
+        String cmpxchgFunctionName = "__llvm_cmpxchg_" + intrinsicType(typeOf(castedAddress)) + "_" + intrinsicType(typeOf(expectedValue)) + "_" + intrinsicType(typeOf(newValue)) +
+                        resultIndex;
+        LLVMValueRef cmpxchgFunction = LLVM.LLVMGetNamedFunction(module, cmpxchgFunctionName);
+        if (cmpxchgFunction == null) {
+            LLVMBasicBlockRef previousBlock = currentBlock;
+
+            LLVMTypeRef returnType = resultIndex == LLVM_CMPXCHG_VALUE ? expectedType : booleanType();
+            cmpxchgFunction = addFunction(cmpxchgFunctionName, functionType(returnType, typeOf(castedAddress), typeOf(expectedValue), typeOf(newValue)));
+            LLVM.LLVMSetLinkage(cmpxchgFunction, LLVM.LLVMLinkOnceAnyLinkage);
+            setAttribute(cmpxchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+            setAttribute(cmpxchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+            LLVMBasicBlockRef block = appendBasicBlock("main", cmpxchgFunction);
+            positionAtEnd(block);
+            LLVMValueRef addr = getParam(cmpxchgFunction, 0);
+            LLVMValueRef expected = getParam(cmpxchgFunction, 1);
+            LLVMValueRef newVal = getParam(cmpxchgFunction, 2);
+            LLVMValueRef cas = buildAtomicCmpXchg(addr, expected, newVal);
+            LLVMValueRef result = buildExtractValue(cas, resultIndex);
+            buildRet(result);
+
+            positionAtEnd(previousBlock);
+        }
+
+        return buildCall(cmpxchgFunction, castedAddress, expectedValue, newValue);
+    }
+
+    private LLVMValueRef buildAtomicCmpXchg(LLVMValueRef addr, LLVMValueRef expected, LLVMValueRef newVal) {
+        return LLVM.LLVMBuildAtomicCmpXchg(builder, addr, expected, newVal, LLVM.LLVMAtomicOrderingMonotonic, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
     }
 
     LLVMValueRef buildAtomicXchg(LLVMValueRef address, LLVMValueRef value) {
         if (isObject(typeOf(value))) {
-            return buildCall(atomicObjectXchgFunction, address, value);
+            boolean compressed = isCompressed(typeOf(value));
+            return buildCall(compressed ? atomicCompressedObjectXchgFunction : atomicObjectXchgFunction, address, value);
         }
         return buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpXchg, address, value);
     }
@@ -1192,7 +1377,7 @@ public class LLVMIRBuilder {
 
     private LLVMValueRef buildAtomicRMW(int operation, LLVMValueRef address, LLVMValueRef value) {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObject(typeOf(address))));
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObject(typeOf(address)), false));
         return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
     }
 

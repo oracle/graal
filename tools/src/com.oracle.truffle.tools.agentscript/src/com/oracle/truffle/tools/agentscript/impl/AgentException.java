@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Locale;
 
 final class AgentException extends RuntimeException implements TruffleException {
     static final long serialVersionUID = 1L;
@@ -68,5 +69,27 @@ final class AgentException extends RuntimeException implements TruffleException 
     @TruffleBoundary
     static AgentException notFound(TruffleFile file) {
         throw new AgentException(file.getName() + ": No such file or directory", null, 1);
+    }
+
+    @TruffleBoundary
+    static AgentException notRecognized(TruffleFile file) {
+        throw new AgentException(file.getName() + ": No language to process the file. Try --polyglot", null, 1);
+    }
+
+    @TruffleBoundary
+    static AgentException unknownAttribute(String type) {
+        throw new AgentException("Unknown attribute " + type, null, 1);
+    }
+
+    @TruffleBoundary
+    static AgentException unknownType(Throwable originalError, String str, AgentType[] values) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Unknown event type '").append(str).append("'. Known types are:");
+        String sep = " ";
+        for (AgentType t : values) {
+            sb.append(sep).append("'").append(t.toString().toLowerCase(Locale.ENGLISH)).append("'");
+            sep = ", ";
+        }
+        throw new AgentException(sb.toString(), originalError, 1);
     }
 }

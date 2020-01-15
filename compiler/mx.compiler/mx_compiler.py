@@ -396,6 +396,7 @@ def verify_jvmci_ci_versions(args):
 
     primary_suite = mx.primary_suite()
     hocon_version, hocon_dev = _grep_version(
+        [join(primary_suite.vc_dir, 'common.json')] +
         glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')

@@ -168,9 +168,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateInstancePIC(@ConstantParameter long size,
-                    KlassPointer hub,
+    protected Object allocateInstancePIC(KlassPointer hub,
                     Word prototypeMarkWord,
+                    @ConstantParameter long size,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {

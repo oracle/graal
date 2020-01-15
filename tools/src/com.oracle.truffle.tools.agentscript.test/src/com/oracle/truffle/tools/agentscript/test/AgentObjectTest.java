@@ -39,6 +39,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -47,6 +48,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,6 +66,22 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             assertEquals(AgentScript.VERSION, agentAPI.version());
+        }
+    }
+
+    @Test
+    public void onErrorneousCallbackRegistration() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            };
+            agentAPI.on("enterOrLeave", listener);
+            fail("Should have failed with PolyglotException");
+        } catch (PolyglotException t) {
+            assertTrue(t.getMessage(), t.getMessage().startsWith("agentscript: Unknown event type"));
         }
     }
 

@@ -287,4 +287,10 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
             ((CodeVariableElement) getParameters().get(i)).setName(args[i]);
         }
     }
+
+    public void changeTypes(TypeMirror... args) {
+        for (int i = 0; i < args.length && i < getParameters().size(); i++) {
+            ((CodeVariableElement) getParameters().get(i)).setType(args[i]);
+        }
+    }
 }

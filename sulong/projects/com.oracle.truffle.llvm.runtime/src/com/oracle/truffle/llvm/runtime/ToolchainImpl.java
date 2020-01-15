@@ -43,23 +43,38 @@ public final class ToolchainImpl implements Toolchain {
         this.language = language;
     }
 
+    /**
+     * Please keep this list in sync with Toolchain.java (method documentation) and mx_sulong.py's
+     * ToolchainConfig::_tool_map.
+     */
     @Override
     public TruffleFile getToolPath(String tool) {
         if (toolchainConfig == null) {
             return null;
         }
+
+        final TruffleFile binPrefix = getRoot().resolve("bin");
         switch (tool) {
             case "PATH":
-                return getRoot().resolve("bin");
+                return binPrefix;
             case "CC":
-                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
+                return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
             case "CXX":
                 if (!toolchainConfig.enableCXX()) {
                     return null;
                 }
-                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
+                return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
             case "LD":
-                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-ld");
+                return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-ld");
+            case "AR":
+            case "NM":
+            case "OBJCOPY":
+            case "OBJDUMP":
+            case "RANLIB":
+            case "READELF":
+            case "READOBJ":
+            case "STRIP":
+                return binPrefix.resolve(tool.toLowerCase());
             default:
                 return null;
         }

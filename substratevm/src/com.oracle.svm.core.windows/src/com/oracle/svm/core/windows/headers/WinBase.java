@@ -41,6 +41,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+
 // Checkstyle: stop
 
 @CContext(WindowsDirectives.class)
@@ -395,11 +397,11 @@ public class WinBase {
     public static native int GetVersion();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetCurrentDirectoryA(long nBufferLength, CCharPointer lpBuffer);
+    public static native int GetCurrentDirectoryW(int nBufferLength, WCharPointer lpBuffer);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetUserNameW(CCharPointer lpBuffer, CIntPointer lpBufferLength);
+    public static native int GetUserNameW(WCharPointer lpBuffer, CIntPointer pcbBuffer);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetUserProfileDirectoryW(HANDLE token, CCharPointer lpBuffer, CIntPointer lpBufferLength);
+    public static native int GetUserProfileDirectoryW(HANDLE hToken, WCharPointer lpProfileDir, CIntPointer lpcchSize);
 }

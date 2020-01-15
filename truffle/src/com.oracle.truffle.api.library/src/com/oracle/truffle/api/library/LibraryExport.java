@@ -42,6 +42,7 @@ package com.oracle.truffle.api.library;
 
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryFactory.ResolvedDispatch;
+import com.oracle.truffle.api.utilities.FinalBitSet;
 
 /**
  * Base class for generated export classes. This class is not intended to be sub-classed or used
@@ -98,6 +99,28 @@ public abstract class LibraryExport<T extends Library> {
     }
 
     /**
+     * Internal method for generated code only.
+     *
+     * @since 20.0
+     */
+    protected static <T extends Library> T createDelegate(LibraryFactory<T> factory, T delegate) {
+        return factory.createDelegate(delegate);
+    }
+
+    /**
+     * Internal method for generated code only.
+     *
+     * @since 20.0
+     */
+    protected static FinalBitSet createMessageBitSet(LibraryFactory<?> factory, String... messageNames) {
+        Message[] messages = new Message[messageNames.length];
+        for (int i = 0; i < messageNames.length; i++) {
+            messages[i] = factory.nameToMessages.get(messageNames[i]);
+        }
+        return factory.createMessageBitSet(messages);
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @since 19.0
@@ -115,6 +138,36 @@ public abstract class LibraryExport<T extends Library> {
      */
     public static <T extends Library> void register(Class<?> receiverClass, LibraryExport<?>... libs) {
         ResolvedDispatch.register(receiverClass, libs);
+    }
+
+    /**
+     * Internal interface for generated code only.
+     *
+     * @since 20.0
+     */
+    protected interface DelegateExport {
+
+        /**
+         * Internal method for generated code only.
+         *
+         * @since 20.0
+         */
+        Object readDelegateExport(Object receiver);
+
+        /**
+         * Internal method for generated code only.
+         *
+         * @since 20.0
+         */
+        FinalBitSet getDelegateExportMessages();
+
+        /**
+         * Internal method for generated code only.
+         *
+         * @since 20.0
+         */
+        Library getDelegateExportLibrary(Object delegate);
+
     }
 
 }
