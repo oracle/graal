@@ -48,7 +48,6 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,6 +60,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -231,40 +231,24 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     static {
         if (IS_AOT) {
             AOT_LAUNCHER_CLASSES = new HashMap<>();
-            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build();
-            Set<String> languages = Collections.unmodifiableSet(engine.getLanguages().keySet());
-            engine.close();
-            String macrosPathsPorperty = System.getProperty("com.oracle.graalvm.launcher.macrospaths");
-            if (macrosPathsPorperty != null && !macrosPathsPorperty.isEmpty()) {
-                Path macrosDir = Paths.get(macrosPathsPorperty);
-                if (!Files.isDirectory(macrosDir)) {
-                    throw new RuntimeException("Expected " + macrosDir + " to be a directory");
-                }
-                try {
-                    List<URL> classpath = new ArrayList<>();
-                    List<String> classes = new ArrayList<>();
-                    Files.list(macrosDir).flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> languages.contains(c.language)).forEach(c -> {
-                        c.classpath.stream().map(c.dir::resolve).map(p -> {
-                            if (!Files.exists(p)) {
-                                throw new RuntimeException(p + " does not exist");
-                            }
-                            try {
-                                return p.normalize().toUri().toURL();
-                            } catch (MalformedURLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).forEach(classpath::add);
-                        classes.add(c.launcher);
-                    });
-                    URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
-                    for (String launcher : classes) {
-                        AOT_LAUNCHER_CLASSES.put(launcher, getLauncherClass(launcher, loader));
+            List<URL> classpath = new ArrayList<>();
+            List<String> classes = new ArrayList<>();
+            HomeFinder.getInstance().getLanguageHomes().values().stream().flatMap(PolyglotLauncher::loadPolyglotConfig).forEach(c -> {
+                c.classpath.stream().map(c.dir::resolve).map(p -> {
+                    if (!Files.exists(p)) {
+                        throw new RuntimeException(p + " does not exist");
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                System.err.println("ERROR: com.oracle.graalvm.launcher.macrospaths was not provided");
+                    try {
+                        return p.normalize().toUri().toURL();
+                    } catch (MalformedURLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).forEach(classpath::add);
+                classes.add(c.launcher);
+            });
+            URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
+            for (String launcher : classes) {
+                AOT_LAUNCHER_CLASSES.put(launcher, getLauncherClass(launcher, loader));
             }
         } else {
             AOT_LAUNCHER_CLASSES = null;
@@ -305,10 +289,6 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
         }
     }
 
-    private static Class<AbstractLanguageLauncher> getLauncherClass(String launcherName) {
-        return getLauncherClass(launcherName, PolyglotLauncher.class.getClassLoader());
-    }
-
     @SuppressWarnings("unchecked")
     private static Class<AbstractLanguageLauncher> getLauncherClass(String launcherName, ClassLoader loader) {
         try {
@@ -332,35 +312,21 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
                                 AOT_LAUNCHER_CLASSES.keySet().stream().sorted().map(s -> " - " + s).collect(Collectors.joining("\n")));
             }
         } else {
-            String macrosPathsPorperty = System.getProperty("com.oracle.graalvm.launcher.macrospaths");
-            if (macrosPathsPorperty != null && !macrosPathsPorperty.isEmpty()) {
-                Path macrosDir = Paths.get(macrosPathsPorperty);
-                if (!Files.isDirectory(macrosDir)) {
-                    throw new RuntimeException("Expected " + macrosDir + " to be a directory");
-                }
-                try {
-                    List<URL> classpath = new ArrayList<>();
-                    Files.list(macrosDir).flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> launcherName.endsWith(c.launcher)).forEach(c -> {
-                        c.classpath.stream().map(c.dir::resolve).map(p -> {
-                            if (!Files.exists(p)) {
-                                throw new RuntimeException(p + " does not exist");
-                            }
-                            try {
-                                return p.normalize().toUri().toURL();
-                            } catch (MalformedURLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).forEach(classpath::add);
-                    });
-                    URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
-                    launcherClass = getLauncherClass(launcherName, loader);
-                } catch (IOException e) {
-                    throw abort(e);
-                }
-            } else {
-                throw abort("com.oracle.graalvm.launcher.macrospaths was not provided");
-            }
-
+            List<URL> classpath = new ArrayList<>();
+            HomeFinder.getInstance().getLanguageHomes().values().stream().flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> launcherName.endsWith(c.launcher)).forEach(c -> {
+                c.classpath.stream().map(c.dir::resolve).map(p -> {
+                    if (!Files.exists(p)) {
+                        throw new RuntimeException(p + " does not exist");
+                    }
+                    try {
+                        return p.normalize().toUri().toURL();
+                    } catch (MalformedURLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).forEach(classpath::add);
+            });
+            URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
+            launcherClass = getLauncherClass(launcherName, loader);
             if (launcherClass == null) {
                 throw abort("Could not find class '" + launcherName + "'.");
             }
