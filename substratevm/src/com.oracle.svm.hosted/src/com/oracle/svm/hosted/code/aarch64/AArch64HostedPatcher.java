@@ -120,7 +120,24 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 
         relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
         siteOffset += 4;
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_LDST64_ABS_LO12_NC, 0, Long.valueOf(0), ref);
+        RelocationKind secondRelocation;
+        switch (macroInstruction.srcSize) {
+            case 64:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST64_ABS_LO12_NC;
+                break;
+            case 32:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST32_ABS_LO12_NC;
+                break;
+            case 16:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST16_ABS_LO12_NC;
+                break;
+            case 8:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST8_ABS_LO12_NC;
+                break;
+            default:
+                throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
+        }
+        relocs.addRelocation(siteOffset, secondRelocation, 0, Long.valueOf(0), ref);
     }
 
     @Uninterruptible(reason = ".")
