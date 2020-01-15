@@ -609,7 +609,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
-                if isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
+                if with_polyglot_launcher and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in _get_library_configs(_component):
                 graalvm_dists.update(_library_config.jar_distributions)
@@ -2027,6 +2027,8 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             launcher_configs = _get_launcher_configs(comp)
 
             for path, source in graalvm._walk_layout():
+                if support_dir_pattern == support_dir_pattern and source['source_type'] == 'dependency' and source['path'] == 'polyglot.config':
+                    continue
                 if path.startswith(support_dir_pattern):
                     path_from_home = path.split(support_dir_pattern, 1)[1]
                     # take only the distributions that are not JAR distributions
