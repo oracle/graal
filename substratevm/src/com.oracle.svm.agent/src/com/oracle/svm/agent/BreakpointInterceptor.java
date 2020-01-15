@@ -730,7 +730,7 @@ final class BreakpointInterceptor {
     private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle directCallerClass, Breakpoint bp) {
         JNIMethodId intermediateMethod = getCallerMethod(2);
         JNIMethodId callerMethod; // caller of getBundle(), not immediate caller
-        if (intermediateMethod.equal(handles().optionalJavaUtilResourceBundleGetBundleImplSLCC)) {
+        if (intermediateMethod.equal(handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
             // getBundleImpl <- getBundleImpl <- getBundleImpl(S,L,C,C) <- getBundle <- [caller]
             callerMethod = getCallerMethod(4);
         } else { // getBundleImpl <- getBundle(Impl|FromModule) <- getBundle <- [caller]
