@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
@@ -224,6 +225,24 @@ public class CatalogInstallTest extends CommandTestBase {
     }
 
     @Test
+    public void testInstallWithIgnoredDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("r");
+        options.put(Commands.OPTION_NO_DEPENDENCIES, "");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<ComponentParam> deps = cmd.getDependencies();
+        assertTrue(deps.isEmpty());
+    }
+
+    @Test
     public void testInstallWithBrokenDeps() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
@@ -244,6 +263,21 @@ public class CatalogInstallTest extends CommandTestBase {
             assertEquals("org.graalvm.unknown", u.iterator().next());
             throw ex;
         }
+    }
+
+    @Test
+    public void testInstallWithBrokenIgnoredDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("additional");
+        options.put(Commands.OPTION_NO_DEPENDENCIES, "");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
     }
 
     /**

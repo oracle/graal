@@ -291,7 +291,7 @@ public class ComponentInstaller extends Launcher {
         });
 
         List<String> unknownOptions = go.getUnknownOptions();
-        if (env.hasOption(Commands.OPTION_HELP)) {
+        if (env.hasOption(Commands.OPTION_HELP) && go.getCommand() == null) {
             unknownOptions.add("help");
         }
         parseUnknownOptions(unknownOptions);
