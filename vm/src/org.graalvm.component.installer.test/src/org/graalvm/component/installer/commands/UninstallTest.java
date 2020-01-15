@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.model.CatalogContents;
@@ -118,6 +119,24 @@ public class UninstallTest extends CommandTestBase {
         exception.expect(FailedOperationException.class);
         exception.expectMessage("UNINSTALL_BreakDependenciesTerminate");
         uc.checkBrokenDependencies();
+    }
+
+    @Test
+    public void testUninstallIgnoreDeps() throws Exception {
+        setupComponentsWithDeps();
+        options.put(Commands.OPTION_NO_DEPENDENCIES, "");
+
+        UninstallCommand uc = new UninstallCommand();
+        uc.init(this, this.withBundle(UninstallCommand.class));
+        textParams.add("org.graalvm.native-image");
+
+        uc.prepareUninstall();
+        assertTrue(uc.getBrokenDependencies().isEmpty());
+
+        uc.checkBrokenDependencies();
+        uc.includeAndOrderComponents();
+        List<ComponentInfo> comps = uc.getUninstallSequence();
+        assertEquals(1, comps.size());
     }
 
     /**
