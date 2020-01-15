@@ -12,6 +12,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.library.Export
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
+meth public abstract !hasdefault java.lang.String delegateTo()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.library.Library> value()
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException
