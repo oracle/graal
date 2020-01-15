@@ -59,6 +59,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Cast;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
@@ -125,6 +126,9 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         } else {
             return method.getSimpleName().toString();
         }
+    }
+
+    public void visitCast(Cast binary) {
     }
 
     public void visitClassLiteral(ClassLiteral classLiteral) {

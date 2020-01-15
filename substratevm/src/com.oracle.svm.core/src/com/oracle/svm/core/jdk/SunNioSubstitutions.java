@@ -35,24 +35,7 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
-
-@TargetClass(className = "sun.nio.ch.Util")
-final class Target_sun_nio_ch_Util {
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static Target_java_nio_DirectByteBuffer newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper) {
-        return new Target_java_nio_DirectByteBuffer(size, addr, fd, unmapper);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class) //
-    static Target_java_nio_DirectByteBufferR newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync);
-    }
-}
 
 @TargetClass(java.nio.channels.spi.SelectorProvider.class)
 final class Target_java_nio_channels_spi_SelectorProvider {

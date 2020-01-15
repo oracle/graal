@@ -1,5 +1,6 @@
 {
-  local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b04', platformspecific: true},
+  local jdks = (import "../../common.json").jdks,
+  local labsjdk8 = jdks.oraclejdk8,
 
   jdk8: {
     downloads+: {

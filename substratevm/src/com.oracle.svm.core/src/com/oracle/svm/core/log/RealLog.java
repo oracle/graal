@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.log;
 
+import java.nio.charset.StandardCharsets;
+
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -39,6 +41,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
@@ -99,6 +103,8 @@ public class RealLog extends Log {
             rawString("null");
         } else if ((offset < 0) || (offset > value.length) || (length < 0) || ((offset + length) > value.length) || ((offset + length) < 0)) {
             rawString("OUT OF BOUNDS");
+        } else if (Heap.getHeap().isInImageHeap(value)) {
+            rawBytes(NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(value), offset), WordFactory.unsigned(length));
         } else {
             rawBytes(value, offset, length);
         }
@@ -164,9 +170,11 @@ public class RealLog extends Log {
         return this;
     }
 
+    private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);
+
     @Override
     public Log newline() {
-        character('\n');
+        string(NEWLINE);
         if (autoflush) {
             flush();
         }

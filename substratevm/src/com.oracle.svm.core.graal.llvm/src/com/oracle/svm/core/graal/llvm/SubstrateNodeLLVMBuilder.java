@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -151,7 +150,7 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
             builder.buildStore(builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget)), statusAddress);
         }
 
-        LLVMValueRef wrapper = builder.createJNIWrapper(callee, patchpointId, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset(), gen.getBlockEnd((Block) gen.getCurrentBlock()));
+        LLVMValueRef wrapper = builder.createJNIWrapper(callee, patchpointId, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset());
 
         LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
         newArgs[0] = anchor;

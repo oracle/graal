@@ -150,9 +150,9 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                 if (agentBinding != null || language.isInternal()) {
                     return;
                 }
-                try {
+                if (context.isEntered()) {
                     initializeAgent();
-                } catch (AssertionError | NullPointerException | IllegalStateException ex) {
+                } else {
                     class InitializeLater implements ExecutionEventListener {
 
                         @Override

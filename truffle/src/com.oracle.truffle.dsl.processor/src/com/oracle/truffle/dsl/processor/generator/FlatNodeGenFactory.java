@@ -105,12 +105,9 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionReducer;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -1107,14 +1104,12 @@ public class FlatNodeGenFactory {
                 break;
             }
             for (GuardExpression expression : specialization.getGuards()) {
-                expression.getExpression().accept(new DSLExpressionVisitor() {
+                expression.getExpression().accept(new AbstractDSLExpressionVisitor() {
+                    @Override
                     public void visitVariable(Variable binary) {
                         if (!needsState.get() && isVariableAccessMember(binary)) {
                             needsState.set(true);
                         }
-                    }
-
-                    public void visitClassLiteral(ClassLiteral classLiteral) {
                     }
 
                     private boolean isVariableAccessMember(Variable variable) {
@@ -1141,15 +1136,6 @@ public class FlatNodeGenFactory {
                         return false;
                     }
 
-                    public void visitBooleanLiteral(BooleanLiteral binary) {
-                    }
-
-                    public void visitNegate(Negate negate) {
-                    }
-
-                    public void visitIntLiteral(IntLiteral binary) {
-                    }
-
                     private boolean isMethodAccessMember(Call call) {
                         if (!call.getResolvedMethod().getModifiers().contains(STATIC)) {
                             DSLExpression receiver = call.getReceiver();
@@ -1163,14 +1149,13 @@ public class FlatNodeGenFactory {
                         return false;
                     }
 
+                    @Override
                     public void visitCall(Call call) {
                         if (!needsState.get() && isMethodAccessMember(call)) {
                             needsState.set(true);
                         }
                     }
 
-                    public void visitBinary(Binary binary) {
-                    }
                 });
             }
         }

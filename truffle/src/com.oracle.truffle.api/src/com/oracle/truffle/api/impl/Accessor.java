@@ -292,6 +292,8 @@ public abstract class Accessor {
 
         public abstract void closeInternalContext(Object polyglotContext);
 
+        public abstract boolean isInternalContextEntered(Object polyglotContext);
+
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
         public abstract void reportAllContextThreads(Object polyglotEngine, Object threadsListener);

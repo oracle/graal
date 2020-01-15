@@ -48,13 +48,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.utilities.FinalBitSet;
 
 /**
  * Library factories allow to create instances of libraries used to call library messages. A library
@@ -132,7 +135,7 @@ public abstract class LibraryFactory<T extends Library> {
     private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private final ProxyExports proxyExports = new ProxyExports();
     final Map<String, Message> nameToMessages;
-    @CompilationFinal private T uncachedDispatch;
+    @CompilationFinal private volatile T uncachedDispatch;
 
     final DynamicDispatchLibrary dispatchLibrary;
 
@@ -259,6 +262,10 @@ public abstract class LibraryFactory<T extends Library> {
 
     final void ensureInitialized() {
         if (this.uncachedDispatch == null) {
+            /*
+             * We deliberately don't lock here. We don't care if we have multiple different
+             * instances of uncachedDispatch.
+             */
             this.uncachedDispatch = createUncachedDispatch();
         }
     }
@@ -337,6 +344,16 @@ public abstract class LibraryFactory<T extends Library> {
     protected abstract T createProxy(ReflectionLibrary lib);
 
     /**
+     * Creates a delegate version of a library. May be used for cached or uncached versions of a
+     * library. Intended to be used by generated code only, do not use manually.
+     *
+     * @since 20.0
+     */
+    protected T createDelegate(T original) {
+        return original;
+    }
+
+    /**
      * Creates an assertion version of this library. An implementation for this method is generated,
      * do not implement manually.
      *
@@ -361,6 +378,49 @@ public abstract class LibraryFactory<T extends Library> {
      * @since 19.0
      */
     protected abstract Object genericDispatch(Library library, Object receiver, Message message, Object[] arguments, int parameterOffset) throws Exception;
+
+    /**
+     * Creates a final bitset of the given messages. Uses an internal index for the messages. An
+     * implementation for this method is generated, do not implement manually.
+     *
+     * @since 20.0
+     */
+    protected FinalBitSet createMessageBitSet(@SuppressWarnings({"unused", "hiding"}) Message... enabledMessages) {
+        throw new AssertionError("should be generated");
+    }
+
+    /**
+     * Returns <code>true</code> if a message is delegated, otherwise <code>false</code>. Intended
+     * to be used by generated code only, do not use manually.
+     *
+     * @since 20.0
+     */
+    protected static boolean isDelegated(Library lib, int index) {
+        boolean result = ((DelegateExport) lib).getDelegateExportMessages().get(index);
+        CompilerAsserts.partialEvaluationConstant(result);
+        return !result;
+    }
+
+    /**
+     * Reads the delegate for a receiver. Intended to be used by generated code only, do not use
+     * manually.
+     *
+     * @since 20.0
+     */
+    protected static Object readDelegate(Library lib, Object receiver) {
+        return ((DelegateExport) lib).readDelegateExport(receiver);
+    }
+
+    /**
+     * Returns the delegated library to use when messages are delegated. Intended to be used by
+     * generated code only, do not use manually.
+     *
+     * @since 20.0
+     */
+    @SuppressWarnings("unchecked")
+    protected static <T extends Library> T getDelegateLibrary(T lib, Object delegate) {
+        return (T) ((DelegateExport) lib).getDelegateExportLibrary(delegate);
+    }
 
     final LibraryExport<T> lookupExport(Object receiver, Class<?> dispatchedClass) {
         LibraryExport<T> lib = this.exportCache.get(dispatchedClass);

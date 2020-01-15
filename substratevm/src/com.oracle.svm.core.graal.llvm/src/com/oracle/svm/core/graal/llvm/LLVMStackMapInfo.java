@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
@@ -246,7 +245,12 @@ public class LLVMStackMapInfo {
     private static final int STATEPOINT_HEADER_LOCATION_COUNT = 3;
     private static final int STATEPOINT_DEOPT_COUNT_LOCATION_INDEX = 2;
 
-    public void forEachStatepointOffset(long patchpointID, int instructionOffset, BiConsumer<Integer, Integer> callback) {
+    @FunctionalInterface
+    interface StatepointOffsetCallback {
+        void accept(int derivedOffset, int baseOffset, boolean compressed);
+    }
+
+    public void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
         Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
                         .findFirst().orElseThrow(VMError::shouldNotReachHere).locations;
         assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
@@ -255,6 +259,15 @@ public class LLVMStackMapInfo {
         assert deoptCountLocation.type == Location.Type.Constant;
         int deoptCount = deoptCountLocation.offset;
         assert STATEPOINT_HEADER_LOCATION_COUNT + deoptCount <= locations.length;
+
+        Set<Integer> compressedOffsets = new HashSet<>();
+        for (int i = STATEPOINT_HEADER_LOCATION_COUNT; i < STATEPOINT_HEADER_LOCATION_COUNT + deoptCount; ++i) {
+            Location loc = locations[i];
+            assert loc.type == Location.Type.Indirect; // spilled values
+            int[] offsets = getStackOffsets(patchpointID, loc);
+            assert offsets.length == 1;
+            compressedOffsets.add(offsets[0]);
+        }
 
         Set<Integer> seenOffsets = new HashSet<>();
         Set<Integer> seenBases = new HashSet<>();
@@ -293,7 +306,8 @@ public class LLVMStackMapInfo {
                 /* Derived pointers have their base already registered on the stackmap */
                 if (!seenOffsets.contains(derivedOffset)) {
                     seenOffsets.add(derivedOffset);
-                    callback.accept(derivedOffset, baseOffset);
+                    assert compressedOffsets.contains(derivedOffset) == compressedOffsets.contains(baseOffset);
+                    callback.accept(derivedOffset, baseOffset, compressedOffsets.contains(derivedOffset));
                 }
             }
         }

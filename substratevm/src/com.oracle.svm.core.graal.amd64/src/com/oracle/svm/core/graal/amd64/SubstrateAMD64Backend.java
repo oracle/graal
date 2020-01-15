@@ -370,6 +370,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             append(new VerificationMarkerOp(marker));
         }
 
+        @Override
+        public void emitInstructionSynchronizationBarrier() {
+            throw shouldNotReachHere("AMD64 does not need instruction synchronization");
+        }
+
         // private static LIRKind toStackKind(LIRKind kind) {
         // if (kind.getPlatformKind() instanceof Kind) {
         // Kind stackKind = ((Kind) kind.getPlatformKind()).getStackKind();
