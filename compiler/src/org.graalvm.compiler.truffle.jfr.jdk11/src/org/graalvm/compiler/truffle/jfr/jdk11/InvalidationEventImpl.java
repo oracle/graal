@@ -26,34 +26,20 @@ package org.graalvm.compiler.truffle.jfr.jdk11;
 
 import jdk.jfr.Category;
 import jdk.jfr.Description;
-import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.StackTrace;
-import com.oracle.truffle.api.RootCallTarget;
 import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 
 @Category("Truffle Compiler")
-@Label("Invalidation")
-@Description("Truffle Call Target Invalidation")
+@Label("Assumption Invalidation")
+@Description("Truffle Assumption Invalidation")
 @StackTrace(true)
-class InvalidationEventImpl extends Event implements InvalidationEvent {
-
-    @Label("Source") @Description("Compiled Source") public String source;
+class InvalidationEventImpl extends RootFunctionEventImpl implements InvalidationEvent {
 
     @Label("Reason") @Description("Invalidation Reason") public String reason;
 
     @Override
-    public void setSource(RootCallTarget target) {
-        this.source = EventFactoryImpl.targetName(target);
-    }
-
-    @Override
     public void setReason(CharSequence invalidationReason) {
         this.reason = invalidationReason == null ? null : invalidationReason.toString();
-    }
-
-    @Override
-    public void publish() {
-        commit();
     }
 }

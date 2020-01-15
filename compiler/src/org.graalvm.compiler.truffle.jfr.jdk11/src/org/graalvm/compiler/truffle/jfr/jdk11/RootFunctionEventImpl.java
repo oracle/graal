@@ -24,25 +24,44 @@
  */
 package org.graalvm.compiler.truffle.jfr.jdk11;
 
-import jdk.jfr.BooleanFlag;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
+import jdk.jfr.Event;
 import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import jdk.jfr.Description;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.jfr.RootFunctionEvent;
 
-@Category("Truffle Compiler")
-@Label("Compilation Failure")
-@Description("Truffe Compilation Failures")
-@StackTrace(false)
-class CompilationFailureEventImpl extends RootFunctionEventImpl {
+abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent {
 
-    @Label("Permanent Failure") @Description("Permanent Failure") @BooleanFlag public boolean permanentFailure;
+    @Label("Source") @Description("Compiled Source") public String source;
+    @Label("Root Function") @Description("Root Function") public String rootFunction;
 
-    @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
+    RootFunctionEventImpl() {
+    }
 
-    CompilationFailureEventImpl(String source, String rootFunction, boolean permanent, CharSequence reason) {
-        super(source, rootFunction);
-        this.permanentFailure = permanent;
-        this.failureReason = reason == null ? null : reason.toString();
+    RootFunctionEventImpl(String source, String rootFunction) {
+        this.source = source;
+        this.rootFunction = rootFunction;
+    }
+
+    @Override
+    public void setRootFunction(RootCallTarget target) {
+        RootNode rootNode = target.getRootNode();
+        this.source = targetName(rootNode);
+        this.rootFunction = rootNode.getName();
+    }
+
+    @Override
+    public void publish() {
+        commit();
+    }
+
+    private static String targetName(RootNode rootNode) {
+        SourceSection sourceSection = rootNode.getSourceSection();
+        if (sourceSection != null && sourceSection.getSource() != null) {
+            return sourceSection.getSource().getName() + ":" + sourceSection.getStartLine();
+        }
+        return null;
     }
 }

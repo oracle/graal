@@ -26,27 +26,14 @@ package org.graalvm.compiler.truffle.jfr.jdk11;
 
 import jdk.jfr.Category;
 import jdk.jfr.Description;
-import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.StackTrace;
-import com.oracle.truffle.api.RootCallTarget;
 import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
 
 @Category("Truffle Compiler")
 @Label("Deoptimization")
 @Description("Truffle Call Target Deoptimization")
-@StackTrace(true)
-class DeoptimizationEventImpl extends Event implements DeoptimizationEvent {
+@StackTrace(false)
+class DeoptimizationEventImpl extends RootFunctionEventImpl implements DeoptimizationEvent {
 
-    @Label("Source") @Description("Compiled Source") public String source;
-
-    @Override
-    public void setSource(RootCallTarget target) {
-        this.source = EventFactoryImpl.targetName(target);
-    }
-
-    @Override
-    public void publish() {
-        commit();
-    }
 }

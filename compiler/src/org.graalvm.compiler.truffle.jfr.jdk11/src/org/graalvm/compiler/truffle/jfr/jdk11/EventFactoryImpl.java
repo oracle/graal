@@ -27,8 +27,6 @@ package org.graalvm.compiler.truffle.jfr.jdk11;
 import java.util.HashMap;
 import java.util.Map;
 import jdk.jfr.FlightRecorder;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.compiler.truffle.jfr.Event;
 import org.graalvm.compiler.truffle.jfr.EventFactory;
 import org.graalvm.compiler.truffle.jfr.CompilationEvent;
@@ -82,14 +80,6 @@ final class EventFactoryImpl implements EventFactory {
             throw new IllegalArgumentException("Unknown event type: " + event);
         }
         FlightRecorder.removePeriodicEvent(producer);
-    }
-
-    static String targetName(RootCallTarget target) {
-        SourceSection sourceSection = target.getRootNode().getSourceSection();
-        if (sourceSection != null && sourceSection.getSource() != null) {
-            return sourceSection.getSource().getName() + ":" + sourceSection.getStartLine();
-        }
-        return null;
     }
 
     private static void register(Class<? extends Event> eventClass) {

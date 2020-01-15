@@ -24,19 +24,16 @@
  */
 package org.graalvm.compiler.truffle.jfr;
 
-import com.oracle.truffle.api.RootCallTarget;
-
 /**
  * The JFR event describing a Truffle compilation.
  */
-public interface CompilationEvent extends Event {
+public interface CompilationEvent extends RootFunctionEvent {
+
     void compilationStarted();
 
     void failed(boolean permanent, CharSequence reason);
 
     void succeeded();
-
-    void setSource(RootCallTarget target);
 
     void setCompiledCodeSize(int size);
 

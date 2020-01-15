@@ -79,7 +79,10 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        handleFailedCompilation(reason, false, false);
+        CompilationData data = getCurrentData();
+        if (data != null) {
+            handleFailedCompilation(data, reason, false, false);
+        }
     }
 
     @Override
@@ -88,7 +91,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         if (factory != null) {
             event = factory.createCompilationEvent();
             if (event.isEnabled()) {
-                event.setSource(target);
+                event.setRootFunction(target);
                 event.compilationStarted();
             } else {
                 event = null;
@@ -102,7 +105,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         if (factory != null) {
             DeoptimizationEvent event = factory.createDeoptimizationEvent();
             if (event.isEnabled()) {
-                event.setSource(target);
+                event.setRootFunction(target);
                 event.publish();
             }
         }
@@ -118,7 +121,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        handleFailedCompilation(reason, bailout, isPermanentFailure(bailout, permanentBailout));
+        handleFailedCompilation(getCurrentData(), reason, bailout, isPermanentFailure(bailout, permanentBailout));
     }
 
     @Override
@@ -163,7 +166,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         if (factory != null) {
             InvalidationEvent event = factory.createInvalidationEvent();
             if (event.isEnabled()) {
-                event.setSource(target);
+                event.setRootFunction(target);
                 event.setReason(reason);
                 event.publish();
             }
@@ -174,8 +177,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         return currentCompilation.get();
     }
 
-    private void handleFailedCompilation(CharSequence message, boolean bailout, boolean permanent) {
-        CompilationData data = getCurrentData();
+    private void handleFailedCompilation(CompilationData data, CharSequence message, boolean bailout, boolean permanent) {
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
             data.event.failed(permanent, message);

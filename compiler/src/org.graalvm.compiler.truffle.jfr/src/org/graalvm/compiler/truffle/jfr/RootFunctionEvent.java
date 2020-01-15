@@ -24,5 +24,9 @@
  */
 package org.graalvm.compiler.truffle.jfr;
 
-public interface DeoptimizationEvent extends RootFunctionEvent {
+import com.oracle.truffle.api.RootCallTarget;
+
+public interface RootFunctionEvent extends Event {
+
+    void setRootFunction(RootCallTarget target);
 }

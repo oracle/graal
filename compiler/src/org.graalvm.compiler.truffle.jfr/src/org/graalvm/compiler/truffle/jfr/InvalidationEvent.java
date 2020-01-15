@@ -24,11 +24,7 @@
  */
 package org.graalvm.compiler.truffle.jfr;
 
-import com.oracle.truffle.api.RootCallTarget;
-
-public interface InvalidationEvent extends Event {
-
-    void setSource(RootCallTarget target);
+public interface InvalidationEvent extends RootFunctionEvent {
 
     void setReason(CharSequence invalidationReason);
 }
