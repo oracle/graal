@@ -27,6 +27,7 @@ package org.graalvm.compiler.options;
 import java.util.Formatter;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 /**
  * A key for an option. The value for an option is obtained from an {@link OptionValues} object.
@@ -145,7 +146,7 @@ public class OptionKey<T> {
      * {@link #getDefaultValue()}.
      */
     @SuppressWarnings("unchecked")
-    public T getValueOrDefault(EconomicMap<OptionKey<?>, Object> values) {
+    public T getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
         if (!values.containsKey(this)) {
             return defaultValue;
         }
