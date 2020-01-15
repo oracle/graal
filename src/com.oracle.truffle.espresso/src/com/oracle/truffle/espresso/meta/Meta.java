@@ -315,6 +315,7 @@ public final class Meta implements ContextAccess {
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         MethodHandleNatives_linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
         MethodHandleNatives_linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        MethodHandleNatives_fixMethodType = MethodHandleNatives.lookupDeclaredMethod(Name.fixMethodType, Signature.fixMethodType_signature);
         MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
         MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
 
@@ -601,6 +602,7 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_linkMethodHandleConstant;
     public final Method MethodHandleNatives_findMethodHandleType;
     public final Method MethodHandleNatives_linkCallSite;
+    public final Method MethodHandleNatives_fixMethodType;
 
     // References
 

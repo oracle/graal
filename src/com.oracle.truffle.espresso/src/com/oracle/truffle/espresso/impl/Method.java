@@ -37,7 +37,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -79,8 +78,8 @@ import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -178,6 +177,34 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         this.codeAttribute = method.codeAttribute;
         this.callTarget = method.callTarget;
+
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        initRefKind();
+        // Proxy the method, so that we have the same callTarget if it is not yet initialized.
+        // Allows for not duplicating the codeAttribute
+        this.proxy = method.proxy == null ? method : method.proxy;
+        this.poisonPill = method.poisonPill;
+        this.isLeaf = method.isLeaf;
+    }
+
+    private Method(Method method, CodeAttribute split) {
+        super(method.getRawSignature(), method.getName());
+        this.declaringKlass = method.declaringKlass;
+        // TODO(peterssen): Custom constant pool for methods is not supported.
+        this.pool = (RuntimeConstantPool) method.getConstantPool();
+
+        this.linkedMethod = method.linkedMethod;
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+        }
+
+        this.codeAttribute = split;
+        this.callTarget = null;
 
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
 
@@ -406,7 +433,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                  *
                                  * Redundant callTarget assignment. Better sure than sorry.
                                  */
-                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature(), declaringKlass).getCallTarget();
+                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                                 throw getMeta().throwEx(UnsatisfiedLinkError.class);
@@ -664,8 +691,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // Polymorphic signature method 'creation'
 
-    Method findIntrinsic(Symbol<Signature> signature, Function<Method, EspressoMethodNode> baseNodeFactory, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, baseNodeFactory, id);
+    Method findIntrinsic(Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
+        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, id);
     }
 
     void setVTableIndex(int i) {
@@ -696,14 +723,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isVirtualCall() {
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
-    }
-
-    public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature, Function<Method, EspressoMethodNode> baseNodeFactory) {
-        assert (declaringKlass == getMeta().MethodHandle);
-        Method method = new Method(declaringKlass, linkedMethod, polymorphicRawSignature);
-        EspressoRootNode rootNode = EspressoRootNode.create(null, baseNodeFactory.apply(method));
-        method.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        return method;
     }
 
     public void setPoisonPill() {
@@ -849,6 +868,33 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         for (Symbol<Type> type : getParsedSignature()) {
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
         }
+    }
+
+    // Spawns a placeholder method for MH intrinsics
+    public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
+        assert isMethodHandleIntrinsic();
+        return new Method(declaringKlass, linkedMethod, polymorphicRawSignature);
+    }
+
+    public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
+        assert isMethodHandleIntrinsic();
+        return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
+    }
+
+    public Method forceSplit() {
+        assert isMethodHandleIntrinsic();
+        Method result = new Method(this, getCodeAttribute().forceSplit());
+        FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
+        FrameSlot monitorSlot = null;
+        if (usesMonitors()) {
+            monitorSlot = frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object);
+        }
+        // BCI slot is always the latest.
+        FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result, frameDescriptor, monitorSlot, bciSlot));
+        result.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+
+        return result;
     }
 
     // region jdwp-specific

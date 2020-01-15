@@ -26,7 +26,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -34,12 +33,55 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
+import com.oracle.truffle.espresso.nodes.InvokeHandleNode;
+import com.oracle.truffle.espresso.nodes.MHInvokeBasicNodeGen;
+import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.MHLinkToNodeGen;
+import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
 
+/**
+ * This class manages MethodHandle polymorphic methods dispatch. It creates and records dummy
+ * espresso Method instances every time a new signature is seen. This is the only place that keeps
+ * track of these, as the dummy methods are not present in klasses, since they are merely internal
+ * constructs.
+ * 
+ * Since the whole method handle machinery is a pretty opaque black box, here is a quick summary of
+ * what's happening under espresso's hood.
+ * 
+ * <li>Each time a {@link java.lang.invoke.MethodHandle} PolymorphicSignature method is resolved
+ * with a signature that was never seen before by the context, espresso creates a dummy placeholder
+ * method and keeps track of it.
+ * <li>When a call site needs to link against a polymorphic signatures, it obtains the dummy method.
+ * It then calls {@link Method#spawnIntrinsicNode(Klass, Symbol, Symbol)} which gives a truffle node
+ * implementing the behavior of the MethodHandle intrinsics (ie: extracting the call target from the
+ * arguments, appending an appendix to the erguments, etc...)
+ * <li>This node is then fed to a {@link InvokeHandleNode} whose role is exactly like the other
+ * invoke nodes: extracting arguments from the stack and passing it to its child.
+ */
 public final class MethodHandleIntrinsics implements ContextAccess {
+
+    public MethodHandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
+        PolySigIntrinsics id = getId(method);
+        switch (id) {
+            case InvokeBasic:
+                return MHInvokeBasicNodeGen.create(method);
+            case InvokeGeneric:
+                return MHInvokeGenericNode.create(accessingKlass, method, methodName, signature, getMeta());
+            case LinkToVirtual:
+            case LinkToStatic:
+            case LinkToSpecial:
+            case LinkToInterface:
+                return MHLinkToNodeGen.create(method, id);
+            default:
+                throw EspressoError.shouldNotReachHere("unrecognized intrinsic polymorphic method: " + method);
+
+        }
+    }
+
     public enum PolySigIntrinsics {
         None(0),
         InvokeGeneric(1),
@@ -91,6 +133,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     public static PolySigIntrinsics getId(Method m) {
+        assert m.getDeclaringKlass() == m.getMeta().MethodHandle;
         Symbol<Name> name = m.getName();
         if (name == Name.linkToStatic) {
             return PolySigIntrinsics.LinkToStatic;
@@ -159,14 +202,14 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return context;
     }
 
-    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, Function<Method, EspressoMethodNode> baseNodeFactory, PolySigIntrinsics id) {
+    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, PolySigIntrinsics id) {
         ConcurrentHashMap<Symbol<Signature>, Method> intrinsics = getIntrinsicMap(id, thisMethod);
         Method method = intrinsics.get(signature);
         if (method != null) {
             return method;
         }
         CompilerAsserts.neverPartOfCompilation();
-        method = thisMethod.createIntrinsic(signature, baseNodeFactory);
+        method = thisMethod.createIntrinsic(signature);
         Method previous = intrinsics.putIfAbsent(signature, method);
         if (previous != null) {
             return previous;

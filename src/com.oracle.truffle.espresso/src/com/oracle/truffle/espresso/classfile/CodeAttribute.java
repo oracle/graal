@@ -134,6 +134,10 @@ public final class CodeAttribute extends Attribute {
         return majorVersion;
     }
 
+    public CodeAttribute forceSplit() {
+        return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes, majorVersion);
+    }
+
     public void print(Klass klass) {
         try {
             new BytecodeStream(code).printBytecode(klass);

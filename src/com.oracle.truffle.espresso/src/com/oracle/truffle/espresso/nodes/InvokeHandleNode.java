@@ -24,32 +24,32 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
-public class MethodHandleInvokeNode extends QuickNode {
+public class InvokeHandleNode extends QuickNode {
 
     private final Method method;
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
 
-    @Child private DirectCallNode callNode;
+    @Child private MethodHandleIntrinsicNode intrinsic;
     private final boolean hasReceiver;
     private final int argCount;
     private final int parameterCount;
     private final JavaKind rKind;
 
-    public MethodHandleInvokeNode(Method method, int top, int curBCI) {
+    public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
         super(top, curBCI);
         this.method = method;
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();
-        this.callNode = DirectCallNode.create(method.getCallTarget());
+        this.intrinsic = method.spawnIntrinsicNode(accessingKlass, method.getName(), method.getRawSignature());
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isMethodHandleInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();
@@ -63,7 +63,7 @@ public class MethodHandleInvokeNode extends QuickNode {
             args[0] = nullCheck(root.peekReceiver(frame, top, method));
         }
         root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
-        Object result = unbasic(callNode.call(args), rKind);
+        Object result = unbasic(intrinsic.call(args), rKind);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
     }
