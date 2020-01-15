@@ -134,6 +134,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private final List<ResolvedJavaMethod> truffleCallBoundaryMethods;
     private volatile CancellableCompileTask initializationTask;
     private volatile boolean truffleCompilerInitialized;
+    private volatile Throwable truffleCompilerInitializationException;
 
     public AbstractHotSpotTruffleRuntime() {
         super(Arrays.asList(HotSpotOptimizedCallTarget.class));
@@ -168,6 +169,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     public HotSpotTruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
             initializeTruffleCompiler();
+            rethrowTruffleCompilerInitializationException();
         }
         return (HotSpotTruffleCompiler) truffleCompiler;
     }
@@ -193,6 +195,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             synchronized (lock) {
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
+                    rethrowTruffleCompilerInitializationException();
                     EngineData engineData = getEngineData(firstCallTarget.getRootNode());
                     traceTransferToInterpreter = engineData.traceTransferToInterpreter;
                     profilingEnabled = engineData.profilingEnabled;
@@ -201,7 +204,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
                             synchronized (lock) {
                                 initializeTruffleCompiler();
-                                assert truffleCompilerInitialized;
+                                assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
                                 assert initializationTask != null;
                                 initializationTask = null;
                             }
@@ -212,8 +215,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
         if (localTask != null) {
             firstCallTarget.maybeWaitForTask(localTask);
+            rethrowTruffleCompilerInitializationException();
         } else {
-            assert truffleCompilerInitialized;
+            assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
         }
     }
 
@@ -223,21 +227,33 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     public final void resetCompiler() {
         truffleCompiler = null;
         truffleCompilerInitialized = false;
+        truffleCompilerInitializationException = null;
     }
 
     private synchronized void initializeTruffleCompiler() {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
+            rethrowTruffleCompilerInitializationException();
             try {
-                truffleCompiler = newTruffleCompiler();
-                truffleCompiler.initialize();
-            } catch (Throwable e) {
-                // This should never happen so report it (once)
-                log(printStackTraceToString(e));
-            } finally {
+                TruffleCompiler compiler = newTruffleCompiler();
+                compiler.initialize();
+                truffleCompiler = compiler;
                 truffleCompilerInitialized = true;
+            } catch (Throwable e) {
+                truffleCompilerInitializationException = e;
             }
         }
+    }
+
+    private void rethrowTruffleCompilerInitializationException() {
+        if (truffleCompilerInitializationException != null) {
+            throw sthrow(RuntimeException.class, truffleCompilerInitializationException);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
+        throw (T) t;
     }
 
     @Override

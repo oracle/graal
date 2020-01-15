@@ -375,7 +375,7 @@ public final class TruffleCompilerOptions {
                 String quot = value instanceof String ? "\"" : "";
                 formatter.format("* Using polyglot API: 'org.graalvm.polyglot.Context.newBuilder().option(\"%s\", " + quot + "%s" + quot + ")'", polyglotOptionName, strValue);
             }
-            TruffleCompilerRuntime.getRuntime().log(warning.toString());
+            throw new Error(warning.toString());
         }
     }
 
