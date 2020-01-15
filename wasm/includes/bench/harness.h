@@ -102,7 +102,8 @@ void runIteration(char* label, int i) {
   long start_t = start.tv_sec * 1000000 + start.tv_usec;
   long end_t = end.tv_sec * 1000000 + end.tv_usec;
   double time = (end_t - start_t) / 1000000.0;
-  printf("%s: %d, result = %d, sec = %.2f, ops / sec = %.2f\n", label, i, result, time, 1.0 / time);
+  printf("%s: %d, result = %d, sec = %.3f, ops / sec = %.3f\n",
+    label, i, result, time, 1.0 / time);
   functionTeardownEach();
 }
 
