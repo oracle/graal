@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.junit.internal.JUnitSystem;
 import org.junit.internal.RealSystem;
 import org.junit.runner.JUnitCore;
+import org.junit.runner.Request;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 
@@ -93,6 +94,10 @@ public class SVMJUnitRunner {
             System.out.println(msg);
             // Checkstyle: resume
         }
+    }
+
+    Request getJUnitRequest() {
+        return request.getRequest();
     }
 
     /* Get a comma separated list of missing classes as reported by the request object. */
