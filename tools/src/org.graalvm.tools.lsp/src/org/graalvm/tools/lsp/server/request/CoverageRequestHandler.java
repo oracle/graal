@@ -166,6 +166,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
             Map<URI, List<Diagnostic>> mapDiagnostics = new HashMap<>();
             env.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
 
+                @Override
                 public void onLoad(LoadSourceSectionEvent event) {
                     SourceSection section = event.getSourceSection();
                     if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.tools.api.lsp;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -38,17 +39,19 @@ import com.oracle.truffle.api.library.LibraryFactory;
  *
  * @since 1.0
  */
-@GenerateLibrary(assertions = LSPLibrary.Asserts.class)
+@GenerateLibrary(receiverType = TruffleObject.class, assertions = LSPLibrary.Asserts.class)
 public abstract class LSPLibrary extends Library {
 
     static final LibraryFactory<LSPLibrary> FACTORY = LibraryFactory.resolve(LSPLibrary.class);
 
     /**
      * Get the documentation information about an object. The returned object is either a String, or
-     * an object providing <code>MarkupContent</code> via invocation of member whose name represents
-     * the markup kind. Currently <code>plaintext</code> and <code>markdown</code> are the supported
-     * kinds. If the format is <code>markdown</code>, then the value can contain fenced code blocks
-     * like in GitHub issues. When a String is returned, <code>plaintext</code> kind is assumed.
+     * an object providing <code>MarkupContent</code> protocol interface, with two members
+     * <code>kind</code> and <code>value</code>. The <code>kind</code> is a String literal of the
+     * markup kind, either <code>plaintext</code>, or <code>markdown</code>. The <code>value</code>
+     * is the documentation String. If the kind is <code>markdown</code>, then the value can contain
+     * fenced code blocks like in GitHub issues. When just a String is returned,
+     * <code>plaintext</code> kind is assumed.
      */
     @Abstract
     @SuppressWarnings("unused")
@@ -131,18 +134,15 @@ public abstract class LSPLibrary extends Library {
                 return true;
             }
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (!interop.accepts(doc)) {
-                return false;
-            }
+            assert doc instanceof TruffleObject;
             return interop.isMemberInvocable(doc, "markdown") ||
                             interop.isMemberInvocable(doc, "plaintext");
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static boolean isSignature(Object signature) {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (!interop.accepts(signature)) {
-                return false;
-            }
+            assert signature instanceof TruffleObject;
             try {
                 if (interop.isMemberReadable(signature, "documentation")) {
                     if (!isDocumentation(interop.readMember(signature, "documentation"))) {

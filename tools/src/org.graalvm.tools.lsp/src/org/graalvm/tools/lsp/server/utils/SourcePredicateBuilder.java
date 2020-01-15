@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionValues;
-import org.graalvm.tools.lsp.instrument.LSOptions;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -64,7 +64,7 @@ public final class SourcePredicateBuilder {
     }
 
     public SourcePredicateBuilder excludeInternal(OptionValues options) {
-        boolean includeInternal = options.get(LSOptions.Internal);
+        boolean includeInternal = options.get(LSPInstrument.Internal);
         if (!includeInternal) {
             SourcePredicate predicate = src -> !src.isInternal();
             this.predicates.add(predicate);

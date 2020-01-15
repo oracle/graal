@@ -146,7 +146,7 @@ public final class LSPFileSystem implements FileSystem {
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
         for (OpenOption option : options) {
-            if (!(option instanceof StandardOpenOption && option.equals(StandardOpenOption.READ))) {
+            if (!(option instanceof StandardOpenOption && StandardOpenOption.READ.equals(option))) {
                 throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
             }
         }
@@ -157,25 +157,31 @@ public final class LSPFileSystem implements FileSystem {
             return new SeekableByteChannel() {
                 int position = 0;
 
+                @Override
                 public boolean isOpen() {
                     return true;
                 }
 
+                @Override
                 public void close() throws IOException {
                 }
 
+                @Override
                 public int write(ByteBuffer src) throws IOException {
                     throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
                 }
 
+                @Override
                 public SeekableByteChannel truncate(long size) throws IOException {
                     throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
                 }
 
+                @Override
                 public long size() throws IOException {
                     return bytes.length;
                 }
 
+                @Override
                 public int read(ByteBuffer dst) throws IOException {
                     int len = Math.min(dst.remaining(), bytes.length - position);
                     dst.put(bytes, position, len);
@@ -183,6 +189,7 @@ public final class LSPFileSystem implements FileSystem {
                     return len;
                 }
 
+                @Override
                 public SeekableByteChannel position(long newPosition) throws IOException {
                     if (newPosition > Integer.MAX_VALUE) {
                         throw new IllegalArgumentException("> Integer.MAX_VALUE");
@@ -191,6 +198,7 @@ public final class LSPFileSystem implements FileSystem {
                     return this;
                 }
 
+                @Override
                 public long position() throws IOException {
                     return position;
                 }

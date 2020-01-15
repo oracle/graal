@@ -24,12 +24,13 @@
  */
 package org.graalvm.tools.lsp.test.server;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
@@ -43,7 +44,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 
 public abstract class TruffleLSPTest {
 
@@ -76,15 +76,9 @@ public abstract class TruffleLSPTest {
                     "  return abc();\n" +   // 13
                     "}\n";                  // 14
 
-    private static AtomicInteger globalCounter;
     protected Engine engine;
     protected TruffleAdapter truffleAdapter;
     protected Context context;
-
-    @BeforeClass
-    public static void classSetup() {
-        globalCounter = new AtomicInteger();
-    }
 
     @Before
     public void setup() {
@@ -150,7 +144,13 @@ public abstract class TruffleLSPTest {
     }
 
     public URI createDummyFileUriForSL() {
-        return URI.create("file:///tmp/truffle-lsp-test-file-" + globalCounter.incrementAndGet() + ".sl");
+        try {
+            File dummy = File.createTempFile("truffle-lsp-test-file-", ".sl");
+            dummy.deleteOnExit();
+            return dummy.getCanonicalFile().toPath().toUri();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected DiagnosticsNotification getDiagnosticsNotification(ExecutionException e) {

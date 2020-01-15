@@ -453,7 +453,6 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
-
     }
 
     /**

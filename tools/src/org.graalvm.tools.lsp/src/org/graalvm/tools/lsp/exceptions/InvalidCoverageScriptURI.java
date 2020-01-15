@@ -26,6 +26,10 @@ package org.graalvm.tools.lsp.exceptions;
 
 import java.nio.file.InvalidPathException;
 
+/**
+ * This exception is thrown when an invalid script path is provided. The diagnostics is sent to the
+ * client, when caught.
+ */
 public final class InvalidCoverageScriptURI extends Exception {
 
     private static final long serialVersionUID = 2253144060104500867L;

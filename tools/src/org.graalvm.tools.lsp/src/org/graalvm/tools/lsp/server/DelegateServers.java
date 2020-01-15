@@ -29,6 +29,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -52,10 +53,12 @@ public final class DelegateServers {
 
     private final TruffleAdapter truffleAdapter;
     private final DelegateServer[] delegateServers;
+    private final LoggerProxy logger;
 
-    public DelegateServers(TruffleAdapter truffleAdapter, List<DelegateServer> delegateServers) {
+    public DelegateServers(TruffleAdapter truffleAdapter, List<DelegateServer> delegateServers, LoggerProxy logger) {
         this.truffleAdapter = truffleAdapter;
         this.delegateServers = delegateServers.toArray(new DelegateServer[delegateServers.size()]);
+        this.logger = logger;
     }
 
     public void submitAll(ExecutorService executors) {
@@ -64,7 +67,7 @@ public final class DelegateServers {
         }
     }
 
-    public void sendMessageToDelegates(byte[] buffer, Object id, String method, JSONObject params, LoggerProxy logger) {
+    public void sendMessageToDelegates(byte[] buffer, Object id, String method, JSONObject params) {
         String language = findContextLanguage(params);
         for (DelegateServer ds : delegateServers) {
             if (languageMatch(language, ds.getLanguageId()) && supportsMethod(method, params, ds.getCapabilities())) {
@@ -104,7 +107,12 @@ public final class DelegateServers {
         Object allResults = result;
         for (DelegateServer ds : delegateServers) {
             try {
-                allResults = mergeResults(allResults, ds.awaitMessage(id));
+                JSONObject message = ds.awaitMessage(id);
+                if (logger.isLoggable(Level.FINER)) {
+                    String format = "[Trace - %s] Received response from %s: %s";
+                    logger.log(Level.FINER, String.format(format, Instant.now().toString(), ds.toString(), message.toString()));
+                }
+                allResults = mergeResults(allResults, message);
             } catch (InterruptedException iex) {
             }
         }

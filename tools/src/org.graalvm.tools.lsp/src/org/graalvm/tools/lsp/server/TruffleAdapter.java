@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -97,8 +96,8 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private CoverageRequestHandler coverageHandler;
     private HighlightRequestHandler highlightHandler;
     private TextDocumentSurrogateMap surrogateMap;
-    private final Map<String, List<String>> langId2CompletionTriggerCharacters = new ConcurrentHashMap<>();
-    private final Map<String, List<String>> langId2SignatureTriggerCharacters = new ConcurrentHashMap<>();
+    private final LanguageTriggerCharacters completionTriggerCharacters = new LanguageTriggerCharacters();
+    private final LanguageTriggerCharacters signatureTriggerCharacters = new LanguageTriggerCharacters();
 
     public TruffleAdapter(boolean developerMode) {
         this.developerMode = developerMode;
@@ -116,9 +115,9 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
 
     private void createLSPRequestHandlers() {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
-        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, langId2CompletionTriggerCharacters);
+        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionTriggerCharacters);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler, developerMode);
-        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler, langId2SignatureTriggerCharacters);
+        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler, signatureTriggerCharacters);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor);
     }
@@ -279,14 +278,14 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         if (completionProvider != null) {
             List<String> triggerCharacters = completionProvider.getTriggerCharacters();
             if (triggerCharacters != null) {
-                langId2CompletionTriggerCharacters.put(languageId, triggerCharacters);
+                completionTriggerCharacters.add(languageId, triggerCharacters);
             }
         }
         SignatureHelpOptions signatureHelpProvider = capabilities.getSignatureHelpProvider();
         if (signatureHelpProvider != null) {
             List<String> triggerCharacters = signatureHelpProvider.getTriggerCharacters();
             if (triggerCharacters != null) {
-                langId2SignatureTriggerCharacters.put(languageId, triggerCharacters);
+                signatureTriggerCharacters.add(languageId, triggerCharacters);
             }
         }
     }

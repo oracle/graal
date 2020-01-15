@@ -83,7 +83,8 @@ public final class NearestSectionsFinder {
     }
 
     private static NearestNode findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env) {
-        NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false);
+        NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false,
+                        StandardTags.ExpressionTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
         NearestNode nearestNode;

@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -339,6 +340,11 @@ public class LanguageServer {
             }
         }
 
+        @Override
+        public String toString() {
+            return "Delegate LS " + (languageId != null ? languageId : "") + "@" + getAddress();
+        }
+
     }
 
     public static final class Session implements Runnable {
@@ -500,7 +506,7 @@ public class LanguageServer {
                 JSONObject params = req.getJSONParams();
                 CompletableFuture<?> future = null;
                 String method = req.getMethod();
-                delegateServers.sendMessageToDelegates(buffer, id, method, params, server.getLogger());
+                delegateServers.sendMessageToDelegates(buffer, id, method, params);
                 if (server.supportsMethod(method, params)) {
                     switch (method) {
                         case "initialize":
@@ -751,7 +757,7 @@ public class LanguageServer {
             try {
                 JSONObject params = msg.getJSONParams();
                 String method = msg.getMethod();
-                delegateServers.sendMessageToDelegates(buffer, null, method, params, server.getLogger());
+                delegateServers.sendMessageToDelegates(buffer, null, method, params);
                 switch (method) {
                     case "initialized":
                         server.initialized(new InitializedParams(params));
@@ -806,7 +812,7 @@ public class LanguageServer {
             response.put("result", allResults != null ? allResults : JSONObject.NULL);
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending response '(%s)'\nResult: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, allResults.toString()));
+                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, Objects.toString(allResults)));
             }
             writeMessage(response.toString());
         }

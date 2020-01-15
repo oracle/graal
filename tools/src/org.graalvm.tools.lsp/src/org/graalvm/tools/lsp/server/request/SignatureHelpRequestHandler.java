@@ -35,6 +35,7 @@ import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.types.ParameterInformation;
 import org.graalvm.tools.lsp.server.types.SignatureHelp;
 import org.graalvm.tools.lsp.server.types.SignatureInformation;
@@ -59,7 +60,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Map;
 
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
@@ -72,14 +72,14 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
     private final CompletionRequestHandler completionHandler;
-    private final Map<String, List<String>> langId2SignatureTriggerCharacters;
+    private final LanguageTriggerCharacters signatureTriggerCharacters;
 
     public SignatureHelpRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator,
-                    CompletionRequestHandler completionHandler, Map<String, List<String>> langId2SignatureTriggerCharacters) {
+                    CompletionRequestHandler completionHandler, LanguageTriggerCharacters signatureTriggerCharacters) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
         this.completionHandler = completionHandler;
-        this.langId2SignatureTriggerCharacters = langId2SignatureTriggerCharacters;
+        this.signatureTriggerCharacters = signatureTriggerCharacters;
     }
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
@@ -184,7 +184,7 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
         int triggerCharOffset = charOffset - 1;
         char signatureTirggerChar = characters.charAt(triggerCharOffset);
 
-        List<String> signatureHelpTriggerCharacters = langId2SignatureTriggerCharacters.getOrDefault(surrogate.getLanguageId(), Collections.emptyList());
+        List<String> signatureHelpTriggerCharacters = signatureTriggerCharacters.getTriggerCharacters(surrogate.getLanguageId());
         return signatureHelpTriggerCharacters.contains(String.valueOf(signatureTirggerChar));
     }
 

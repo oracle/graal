@@ -24,6 +24,9 @@
  */
 package org.graalvm.tools.lsp.exceptions;
 
+/**
+ * A utility exception to intercept the evaluation result.
+ */
 public final class EvaluationResultException extends ThreadDeath {
 
     private static final long serialVersionUID = 4334314735613697864L;

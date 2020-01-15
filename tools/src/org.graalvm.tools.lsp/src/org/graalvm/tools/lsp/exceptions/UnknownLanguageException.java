@@ -24,6 +24,10 @@
  */
 package org.graalvm.tools.lsp.exceptions;
 
+/**
+ * This is a utility exception, which is thrown when language from the client is not known to the
+ * runtime. A message is sent to the client, when this exception is caught.
+ */
 public final class UnknownLanguageException extends RuntimeException {
 
     private static final long serialVersionUID = -4681567232393674256L;

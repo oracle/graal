@@ -412,7 +412,6 @@ public abstract class Accessor {
         public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
-
     }
 
     public abstract static class LanguageSupport {

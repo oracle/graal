@@ -22,31 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.exceptions;
+package org.graalvm.tools.lsp.server;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class LSPIOException extends RuntimeException implements TruffleException {
+/**
+ * Trigger characters of languages.
+ */
+public final class LanguageTriggerCharacters {
 
-    private static final long serialVersionUID = 310418381621312260L;
+    private final Map<String, List<String>> langTriggerCharacters = new ConcurrentHashMap<>();
+    private final List<String> anyLangTriggerCharacters = new CopyOnWriteArrayList<>();
 
-    public LSPIOException(String message, Throwable e) {
-        super(message, e);
+    void add(String languageId, List<String> triggerCharacters) {
+        if (languageId == null) {
+            anyLangTriggerCharacters.addAll(triggerCharacters);
+        } else {
+            langTriggerCharacters.put(languageId, triggerCharacters);
+        }
     }
 
-    @Override
-    public synchronized Throwable fillInStackTrace() {
-        return this;
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public boolean isExit() {
-        return true;
+    public List<String> getTriggerCharacters(String languageId) {
+        if (languageId == null) {
+            return anyLangTriggerCharacters;
+        } else {
+            List<String> triggerCharacters = langTriggerCharacters.get(languageId);
+            if (triggerCharacters == null) {
+                triggerCharacters = anyLangTriggerCharacters;
+            }
+            return triggerCharacters;
+        }
     }
 }

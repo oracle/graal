@@ -412,12 +412,16 @@ suite = {
               "artifactId" : "lsp_api",
             },
             "description" : "Truffle Language Server backend API.",
+            "javadocType" : "api",
         },
         "LSP": {
             "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "org.graalvm.tools.lsp",
-            "dependencies": ["org.graalvm.tools.lsp"],
+            "dependencies": [
+                "org.graalvm.tools.api.lsp",
+                "org.graalvm.tools.lsp"
+            ],
             "distDependencies" : [
                 "LSP_API",
             ],

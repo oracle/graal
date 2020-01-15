@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -49,6 +48,7 @@ import org.graalvm.tools.lsp.server.types.MarkupKind;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
@@ -70,7 +70,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -94,13 +93,13 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private static final int SORTING_PRIORITY_GLOBALS = 2;
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
-    private final Map<String, List<String>> langId2CompletionTriggerCharacters;
+    private final LanguageTriggerCharacters languageCompletionTriggerCharacters;
 
     public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
-                    SourceCodeEvaluator sourceCodeEvaluator, Map<String, List<String>> langId2CompletionTriggerCharacters) {
+                    SourceCodeEvaluator sourceCodeEvaluator, LanguageTriggerCharacters completionTriggerCharacters) {
         super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
-        this.langId2CompletionTriggerCharacters = langId2CompletionTriggerCharacters;
+        this.languageCompletionTriggerCharacters = completionTriggerCharacters;
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int column, CompletionContext completionContext) throws DiagnosticsNotification {
@@ -118,7 +117,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             return emptyList;
         }
 
-        List<String> completionTriggerCharacters = langId2CompletionTriggerCharacters.getOrDefault(surrogate.getLanguageId(), Collections.emptyList());
+        List<String> completionTriggerCharacters = languageCompletionTriggerCharacters.getTriggerCharacters(surrogate.getLanguageId());
         CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column, completionTriggerCharacters,
                         completionContext);
         if (surrogate.isSourceCodeReadyForCodeCompletion()) {
@@ -449,7 +448,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             return detailText;
         }
 
-        Object truffleObj = null;
+        Object truffleObj;
         if (InteropUtils.isPrimitive(obj)) {
             truffleObj = null; // TODO: box the primitive when such API is available
         } else {
@@ -483,18 +482,32 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             } else {
                 if (docu instanceof TruffleObject) {
                     TruffleObject markup = (TruffleObject) docu;
-                    MarkupKind kind;
-                    try {
-                        docu = INTEROP.invokeMember(markup, MarkupKind.Markdown.getStringValue());
-                        kind = MarkupKind.Markdown;
-                    } catch (InteropException e) {
-                        docu = INTEROP.invokeMember(markup, MarkupKind.PlainText.getStringValue());
-                        kind = MarkupKind.PlainText;
+                    MarkupKind markupKind = null;
+                    String text = null;
+                    if (INTEROP.isMemberReadable(markup, "kind")) {
+                        Object kind = INTEROP.readMember(markup, "kind");
+                        if (kind instanceof String) {
+                            markupKind = MarkupKind.get((String) kind);
+                        }
                     }
-                    return MarkupContent.create(kind, env.toString(langInfo, docu));
+                    if (markupKind == null) {
+                        markupKind = MarkupKind.PlainText;
+                    }
+                    if (INTEROP.isMemberReadable(markup, "value")) {
+                        Object v = INTEROP.readMember(markup, "value");
+                        if (v instanceof String) {
+                            text = (String) v;
+                        }
+                    }
+                    assert text != null : "No documentation value is provided from " + docu;
+                    if (text != null) {
+                        return MarkupContent.create(markupKind, text);
+                    } else {
+                        return MarkupContent.create(markupKind, env.toString(langInfo, docu));
+                    }
                 }
             }
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException e) {
             // GET_DOCUMENTATION message is not supported
         } catch (InteropException e) {
             e.printStackTrace(err);
