@@ -88,16 +88,22 @@ JNIEXPORT int JNICALL JVM_InitializeSocketLibrary() {
    return 0;
 }
 
-static jlong  _time_offset         = 116444736000000000L;
-static jlong NANOSECS_PER_SEC      = 1000000000L;
-static jint  NANOSECS_PER_MILLISEC = 1000000;
+static const jlong _offset               = 116444736000000000L;
+static const jlong NANOSECS_PER_SEC      = 1000000000L;
+static const jint  NANOSECS_PER_MILLISEC = 1000000;
 
-static jlong getCurrentTimeMillis() {
+// Returns time ticks in (10th of micro seconds)
+static inline jlong windows_to_time_ticks(FILETIME wt) {
+  jlong a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
+  return (a - _offset);
+}
+
+static inline jlong getCurrentTimeMillis() {
     jlong a;
     FILETIME wt;
     GetSystemTimeAsFileTime(&wt);
-    a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
-    return (a - _time_offset) / 10000;
+    jlong ticks = windows_to_time_ticks(wt);
+    return ticks / 10000;
 }
 
 JNIEXPORT jlong JNICALL Java_java_lang_System_nanoTime(void *env, void * ignored) {
@@ -126,6 +132,37 @@ JNIEXPORT jlong JNICALL Java_java_lang_System_currentTimeMillis(void *env, void 
 
 JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
+}
+
+static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
+  FILETIME wt;
+  GetSystemTimeAsFileTime(&wt);
+  jlong ticks = windows_to_time_ticks(wt); // 10th of micros
+  jlong secs = ticks / 10000000; // 10000 * 1000
+  *seconds = secs;
+  *nanos = ((jlong)(ticks - (secs*10000000))) * 100;
+}
+
+/* Taken from src/hotspot/share/prims/jvm.cpp */
+static const jlong MAX_DIFF_SECS = 0x0100000000LL; //  2^32
+static const jlong MIN_DIFF_SECS = -0x0100000000LL; // -2^32
+
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    jlong seconds;
+    jlong nanos;
+
+    os_javaTimeSystemUTC(&seconds, &nanos);
+
+    jlong diff = seconds - offset_secs;
+    if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
+       return -1; // sentinel value: the offset is too far off the target
+    }
+
+    return (diff * (jlong)1000000000) + nanos;
+}
+
+JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
 JNIEXPORT void JNICALL JVM_BeforeHalt() {
