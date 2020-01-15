@@ -624,6 +624,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
                 _add_native_image_macro(_library_config, _component)
 
+            if _src_jdk_version == 8:
+                graalvm_dists.difference_update(_component.boot_jars)
+            graalvm_dists.difference_update(_component.jar_distributions)
+            graalvm_dists.difference_update(_component.jvmci_parent_jars)
+            graalvm_dists.difference_update(_component.builder_jar_distributions)
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
