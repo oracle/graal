@@ -330,6 +330,7 @@ hfds EMPTY,impl
 CLSS public final org.graalvm.polyglot.ResourceLimits$Builder
  outer org.graalvm.polyglot.ResourceLimits
 meth public org.graalvm.polyglot.ResourceLimits build()
+meth public org.graalvm.polyglot.ResourceLimits$Builder cpuTimeLimit(java.time.Duration,java.time.Duration)
 meth public org.graalvm.polyglot.ResourceLimits$Builder onLimit(java.util.function.Consumer<org.graalvm.polyglot.ResourceLimitEvent>)
 meth public org.graalvm.polyglot.ResourceLimits$Builder statementLimit(long,java.util.function.Predicate<org.graalvm.polyglot.Source>)
 supr java.lang.Object
