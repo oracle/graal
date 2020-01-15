@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -161,6 +162,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         testRemovableCounted("incrementSnippet", 257, 256, 1);
     }
 
+    @Ignore("GR-20642")
     @Test
     public void increment7() {
         testCounted("incrementSnippet", -10, Integer.MAX_VALUE, 1);
