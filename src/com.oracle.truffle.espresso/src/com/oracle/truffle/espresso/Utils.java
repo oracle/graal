@@ -29,13 +29,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Utils {
 
-    public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
+    public static NativeSimpleType kindToType(JavaKind kind) {
         switch (kind) {
             case Boolean:
                 return NativeSimpleType.SINT8; // ?
@@ -58,11 +59,7 @@ public final class Utils {
             case Object:
                 // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
                 // NULL instead.
-
-                return javaToNative
-                                ? NativeSimpleType.NULLABLE
-                                : NativeSimpleType.OBJECT;
-
+                return NativeEnv.word();
             default:
                 throw EspressoError.shouldNotReachHere();
         }

@@ -33,7 +33,7 @@ import java.util.WeakHashMap;
  */
 public class WeakHandles<T> {
 
-    private static final int DEFAULT_INITIAL_CAPACITY = 32;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
 
     private final WeakHashMap<T, Integer> map;
     private final LinkedList<Integer> freeList = new LinkedList<>();

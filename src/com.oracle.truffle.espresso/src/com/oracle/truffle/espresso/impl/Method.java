@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterfac
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.jni.NativeEnv.word;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -86,7 +87,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess, MethodRef {
 
@@ -327,18 +327,18 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private static String buildJniNativeSignature(Method method) {
         // Prepend JNIEnv*.
-        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.SINT64);
+        StringBuilder sb = new StringBuilder("(").append(word());
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Receiver for instance methods, class for static methods.
-        sb.append(", ").append(NativeSimpleType.NULLABLE);
+        sb.append(", ").append(word());
 
         int argCount = Signatures.parameterCount(signature, false);
         for (int i = 0; i < argCount; ++i) {
-            sb.append(", ").append(Utils.kindToType(Signatures.parameterKind(signature, i), true));
+            sb.append(", ").append(Utils.kindToType(Signatures.parameterKind(signature, i)));
         }
 
-        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature), false));
+        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature)));
 
         return sb.toString();
     }

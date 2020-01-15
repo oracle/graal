@@ -30,7 +30,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public class Callback implements TruffleObject {
+public final class Callback implements TruffleObject {
 
     private final int arity;
     private final Function function;
@@ -40,8 +40,9 @@ public class Callback implements TruffleObject {
         this.function = function;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean isExecutable() {
+    boolean isExecutable() {
         return true;
     }
 
