@@ -225,7 +225,13 @@ public class DebugInfoBuilder {
         return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Perform platform dependent verification of the FrameState.
+     *
+     * @param node the node using the state
+     * @param topState the state
+     * @return true if the validation succeeded
+     */
     protected boolean verifyFrameState(NodeWithState node, FrameState topState) {
         return true;
     }

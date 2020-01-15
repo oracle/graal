@@ -3921,11 +3921,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private FrameState createBytecodeExceptionFrameState(int bci, BytecodeExceptionNode bytecodeException) {
-        if (currentBlock != null && bci > currentBlock.endBci) {
-            frameState.clearNonLiveLocals(currentBlock, liveness, false);
-        }
         FrameStateBuilder copy = frameState.copy();
         copy.clearStack();
+        if (currentBlock != null) {
+            copy.clearNonLiveLocals(currentBlock, liveness, false);
+        }
         copy.setRethrowException(true);
         copy.push(JavaKind.Object, bytecodeException);
         return copy.create(bci, bytecodeException);
