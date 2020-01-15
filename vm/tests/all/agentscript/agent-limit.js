@@ -3,12 +3,11 @@
 var counter = 0;
 
 agent.on('enter', function(ctx, frame) {
-    counter++;
+    if (++counter === 1000) {
+        throw `T-Trace: ${ctx.name} method called ${counter} times. enough!`;
+    }
 }, {
     roots: true,
     rootNameFilter: (n) => n === 'nextNatural'
 });
 
-agent.on('close', function() {
-   print(`T-Trace: nextNatural called ${counter} times`);
-});

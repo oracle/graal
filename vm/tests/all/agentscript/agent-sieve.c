@@ -105,6 +105,7 @@ long measure(int prntCnt, int upto) {
         cnt++;
         if (cnt % prntCnt == 0) {
             printf("Computed %d primes in %ld ms. Last one is %d\n", cnt, (currentTimeMillis() - start), res);
+            fflush(stdout);
             prntCnt *= 2;
         }
         if (upto && cnt >= upto) {
@@ -118,7 +119,9 @@ long measure(int prntCnt, int upto) {
 }
 
 int main(int argc, char** argv) {
-    printf("Hundred thousand prime numbers in %ld ms\n", measure(97, 100000));
-    fflush(stdout);
+    for (;;) {
+        printf("Hundred thousand prime numbers in %ld ms\n", measure(97, 100000));
+        fflush(stdout);
+    }
     return (EXIT_SUCCESS);
 }

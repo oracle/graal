@@ -519,6 +519,69 @@ exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... 
 block to catch them and deal with them as if they were emitted by the regular
 user code.
 
+### Hack into the C Code!
+
+The polyglot capabilities of GraalVM know no limits. Not only it is possible
+to interpret dynamic languages, but with the help of the
+[lli launcher](https://www.graalvm.org/docs/reference-manual/languages/llvm/)
+one can mix in even *statically compiled* programs written in **C**, **C++**,
+**Fortran**, **Rust**, etc.
+
+Imagine you have a long running program just like
+[sieve.c](https://github.com/oracle/graal/blob/master/vm/tests/all/agentscript/agent-sieve.c)
+(which contains never-ending `for` loop in `main` method) and you'd like to give
+it some execution quota. That is quite easy to do with GraalVM and T-Trace! First
+of all execute the program on GraalVM:
+
+```bash
+$ export TOOLCHAIN_PATH=`graalvm/bin/lli --print-toolchain-path`
+$ ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o sieve
+$ graalvm/bin/lli sieve
+```
+
+Why toolchain? The GraalVM `clang` wrapper adds special options
+instructing the regular `clang` to keep the LLVM bitcode information in the `sieve`
+executable along the normal native code.
+The GraalVM's `lli` interpreter can then use the bitcode to interpret the program
+at full speed.  Btw. compare the result of direct native execution via `./sieve`
+and interpreter speed of `graalvm/bin/lli sieve` - quite good result for an
+interpreter, right?
+
+Anyway let's focus on breaking the endless loop. You can do it with a JavaScript
+`agent-limit.js` T-Trace script:
+
+```js
+var counter = 0;
+
+agent.on('enter', function(ctx, frame) {
+    if (++counter === 1000) {
+        throw `T-Trace: ${ctx.name} method called ${counter} times. enough!`;
+    }
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'nextNatural'
+});
+```
+
+The script counts the number of invocations of the C `nextNatural` function
+and when the function gets invoked a thousand times, it emits an error
+to terminate the `sieve` execution. Just run the program as:
+
+```bash
+$ lli --polyglot --agentscript=agent-limit.js --experimental-options sieve
+Computed 97 primes in 181 ms. Last one is 509
+T-Trace: nextNatural method called 1000 times. enough!
+        at <js> :anonymous(<eval>:7:117-185)
+        at <llvm> nextNatural(agent-sieve.c:14:186-221)
+        at <llvm> nextPrime(agent-sieve.c:74:1409)
+        at <llvm> measure(agent-sieve.c:104:1955)
+        at <llvm> main(agent-sieve.c:123:2452)
+```
+
+The mixture of `lli`, polyglot and T-Trace opens enormous possibilities in tracing,
+controlling and interactive or batch debugging of native programs. Write in
+C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
+
 <!--
 
 ### TODO:
@@ -534,9 +597,6 @@ towards ease of use in microservices area - e.g. logging
 in a completely language agnostic way.
 - inspect values, types at invocation or allocation sites, gathering useful information
 - modify computed values, interrupt execution 
-
-- C, C++, Rust, Fortran, etc. - Enrich your static code behavior 
-by attaching your insights written in dynamic languages.
 
 - powerful tools to help you write, debug, manage, and organize
 your **T-Trace** insights scripts. It is a matter of pressing a single button
