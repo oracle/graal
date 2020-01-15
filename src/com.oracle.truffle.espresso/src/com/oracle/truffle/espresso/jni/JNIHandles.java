@@ -276,7 +276,7 @@ final class LocalHandles {
     public int pushFrame(int capacity) {
         if (frameCount == frameStack.length) {
             int[] oldArray = frameStack;
-            frameStack = new int[oldArray.length * 2];
+            frameStack = new int[Math.multiplyExact(oldArray.length, 2)];
             System.arraycopy(oldArray, 0, frameStack, 0, oldArray.length);
         }
         frameStack[frameCount] = top;
@@ -303,7 +303,7 @@ final class LocalHandles {
     public void ensureCapacity(int capacity) {
         int targetCapacity = objects.length;
         while (top + capacity >= targetCapacity) {
-            targetCapacity *= 2;
+            targetCapacity = Math.multiplyExact(targetCapacity, 2);
         }
         if (targetCapacity > objects.length) {
             Object[] oldArray = objects;
