@@ -80,7 +80,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
 
 
 # pylint: disable=line-too-long
-mx_sdk_vm.register_vm_config('ce', ['bjs', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ['bjs', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
 mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite, dist_name='ce-complete')
 mx_sdk_vm.register_vm_config('ce-python', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
