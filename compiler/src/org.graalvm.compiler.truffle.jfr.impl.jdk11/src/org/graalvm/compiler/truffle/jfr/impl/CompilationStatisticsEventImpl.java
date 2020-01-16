@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.jfr.jdk11;
+package org.graalvm.compiler.truffle.jfr.impl;
 
 import jdk.jfr.Category;
 import jdk.jfr.Description;

@@ -22,24 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.jfr.jdk11;
+package org.graalvm.compiler.truffle.jfr.impl;
 
+import jdk.jfr.BooleanFlag;
 import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Label;
 import jdk.jfr.StackTrace;
-import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 
 @Category("Truffle Compiler")
-@Label("Assumption Invalidation")
-@Description("Truffle Assumption Invalidation")
-@StackTrace(true)
-class InvalidationEventImpl extends RootFunctionEventImpl implements InvalidationEvent {
+@Label("Compilation Failure")
+@Description("Truffe Compilation Failures")
+@StackTrace(false)
+class CompilationFailureEventImpl extends RootFunctionEventImpl {
 
-    @Label("Reason") @Description("Invalidation Reason") public String reason;
+    @Label("Permanent Failure") @Description("Permanent Failure") @BooleanFlag public boolean permanentFailure;
 
-    @Override
-    public void setReason(CharSequence invalidationReason) {
-        this.reason = invalidationReason == null ? null : invalidationReason.toString();
+    @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
+
+    CompilationFailureEventImpl(String source, String rootFunction, boolean permanent, CharSequence reason) {
+        super(source, rootFunction);
+        this.permanentFailure = permanent;
+        this.failureReason = reason == null ? null : reason.toString();
     }
 }

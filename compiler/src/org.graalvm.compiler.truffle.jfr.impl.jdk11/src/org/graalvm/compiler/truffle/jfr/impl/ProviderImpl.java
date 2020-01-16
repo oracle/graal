@@ -22,27 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.jfr.jdk11;
+package org.graalvm.compiler.truffle.jfr.impl;
 
-import jdk.jfr.BooleanFlag;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import jdk.jfr.FlightRecorder;
+import org.graalvm.compiler.truffle.jfr.EventFactory;
 
-@Category("Truffle Compiler")
-@Label("Compilation Failure")
-@Description("Truffe Compilation Failures")
-@StackTrace(false)
-class CompilationFailureEventImpl extends RootFunctionEventImpl {
+public final class ProviderImpl implements EventFactory.Provider {
 
-    @Label("Permanent Failure") @Description("Permanent Failure") @BooleanFlag public boolean permanentFailure;
-
-    @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
-
-    CompilationFailureEventImpl(String source, String rootFunction, boolean permanent, CharSequence reason) {
-        super(source, rootFunction);
-        this.permanentFailure = permanent;
-        this.failureReason = reason == null ? null : reason.toString();
+    @Override
+    public EventFactory getEventFactory() {
+        return FlightRecorder.isAvailable() ? new EventFactoryImpl() : null;
     }
 }

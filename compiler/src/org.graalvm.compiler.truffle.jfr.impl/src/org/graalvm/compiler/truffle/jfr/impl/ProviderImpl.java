@@ -22,13 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.jfr.jdk11;
+package org.graalvm.compiler.truffle.jfr.impl;
 
-import jdk.jfr.FlightRecorder;
 import org.graalvm.compiler.truffle.jfr.EventFactory;
 
 public final class ProviderImpl implements EventFactory.Provider {
+
+    @Override
     public EventFactory getEventFactory() {
-        return FlightRecorder.isAvailable() ? new EventFactoryImpl() : null;
+        throw new InternalError("JDK specific overlay for " + ProviderImpl.class.getName() + " missing");
     }
 }
