@@ -1848,8 +1848,9 @@ x-GraalVM-Polyglot-Part: {polyglot}
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
         if isinstance(main_component, mx_sdk.GraalVmLanguage):
+            _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join('jre', 'languages', main_component.dir_name))
+""".format(workdir=join(_wd_base, main_component.dir_name))
 
         post_install_msg = None
         for component in self.components:
@@ -1979,6 +1980,10 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                     launcher_config.add_relative_home_path(language, relative_path_from_launcher_dir)
 
         add_files_from_component(component, base_dir, [])
+
+        sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+        metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
+        layout.setdefault(base_dir + '/release', []).append('string:' + metadata)
 
         for dependency_name, details in component.standalone_dependencies.items():
             dependency_path = details[0]

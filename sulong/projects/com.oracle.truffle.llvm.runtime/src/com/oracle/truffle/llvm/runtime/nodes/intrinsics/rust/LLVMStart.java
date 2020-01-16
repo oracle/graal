@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -104,7 +104,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
-            LLVMMemory memory = language.getCapability(LLVMMemory.class);
+            LLVMMemory memory = language.getLLVMMemory();
             LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
             LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
             LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);

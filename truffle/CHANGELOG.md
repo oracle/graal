@@ -3,7 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 20.0.0
-* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner *Type class.
+* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
 * Deprecated engine options engine.InvalidationReprofileCount and engine.ReplaceReprofileCount. They no longer have any effect. There is no longer reprofiling after compilation. 
 * Added [DebuggerSession.{suspend(), suspendAll,resume()}](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html) to allow suspending and resuming threads.
 * Add new loop explosion mode [LoopExplosionKind#FULL_UNROLL_UNTIL_RETURN](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html#FULL_UNROLL_UNTIL_RETURN), which can be used to duplicate loop exits during unrolling until function returns.
@@ -15,7 +15,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `TruffleLogger.getLogger` throws an `IllegalArgumentException` when given `id` is not a valid language or instrument id.
 * [Node#getEncapsulatingSourceSection()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getEncapsulatingSourceSection--) is no longer a fast-path method, because `getSourceSection()` is not fast-path.
 * The algorithm used to generate a unique [URI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
+* Added [ExportLibrary.delegateTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/ExportLibrary.html#delegateTo--) attribute that allows to delegate all messages of a library to value of a final delegate field. This can be used in combination with `ReflectionLibrary` to improve the ability to build wrappers.
 
+* Truffle TCK now checks that instrumentable nodes are not used in the context of a Library.
+* Getter to check whether [TruffleContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#isEntered--) is activated or not
 
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.

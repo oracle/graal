@@ -557,6 +557,16 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawF
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawFieldAddress
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawFieldOffset
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawStructure
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])

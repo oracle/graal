@@ -74,7 +74,6 @@ class AnnotationProcessor<M extends Template> {
         return parser;
     }
 
-    @SuppressWarnings({"unchecked"})
     public void process(Element element, boolean callback) {
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
@@ -86,6 +85,11 @@ class AnnotationProcessor<M extends Template> {
             processedElements.add(qualifiedName);
         }
 
+        processImpl(element, callback);
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private void processImpl(Element element, boolean callback) {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement type = (TypeElement) element;
 

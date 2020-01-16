@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -109,8 +109,8 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size, alignment));
+                        @CachedLanguage LLVMLanguage language) {
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, alignment));
         }
     }
 
@@ -143,14 +143,14 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size * (long) nr, alignment));
+                        @CachedLanguage LLVMLanguage language) {
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * (long) nr, alignment));
         }
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, long nr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size * nr, alignment));
+                        @CachedLanguage LLVMLanguage language) {
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
         }
     }
 }

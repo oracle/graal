@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -662,7 +663,8 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
                         @CachedLibrary("function") InteropLibrary nativeExecute,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+                        @CachedLanguage LLVMLanguage language) {
+            LLVMMemory memory = language.getLLVMMemory();
             LLVMNativePointer mem = memory.allocateMemory(3 * 16);
             LLVMNativePointer ptrX = mem;
             LLVMNativePointer ptrY = ptrX.increment(16);

@@ -201,4 +201,10 @@ public interface Commands {
      */
     String OPTION_LOCAL_DEPENDENCIES = "D";
     String LONG_OPTION_LOCAL_DEPENDENCIES = "local-deps";
+
+    /**
+     * Ignore component dependencies.
+     */
+    String OPTION_NO_DEPENDENCIES = "M";
+    String LONG_OPTION_NO_DEPENDENCIES = "no-deps";
 }

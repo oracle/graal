@@ -43,7 +43,7 @@ import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.CompressibleConstant;
 
 public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
-    private SubstrateNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
+    public SubstrateNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
         super(type, exactType, nonNull, alwaysNull, encoding);
         assert getEncoding().equals(ReferenceAccess.singleton().getCompressEncoding()) : "Using a non-default encoding is not supported: reference map support is needed.";
     }

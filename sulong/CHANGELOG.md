@@ -4,6 +4,12 @@ Changes:
 
 * The [Toolchain](docs/TOOLCHAIN.md) is now based on LLVM 9.0.0.
 
+New features:
+
+* Support accessing `llvm-ar`, `llvm-nm`, `llvm-objcopy`,
+  `llvm-objdump`, `llvm-ranlib`, `llvm-readelf`, `llvm-readobj` and
+  `llvm-strip` via the [toolchain](docs/TOOLCHAIN.md).
+
 # Version 19.3.0
 
 Changes:

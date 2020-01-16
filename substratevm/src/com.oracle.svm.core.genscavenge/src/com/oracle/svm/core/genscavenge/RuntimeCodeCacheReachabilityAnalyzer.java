@@ -75,7 +75,7 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
             return true;
         }
 
-        Class<?> clazz = DynamicHub.toClass(ObjectHeaderImpl.dynamicHubFromObjectHeader(header));
+        Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
         return isWhitelistedClass(clazz);
     }
 

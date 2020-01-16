@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,13 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -58,10 +58,10 @@ public abstract class LLVMFrameAddress extends LLVMBuiltin {
 
     @Specialization
     protected LLVMNativePointer doPointee(VirtualFrame frame, int frameLevel,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+                    @CachedLanguage LLVMLanguage language) {
         if (frameLevel == 0) {
             StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-            return LLVMNativePointer.create(pointer.get(memory));
+            return LLVMNativePointer.create(pointer.get(language.getLLVMMemory()));
         } else {
             return LLVMNativePointer.createNull();
         }

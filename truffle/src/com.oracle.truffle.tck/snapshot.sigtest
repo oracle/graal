@@ -44,7 +44,7 @@ meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},
 meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
  anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds languageInfo,reference,vmObject
+hfds languageInfo,polyglotLanguageInstance,reference
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
  outer com.oracle.truffle.api.TruffleLanguage
@@ -105,6 +105,7 @@ meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public void startEval(org.graalvm.polyglot.Source)
+meth public void startExecute(java.util.function.Function<org.graalvm.polyglot.Context,org.graalvm.polyglot.Value>)
 supr java.lang.Object
 hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
 hcls ExecutingLoop,ExecutingSource

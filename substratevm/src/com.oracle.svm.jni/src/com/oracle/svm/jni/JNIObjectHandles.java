@@ -333,7 +333,7 @@ final class JNIImageHeapHandles {
     }
 
     static boolean isInImageHeap(Object target) {
-        return Heap.getHeap().isInImageHeap(target);
+        return target != null && Heap.getHeap().isInImageHeap(target);
     }
 
     static boolean isInRange(JNIObjectHandle handle) {

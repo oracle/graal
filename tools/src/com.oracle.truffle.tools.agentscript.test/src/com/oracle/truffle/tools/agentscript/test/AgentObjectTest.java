@@ -39,6 +39,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -47,6 +48,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,6 +66,22 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             assertEquals(AgentScript.VERSION, agentAPI.version());
+        }
+    }
+
+    @Test
+    public void onErrorneousCallbackRegistration() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            };
+            agentAPI.on("enterOrLeave", listener);
+            fail("Should have failed with PolyglotException");
+        } catch (PolyglotException t) {
+            assertTrue(t.getMessage(), t.getMessage().startsWith("agentscript: Unknown event type"));
         }
     }
 
@@ -340,8 +358,12 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] expressionCounter = {0};
+            int[] expressionReturnCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionReturnCounter[0]++;
             }, AgentObjectFactory.createConfig(true, false, false, null));
 
             // @formatter:off
@@ -358,7 +380,54 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
+            assertEquals("Same amount of expressions", expressionCounter[0], expressionReturnCounter[0]);
         }
+    }
+
+    @Test
+    public void internalScriptsAreIgnored() throws Exception {
+        int[] closeCounter = {0};
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).internal(true).build();
+            // @formatter:on
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+                if (ev.name().equals(sampleScript.getName())) {
+                    Assert.fail("Don't load internal scripts: " + ev.uri());
+                }
+            };
+            agentAPI.on("source", listener);
+
+            int[] expressionCounter = {0};
+            agentAPI.on("enter", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+
+            agentAPI.on("close", () -> {
+                closeCounter[0]++;
+            });
+
+            c.eval(sampleScript);
+
+            assertEquals("No expressions entered & exited", 0, expressionCounter[0]);
+        }
+        assertEquals("Close is reported", 1, closeCounter[0]);
     }
 
     @Test

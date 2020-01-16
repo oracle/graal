@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ interface SuspendedContext {
                 // Nodes tagged with standard tags should have a source section attached.
                 PrintStream err = new PrintStream(env.err());
                 err.print("WARNING: Instrumented node " + node + " of class " + node.getClass() + " has null SourceSection.");
-                ss = node.getEncapsulatingSourceSection();
+                ss = DebugSourcesResolver.findEncapsulatedSourceSection(node);
                 if (ss == null) {
                     RootNode root = node.getRootNode();
                     err.print("WARNING: and null encapsulating SourceSection under " + root + " of class = " + root.getClass());
@@ -155,7 +155,7 @@ interface SuspendedContext {
             if (node == null) {
                 return null;
             } else {
-                return node.getEncapsulatingSourceSection();
+                return DebugSourcesResolver.findEncapsulatedSourceSection(node);
             }
         }
 

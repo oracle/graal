@@ -267,8 +267,8 @@ public class EngineBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public Object executePolyglot1CallTarget(CallTargetCallState state) {
-        return state.callTarget.call(state.internalContext.object);
+    public Object executeCallTarget1(CallTargetCallState state) {
+        return state.callTarget.call();
     }
 
     @Benchmark
@@ -282,6 +282,16 @@ public class EngineBenchmark extends TruffleBenchmark {
         return result;
     }
 
+    @Benchmark
+    public Object executeCallTarget2(CallTargetCallState state) {
+        int result = 0;
+        result += (int) state.callTarget.call(state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue, state.intValue);
+        return result;
+    }
+
     @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
@@ -289,8 +299,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         {
             context.initialize(TEST_LANGUAGE);
         }
-        final Value hostValue = context.asValue(new Object());
-        final BenchmarkContext internalContext = hostValue.asHostObject();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
@@ -306,17 +314,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         public void tearDown() {
             context.close();
         }
-    }
-
-    @Benchmark
-    public Object executeCallTarget2(CallTargetCallState state) {
-        CallTarget callTarget = state.callTarget;
-        int result = 0;
-        result += (int) callTarget.call(state.internalContext.object, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue, state.intValue);
-        return result;
     }
 
     @Benchmark

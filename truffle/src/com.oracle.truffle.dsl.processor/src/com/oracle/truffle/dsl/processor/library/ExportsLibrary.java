@@ -53,6 +53,7 @@ import java.util.Map;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -70,6 +71,7 @@ public final class ExportsLibrary extends Template {
     private final TypeMirror receiverType;
     private final boolean explicitReceiver;
     private Map<CacheExpression, String> sharedExpressions;
+    private VariableElement delegationVariable;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -188,6 +190,18 @@ public final class ExportsLibrary extends Template {
 
     public boolean isExplicitReceiver() {
         return explicitReceiver;
+    }
+
+    public boolean hasExportDelegation() {
+        return getDelegationVariable() != null;
+    }
+
+    public void setDelegationVariable(VariableElement delegateVar) {
+        this.delegationVariable = delegateVar;
+    }
+
+    public VariableElement getDelegationVariable() {
+        return delegationVariable;
     }
 
 }

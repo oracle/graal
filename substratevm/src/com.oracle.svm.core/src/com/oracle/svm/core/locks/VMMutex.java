@@ -175,7 +175,7 @@ public class VMMutex implements AutoCloseable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected void setOwnerToUnspecified() {
+    public void setOwnerToUnspecified() {
         assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
         owner = (IsolateThread) UNSPECIFIED_OWNER;
     }
@@ -187,7 +187,7 @@ public class VMMutex implements AutoCloseable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected void clearUnspecifiedOwner() {
+    public void clearUnspecifiedOwner() {
         assert owner == (IsolateThread) UNSPECIFIED_OWNER;
         owner = WordFactory.nullPointer();
     }

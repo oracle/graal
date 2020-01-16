@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
@@ -209,6 +210,12 @@ public class HeapPolicy {
                             .string(" ]").newline();
             return maximumYoungGenerationSize;
         }
+        long hostedValue = SubstrateOptions.MaxNewSize.getHostedValue();
+        if (hostedValue != 0) {
+            trace.string("  returns maximumYoungGenerationSize: ").unsigned(hostedValue).string(" ]").newline();
+            return WordFactory.unsigned(hostedValue);
+        }
+
         /* If none of those is set, use fraction of the maximum heap size. */
         final UnsignedWord maxHeapSize = getMaximumHeapSize();
         final UnsignedWord youngSizeAsFraction = maxHeapSize.unsignedDivide(100).multiply(getMaximumYoungGenerationSizePercent());
@@ -241,6 +248,11 @@ public class HeapPolicy {
             HeapPolicy.setMaximumHeapSize(WordFactory.unsigned(xmx.getValue()));
             return maximumHeapSize;
         }
+        long hostedValue = SubstrateOptions.MaxHeapSize.getHostedValue();
+        if (hostedValue != 0) {
+            return WordFactory.unsigned(hostedValue);
+        }
+
         /*
          * If the physical size is known yet, the maximum size of the heap is a fraction of the size
          * of the physical memory.
@@ -274,7 +286,6 @@ public class HeapPolicy {
             return minimumHeapSize;
         }
         final XOptions.XFlag xms = XOptions.getXms();
-        UnsignedWord result;
         if (xms.getEpoch() > 0) {
             /* If `-Xms` has been parsed from the command line, use that value. */
             trace.string("  -Xms.epoch: ").unsigned(xms.getEpoch()).string("  -Xms.value: ").unsigned(xms.getValue());
@@ -282,8 +293,14 @@ public class HeapPolicy {
             trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
+        long hostedValue = SubstrateOptions.MinHeapSize.getHostedValue();
+        if (hostedValue != 0) {
+            trace.string("  returns: ").unsigned(hostedValue).string(" ]").newline();
+            return WordFactory.unsigned(hostedValue);
+        }
+
         /* A default value chosen to delay the first full collection. */
-        result = getMaximumYoungGenerationSize().multiply(2);
+        UnsignedWord result = getMaximumYoungGenerationSize().multiply(2);
         /* But not larger than -Xmx. */
         if (result.aboveThan(getMaximumHeapSize())) {
             result = getMaximumHeapSize();

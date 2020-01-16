@@ -212,6 +212,19 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * Checks whether the context is entered. Checks whether the context has been previously entered
+     * by this thread with {@link #enter()} and hasn't been left yet with
+     * {@link #leave(java.lang.Object)} methods. This method is thread-safe and may be used from
+     * multiple threads.
+     *
+     * @since 20.0.0
+     * @return {@code true} if the context is active, {@code false} otherwise
+     */
+    public boolean isEntered() {
+        return LanguageAccessor.engineAccess().isInternalContextEntered(polyglotContext);
+    }
+
+    /**
      * Builder class to create new {@link TruffleContext} instances.
      *
      * @since 0.27

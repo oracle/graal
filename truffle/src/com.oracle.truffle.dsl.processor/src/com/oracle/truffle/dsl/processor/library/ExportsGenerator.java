@@ -55,6 +55,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
@@ -97,6 +98,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
     private static final String ACCEPTS = "accepts";
     private static final String ACCEPTS_METHOD_NAME = ACCEPTS + "_";
+    private static final String ENABLED_MESSAGES_NAME = "ENABLED_MESSAGES";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final Map<String, CodeVariableElement> libraryConstants;
@@ -236,6 +238,20 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(library.getReceiverType()).string(Boolean.valueOf(library.isDefaultExport()).toString()).end().end();
         exportsClass.add(constructor);
 
+        if (library.hasExportDelegation()) {
+            CodeVariableElement enabledMessagesVariable = exportsClass.add(new CodeVariableElement(modifiers(STATIC, FINAL), types.FinalBitSet, ENABLED_MESSAGES_NAME));
+            CodeTreeBuilder init = enabledMessagesVariable.createInitBuilder();
+            init.startCall("createMessageBitSet");
+            init.staticReference(useLibraryConstant(library.getLibrary().getTemplateType().asType()));
+            for (String message : library.getExportedMessages().keySet()) {
+                if (message.equals(ACCEPTS)) {
+                    continue;
+                }
+                init.doubleQuote(message);
+            }
+            init.end();
+        }
+
         CodeVariableElement uncachedSingleton = null;
         if (useSingleton(library, false)) {
             GeneratedTypeMirror uncachedType = new GeneratedTypeMirror("", uncachedClass.getSimpleName().toString());
@@ -253,7 +269,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startAssert().string("receiver instanceof ").type(exportReceiverType).end();
         }
 
-        builder.startReturn();
+        builder.startStatement();
+        builder.type(library.getLibrary().getTemplateType().asType());
+        builder.string(" uncached = ");
+        if (library.hasExportDelegation()) {
+            builder.startCall("createDelegate");
+            builder.staticReference(useLibraryConstant(library.getLibrary().getTemplateType().asType()));
+        }
         if (uncachedSingleton != null) {
             builder.staticReference(uncachedSingleton);
         } else {
@@ -267,7 +289,18 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
             builder.end();
         }
-        builder.end();
+        if (library.hasExportDelegation()) {
+            builder.end(); // create delegate
+        }
+        builder.end(); // statement
+
+        if (library.hasExportDelegation()) {
+            // we need to adopt children in order to make the parent lookup work for
+            // @CachedLibrary('this')
+            builder.statement("uncached.adoptChildren()");
+        }
+        builder.startReturn().string("uncached").end();
+
         exportsClass.add(createUncached);
 
         CodeVariableElement cacheSingleton = null;
@@ -287,6 +320,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startAssert().string("receiver instanceof ").type(exportReceiverType).end();
         }
         builder.startReturn();
+        if (library.hasExportDelegation()) {
+            builder.startCall("createDelegate");
+            builder.staticReference(useLibraryConstant(library.getLibrary().getTemplateType().asType()));
+        }
         if (cacheSingleton != null) {
             builder.staticReference(cacheSingleton);
         } else {
@@ -299,6 +336,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 }
             }
             builder.end();
+        }
+        if (library.hasExportDelegation()) {
+            builder.end(); // create delegate
         }
         builder.end();
         exportsClass.add(createCached);
@@ -332,6 +372,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
 
         final Map<MergeLibraryKey, List<CacheExpression>> mergedLibraries = new LinkedHashMap<>();
+
         for (ExportMessageData message : libraryExports.getExportedMessages().values()) {
             if (message.getSpecializedNode() != null) {
                 groupMergedLibraries(message.getSpecializedNode().getSpecializations(), mergedLibraries);
@@ -359,6 +400,51 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
 
         CodeTreeBuilder builder;
+        if (libraryExports.hasExportDelegation()) {
+            cacheClass.getImplements().add(types.LibraryExport_DelegateExport);
+
+            CodeExecutableElement getExportMessages = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "getDelegateExportMessages"));
+            getExportMessages.getModifiers().remove(Modifier.ABSTRACT);
+            builder = getExportMessages.createBuilder();
+            builder.startReturn().string(ENABLED_MESSAGES_NAME).end();
+            cacheClass.add(getExportMessages);
+
+            CodeExecutableElement readDelegate = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "readDelegateExport"));
+            readDelegate.getModifiers().remove(Modifier.ABSTRACT);
+            readDelegate.renameArguments("receiver_");
+            builder = readDelegate.createBuilder();
+            builder.startReturn();
+            builder.tree(createReceiverCast(libraryExports,
+                            readDelegate.getParameters().get(0).asType(),
+                            libraryExports.getReceiverType(),
+                            CodeTreeBuilder.singleString("receiver_"), true));
+            builder.string(".").string(libraryExports.getDelegationVariable().getSimpleName().toString());
+            builder.end();
+            cacheClass.add(readDelegate);
+
+            // find merged library for the delegation
+            CodeExecutableElement acceptsMethod = (CodeExecutableElement) libraryExports.getExportedMessages().get("accepts").getMessageElement();
+            VariableElement delegateLibraryParam = acceptsMethod.getParameters().get(1);
+            String mergedLibraryId = null;
+            outer: for (Entry<MergeLibraryKey, List<CacheExpression>> library : mergedLibraries.entrySet()) {
+                for (CacheExpression cache : library.getValue()) {
+                    if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), delegateLibraryParam)) {
+                        mergedLibraryId = library.getKey().getCache().getMergedLibraryIdentifier();
+                        break outer;
+                    }
+                }
+            }
+            if (mergedLibraryId == null) {
+                throw new AssertionError("Could not find merged library for export delegation.");
+            }
+
+            CodeExecutableElement getDelegateLibrary = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "getDelegateExportLibrary"));
+            getDelegateLibrary.getModifiers().remove(Modifier.ABSTRACT);
+            builder = getDelegateLibrary.createBuilder();
+            builder.startReturn().string("this.", mergedLibraryId).end();
+            cacheClass.add(getDelegateLibrary);
+        }
+
         CodeTree defaultAccepts = createDefaultAccepts(cacheClass, constructor, libraryExports, exportReceiverType, true);
 
         CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
@@ -372,7 +458,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
         if (mergedLibraries.isEmpty()) {
             builder.startReturn();
-            if (acceptsMessage == null) {
+            if (acceptsMessage == null || acceptsMessage.isGenerated()) {
                 builder.tree(defaultAccepts);
             } else {
                 builder.tree(defaultAccepts).string(" && accepts_(receiver)");
@@ -394,7 +480,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 builder.end();
             }
             builder.startElseBlock();
-            if (acceptsMessage != null) {
+            if (acceptsMessage != null && !acceptsMessage.isGenerated()) {
                 builder.startReturn();
                 builder.string("accepts_(receiver)");
                 builder.end();
@@ -428,13 +514,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         Map<NodeData, CodeTypeElement> sharedNodes = new HashMap<>();
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+            if (export.isGenerated()) {
+                continue;
+            }
             LibraryMessage message = export.getResolvedMessage();
 
             TypeMirror cachedExportReceiverType = export.getReceiverType();
 
             // cached execute
             NodeData cachedSpecializedNode = export.getSpecializedNode();
-
             CodeExecutableElement cachedExecute = null;
             if (cachedSpecializedNode == null) {
                 if (!export.isMethod()) {
@@ -642,6 +730,43 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
         CodeTreeBuilder builder;
 
+        if (libraryExports.hasExportDelegation()) {
+            uncachedClass.getImplements().add(types.LibraryExport_DelegateExport);
+
+            CodeExecutableElement getExportMessages = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "getDelegateExportMessages"));
+            getExportMessages.getModifiers().remove(Modifier.ABSTRACT);
+            builder = getExportMessages.createBuilder();
+            builder.startReturn().string(ENABLED_MESSAGES_NAME).end();
+            uncachedClass.add(getExportMessages);
+
+            CodeExecutableElement readDelegate = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "readDelegateExport"));
+            readDelegate.getModifiers().remove(Modifier.ABSTRACT);
+            readDelegate.renameArguments("receiver_");
+            builder = readDelegate.createBuilder();
+            builder.startReturn();
+            builder.string("(");
+            builder.tree(createReceiverCast(libraryExports,
+                            readDelegate.getParameters().get(0).asType(),
+                            libraryExports.getReceiverType(),
+                            CodeTreeBuilder.singleString("receiver_"), false));
+            builder.string(")");
+            builder.string(".").string(libraryExports.getDelegationVariable().getSimpleName().toString());
+            builder.end();
+            uncachedClass.add(readDelegate);
+
+            // find merged library for the delegation
+            CodeExecutableElement getDelegateLibrary = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport_DelegateExport, "getDelegateExportLibrary"));
+            getDelegateLibrary.renameArguments("delegate_");
+            getDelegateLibrary.getModifiers().remove(Modifier.ABSTRACT);
+            builder = getDelegateLibrary.createBuilder();
+            builder.startReturn();
+            builder.staticReference(useLibraryConstant(libraryExports.getLibrary().getTemplateType().asType()));
+            builder.string(".getUncached(delegate_)");
+            builder.end();
+
+            uncachedClass.add(getDelegateLibrary);
+        }
+
         CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
         CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, constructor, libraryExports, exportReceiverType, false);
 
@@ -655,7 +780,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (acceptsAssertions != null) {
             builder.tree(acceptsAssertions);
         }
-        if (libraryExports.getExportedMessages().get(ACCEPTS) == null) {
+        ExportMessageData accepts = libraryExports.getExportedMessages().get(ACCEPTS);
+        if (accepts == null || accepts.isGenerated()) {
             builder.startReturn().tree(defaultAccepts).end();
         } else {
             builder.startReturn().tree(defaultAccepts).string(" && accepts_(receiver)").end();
@@ -672,8 +798,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
 
-        CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
-        isAdoptable.createBuilder().returnFalse();
+        if (!libraryExports.hasExportDelegation()) {
+            CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
+            isAdoptable.createBuilder().returnFalse();
+        }
 
         CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
@@ -681,6 +809,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         boolean firstNode = true;
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+            if (export.isGenerated()) {
+                continue;
+            }
             LibraryMessage message = export.getResolvedMessage();
 
             // uncached execute

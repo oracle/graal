@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,9 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -235,5 +237,22 @@ final class DebugSourcesResolver {
             // Thrown from createSection() when the section does not fit into the resolved source.
             return section;
         }
+    }
+
+    /**
+     * Finds an encapsulating source section, prefer instrumentable nodes and available sections.
+     */
+    static SourceSection findEncapsulatedSourceSection(Node node) {
+        Node n = node;
+        while (n != null) {
+            if (n instanceof InstrumentableNode && ((InstrumentableNode) n).isInstrumentable()) {
+                SourceSection sourceSection = n.getSourceSection();
+                if (sourceSection != null && sourceSection.isAvailable()) {
+                    return sourceSection;
+                }
+            }
+            n = n.getParent();
+        }
+        return node.getRootNode().getSourceSection();
     }
 }

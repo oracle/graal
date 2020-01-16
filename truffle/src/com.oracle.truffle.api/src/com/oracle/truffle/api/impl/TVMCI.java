@@ -340,6 +340,10 @@ public abstract class TVMCI {
     protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
     }
 
+    @SuppressWarnings("unused")
+    protected void onEngineClosed(Object runtimeData) {
+    }
+
     protected void applyPolyglotEngine(RootNode from, RootNode to) {
         TVMCIAccessor.nodesAccess().applyPolyglotEngine(from, to);
     }

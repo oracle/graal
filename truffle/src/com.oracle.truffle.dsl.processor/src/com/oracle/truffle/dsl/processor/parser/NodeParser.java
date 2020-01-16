@@ -106,6 +106,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Cast;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
@@ -161,14 +162,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final ParseMode mode;
     private final TypeMirror exportLibraryType;
     private final TypeElement exportDeclarationType;
+    private final boolean substituteThisToParent;
 
     private final List<TypeMirror> cachedAnnotations;
 
-    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType) {
+    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
         this.mode = mode;
         this.exportLibraryType = exportLibraryType;
         this.exportDeclarationType = exportDeclarationType;
         this.cachedAnnotations = getCachedAnnotations();
+        this.substituteThisToParent = substituteThisToParent;
     }
 
     public static List<TypeMirror> getCachedAnnotations() {
@@ -180,12 +183,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return Arrays.asList(cacheAnnotation, cachedLibraryAnnotation, cachedContextAnnotation, cachedLanguageAnnotation);
     }
 
-    public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType) {
-        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType);
+    public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
+        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
     }
 
     public static NodeParser createDefaultParser() {
-        return new NodeParser(ParseMode.DEFAULT, null, null);
+        return new NodeParser(ParseMode.DEFAULT, null, null, false);
     }
 
     @Override
@@ -2209,7 +2212,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 DSLExpression.Variable nodeReceiver = new DSLExpression.Variable(null, "this");
                                 nodeReceiver.setResolvedTargetType(exportLibraryType);
                                 nodeReceiver.setResolvedVariable(new CodeVariableElement(exportLibraryType, "this"));
-                                substituteCachedExpression = nodeReceiver;
+                                if (substituteThisToParent) {
+                                    DSLExpression.Call call = new DSLExpression.Call(nodeReceiver, "getParent", Collections.emptyList());
+                                    call.setResolvedMethod(ElementUtils.findMethod(types.Node, "getParent"));
+                                    call.setResolvedTargetType(context.getType(Object.class));
+                                    substituteCachedExpression = new DSLExpression.Cast(call, exportLibraryType);
+                                } else {
+                                    substituteCachedExpression = nodeReceiver;
+                                }
                             }
                         }
                     }
@@ -3029,6 +3039,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         private static class DSLExpressionHash implements DSLExpressionVisitor {
             private int hash = 1;
+
+            public void visitCast(Cast binary) {
+                hash *= binary.getCastType().hashCode();
+            }
 
             public void visitVariable(Variable binary) {
                 hash *= 31;

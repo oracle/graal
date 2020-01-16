@@ -47,6 +47,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -63,6 +65,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Multi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSR;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
@@ -83,6 +86,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
 
 /**
  * Helpers to read and overwrite values of Truffle runtime options. The options themselves are
@@ -280,6 +284,7 @@ public final class TruffleRuntimeOptions {
         result.put(ReplaceReprofileCount, SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
         result.put(ArgumentTypeSpeculation, SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation);
         result.put(ReturnTypeSpeculation, SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation);
+        result.put(Profiling, SharedTruffleRuntimeOptions.TruffleProfilingEnabled);
 
         result.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
         result.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
@@ -297,6 +302,9 @@ public final class TruffleRuntimeOptions {
         result.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
         result.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
         result.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
+        result.put(CompilationStatistics, SharedTruffleRuntimeOptions.TruffleCompilationStatistics);
+        result.put(CompilationStatisticDetails, SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails);
+        result.put(TraceTransferToInterpreter, SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter);
 
         result.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         result.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);

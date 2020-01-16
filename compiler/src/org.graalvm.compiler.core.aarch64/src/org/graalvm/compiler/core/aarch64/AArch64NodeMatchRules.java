@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
@@ -456,6 +457,18 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             }
         }
         return null;
+    }
+
+    @MatchRule("(SignExtend=extend (Narrow value))")
+    @MatchRule("(ZeroExtend=extend (Narrow value))")
+    public ComplexMatchResult mergeNarrowExtend(UnaryNode extend, ValueNode value) {
+        if (extend instanceof SignExtendNode) {
+            SignExtendNode sxt = (SignExtendNode) extend;
+            return builder -> getArithmeticLIRGenerator().emitSignExtend(operand(value), sxt.getInputBits(), sxt.getResultBits());
+        }
+        assert extend instanceof ZeroExtendNode;
+        ZeroExtendNode zxt = (ZeroExtendNode) extend;
+        return builder -> getArithmeticLIRGenerator().emitZeroExtend(operand(value), zxt.getInputBits(), zxt.getResultBits());
     }
 
     @Override

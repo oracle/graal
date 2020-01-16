@@ -28,16 +28,18 @@ import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.RuleNode;
 
-public class AccessAdvisor {
+public final class AccessAdvisor {
+
     private static final RuleNode internalsFilter;
     static {
         internalsFilter = RuleNode.createRoot();
-        internalsFilter.addOrGetChildren("java.**", RuleNode.Inclusion.Include);
-        internalsFilter.addOrGetChildren("javax.**", RuleNode.Inclusion.Include);
-        internalsFilter.addOrGetChildren("sun.**", RuleNode.Inclusion.Include);
-        internalsFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Include);
-        internalsFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Include);
-        internalsFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("java.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("javax.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("sun.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Exclude);
+        internalsFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
         internalsFilter.removeRedundantNodes();
     }
 
@@ -50,12 +52,9 @@ public class AccessAdvisor {
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
 
-    private boolean callerFilterIncludes(String qualifiedClass) {
-        if (callerFilter != null && qualifiedClass != null) {
-            assert qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-            return callerFilter.treeIncludes(qualifiedClass);
-        }
-        return false;
+    private boolean filterExcludesCaller(String qualifiedClass) {
+        assert qualifiedClass == null || qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
+        return qualifiedClass != null && !callerFilter.treeIncludes(qualifiedClass);
     }
 
     public void setHeuristicsEnabled(boolean enable) {
@@ -71,7 +70,7 @@ public class AccessAdvisor {
     }
 
     public boolean shouldIgnoreCaller(LazyValue<String> qualifiedClass) {
-        return (heuristicsEnabled && !isInLivePhase) || callerFilterIncludes(qualifiedClass.get());
+        return (heuristicsEnabled && !isInLivePhase) || filterExcludesCaller(qualifiedClass.get());
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
@@ -134,11 +133,11 @@ public class AccessAdvisor {
     }
 
     public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> arrayClass, LazyValue<String> callerClass) {
-        if (!heuristicsEnabled) {
-            return false;
-        }
         if (shouldIgnoreCaller(callerClass)) {
             return true;
+        }
+        if (!heuristicsEnabled) {
+            return false;
         }
         if (callerClass.get() == null && "[Ljava.lang.String;".equals(arrayClass.get())) {
             /*

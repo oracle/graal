@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -43,14 +40,13 @@ import java.util.function.Function;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -118,10 +114,11 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private final ThreadLocal<Times> compilationTimes = new ThreadLocal<>();
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
-                        TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails)) {
-            runtime.addListener(new StatisticsListener(runtime));
-        }
+        runtime.addListener(new StatisticsDispatcher(runtime));
+    }
+
+    public static StatisticsListener createEngineListener(GraalTruffleRuntime runtime) {
+        return new StatisticsListener(runtime);
     }
 
     @Override
@@ -186,7 +183,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         loopCount.accept(callTargetStat.getLoopCount());
 
         truffleTierNodeCount.accept(graph.getNodeCount());
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails)) {
+        if (target.engine.callTargetStatisticDetails) {
             truffleTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
         }
     }
@@ -206,7 +203,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         final Times times = compilationTimes.get();
         times.graalTierFinished = System.nanoTime();
         graalTierNodeCount.accept(graph.getNodeCount());
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails)) {
+        if (target.engine.callTargetStatisticDetails) {
             graalTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
         }
     }
@@ -240,14 +237,14 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onShutdown() {
-        printStatistics();
+    public void onEngineClosed(EngineData runtimeData) {
+        printStatistics(runtimeData);
     }
 
-    private void printStatistics() {
+    private void printStatistics(EngineData runtimeData) {
         GraalTruffleRuntime rt = runtime;
         long endTime = System.nanoTime();
-        rt.log("Truffle runtime statistics:");
+        rt.log("Truffle runtime statistics for engine " + runtimeData.id);
         printStatistic(rt, "Compilations", compilations);
         printStatistic(rt, "  Success", success);
         printStatistic(rt, "  Failed", failures);
@@ -297,7 +294,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         printStatistic(rt, "  Marks", compilationResultMarks);
         printStatistic(rt, "  Data references", compilationResultDataPatches);
 
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails)) {
+        if (runtimeData.callTargetStatisticDetails) {
             printStatistic(rt, "Truffle nodes");
             nodeStatistics.printStatistics(rt, Class::getSimpleName);
             printStatistic(rt, "Graal nodes after Truffle tier");
@@ -481,5 +478,92 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         final long compilationStarted = System.nanoTime();
         long truffleTierFinished;
         long graalTierFinished;
+    }
+
+    private static final class StatisticsDispatcher extends AbstractGraalTruffleRuntimeListener {
+
+        private StatisticsDispatcher(GraalTruffleRuntime runtime) {
+            super(runtime);
+        }
+
+        @Override
+        public void onCompilationQueued(OptimizedCallTarget target) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationQueued(target);
+            }
+        }
+
+        @Override
+        public void onCompilationStarted(OptimizedCallTarget target) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationStarted(target);
+            }
+        }
+
+        @Override
+        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
+            StatisticsListener listener = callNode.getCallTarget().engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationSplit(callNode);
+            }
+        }
+
+        @Override
+        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationDequeued(target, source, reason);
+            }
+        }
+
+        @Override
+        public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationInvalidated(target, source, reason);
+            }
+        }
+
+        @Override
+        public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationTruffleTierFinished(target, inliningDecision, graph);
+            }
+        }
+
+        @Override
+        public void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationGraalTierFinished(target, graph);
+            }
+        }
+
+        @Override
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationSuccess(target, inliningDecision, graph, result);
+            }
+        }
+
+        @Override
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+            StatisticsListener listener = target.engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationFailed(target, reason, bailout, permanentBailout);
+            }
+        }
+
+        @Override
+        public void onEngineClosed(EngineData runtimeData) {
+            StatisticsListener listener = runtimeData.statisticsListener;
+            if (listener != null) {
+                listener.onEngineClosed(runtimeData);
+            }
+        }
     }
 }

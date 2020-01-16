@@ -162,6 +162,11 @@ final class EngineAccessor extends Accessor {
     }
 
     @Override
+    protected void onEngineClosed(Object runtimeData) {
+        super.onEngineClosed(runtimeData);
+    }
+
+    @Override
     protected CastUnsafe getCastUnsafe() {
         return super.getCastUnsafe();
     }
@@ -576,6 +581,11 @@ final class EngineAccessor extends Accessor {
                 throw new IllegalStateException("The context is currently entered and cannot be closed.");
             }
             context.closeImpl(false, false, true);
+        }
+
+        @Override
+        public boolean isInternalContextEntered(Object impl) {
+            return PolyglotContextImpl.currentNotEntered() == impl;
         }
 
         @Override

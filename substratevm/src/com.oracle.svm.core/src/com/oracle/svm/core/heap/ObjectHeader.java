@@ -28,6 +28,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -47,8 +48,18 @@ public abstract class ObjectHeader {
     protected ObjectHeader() {
     }
 
+    /**
+     * Returns a mask where all reserved bits are set.
+     */
+    public abstract int getReservedBitsMask();
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract long getHeaderForImageHeapObject(long value);
+    public abstract long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress);
+
+    public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract DynamicHub dynamicHubFromObjectHeader(UnsignedWord header);
 
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
@@ -59,10 +70,6 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
-
-    public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
-
-    public abstract int getReservedBits();
 
     public enum HeapKind {
         Unmanaged

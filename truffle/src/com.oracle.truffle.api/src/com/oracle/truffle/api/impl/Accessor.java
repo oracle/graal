@@ -131,6 +131,10 @@ public abstract class Accessor {
         getTVMCI().reloadEngineOptions(runtimeData, optionValues);
     }
 
+    protected void onEngineClosed(Object runtimeData) {
+        getTVMCI().onEngineClosed(runtimeData);
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
@@ -287,6 +291,8 @@ public abstract class Accessor {
         public abstract void leaveInternalContext(Object polyglotContext, Object prev);
 
         public abstract void closeInternalContext(Object polyglotContext);
+
+        public abstract boolean isInternalContextEntered(Object polyglotContext);
 
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 

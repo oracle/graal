@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
-
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -50,7 +48,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -74,6 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import sun.misc.Unsafe;
 
 /**
@@ -116,7 +114,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
     }
 
-    private Boolean traceTransferToInterpreter;
+    private boolean traceTransferToInterpreter;
+    private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
     private volatile String lazyConfigurationName;
@@ -194,6 +193,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             synchronized (lock) {
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
+                    EngineData engineData = getEngineData(firstCallTarget.getRootNode());
+                    traceTransferToInterpreter = engineData.traceTransferToInterpreter;
+                    profilingEnabled = engineData.profilingEnabled;
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
@@ -393,13 +395,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (traceTransferToInterpreter == null) {
-            this.traceTransferToInterpreter = TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter);
-        }
-
         if (traceTransferToInterpreter) {
             TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
         }
+    }
+
+    @Override
+    public final boolean isProfilingEnabled() {
+        if (profilingEnabled == null) {
+            profilingEnabled = getEngineData(null).profilingEnabled;
+        }
+        return profilingEnabled;
     }
 
     @Override

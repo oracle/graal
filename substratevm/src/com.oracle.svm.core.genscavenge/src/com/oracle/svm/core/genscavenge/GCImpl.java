@@ -346,7 +346,7 @@ public class GCImpl implements GC {
             verboseGCLog.string("[");
             verboseGCLog.string("[");
             final long startTime = System.nanoTime();
-            if (SubstrateOptions.PrintGCTimeStamps.getValue()) {
+            if (HeapOptions.PrintGCTimeStamps.getValue()) {
                 verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(startTime))).string(" msec: ");
             } else {
                 verboseGCLog.unsigned(startTime);
@@ -367,7 +367,7 @@ public class GCImpl implements GC {
                 final Log printGCLog = Log.log();
                 final UnsignedWord sizeAfter = heap.getUsedChunkBytes();
                 printGCLog.string("[");
-                if (SubstrateOptions.PrintGCTimeStamps.getValue()) {
+                if (HeapOptions.PrintGCTimeStamps.getValue()) {
                     final long finishNanos = collectionTimer.getFinish();
                     printGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 }
@@ -383,7 +383,7 @@ public class GCImpl implements GC {
             if (SubstrateOptions.VerboseGC.getValue()) {
                 verboseGCLog.string(" [");
                 final long finishNanos = collectionTimer.getFinish();
-                if (SubstrateOptions.PrintGCTimeStamps.getValue()) {
+                if (HeapOptions.PrintGCTimeStamps.getValue()) {
                     verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 } else {
                     verboseGCLog.unsigned(finishNanos);
@@ -1318,7 +1318,7 @@ public class GCImpl implements GC {
             /* Objects are allocated in the young generation. */
             normalChunkBytes = normalChunkBytes.add(youngChunkBytesBefore);
             /* Keep some aggregate metrics. */
-            if (SubstrateOptions.PrintGCSummary.getValue()) {
+            if (HeapOptions.PrintGCSummary.getValue()) {
                 youngObjectBytesBefore = youngSpace.getObjectBytes();
                 oldObjectBytesBefore = oldSpace.getObjectBytes();
                 normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
@@ -1381,7 +1381,7 @@ public class GCImpl implements GC {
             final UnsignedWord afterChunkBytes = oldChunkBytesAfter;
             final UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
             collectedTotalChunkBytes = collectedTotalChunkBytes.add(collectedChunkBytes);
-            if (SubstrateOptions.PrintGCSummary.getValue()) {
+            if (HeapOptions.PrintGCSummary.getValue()) {
                 /* The young generation is empty after the collection. */
                 oldObjectBytesAfter = oldSpace.getObjectBytes();
                 final UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
@@ -1590,7 +1590,7 @@ public class GCImpl implements GC {
 
     /* Invoked by a shutdown hook registered in the GCImpl constructor. */
     private void printGCSummary() {
-        if (!SubstrateOptions.PrintGCSummary.getValue()) {
+        if (!HeapOptions.PrintGCSummary.getValue()) {
             return;
         }
 

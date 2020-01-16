@@ -176,9 +176,10 @@ graal_truffle_opens_packages = [
     'org.graalvm.truffle/com.oracle.truffle.api.impl',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
-# Currently JDK 13, 14 and JDK 11 have the same flags
+# Currently JDK 13, 14, 15 and JDK 11 have the same flags
 GRAAL_COMPILER_FLAGS_MAP['13'] = GRAAL_COMPILER_FLAGS_MAP['11']
 GRAAL_COMPILER_FLAGS_MAP['14'] = GRAAL_COMPILER_FLAGS_MAP['11']
+GRAAL_COMPILER_FLAGS_MAP['15'] = GRAAL_COMPILER_FLAGS_MAP['11']
 
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
@@ -241,6 +242,8 @@ class GraalVMConfig(object):
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
         self.exclude_components = exclude_components or []
+        for x, _ in mx.get_dynamic_imports():
+            self.dynamicimports.append(x)
         if '/substratevm' not in self.dynamicimports:
             self.dynamicimports.append('/substratevm')
 
@@ -306,21 +309,28 @@ _graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
 _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
-_graalvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=_graalvm_force_bash_launchers,
-                                skip_libraries=_graalvm_skip_libraries,
-                                exclude_components=_graalvm_exclude_components)
-_graalvm_jvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                    force_bash_launchers=True,
-                                    skip_libraries=True,
-                                    exclude_components=_graalvm_exclude_components)
+def _graalvm_config():
+    return GraalVMConfig(disable_libpolyglot=True,
+                         force_bash_launchers=_graalvm_force_bash_launchers,
+                         skip_libraries=_graalvm_skip_libraries,
+                         exclude_components=_graalvm_exclude_components)
 
-graalvm_configs = [_graalvm_config]
-graalvm_jvm_configs = [_graalvm_jvm_config]
+def _graalvm_jvm_config():
+    return GraalVMConfig(disable_libpolyglot=True,
+                         force_bash_launchers=True,
+                         skip_libraries=True,
+                         exclude_components=_graalvm_exclude_components)
+
+def _graalvm_js_config():
+    return GraalVMConfig(dynamicimports=['/graal-js'],
+                         disable_libpolyglot=True,
+                         force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
+                         skip_libraries=_graalvm_skip_libraries,
+                         exclude_components=_graalvm_exclude_components)
 
 
-def graalvm_config():
-    return graalvm_configs[-1]
+graalvm_config = _graalvm_config
+graalvm_jvm_config = _graalvm_jvm_config
 
 
 def build_native_image_image(config=None, args=None):
@@ -531,8 +541,8 @@ def svm_gate_body(args, tasks):
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
-            build_native_image_image(config=_graalvm_js_config)
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
+            build_native_image_image(config=_graalvm_js_config())
+            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config()) as native_image:
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
@@ -667,13 +677,6 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
     if not passing:
         mx.abort('JS benchmark ' + name + ' failed')
-
-
-_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'],
-                                   disable_libpolyglot=True,
-                                   force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
-                                   skip_libraries=_graalvm_skip_libraries,
-                                   exclude_components=_graalvm_exclude_components)
 
 
 def build_js(native_image):
@@ -1170,6 +1173,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
+def _native_image_configure_extra_jvm_args():
+    if svm_java8():
+        return []
+    args = list(add_exports_from_packages(['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta']))
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
+        args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
+    return args
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image Configure Tool',
@@ -1186,13 +1197,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             main_class="com.oracle.svm.configure.ConfigurationTool",
             build_args=[
                 "-H:-ParseRuntimeOptions",
-            ]
+            ],
+            extra_jvm_args=_native_image_configure_extra_jvm_args(),
         )
     ],
 ))
 
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
-def helloworld(args):
+def helloworld(args, config=None):
     """
     builds a Hello, World! native image.
     """
@@ -1208,6 +1220,7 @@ def helloworld(args):
     native_image_context_run(
         lambda native_image, a:
             _helloworld(native_image, javac_command, output_path, a), unmask(parsed.image_args),
+        config=config,
         build_if_missing=True
     )
 
@@ -1298,9 +1311,8 @@ def build(args, vm=None):
     orig_command_build(args, vm)
 
 
-def _ensure_vm_built():
+def _ensure_vm_built(config):
     # build "jvm" config used by native-image and native-image-configure commands
-    config = graalvm_jvm_configs[-1]
     rebuild_vm = False
     mx.ensure_dir_exists(svmbuild_dir())
     if not mx.is_windows():
@@ -1324,12 +1336,11 @@ def _ensure_vm_built():
             f.write(rev_value)
         build_native_image_image(config)
 
-
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
-    _ensure_vm_built()
+    config = graalvm_jvm_config()
+    _ensure_vm_built(config)
     if mx.is_windows():
-        config = graalvm_jvm_configs[-1]
         executable = vm_native_image_path(config)
     else:
         vm_link = join(svmbuild_dir(), 'vm')
@@ -1349,12 +1360,11 @@ def native_image_on_jvm(args, **kwargs):
 
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 
-
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
-    _ensure_vm_built()
+    config = graalvm_jvm_config()
+    _ensure_vm_built(config)
     if mx.is_windows():
-        config = graalvm_jvm_configs[-1]
         executable = vm_executable_path('native-image-configure', config)
     else:
         vm_link = join(svmbuild_dir(), 'vm')

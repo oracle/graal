@@ -27,7 +27,7 @@ package com.oracle.svm.configure.filters;
 @SuppressWarnings("unused")
 public class ModuleFilterTools {
     /** This method is replaced via an overlay. */
-    public static RuleNode generateFromModules(String[] includedModuleNames, boolean reduce) {
+    public static RuleNode generateFromModules(String[] includedModuleNames, RuleNode.Inclusion inclusion, boolean reduce) {
         throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,15 +47,31 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 import org.graalvm.polyglot.Source;
 
@@ -221,6 +237,31 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         }
     }
 
+    @Test
+    public void testStackNodes() {
+        int depth = 5;
+        TestStackLanguage language = new TestStackLanguage(depth);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(3, frame.getSourceSection().getCharLength());
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                for (int d = depth; d > 0; d--) {
+                    assertTrue("Depth: " + d, stackFrames.hasNext());
+                    frame = stackFrames.next();
+                    assertSection(frame.getSourceSection(), "St", 1, 1, 1, 2);
+                }
+                assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
+    }
+
     private static SourceSection getFunctionSourceSection(DebugStackFrame frame) {
         // There are only function scopes in the InstrumentationTestLanguage
         assertTrue(frame.getScope().isFunctionScope());
@@ -314,4 +355,191 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         }
     }
 
+    static final class TestStackLanguage extends ProxyLanguage {
+
+        private final int depth;
+
+        TestStackLanguage(int depth) {
+            this.depth = depth;
+        }
+
+        @Override
+        protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+            com.oracle.truffle.api.source.Source source = request.getSource();
+            return Truffle.getRuntime().createCallTarget(new TestStackRootNode(languageInstance, source, depth));
+        }
+
+        private static final class TestStackRootNode extends RootNode {
+
+            @Node.Child private TestNode child;
+            private final TruffleLanguage<?> language;
+            private final String name;
+            private final SourceSection rootSection;
+
+            TestStackRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source parsedSource, int depth) {
+                super(language);
+                this.language = language;
+                rootSection = parsedSource.createSection(1);
+                name = "Test Stack";
+                child = createTestNodes(depth);
+                insert(child);
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return rootSection;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return child.execute(frame);
+            }
+
+            @Override
+            protected boolean isInstrumentable() {
+                return true;
+            }
+
+            private TestNode createTestNodes(int depth) {
+                TestNode node;
+                if (depth > 0) {
+                    RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new TestStackRootNode(language, rootSection.getSource(), depth - 1));
+                    DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
+                    if (depth % 2 == 0) {
+                        node = new TestNode() {
+                            @Child private DirectCallNode call = insert(callNode);
+
+                            @Override
+                            public Object execute(VirtualFrame frame) {
+                                return call.call();
+                            }
+                        };
+                    } else {
+                        node = new TestInstrumentableNode() {
+                            @Child private DirectCallNode call = insert(callNode);
+
+                            @Override
+                            public SourceSection getSourceSection() {
+                                return rootSection.getSource().createUnavailableSection();
+                            }
+
+                            @Override
+                            public Object execute(VirtualFrame frame) {
+                                return call.call();
+                            }
+                        };
+                    }
+                } else {
+                    node = new TestInstrumentableNode() {
+                        @Override
+                        public SourceSection getSourceSection() {
+                            return rootSection.getSource().createSection(0, 3);
+                        }
+
+                        @Override
+                        public boolean hasTag(Class<? extends Tag> tag) {
+                            return StandardTags.StatementTag.class == tag;
+                        }
+                    };
+                }
+                List<TestNode> nodes = new ArrayList<>();
+                // A non-instrumentable node with a SourceSection
+                nodes.add(new TestNode() {
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return rootSection.getSource().createSection(0, 1);
+                    }
+                });
+                // A non-instrumentable node
+                nodes.add(new TestNode());
+                // An instrumentable node that says is not instrumentable
+                // and does not have SourceSection
+                nodes.add(new TestInstrumentableNode() {
+                    @Override
+                    public boolean isInstrumentable() {
+                        return false;
+                    }
+                });
+                // An instrumentable node with unavailable SourceSection
+                nodes.add(new TestInstrumentableNode() {
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return rootSection.getSource().createUnavailableSection();
+                    }
+                });
+                // An instrumentable node that says is not instrumentable
+                // and has a SourceSection
+                nodes.add(new TestInstrumentableNode() {
+                    @Override
+                    public boolean isInstrumentable() {
+                        return false;
+                    }
+
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return rootSection.getSource().createSection(0, 1);
+                    }
+                });
+                // An instrumentable node with a SourceSection
+                nodes.add(new TestInstrumentableNode() {
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return rootSection.getSource().createSection(0, 2);
+                    }
+                });
+                // RootTag so that it's recognized as a guest code execution
+                nodes.add(new TestInstrumentableNode() {
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return rootSection.getSource().createSection(1);
+                    }
+
+                    @Override
+                    public boolean hasTag(Class<? extends Tag> tag) {
+                        return StandardTags.RootTag.class == tag || StandardTags.RootBodyTag.class == tag;
+                    }
+                });
+                TestNode lastNode = node;
+                for (TestNode n : nodes) {
+                    n.testChild = lastNode;
+                    lastNode = n;
+                }
+                return lastNode;
+            }
+        }
+
+        @GenerateWrapper
+        static class TestInstrumentableNode extends TestNode implements InstrumentableNode {
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new TestInstrumentableNodeWrapper(this, probe);
+            }
+
+        }
+
+        private static class TestNode extends Node {
+
+            @Node.Child TestNode testChild;
+
+            public Object execute(VirtualFrame frame) {
+                if (testChild != null) {
+                    return testChild.execute(frame);
+                } else {
+                    return 42;
+                }
+            }
+
+        }
+    }
 }

@@ -26,21 +26,21 @@ package com.oracle.svm.core.option;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
 
-/** A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". */
+/**
+ * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
+ * has a corresponding {@link RuntimeOptionKey} in {@link SubstrateOptions}. So, the resulting
+ * behavior is pretty much as if an {@link APIOption} was specified for a {@link RuntimeOptionKey}.
+ */
 public class XOptions {
-
-    /*
-     * Access methods.
-     */
-
     public static XOptions singleton() {
         return ImageSingletons.lookup(XOptions.class);
     }
@@ -73,26 +73,19 @@ public class XOptions {
     /** Private constructor during image building: clients use the image singleton. */
     @Platforms(Platform.HOSTED_ONLY.class)
     XOptions() {
-        xmn = new XFlag("-X", "mn", "The maximum size of the young generation, in bytes.");
-        xmx = new XFlag("-X", "mx", "The maximum size of the heap, in bytes.");
-        xms = new XFlag("-X", "ms", "The minimum size of the heap, in bytes.");
-        xss = new XFlag("-X", "ss", "The size of each thread stack, in bytes.");
+        xmn = new XFlag("-X", "mn", "The maximum size of the young generation at run-time, in bytes.");
+        xmx = new XFlag("-X", "mx", "The maximum heap size at run-time, in bytes.");
+        xms = new XFlag("-X", "ms", "The minimum heap size at run-time, in bytes.");
+        xss = new XFlag("-X", "ss", "The size of each thread stack at run-time, in bytes.");
         xFlagArray = new XFlag[]{xmn, xms, xmx, xss};
     }
 
     /** An X flag. */
     public static class XFlag {
-
-        /* Fields. */
-        /** The string for the prefix of the flag, e.g., `-X`. */
         private final String prefix;
-        /** The string for the flag, e.g., `mx`. */
         private final String name;
-        /** The description for the flag. */
         private final String description;
-        /** The value of the flag. */
         private long value;
-        /** When was the value set, if ever. */
         private long epoch;
 
         /** The concatenation of the prefix and the name. */
@@ -103,8 +96,8 @@ public class XOptions {
         XFlag(String prefix, String name, String description) {
             this.prefix = prefix;
             this.name = name;
-            this.prefixAndName = prefix.concat(name);
             this.description = description;
+            this.prefixAndName = prefix.concat(name);
             this.value = 0L;
             this.epoch = 0L;
         }
@@ -133,7 +126,7 @@ public class XOptions {
             return epoch;
         }
 
-        void setValue(long valueArg) {
+        public void setValue(long valueArg) {
             value = valueArg;
             epoch += 1L;
         }

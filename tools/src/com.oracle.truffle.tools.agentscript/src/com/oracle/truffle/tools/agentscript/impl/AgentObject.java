@@ -37,6 +37,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -196,27 +197,50 @@ final class AgentObject implements TruffleObject {
         if (args.length > 2) {
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
             final Object config = args[2];
-
-            if (isSet(iop, config, "expressions")) {
-                allTags.add(StandardTags.ExpressionTag.class);
-            }
-            if (isSet(iop, config, "statements")) {
-                allTags.add(StandardTags.StatementTag.class);
-            }
-            if (isSet(iop, config, "roots")) {
-                allTags.add(StandardTags.RootBodyTag.class);
-            }
-            try {
-                Object rootNameFilter = iop.readMember(config, "rootNameFilter");
-                if (rootNameFilter != null && !iop.isNull(rootNameFilter)) {
-                    if (!iop.isExecutable(rootNameFilter)) {
-                        throw new IllegalArgumentException("rootNameFilter has to be a function!");
-                    }
-                    builder.rootNameIs(new RootNameFilter(rootNameFilter));
+            Object allMembers = iop.getMembers(config, false);
+            long allMembersSize = iop.getArraySize(allMembers);
+            for (int i = 0; i < allMembersSize; i++) {
+                Object atI;
+                try {
+                    atI = iop.readArrayElement(allMembers, i);
+                } catch (InvalidArrayIndexException ex) {
+                    continue;
                 }
-            } catch (UnknownIdentifierException ex) {
-                // OK
+                String type = iop.asString(atI);
+                switch (type) {
+                    case "expressions":
+                        if (isSet(iop, config, "expressions")) {
+                            allTags.add(StandardTags.ExpressionTag.class);
+                        }
+                        break;
+                    case "statements":
+                        if (isSet(iop, config, "statements")) {
+                            allTags.add(StandardTags.StatementTag.class);
+                        }
+                        break;
+                    case "roots":
+                        if (isSet(iop, config, "roots")) {
+                            allTags.add(StandardTags.RootBodyTag.class);
+                        }
+                        break;
+                    case "rootNameFilter":
+                        try {
+                            Object rootNameFilter = iop.readMember(config, "rootNameFilter");
+                            if (rootNameFilter != null && !iop.isNull(rootNameFilter)) {
+                                if (!iop.isExecutable(rootNameFilter)) {
+                                    throw new IllegalArgumentException("rootNameFilter has to be a function!");
+                                }
+                                builder.rootNameIs(new RootNameFilter(rootNameFilter));
+                            }
+                        } catch (UnknownIdentifierException ex) {
+                            // OK
+                        }
+                        break;
+                    default:
+                        throw AgentException.unknownAttribute(type);
+                }
             }
+
         }
         if (allTags.isEmpty()) {
             throw new IllegalArgumentException(
