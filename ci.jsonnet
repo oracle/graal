@@ -1,7 +1,7 @@
 {
   local base = {
 
-      local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b05', platformspecific: true},
+      local labsjdk8 = {name: 'oraclejdk', version: '8u241-jvmci-19.3-b07', platformspecific: true},
       local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.5+10-jvmci-19.3-b05', platformspecific: true},
 
       jdk8: {
@@ -32,6 +32,7 @@
         },
         environment+: {
           GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
+          MX_PYTHON_VERSION: "3",
         },
       },
 
