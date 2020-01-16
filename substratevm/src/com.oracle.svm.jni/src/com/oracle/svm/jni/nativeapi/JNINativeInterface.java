@@ -221,7 +221,7 @@ public interface JNINativeInterface extends PointerBase {
     void setAllocObject(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getNewObject();
+    <T extends CFunctionPointer> T getNewObject();
 
     @CField
     void setNewObject(CFunctionPointer p);
