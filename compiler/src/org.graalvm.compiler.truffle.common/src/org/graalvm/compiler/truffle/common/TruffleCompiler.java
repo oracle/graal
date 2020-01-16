@@ -36,6 +36,13 @@ public interface TruffleCompiler {
     int LAST_TIER_INDEX = 2;
 
     /**
+     * Initializes the compiler before the first compilation.
+     *
+     * @since 20.0.0
+     */
+    void initialize();
+
+    /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation
      * object. The returned compilation object may be associated with external resources which are
      * only released by calling {@link TruffleCompilation#close() close}.

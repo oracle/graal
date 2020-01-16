@@ -134,7 +134,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
-        getTruffleCompiler().initializeAtRuntime();
+        getTruffleCompiler().initialize();
         installDefaultListeners();
     }
 
