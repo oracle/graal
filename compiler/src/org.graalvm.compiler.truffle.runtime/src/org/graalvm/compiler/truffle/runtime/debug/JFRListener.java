@@ -58,7 +58,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         } else {
             Iterator<EventFactory.Provider> it = TruffleRuntimeServices.load(EventFactory.Provider.class).iterator();
             EventFactory.Provider provider = it.hasNext() ? it.next() : null;
-            factory = provider == null ? null : provider.getEventFactory();
+            if (provider == null) {
+                factory = null;
+            } else {
+                CompilerDebugAccessor.jdkServicesAccessor().exportTo(provider.getClass());
+                factory = provider == null ? null : provider.getEventFactory();
+            }
         }
     }
 

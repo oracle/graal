@@ -1396,6 +1396,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR11',
             'compiler:JAOTC',
         ]
     else:
@@ -1403,6 +1404,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR11',
         ]
 
 # The community compiler component

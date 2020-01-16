@@ -2355,12 +2355,21 @@ suite = {
     },
 
     "GRAAL_TRUFFLE_JFR11" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "jdk.internal.vm.compiler.truffle.jfr",
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.truffle.jfr.jdk11",
       ],
       "distDependencies" : [
-        "GRAAL_TRUFFLE_JFR",
+        "GRAAL",
+      ],
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "JVMCI_HOTSPOT",
       ],
       "maven": False,
     },
@@ -2581,6 +2590,7 @@ suite = {
           "org.graalvm.compiler.runtime                to jdk.aot",
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -2619,7 +2629,6 @@ suite = {
         "GRAAL_SERVICEPROVIDER",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_JFR",
-        "GRAAL_TRUFFLE_JFR11",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
         "GRAAL_TRUFFLE_OPTIONS",
@@ -2659,7 +2668,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
-        "org.graalvm.compiler.truffle.jfr.jdk11",
+        "org.graalvm.compiler.truffle.jfr",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
