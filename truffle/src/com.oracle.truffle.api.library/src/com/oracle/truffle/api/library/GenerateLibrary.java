@@ -90,7 +90,7 @@ import java.lang.annotation.Target;
  * @see Abstract to make messages abstract if they have a default implemetnation
  * @since 19.0
  */
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateLibrary {
 
@@ -271,5 +271,16 @@ public @interface GenerateLibrary {
      * @since 20.0
      */
     boolean defaultExportLookupEnabled() default false;
+
+    /**
+     * Allows the use of {@link DynamicDispatchLibrary} with this library. By default dynamic
+     * dispatch is enabled. If this flag is set to <code>false</code> then the
+     * {@link DynamicDispatchLibrary#dispatch(Object) dispatch} method will not be used for this
+     * library. Only default exports and exports declared with the receiver type will be used
+     * instead for this library.
+     *
+     * @since 20.0
+     */
+    boolean dynamicDispatchEnabled() default true;
 
 }

@@ -110,10 +110,13 @@ public final class ExportsLibrary extends Template {
     }
 
     public boolean isDynamicDispatchTarget() {
-        return isExplicitReceiver() && !isBuiltinDefaultExport() && isReceiverDynamicDispatched();
+        return getLibrary().isDynamicDispatchEnabled() && isExplicitReceiver() && !isBuiltinDefaultExport() && isReceiverDynamicDispatched();
     }
 
     public boolean needsDynamicDispatch() {
+        if (!getLibrary().isDynamicDispatchEnabled()) {
+            return false;
+        }
         TypeElement type = ElementUtils.castTypeElement(receiverType);
         if (type == null) {
             return false;

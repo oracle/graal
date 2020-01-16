@@ -748,6 +748,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             // no assertions for dynamic dispatch itself.
             return null;
         }
+        if (!libraryExports.getLibrary().isDynamicDispatchEnabled()) {
+            return null;
+        }
         CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startAssert();

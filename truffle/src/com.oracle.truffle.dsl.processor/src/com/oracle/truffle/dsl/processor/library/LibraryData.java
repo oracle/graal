@@ -66,9 +66,18 @@ public final class LibraryData extends Template {
 
     private ExportsLibrary objectExports;
     private boolean defaultExportLookupEnabled;
+    private boolean dynamicDispatchEnabled = true;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
+    }
+
+    public void setDynamicDispatchEnabled(boolean dynamicDispatchEnabled) {
+        this.dynamicDispatchEnabled = dynamicDispatchEnabled;
+    }
+
+    public boolean isDynamicDispatchEnabled() {
+        return dynamicDispatchEnabled;
     }
 
     public void setDefaultExportLookupEnabled(boolean defaultExportLookupEnabled) {

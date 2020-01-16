@@ -61,6 +61,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.ServiceProvider;
 
 /**
  * Library factories allow to create instances of libraries used to call library messages. A library
@@ -168,7 +169,13 @@ public abstract class LibraryFactory<T extends Library> {
         if (libraryClass == DynamicDispatchLibrary.class) {
             this.dispatchLibrary = null;
         } else {
-            this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
+            GenerateLibrary annotation = libraryClass.getAnnotation(GenerateLibrary.class);
+            boolean dynamicDispatchEnabled = annotation == null || libraryClass.getAnnotation(GenerateLibrary.class).dynamicDispatchEnabled();
+            if (dynamicDispatchEnabled) {
+                this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
+            } else {
+                this.dispatchLibrary = null;
+            }
         }
 
         List<DefaultExportProvider> providers = getExternalDefaultProviders().get(libraryClass.getName());
