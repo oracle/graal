@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -114,8 +114,9 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     }
 
     public FunctionParameter createParameter(Type t) {
-        final AttributesGroup attrGroup = getParameterAttributesGroup(parameters.size());
-        final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
+        final int argIndex = parameters.size();
+        final AttributesGroup attrGroup = getParameterAttributesGroup(argIndex);
+        final FunctionParameter parameter = new FunctionParameter(t, attrGroup, argIndex);
         parameters.add(parameter);
         return parameter;
     }
