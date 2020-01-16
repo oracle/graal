@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,77 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include <complex.h>
+#include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include "harness.h"
 
-#define IMAGE_SIZE (1024 * 1024)
-#define N 256
-#define ITERATIONS (IMAGE_SIZE * N)
+#define PI 3.14159265358979323846
 
-uint32_t image[IMAGE_SIZE];
+#define PERIOD (1 << 18)
+
+double input_signal[PERIOD];
+double complex output_spectre[PERIOD];
+
+void fft_stage(double* signal, double complex* spectre, uint32_t N, uint32_t step) {
+  if (N == 1) {
+    spectre[0] = signal[0];
+    return;
+  }
+
+  fft_stage(signal, spectre, N / 2, 2 * step);
+  fft_stage(signal + step, spectre + N / 2, N / 2, 2 * step);
+
+  for (uint32_t k = 0; k < N / 2; k++) {
+    double complex a = spectre[k];
+    double complex b = spectre[k + N / 2];
+    double theta = -2 * PI * k / N;
+    double costheta = cos(theta);
+    double sintheta = sin(theta);
+    double br = creal(b);
+    double bi = cimag(b);
+    double mr = costheta * br - sintheta * bi;
+    double mi = costheta * bi + sintheta * br;
+    spectre[k] = a + mr + mi * I;
+    spectre[k + N / 2] = a - mr - mi * I;
+  }
+}
+
+void fft(double* signal, double complex* spectre, uint32_t N) {
+  fft_stage(signal, spectre, N, 1);
+}
+
+int run_ffts() {
+  fft(input_signal, output_spectre, PERIOD);
+  double checksum = 0.0;
+  for (uint32_t k = 0; k < PERIOD; k++) {
+    checksum += creal(output_spectre[k]);
+  }
+  // fprintf(stderr, "checksum = %f\n", checksum);
+  int c64 = (int64_t) checksum;
+  return (int) c64;
+}
 
 int benchmarkWarmupCount() {
   return 10;
 }
 
 void benchmarkSetupOnce() {
-  for (uint32_t i = 0; i != IMAGE_SIZE; ++i) {
-    uint32_t value;
-    value |= (((i + 1) * 8) % 128) << 24;
-    value |= (((i + 1) * 16) % 128) << 16;
-    value |= (((i + 1) * 24) % 128) << 8;
-    image[i] = value;
+  for (uint32_t i = 0; i < PERIOD; i++) {
+    input_signal[i] = (i * i % 27 + i % 64 - 51) % PERIOD;
   }
 }
 
 void benchmarkSetupEach() {
+  for (uint32_t i = 0; i < PERIOD; i++) {
+    output_spectre[i] = 0.0;
+  }
 }
 
 void benchmarkTeardownEach() {
 }
 
 int benchmarkRun() {
-  double total_luminance;
-  total_luminance = 0.0;
-  for (uint32_t pixel = 0; pixel != ITERATIONS; ++pixel) {
-    uint32_t color = image[pixel % IMAGE_SIZE];
-    uint8_t R = (color & 0xFF000000) >> 24;
-    uint8_t G = (color & 0x00FF0000) >> 16;
-    uint8_t B = (color & 0x0000FF00) >> 8;
-    total_luminance += (0.2126 * R + 0.7152 * G + 0.0722 * B);
-  }
-  return (int) (total_luminance * 1000 / ITERATIONS);
+  return run_ffts();
 }

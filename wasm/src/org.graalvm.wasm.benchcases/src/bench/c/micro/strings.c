@@ -39,48 +39,95 @@
  * SOFTWARE.
  */
 #include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
 #include "harness.h"
 
-#define IMAGE_SIZE (1024 * 1024)
-#define N 256
-#define ITERATIONS (IMAGE_SIZE * N)
+#define TEXT_LENGTH (5000000)
+#define PATTERN_LENGTH (512)
+#define COPY_COUNT (50)
 
-uint32_t image[IMAGE_SIZE];
-uint32_t result[IMAGE_SIZE];
+char source_text[TEXT_LENGTH];
+char target_text[TEXT_LENGTH];
+char* source_texts[COPY_COUNT];
+char* target_texts[COPY_COUNT];
+char pattern[PATTERN_LENGTH + 1];
+
+const char* characters =
+  "!@#$%^&*()_[]{}~@^\\ qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890\x7f";
 
 int benchmarkWarmupCount() {
   return 10;
 }
 
 void benchmarkSetupOnce() {
-  for (uint32_t i = 0; i != IMAGE_SIZE; ++i) {
-    uint32_t value;
-    value |= (((i + 1) * 8) % 128) << 24;
-    value |= (((i + 1) * 16) % 128) << 16;
-    value |= (((i + 1) * 24) % 128) << 8;
-    image[i] = value;
-  }
 }
 
 void benchmarkSetupEach() {
+  for (int i = 0; i < TEXT_LENGTH; i++) {
+    int index = ((0x40 + i % 0x40 + (i * i) % 0x16) & 0x7e);
+    if (index < 0x40) {
+      index = 0x40;
+    }
+    source_text[i] = (char) index;
+    target_text[i] = (char) 0;
+  }
+  source_text[TEXT_LENGTH - 1] = (char) 0x00;
+  for (int i = 0; i < COPY_COUNT; i++) {
+    source_texts[i] = source_text;
+    target_texts[i] = target_text;
+  }
+  strncpy(pattern, source_text + TEXT_LENGTH / 2, PATTERN_LENGTH);
+  pattern[PATTERN_LENGTH] = (char) 0x00;
 }
 
 void benchmarkTeardownEach() {
 }
 
 int benchmarkRun() {
-  int black_pixels;
-  black_pixels = 0;
-  for (uint32_t pixel = 0; pixel != ITERATIONS; ++pixel) {
-    uint32_t color = image[pixel % IMAGE_SIZE];
-    uint8_t R = (color & 0xFF000000) >> 24;
-    uint8_t G = (color & 0x00FF0000) >> 16;
-    uint8_t B = (color & 0x0000FF00) >> 8;
-    double luminance = (0.2126 * R + 0.7152 * G + 0.0722 * B);
-    result[pixel % IMAGE_SIZE] = luminance > 127 ? UINT32_MAX : 0xFF;
-    black_pixels += luminance > 127 ? 0 : 1;
-  }
-  return black_pixels / ITERATIONS;
-}
+  long long hash = 0;
 
+  for (int i = 0; i < COPY_COUNT; i++) {
+    strcpy(target_texts[i], source_texts[i]);
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    hash += strlen(target_texts[i]);
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    hash += 10 + strcmp(target_texts[i], source_text);
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    char* ptr = strchr(target_texts[i], 0x40 + i % 0x80);
+    if (ptr != NULL) {
+      hash += ptr[0];
+    }
+    ptr = strchr(source_texts[i], 0x40 + i % 0x80);
+    if (ptr != NULL) {
+      hash += ptr[0];
+    }
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    char* ptr = strstr(target_texts[i], pattern);
+    if (ptr != NULL) {
+      hash += ptr[0];
+    }
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    size_t len = strspn(target_texts[i], characters);
+    hash += len;
+  }
+
+  for (int i = 0; i < COPY_COUNT; i++) {
+    hash += 10 + strcasecmp(target_texts[i], source_texts[i]);
+  }
+
+  for (int i = 0; i < 200; i++) {
+    hash += (int) target_text[i];
+  }
+
+  return (int) hash;
+}
