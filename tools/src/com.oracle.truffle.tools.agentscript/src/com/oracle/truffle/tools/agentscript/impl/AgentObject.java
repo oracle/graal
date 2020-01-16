@@ -123,7 +123,7 @@ final class AgentObject implements TruffleObject {
 
     @ExportMessage
     static Object getMembers(AgentObject obj, boolean includeInternal) {
-        return new Object[0];
+        return ArrayObject.array("version");
     }
 
     @ExportMessage
