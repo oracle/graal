@@ -32,6 +32,7 @@
         },
         environment+: {
           GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
+          MX_PYTHON_VERSION: "3",
         },
       },
 
