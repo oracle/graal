@@ -108,7 +108,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         @Option(help = "Force branch instructions to align with 32-bytes boundary, to mitigate the jcc erratum. " +
                 "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details.", type = OptionType.User)
-        public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(true);
+        public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -397,11 +397,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final int immediateSize(OperandSize size) {
             if (immIsByte) {
                 return 1;
-            } else if (size == QWORD) {
-                // TODO confirm this
-                return 4;
             } else {
-                return size.getBytes();
+                return size.immediateSize();
             }
         }
     }
