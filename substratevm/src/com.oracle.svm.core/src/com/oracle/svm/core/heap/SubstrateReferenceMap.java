@@ -220,7 +220,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public int hashCode() {
-        return shift ^ shiftedOffsets.hashCode() ^ ((derived == null) ? 0 : derived.hashCode());
+        return shift ^ (shiftedOffsets == null ? 0 : shiftedOffsets.hashCode()) ^ (derived == null ? 0 : derived.hashCode());
     }
 
     @Override
@@ -269,10 +269,10 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         }
     }
 
-    public void dump(StringBuilder builder) {
-        if (shiftedOffsets.isEmpty()) {
+    public StringBuilder dump(StringBuilder builder) {
+        if (shiftedOffsets == null || shiftedOffsets.isEmpty()) {
             builder.append("[]");
-            return;
+            return builder;
         }
 
         builder.append('[');
@@ -290,5 +290,11 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             builder.append(", ");
         });
         builder.replace(builder.length() - 2, builder.length(), "]");
+        return builder;
+    }
+
+    @Override
+    public String toString() {
+        return dump(new StringBuilder()).toString();
     }
 }

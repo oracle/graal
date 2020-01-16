@@ -115,6 +115,7 @@ import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -1098,6 +1099,10 @@ public class CompileQueue {
             return false;
         }
         if (method.getAnnotation(RestrictHeapAccess.class) != null) {
+            return false;
+        }
+        if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {
+            /* Deoptimization runtime cannot fill the callee saved registers. */
             return false;
         }
         if (universe.getMethodsWithStackValues().contains(method.wrapped)) {

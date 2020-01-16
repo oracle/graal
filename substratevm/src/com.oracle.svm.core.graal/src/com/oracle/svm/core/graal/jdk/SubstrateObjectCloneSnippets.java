@@ -80,7 +80,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         }
     }
 
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object doClone(Object thisObj) throws CloneNotSupportedException, InstantiationException {
         if (thisObj == null) {
             throw new NullPointerException();

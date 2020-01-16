@@ -273,13 +273,20 @@ public final class CodeInfoDecoder {
 
     static final int FRAME_SIZE_METHOD_START = 0b001;
     static final int FRAME_SIZE_ENTRY_POINT = 0b010;
+    static final int FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS = 0b100;
 
-    static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT;
+    static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT | FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS;
 
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     static boolean decodeIsEntryPoint(long sizeEncoding) {
         assert sizeEncoding != INVALID_SIZE_ENCODING;
         return (sizeEncoding & FRAME_SIZE_ENTRY_POINT) != 0;
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    static boolean decodeHasCalleeSavedRegisters(long sizeEncoding) {
+        assert sizeEncoding != INVALID_SIZE_ENCODING;
+        return (sizeEncoding & FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS) != 0;
     }
 
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)

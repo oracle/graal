@@ -687,6 +687,13 @@ public final class Deoptimizer {
                 throw VMError.shouldNotReachHere("Deoptimization: target frame information not marked as deoptimization entry point for bci " +
                                 deoptInfo.getBci() + " (encodedBci " + deoptInfo.getEncodedBci() + ") in method at address" +
                                 Long.toHexString(deoptInfo.getDeoptMethodAddress().rawValue()));
+            } else if (targetInfo.getFrameInfo().getDeoptMethod() != null && targetInfo.getFrameInfo().getDeoptMethod().hasCalleeSavedRegisters()) {
+                /*
+                 * The deoptMethod is not guaranteed to be available, but this is only a last check,
+                 * to have a better error than the probable segfault.
+                 */
+                throw VMError.shouldNotReachHere("Deoptimization: target method has callee saved registers, which are not properly restored by the deoptimization runtime: " +
+                                targetInfo.getFrameInfo().getDeoptMethod().format("%H.%n(%r)"));
             }
             VirtualFrame virtualFrame = constructTargetFrame(targetInfo, deoptInfo);
             if (previousVirtualFrame != null) {
@@ -913,6 +920,7 @@ public final class Deoptimizer {
             case DefaultConstant:
                 return valueInfo.getValue();
             case StackSlot:
+            case Register:
                 return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference());
             case VirtualObject:
                 Object obj = materializeObject(TypeConversion.asS4(valueInfo.getData()), sourceFrame);

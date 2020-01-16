@@ -93,7 +93,7 @@ public class DeoptTester {
      * Foreign call: {@link #DEOPTTEST}.
      */
     @NeverInline("deoptTest must have a separate stack frame")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     public static void deoptTest() {
         assert enabled();
 

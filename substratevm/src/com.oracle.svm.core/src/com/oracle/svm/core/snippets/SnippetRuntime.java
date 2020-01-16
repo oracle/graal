@@ -168,13 +168,13 @@ public class SnippetRuntime {
     }
 
     /** Foreign call: {@link #UNSUPPORTED_FEATURE}. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void unsupportedFeature(String msg) {
         throw VMError.unsupportedFeature(msg);
     }
 
     /** Foreign call: {@link #REGISTER_FINALIZER}. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void registerFinalizer(@SuppressWarnings("unused") Object obj) {
         // We do not support finalizers, so nothing to do.
     }

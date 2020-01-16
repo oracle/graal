@@ -29,7 +29,7 @@ import jdk.vm.ci.meta.Value;
 
 public interface SubstrateLIRGenerator {
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip);
+    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
 
     void emitDeadEnd();
 

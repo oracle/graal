@@ -657,10 +657,16 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register3("farReturn", Object.class, Pointer.class, CodePointer.class, new InvocationPlugin() {
+        r.register4("farReturn", Object.class, Pointer.class, CodePointer.class, boolean.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode sp, ValueNode ip) {
-                b.add(new FarReturnNode(result, sp, ip));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode sp, ValueNode ip,
+                            ValueNode fromMethodWithCalleeSavedRegisters) {
+
+                if (!fromMethodWithCalleeSavedRegisters.isConstant()) {
+                    throw b.bailout("parameter fromMethodWithCalleeSavedRegisters is not a compile time constant for call to " +
+                                    targetMethod.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()));
+                }
+                b.add(new FarReturnNode(result, sp, ip, fromMethodWithCalleeSavedRegisters.asJavaConstant().asInt() != 0));
                 return true;
             }
         });
