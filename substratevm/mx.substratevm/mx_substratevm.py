@@ -877,7 +877,7 @@ JNIEXPORT void JNICALL {0}() {{
     required_fallbacks = collect_missing_symbols() - collect_implementations()
     write_fallbacks(sorted(required_fallbacks))
 
-def _helloworld(native_image, javac_command, path, args):
+def _helloworld(native_image, javac_command, path, build_only, args):
     mkpath(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
@@ -899,42 +899,43 @@ def _helloworld(native_image, javac_command, path, args):
 
     native_image(["-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
-    expected_output = [output + os.linesep]
-    actual_output = []
-    def _collector(x):
-        actual_output.append(x)
-        mx.log(x)
+    if not build_only:
+        expected_output = [output + os.linesep]
+        actual_output = []
+        def _collector(x):
+            actual_output.append(x)
+            mx.log(x)
 
-    if '--shared' in args:
-        # If helloword got built into a shared library we use python to load the shared library
-        # and call its `run_main`. We are capturing the stdout during the call into an unnamed
-        # pipe so that we can use it in the actual vs. expected check below.
-        try:
-            import ctypes
-            so_name = mx.add_lib_suffix('helloworld')
-            lib = ctypes.CDLL(join(path, so_name))
-            stdout = os.dup(1)  # save original stdout
-            pout, pin = os.pipe()
-            os.dup2(pin, 1)  # connect stdout to pipe
-            os.environ[envkey] = output
-            lib.run_main(1, 'dummy')  # call run_main of shared lib
-            call_stdout = os.read(pout, 120)  # get pipe contents
-            actual_output.append(call_stdout)
-            os.dup2(stdout, 1)  # restore original stdout
-            mx.log('Stdout from calling run_main in shared object {}:'.format(so_name))
-            mx.log(call_stdout)
-            actual_output = list(map(_decode, actual_output))
-        finally:
-            del os.environ[envkey]
-            os.close(pin)
-            os.close(pout)
-    else:
-        env = os.environ.copy()
-        env[envkey] = output
-        mx.run([join(path, 'helloworld')], out=_collector, env=env)
+        if '--shared' in args:
+            # If helloword got built into a shared library we use python to load the shared library
+            # and call its `run_main`. We are capturing the stdout during the call into an unnamed
+            # pipe so that we can use it in the actual vs. expected check below.
+            try:
+                import ctypes
+                so_name = mx.add_lib_suffix('helloworld')
+                lib = ctypes.CDLL(join(path, so_name))
+                stdout = os.dup(1)  # save original stdout
+                pout, pin = os.pipe()
+                os.dup2(pin, 1)  # connect stdout to pipe
+                os.environ[envkey] = output
+                lib.run_main(1, 'dummy')  # call run_main of shared lib
+                call_stdout = os.read(pout, 120)  # get pipe contents
+                actual_output.append(call_stdout)
+                os.dup2(stdout, 1)  # restore original stdout
+                mx.log('Stdout from calling run_main in shared object {}:'.format(so_name))
+                mx.log(call_stdout)
+                actual_output = list(map(_decode, actual_output))
+            finally:
+                del os.environ[envkey]
+                os.close(pin)
+                os.close(pout)
+        else:
+            env = os.environ.copy()
+            env[envkey] = output
+            mx.run([join(path, 'helloworld')], out=_collector, env=env)
 
-    if actual_output != expected_output:
-        raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
+        if actual_output != expected_output:
+            raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -1209,17 +1210,19 @@ def helloworld(args, config=None):
     builds a Hello, World! native image.
     """
     parser = ArgumentParser(prog='mx helloworld')
-    all_args = ['--output-path', '--javac-command']
+    all_args = ['--output-path', '--javac-command', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image', default=False)
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
     output_path = unmask(parsed.output_path)[0]
+    build_only = parsed.build_only
     native_image_context_run(
         lambda native_image, a:
-            _helloworld(native_image, javac_command, output_path, a), unmask(parsed.image_args),
+            _helloworld(native_image, javac_command, output_path, build_only, a), unmask(parsed.image_args),
         config=config,
         build_if_missing=True
     )
