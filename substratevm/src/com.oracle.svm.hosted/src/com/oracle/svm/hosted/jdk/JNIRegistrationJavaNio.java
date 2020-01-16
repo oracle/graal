@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
+import com.oracle.svm.hosted.FeatureImpl;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -70,6 +71,18 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         if (isPosix()) {
             registerForThrowNew(a, "sun.nio.fs.UnixException");
             JNIRuntimeAccess.register(constructor(a, "sun.nio.fs.UnixException", int.class));
+            if (isDarwin()) {
+                /*
+                 * sun.nio.fs.MacOXFileSystemProvider support on Darwin relies on
+                 * UTTypeCopyPreferredTagWithClass UTTypeCreatePreferredIdentifierForTag from
+                 * CoreServices as well as sun.net.spi.DefaultProxySelector and
+                 * apple.security.KeyChainStore
+                 */
+                a.registerReachabilityHandler(duringAnalysisAccess -> {
+                    FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
+                    accessImpl.getNativeLibraries().addLibrary("-framework CoreServices", false);
+                }, method(a, "sun.nio.fs.MacOSXFileSystemProvider", "getFileTypeDetector"));
+            }
         } else if (isWindows()) {
             registerForThrowNew(a, "sun.nio.fs.WindowsException");
             JNIRuntimeAccess.register(constructor(a, "sun.nio.fs.WindowsException", int.class));
