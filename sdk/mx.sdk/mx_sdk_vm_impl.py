@@ -1550,18 +1550,16 @@ class GraalVmLibrary(GraalVmNativeImage):
             return mx.NoOpTask(self, args)
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        if self.is_skipped():
-            yield None, None
-            return
         for e in super(GraalVmLibrary, self).getArchivableResults(use_relpath=use_relpath, single=single):
             yield e
             if single:
                 return
         output_dir = dirname(self.output_file())
-        for e in os.listdir(output_dir):
-            absolute_path = join(output_dir, e)
-            if isfile(absolute_path) and e.endswith('.h'):
-                yield absolute_path, e
+        if exists(output_dir):
+            for e in os.listdir(output_dir):
+                absolute_path = join(output_dir, e)
+                if isfile(absolute_path) and e.endswith('.h'):
+                    yield absolute_path, e
 
     def is_skipped(self):
         return _skip_libraries(self.native_image_config)
