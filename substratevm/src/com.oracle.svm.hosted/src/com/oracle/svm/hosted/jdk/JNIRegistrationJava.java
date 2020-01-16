@@ -136,6 +136,14 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
             /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
         }
+        if (isDarwin()) {
+            /*
+             * JNI method implementations depending on CoreService are present in the following jdk
+             * classes sun.nio.fs.MacOXFileSystemProvider (9+), apple.security.KeychainStore (8+)
+             * sun.net.spi.DefaultProxySelector (9+)
+             */
+            nativeLibraries.addLibrary("-framework CoreServices", false);
+        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
