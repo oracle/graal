@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -291,10 +291,10 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                     }
                 }
             }
-            if (typedProfile.profile(type == null)) {
-                return address;
-            } else {
+            if (typedProfile.profile(address.getExportType() == null)) {
                 return address.export(type);
+            } else {
+                return address;
             }
         }
 
