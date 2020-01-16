@@ -847,7 +847,7 @@ public final class Meta implements ContextAccess {
         throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
+    @TruffleBoundary
     public Klass throwableKlass(java.lang.Class<?> exceptionClass) {
         assert isKnownClass(exceptionClass);
         assert Throwable.class.isAssignableFrom(exceptionClass);
