@@ -398,7 +398,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     public abstract static class Templates extends SubstrateTemplates {
         protected final AllocationSnippetCounters snippetCounters;
-        private AllocationProfilingData profilingData;
+        private final AllocationProfilingData profilingData;
 
         private final SnippetInfo allocateInstance;
         private final SnippetInfo allocateArray;
@@ -411,6 +411,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                         SnippetReflectionProvider snippetReflection) {
             super(options, factories, providers, snippetReflection);
             snippetCounters = new AllocationSnippetCounters(groupFactory);
+            profilingData = new SubstrateAllocationProfilingData(snippetCounters, null);
 
             allocateInstance = snippet(SubstrateAllocationSnippets.class, "allocateInstance", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
             allocateArray = snippet(SubstrateAllocationSnippets.class, "allocateArray", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
@@ -445,10 +446,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 // Create one object per snippet instantiation - this kills the snippet caching as
                 // we need to add the object as a constant to the snippet.
                 return new SubstrateAllocationProfilingData(snippetCounters, createAllocationSiteCounter(node, type));
-            } else if (profilingData == null) {
-                profilingData = new SubstrateAllocationProfilingData(snippetCounters, null);
             }
-
             return profilingData;
         }
 
