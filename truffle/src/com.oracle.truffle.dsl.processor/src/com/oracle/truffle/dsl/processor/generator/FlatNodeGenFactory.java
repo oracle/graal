@@ -534,6 +534,18 @@ public class FlatNodeGenFactory {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
 
+            for (NodeFieldData field : node.getFields()) {
+                if (!field.isGenerated()) {
+                    continue;
+                }
+                if (field.getGetter() != null && field.getGetter().getModifiers().contains(Modifier.ABSTRACT)) {
+                    CodeExecutableElement method = CodeExecutableElement.clone(field.getGetter());
+                    method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.createBuilder().startReturn().defaultValue(field.getType()).end();
+                    uncached.add(method);
+                }
+            }
+
             for (NodeChildData child : node.getChildren()) {
                 uncached.addOptional(createAccessChildMethod(child, true));
             }
@@ -4858,7 +4870,13 @@ public class FlatNodeGenFactory {
             }
             for (NodeFieldData field : factory.node.getFields()) {
                 String fieldName = fieldValueName(field);
-                values.put(fieldName, new LocalVariable(field.getType(), fieldName, CodeTreeBuilder.singleString(field.getName())));
+                CodeTree lookupValue;
+                if (getMode().isUncached()) {
+                    lookupValue = CodeTreeBuilder.createBuilder().defaultValue(field.getType()).build();
+                } else {
+                    lookupValue = CodeTreeBuilder.createBuilder().string("this.", field.getName()).build();
+                }
+                values.put(fieldName, new LocalVariable(field.getType(), fieldName, lookupValue));
             }
             boolean varargs = needsVarargs(false, varargsThreshold);
             List<TypeMirror> evaluatedParameter = executedType.getEvaluatedParameters();

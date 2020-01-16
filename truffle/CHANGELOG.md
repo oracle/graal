@@ -24,6 +24,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added ability to load external default exports for libraries using a service provider. See `GenerateLibrary(defaultExportLookupEnabled = true)`.
 * Getter to check whether [TruffleContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#isEntered--) is activated or not.
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
+* The use of `@NodeField` is now permitted in combination with `@GenerateUncached`.
 
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.

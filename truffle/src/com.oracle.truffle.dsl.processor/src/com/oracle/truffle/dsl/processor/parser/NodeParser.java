@@ -631,15 +631,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        if (!node.getFields().isEmpty()) {
-            uncachable = false;
-            if (requireUncachable) {
-                node.addError(generateUncached, null, "Failed to generate code for @%s: The node must not declare any @%s annotations. Remove these annotations to resolve this.",
-                                types.GenerateUncached.asElement().getSimpleName().toString(),
-                                types.NodeField.asElement().getSimpleName().toString());
-            }
-        }
-
         node.setUncachable(uncachable);
     }
 
