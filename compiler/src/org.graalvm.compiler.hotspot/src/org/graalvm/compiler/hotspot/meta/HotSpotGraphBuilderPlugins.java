@@ -665,7 +665,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCounterModePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
+        if (isIntrinsicName(config, "com/sun/crypto/provider/CounterMode", "implCrypt")) {
             assert !config.useAESCTRIntrinsics || config.counterModeAESCrypt != 0L;
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
             r.registerConditionalMethodSubstitution(config.useAESCTRIntrinsics, CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,
