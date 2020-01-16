@@ -44,7 +44,7 @@ for /f "tokens=1* delims=;" %%i in ("%relcp%") do (
 )
 if not "%relcp_next%"=="%relcp%" set "relcp=%relcp_next%" & goto :nextcp
 
-set "jvm_args=-Dorg.graalvm.launcher.shell=true -Dorg.graalvm.launcher.executablename=%executablename%"
+set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
 set "launcher_args="
 set "args_delim="
 
