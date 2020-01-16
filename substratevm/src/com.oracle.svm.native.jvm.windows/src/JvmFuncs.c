@@ -93,12 +93,12 @@ static const jlong NANOSECS_PER_SEC      = 1000000000L;
 static const jint  NANOSECS_PER_MILLISEC = 1000000;
 
 // Returns time ticks in (10th of micro seconds)
-static inline jlong windows_to_time_ticks(FILETIME wt) {
+static __inline jlong windows_to_time_ticks(FILETIME wt) {
   jlong a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
   return (a - _offset);
 }
 
-static inline jlong getCurrentTimeMillis() {
+static __inline jlong getCurrentTimeMillis() {
     jlong a;
     FILETIME wt;
     GetSystemTimeAsFileTime(&wt);
