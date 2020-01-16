@@ -34,13 +34,15 @@ public class ThermometerState {
     private final double sampleReading;
     private final double iterationsPerSecond;
     private final long loadedSource;
+    private final long heapSize;
     private final CompilationState compilationState;
 
-    public ThermometerState(long elapsedTime, double sampleReading, double iterationsPerSecond, long loadedSource, CompilationState compilationState) {
+    public ThermometerState(long elapsedTime, double sampleReading, double iterationsPerSecond, long loadedSource, long heapSize, CompilationState compilationState) {
         this.elapsedTime = elapsedTime;
         this.sampleReading = sampleReading;
         this.iterationsPerSecond = iterationsPerSecond;
         this.loadedSource = loadedSource;
+        this.heapSize = heapSize;
         this.compilationState = compilationState;
     }
 
@@ -68,12 +70,13 @@ public class ThermometerState {
             ipsComponent = String.format("  %7.3f %s i/s", reportedIterationsPerSecond, suffix);
         }
 
-        return String.format("%6.2fs  %s  %3.0f°%s   %5.2f MB  %3d ▶ %2d ▶ %3d  ( %2d, %2d )  %2d ▼",
+        return String.format("%6.2fs  %s  %3.0f°%s   %5.2f MB  %5.2f GB  %3d ▶ %2d ▶ %3d  ( %2d, %2d )  %2d ▼",
                 elapsedTime / 1e9,
                 indicator(reference),
                 sampleReading * 100,
                 ipsComponent,
                 loadedSource / 1024.0 / 1024.0,
+                heapSize / 1024.0 / 1024.0 / 1024.0,
                 compilationState.getQueued(),
                 compilationState.getRunning(),
                 compilationState.getFinished(),
@@ -112,6 +115,9 @@ public class ThermometerState {
 
         logStream.print(",\"loadedSource\":");
         logStream.print(loadedSource);
+
+        logStream.print(",\"heap\":");
+        logStream.print(heapSize);
 
         logStream.print(",\"queued\":");
         logStream.print(compilationState.getQueued());

@@ -33,6 +33,7 @@ if 'iterationsPerSecond' in all_samples[0]:
 
 traces.extend([
     ('Code (MB)', 'loadedSource', 1024 * 1024),
+    ('Heap (GB)', 'heap', 1024 * 1024 * 1024),
     ('Queued', 'queued', 1),
     ('Running', 'running', 1),
     ('Finished', 'finished', 1),
