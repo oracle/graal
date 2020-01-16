@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -78,7 +79,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     @Override
     protected void onCreate(Env tmp) {
         this.env = tmp;
-        AgentScript as = proxy(AgentScript.class, this);
+        AgentScript as = maybeProxy(AgentScript.class, this);
         env.registerService(as);
         final Function<?, ?> api = functionApi(this);
         env.registerService(api);
@@ -226,7 +227,15 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             Source src = b.build();
             return agentScript.registerAgentScript(() -> src);
         };
-        return proxy(Function.class, f);
+        return maybeProxy(Function.class, f);
+    }
+
+    private static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
+        if (TruffleOptions.AOT) {
+            return delegate;
+        } else {
+            return proxy(type, delegate);
+        }
     }
 
     private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
