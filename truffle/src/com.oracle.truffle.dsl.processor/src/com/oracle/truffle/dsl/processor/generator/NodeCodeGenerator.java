@@ -63,6 +63,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -76,7 +77,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     @Override
-    public List<CodeTypeElement> create(ProcessorContext context, NodeData node) {
+    public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, NodeData node) {
         Map<String, CodeVariableElement> libraryConstants = new LinkedHashMap<>();
         List<CodeTypeElement> rootTypes = createImpl(context, node, libraryConstants);
         if (rootTypes != null) {

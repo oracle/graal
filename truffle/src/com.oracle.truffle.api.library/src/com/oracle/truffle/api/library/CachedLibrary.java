@@ -136,7 +136,7 @@ public @interface CachedLibrary {
      * @see CachedLibrary for usage examples.
      * @since 19.0
      */
-    String value() default "";
+    String[] value() default {};
 
     /**
      * Sets the limit expression when using dispatched libraries. The limit expression sets the

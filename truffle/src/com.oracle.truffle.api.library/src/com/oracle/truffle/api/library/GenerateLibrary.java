@@ -259,4 +259,17 @@ public @interface GenerateLibrary {
 
     }
 
+    /**
+     * Allows the library to lookup additional default exports using a service provider interface.
+     * {@link ExportLibrary Exports} for this library with explicit receiver type will automatically
+     * be interpreted as additional default exports. External default exports may specify with the
+     * {@link ExportLibrary#priority() priority} whether they are looked up before or after existing
+     * default exports specified for the library. Default exports always have a lower priority than
+     * explicit exports on the receiver type or exports that use dynamic dispatch.
+     *
+     * @see ExportLibrary#priority()
+     * @since 20.0
+     */
+    boolean defaultExportLookupEnabled() default false;
+
 }

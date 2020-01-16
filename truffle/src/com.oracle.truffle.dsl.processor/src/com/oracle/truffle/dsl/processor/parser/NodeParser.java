@@ -1962,9 +1962,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 parseCached(cache, specialization, resolver, parameter);
             } else if (cache.isCachedLibrary()) {
                 AnnotationMirror cachedLibrary = cache.getMessageAnnotation();
-                String specializedExpression = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
+                List<String> expressions = getCachedLibraryExpressions(cachedLibrary);
+
                 String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
-                if (specializedExpression == null) {
+                if (expressions.isEmpty()) {
                     // its cached dispatch version treat it as normal cached
                     if (limit == null) {
                         cache.addError("A specialized value expression or limit must be specified for @%s. " +
@@ -2130,6 +2131,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return uncachedSpecialization;
     }
 
+    private static List<String> getCachedLibraryExpressions(AnnotationMirror cachedLibrary) {
+        List<String> expressions;
+        Object annotationValue = ElementUtils.unboxAnnotationValue(ElementUtils.getAnnotationValue(cachedLibrary, "value"));
+        if (annotationValue instanceof String) {
+            expressions = Arrays.asList((String) annotationValue);
+        } else {
+            expressions = ElementUtils.getAnnotationValueList(String.class, cachedLibrary, "value");
+        }
+        return expressions;
+    }
+
     private static TypeMirror getFirstTypeArgument(TypeMirror languageType) {
         for (TypeMirror currentTypeArgument : ((DeclaredType) languageType).getTypeArguments()) {
             return currentTypeArgument;
@@ -2190,7 +2202,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
-            String value = ElementUtils.getAnnotationValue(String.class, cachedLibrary.getMessageAnnotation(), "value", false);
+            List<String> expressions = getCachedLibraryExpressions(cachedLibrary.getMessageAnnotation());
+            String value = expressions.get(0);
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), value);
             if (receiverExpression == null) {
                 continue;

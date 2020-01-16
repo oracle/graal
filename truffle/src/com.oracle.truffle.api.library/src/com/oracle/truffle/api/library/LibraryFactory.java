@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.library;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -101,6 +104,7 @@ import com.oracle.truffle.api.utilities.FinalBitSet;
 public abstract class LibraryFactory<T extends Library> {
 
     private static final ConcurrentHashMap<Class<?>, LibraryFactory<?>> LIBRARIES;
+    private static final DefaultExportProvider[] EMPTY_DEFAULT_EXPORT_ARRAY = new DefaultExportProvider[0];
 
     static {
         LIBRARIES = new ConcurrentHashMap<>();
@@ -139,6 +143,9 @@ public abstract class LibraryFactory<T extends Library> {
 
     final DynamicDispatchLibrary dispatchLibrary;
 
+    final DefaultExportProvider[] beforeBuiltinDefaultExports;
+    final DefaultExportProvider[] afterBuiltinDefaultExports;
+
     /**
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
      *
@@ -162,6 +169,39 @@ public abstract class LibraryFactory<T extends Library> {
             this.dispatchLibrary = null;
         } else {
             this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
+        }
+
+        List<DefaultExportProvider> providers = getExternalDefaultProviders().get(libraryClass.getName());
+        List<DefaultExportProvider> beforeBuiltin = null;
+        List<DefaultExportProvider> afterBuiltin = null;
+        if (providers != null && !providers.isEmpty()) {
+            for (DefaultExportProvider provider : providers) {
+                List<DefaultExportProvider> providerList = new ArrayList<>();
+                if (provider.getPriority() > 0) {
+                    if (beforeBuiltin == null) {
+                        beforeBuiltin = new ArrayList<>();
+                    }
+                    providerList = beforeBuiltin;
+                } else {
+                    if (afterBuiltin == null) {
+                        afterBuiltin = new ArrayList<>();
+                    }
+                    providerList = afterBuiltin;
+                }
+                providerList.add(provider);
+            }
+        }
+
+        if (beforeBuiltin != null) {
+            beforeBuiltinDefaultExports = beforeBuiltin.toArray(new DefaultExportProvider[beforeBuiltin.size()]);
+        } else {
+            beforeBuiltinDefaultExports = EMPTY_DEFAULT_EXPORT_ARRAY;
+        }
+
+        if (afterBuiltin != null) {
+            afterBuiltinDefaultExports = afterBuiltin.toArray(new DefaultExportProvider[afterBuiltin.size()]);
+        } else {
+            afterBuiltinDefaultExports = EMPTY_DEFAULT_EXPORT_ARRAY;
         }
     }
 
@@ -270,6 +310,43 @@ public abstract class LibraryFactory<T extends Library> {
         }
     }
 
+    private static volatile Map<String, List<DefaultExportProvider>> externalDefaultProviders;
+
+    private static Map<String, List<DefaultExportProvider>> getExternalDefaultProviders() {
+        Map<String, List<DefaultExportProvider>> providers = externalDefaultProviders;
+        if (providers == null) {
+            synchronized (LibraryFactory.class) {
+                providers = externalDefaultProviders;
+                if (providers == null) {
+                    providers = loadExternalDefaultProviders();
+                }
+            }
+        }
+        return providers;
+    }
+
+    private static Map<String, List<DefaultExportProvider>> loadExternalDefaultProviders() {
+        Map<String, List<DefaultExportProvider>> providers;
+        providers = new LinkedHashMap<>();
+        for (DefaultExportProvider provider : ServiceLoader.load(DefaultExportProvider.class)) {
+            String libraryClassName = provider.getLibraryClassName();
+            List<DefaultExportProvider> providerList = providers.get(libraryClassName);
+            if (providerList == null) {
+                providerList = new ArrayList<>();
+                providers.put(libraryClassName, providerList);
+            }
+            providerList.add(provider);
+        }
+        for (List<DefaultExportProvider> providerList : providers.values()) {
+            Collections.sort(providerList, new Comparator<DefaultExportProvider>() {
+                public int compare(DefaultExportProvider o1, DefaultExportProvider o2) {
+                    return Integer.compare(o2.getPriority(), o1.getPriority());
+                }
+            });
+        }
+        return providers;
+    }
+
     final Class<T> getLibraryClass() {
         return libraryClass;
     }
@@ -371,6 +448,27 @@ public abstract class LibraryFactory<T extends Library> {
      */
     protected abstract Class<?> getDefaultClass(Object receiver);
 
+    private Class<?> getDefaultClassImpl(Object receiver) {
+        for (DefaultExportProvider defaultExport : beforeBuiltinDefaultExports) {
+            if (defaultExport.getReceiverClass().isInstance(receiver)) {
+                return defaultExport.getDefaultExport();
+            }
+        }
+
+        Class<?> defaultClass = getDefaultClass(receiver);
+        if (defaultClass != getLibraryClass()) {
+            return defaultClass;
+        }
+
+        for (DefaultExportProvider defaultExport : afterBuiltinDefaultExports) {
+            if (defaultExport.getReceiverClass().isInstance(receiver)) {
+                return defaultExport.getDefaultExport();
+            }
+        }
+
+        return defaultClass;
+    }
+
     /**
      * Performs a generic dispatch for this library. An implementation for this method is generated,
      * do not implement manually.
@@ -435,7 +533,7 @@ public abstract class LibraryFactory<T extends Library> {
             if (libraryClass != DynamicDispatchLibrary.class && resolvedLibrary.getLibrary(ReflectionLibrary.class) != null) {
                 lib = proxyExports;
             } else {
-                Class<?> defaultClass = getDefaultClass(receiver);
+                Class<?> defaultClass = getDefaultClassImpl(receiver);
                 lib = ResolvedDispatch.lookup(defaultClass).getLibrary(libraryClass);
             }
         } else {
@@ -558,7 +656,7 @@ public abstract class LibraryFactory<T extends Library> {
         }
 
         @Override
-        public T createCached(Object receiver) {
+        protected T createCached(Object receiver) {
             return createProxy(ReflectionLibrary.getFactory().create(receiver));
         }
     }
