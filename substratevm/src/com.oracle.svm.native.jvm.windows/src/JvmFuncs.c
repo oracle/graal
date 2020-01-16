@@ -144,8 +144,10 @@ static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
 }
 
 /* Taken from src/hotspot/share/prims/jvm.cpp */
-static const jlong MAX_DIFF_SECS = 0x0100000000LL; //  2^32
-static const jlong MIN_DIFF_SECS = -0x0100000000LL; // -2^32
+#define CONST64(x)  (x ## LL)
+
+static const jlong MAX_DIFF_SECS = CONST64(0x0100000000); //  2^32
+static const jlong MIN_DIFF_SECS = -CONST64(0x0100000000); // -2^32
 
 JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
     jlong seconds;
