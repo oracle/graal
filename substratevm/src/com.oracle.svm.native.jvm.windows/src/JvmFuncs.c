@@ -101,8 +101,9 @@ static __inline jlong windows_to_time_ticks(FILETIME wt) {
 static __inline jlong getCurrentTimeMillis() {
     jlong a;
     FILETIME wt;
+    jlong ticks;
     GetSystemTimeAsFileTime(&wt);
-    jlong ticks = windows_to_time_ticks(wt);
+    ticks = windows_to_time_ticks(wt);
     return ticks / 10000;
 }
 
@@ -136,9 +137,11 @@ JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
 
 static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
   FILETIME wt;
+  jlong ticks;
+  jlong secs;
   GetSystemTimeAsFileTime(&wt);
-  jlong ticks = windows_to_time_ticks(wt); // 10th of micros
-  jlong secs = ticks / 10000000; // 10000 * 1000
+  ticks = windows_to_time_ticks(wt); // 10th of micros
+  secs = ticks / 10000000; // 10000 * 1000
   *seconds = secs;
   *nanos = ((jlong)(ticks - (secs*10000000))) * 100;
 }
@@ -149,13 +152,14 @@ static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
 static const jlong MAX_DIFF_SECS = CONST64(0x0100000000); //  2^32
 static const jlong MIN_DIFF_SECS = -CONST64(0x0100000000); // -2^32
 
-JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void *ignored, jlong offset_secs) {
     jlong seconds;
     jlong nanos;
+    jlong diff;
 
     os_javaTimeSystemUTC(&seconds, &nanos);
 
-    jlong diff = seconds - offset_secs;
+    diff = seconds - offset_secs;
     if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
        return -1; // sentinel value: the offset is too far off the target
     }
