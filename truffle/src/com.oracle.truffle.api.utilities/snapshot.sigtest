@@ -111,6 +111,8 @@ meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds first,name,second
 
+CLSS abstract interface com.oracle.truffle.api.utilities.package-info
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException

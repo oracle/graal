@@ -139,3 +139,5 @@ meth public abstract boolean hasBeenSet(org.graalvm.options.OptionKey<?>)
 meth public abstract org.graalvm.options.OptionDescriptors getDescriptors()
 meth public boolean hasSetOptions()
 
+CLSS abstract interface org.graalvm.options.package-info
+

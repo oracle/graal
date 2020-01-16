@@ -404,6 +404,8 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.constant.CE
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
+CLSS abstract interface org.graalvm.nativeimage.c.constant.package-info
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CEntryPoint
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -497,6 +499,10 @@ meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CFunction$Tr
 CLSS public abstract interface org.graalvm.nativeimage.c.function.RelocatedPointer
 intf org.graalvm.word.ComparableWord
 
+CLSS abstract interface org.graalvm.nativeimage.c.function.package-info
+
+CLSS abstract interface org.graalvm.nativeimage.c.package-info
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.AllowNarrowingCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -582,6 +588,8 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.Uniq
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+
+CLSS abstract interface org.graalvm.nativeimage.c.struct.package-info
 
 CLSS public abstract interface org.graalvm.nativeimage.c.type.CCharPointer
 intf org.graalvm.word.PointerBase
@@ -715,6 +723,8 @@ meth public abstract void write(int,org.graalvm.word.WordBase)
 meth public abstract void write(org.graalvm.word.SignedWord,org.graalvm.word.WordBase)
 meth public abstract void write(org.graalvm.word.WordBase)
 
+CLSS abstract interface org.graalvm.nativeimage.c.type.package-info
+
 CLSS public abstract interface org.graalvm.nativeimage.hosted.Feature
 innr public abstract interface static AfterAnalysisAccess
 innr public abstract interface static AfterCompilationAccess
@@ -841,6 +851,8 @@ meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
+CLSS abstract interface org.graalvm.nativeimage.hosted.package-info
+
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static DARWIN_JNI_AND_SUBSTITUTIONS
 innr public abstract interface static LINUX_JNI_AND_SUBSTITUTIONS
@@ -857,6 +869,8 @@ intf org.graalvm.nativeimage.Platform
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
  outer org.graalvm.nativeimage.impl.InternalPlatform
 intf org.graalvm.nativeimage.Platform
+
+CLSS abstract interface org.graalvm.nativeimage.package-info
 
 CLSS public abstract interface org.graalvm.word.ComparableWord
 intf org.graalvm.word.WordBase

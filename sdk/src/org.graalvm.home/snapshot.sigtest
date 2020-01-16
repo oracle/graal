@@ -42,3 +42,5 @@ meth public static org.graalvm.home.Version parse(java.lang.String)
 supr java.lang.Object
 hfds MIN_VERSION_DIGITS,SNAPSHOT_STRING,SNAPSHOT_SUFFIX,snapshot,suffix,versions
 
+CLSS abstract interface org.graalvm.home.package-info
+
