@@ -25,8 +25,12 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.object.DebugCounter;
 
 public interface MethodRefConstant extends MemberRefConstant {
+
+    /* static final */ DebugCounter METHODREF_RESOLVE_COUNT = DebugCounter.create("MethodRef.resolve calls");
+
     /**
      * Gets the signature descriptor of the method represented by this constant.
      *

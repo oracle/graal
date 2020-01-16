@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
-
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -168,7 +166,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveMethodCount.inc();
+            METHODREF_RESOLVE_COUNT.inc();
 
             EspressoContext context = pool.getContext();
             Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveFieldCount;
-
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -39,8 +37,11 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.object.DebugCounter;
 
 public interface FieldRefConstant extends MemberRefConstant {
+
+    /* static final */ DebugCounter FIELDREF_RESOLVE_COUNT = DebugCounter.create("FieldREf.resolve calls");
 
     static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
@@ -115,7 +116,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveFieldCount.inc();
+            FIELDREF_RESOLVE_COUNT.inc();
             Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);
             Symbol<Type> type = getType(pool);

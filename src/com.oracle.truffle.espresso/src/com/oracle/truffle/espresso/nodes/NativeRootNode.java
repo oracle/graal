@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -108,6 +109,7 @@ public final class NativeRootNode extends EspressoMethodNode {
             Object result = executeNative.execute(boundNative, unpackedArgs);
             return processResult(env, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             env.getHandles().popFramesIncluding(nativeFrame);
