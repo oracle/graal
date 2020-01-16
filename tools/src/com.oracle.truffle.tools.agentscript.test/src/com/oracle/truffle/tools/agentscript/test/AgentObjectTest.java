@@ -74,6 +74,7 @@ public class AgentObjectTest {
     public void versionOfTheAgentDirect() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
+            assertNotNull("agent created", agent);
             assertNotNull("we have agent's truffle object", AgentObjectFactory.agentObject);
 
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
