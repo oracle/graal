@@ -269,21 +269,19 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private static final class PolyglotLauncherConfig {
         final Path dir;
-        final String language;
         final List<String> classpath;
         final String launcher;
 
         static PolyglotLauncherConfig parse(String spec, Path context) {
             String[] parts = spec.split("\\|");
-            if (parts.length != 3) {
-                throw new RuntimeException("Expected 3 `|`-separated parts in polyglot config (" + context + "). Got: " + Arrays.toString(parts));
+            if (parts.length != 2) {
+                throw new RuntimeException("Expected 2 `|`-separated parts in polyglot config (" + context + "). Got: " + Arrays.toString(parts));
             }
-            return new PolyglotLauncherConfig(context.getParent(), parts[0], Arrays.asList(parts[1].split(":")), parts[2]);
+            return new PolyglotLauncherConfig(context.getParent(), Arrays.asList(parts[0].split(":")), parts[1]);
         }
 
-        PolyglotLauncherConfig(Path dir, String language, List<String> classpath, String launcher) {
+        PolyglotLauncherConfig(Path dir, List<String> classpath, String launcher) {
             this.dir = dir;
-            this.language = language;
             this.classpath = classpath;
             this.launcher = launcher;
         }
