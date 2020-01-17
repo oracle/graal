@@ -141,7 +141,7 @@ public class FloatingReadPhase extends Phase {
 
     @Override
     public float codeSizeIncrease() {
-        return 1.25f;
+        return 1.50f;
     }
 
     /**

@@ -34,10 +34,12 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.word.LocationIdentity;
 
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
+
 /**
  * Memory {@code PhiNode}s merge memory dependencies at control flow merges.
  */
-@NodeInfo(nameTemplate = "Phi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
+@NodeInfo(nameTemplate = "Phi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory}, size = SIZE_0)
 public final class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     public static final NodeClass<MemoryPhiNode> TYPE = NodeClass.create(MemoryPhiNode.class);
