@@ -255,7 +255,7 @@ public class RuntimeCodeInstaller {
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
         for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
-                patches.put(codeAnnotation.position, (NativeImagePatcher) codeAnnotation);
+                patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
             }
         }
         patchData(patches, objectConstants);

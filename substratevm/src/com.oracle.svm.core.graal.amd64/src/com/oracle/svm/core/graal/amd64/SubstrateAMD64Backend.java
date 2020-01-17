@@ -1021,7 +1021,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget());
+        LIR lir = lirGenResult.getLIR();
+        OptionValues options = lir.getOptions();
+        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
+        masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -1043,8 +1046,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         } else {
             frameContext = new SubstrateAMD64FrameContext();
         }
-        LIR lir = lirGenResult.getLIR();
-        OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? getHeapBaseRegister(lirGenResult) : Register.None;
         CompilationResultBuilder tasm = factory.createBuilder(getCodeCache(), getForeignCalls(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,

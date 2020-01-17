@@ -29,6 +29,7 @@ import java.util.ArrayList;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.CodeContainer;
@@ -42,6 +43,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class CodeSectionProcessor {
 
+    private final OptionValues optionValues;
+
     private final TargetDescription target;
 
     private final BinaryContainer binaryContainer;
@@ -49,6 +52,7 @@ final class CodeSectionProcessor {
     CodeSectionProcessor(DataBuilder dataBuilder) {
         this.target = dataBuilder.getBackend().getTarget();
         this.binaryContainer = dataBuilder.getBinaryContainer();
+        this.optionValues = dataBuilder.getBackend().getRuntime().getOptions();
     }
 
     /**
@@ -131,7 +135,7 @@ final class CodeSectionProcessor {
     private StubInformation addCallStub(boolean isVirtualCall) {
         final int startOffset = binaryContainer.getCodeContainer().getByteStreamSize();
         StubInformation stub = new StubInformation(startOffset, isVirtualCall);
-        ELFMacroAssembler masm = ELFMacroAssembler.getELFMacroAssembler(target);
+        ELFMacroAssembler masm = ELFMacroAssembler.getELFMacroAssembler(target, optionValues);
         byte[] code;
         if (isVirtualCall) {
             code = masm.getPLTVirtualEntryCode(stub);

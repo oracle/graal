@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,8 +79,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
                 masm.movq(spillRegister, new AMD64Address(spillRegister, entryPointOffset));
-                masm.testq(spillRegister, spillRegister);
-                masm.jccb(ConditionFlag.Equal, doProlog);
+                masm.testqAndJcc(spillRegister, spillRegister, ConditionFlag.Equal, doProlog, true);
                 masm.jmp(spillRegister);
                 masm.bind(doProlog);
             }

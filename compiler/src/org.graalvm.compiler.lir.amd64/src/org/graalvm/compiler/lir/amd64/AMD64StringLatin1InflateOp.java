@@ -35,7 +35,7 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -137,11 +137,8 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
 
             // If the length of the string is less than 16, we chose not to use the
             // AVX512 instructions.
-            masm.testl(len, -16);
-            masm.jcc(AMD64Assembler.ConditionFlag.Zero, labelBelowThreshold);
-
-            masm.testl(len, -1 * useAVX3Threshold);
-            masm.jcc(AMD64Assembler.ConditionFlag.Zero, labelAVX3Threshold);
+            masm.testlAndJcc(len, -16, ConditionFlag.Zero, labelBelowThreshold, false);
+            masm.testlAndJcc(len, -1 * useAVX3Threshold, ConditionFlag.Zero, labelAVX3Threshold, false);
 
             // Test for suitable number chunks with respect to the size of the vector
             // operation, mask off remaining number of chars (bytes) to inflate after
@@ -152,8 +149,8 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
             // NOTE: The above idiom/pattern is used in all the loops below.
 
             masm.andl(tmp2, 32 - 1);  // The tail count (in chars).
-            masm.andl(len, -32);     // The vector count (in chars).
-            masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelCopyTail);
+            // The vector count (in chars).
+            masm.andlAndJcc(len, -32, ConditionFlag.Zero, labelCopyTail, true);
 
             masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times1));
             masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times2));
@@ -164,13 +161,11 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
             masm.bind(labelCopy32Loop);
             masm.evpmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
             masm.evmovdqu16(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
-            masm.addq(len, 32);
-            masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelCopy32Loop);
+            masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCopy32Loop, false);
 
             masm.bind(labelCopyTail);
             // All done if the tail count is zero.
-            masm.testl(tmp2, tmp2);
-            masm.jcc(AMD64Assembler.ConditionFlag.Zero, labelDone);
+            masm.testlAndJcc(tmp2, tmp2, ConditionFlag.Zero, labelDone, false);
 
             // Compute (1 << N) - 1 = ~(~0 << N), where N is the remaining number
             // of characters to process.
@@ -195,12 +190,10 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
 
             if (masm.supports(AMD64.CPUFeature.AVX2)) {
                 masm.andl(tmp2, 16 - 1);
-                masm.andl(len, -16);
-                masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelCopyNewTail);
+                masm.andlAndJcc(len, -16, ConditionFlag.Zero, labelCopyNewTail, true);
             } else {
                 masm.andl(tmp2, 0x00000007);
-                masm.andl(len, 0xfffffff8);
-                masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelCopyTail);
+                masm.andlAndJcc(len, 0xfffffff8, ConditionFlag.Zero, labelCopyTail, true);
             }
 
             // vectored inflation
@@ -212,8 +205,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
                 masm.bind(labelCopy16Loop);
                 masm.vpmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
                 masm.vmovdqu(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
-                masm.addq(len, 16);
-                masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelCopy16Loop);
+                masm.addqAndJcc(len, 16, ConditionFlag.NotZero, labelCopy16Loop, false);
 
                 // The avx512 logic may branch here. We assume that avx2 is supported when we use
                 // avx512 instructions.
@@ -221,8 +213,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
                 masm.bind(labelCopyNewTail);
                 masm.movl(len, tmp2);
                 masm.andl(tmp2, 0x00000007);
-                masm.andl(len, 0xfffffff8);
-                masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelCopyTail);
+                masm.andlAndJcc(len, 0xfffffff8, ConditionFlag.Zero, labelCopyTail, true);
 
                 // Inflate another 8 bytes before final tail copy.
                 masm.pmovzxbw(tmp1, new AMD64Address(src));
@@ -238,14 +229,12 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
             masm.bind(labelCopy8Loop);
             masm.pmovzxbw(tmp1, new AMD64Address(src, len, AMD64Address.Scale.Times1));
             masm.movdqu(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp1);
-            masm.addq(len, 8);
-            masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelCopy8Loop);
+            masm.addqAndJcc(len, 8, ConditionFlag.NotZero, labelCopy8Loop, false);
 
             masm.bind(labelCopyTail);
             masm.movl(len, tmp2);
 
-            masm.cmpl(len, 4);
-            masm.jccb(AMD64Assembler.ConditionFlag.Less, labelCopyBytes);
+            masm.cmplAndJcc(len, 4, ConditionFlag.Less, labelCopyBytes, true);
 
             masm.movdl(tmp1, new AMD64Address(src));
             masm.pmovzxbw(tmp1, tmp1);
@@ -261,8 +250,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         }
 
         // Inflate any remaining characters (bytes) using a vanilla implementation.
-        masm.testl(len, len);
-        masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelDone);
+        masm.testlAndJcc(len, len, ConditionFlag.Zero, labelDone, true);
         masm.leaq(src, new AMD64Address(src, len, AMD64Address.Scale.Times1));
         masm.leaq(dst, new AMD64Address(dst, len, AMD64Address.Scale.Times2));
         masm.negq(len);
@@ -271,8 +259,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         masm.bind(labelCopyCharsLoop);
         masm.movzbl(tmp2, new AMD64Address(src, len, AMD64Address.Scale.Times1));
         masm.movw(new AMD64Address(dst, len, AMD64Address.Scale.Times2), tmp2);
-        masm.incrementq(len, 1);
-        masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelCopyCharsLoop);
+        masm.incqAndJcc(len, ConditionFlag.NotZero, labelCopyCharsLoop, false);
 
         masm.bind(labelDone);
     }

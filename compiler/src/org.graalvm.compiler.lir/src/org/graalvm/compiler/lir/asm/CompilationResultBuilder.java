@@ -579,7 +579,7 @@ public class CompilationResultBuilder {
                     if (codeAnnotation instanceof JumpTable) {
                         // Skip jump table. Here we assume the jump table is at the tail of the
                         // emitted code.
-                        int jumpTableStart = codeAnnotation.position;
+                        int jumpTableStart = codeAnnotation.getPosition();
                         if (jumpTableStart >= start && jumpTableStart < end) {
                             end = jumpTableStart;
                         }

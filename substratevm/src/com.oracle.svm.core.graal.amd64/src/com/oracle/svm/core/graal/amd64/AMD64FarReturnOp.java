@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,8 +70,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
              * the corresponding RBP value was spilled to the stack by the callee.
              */
             Label done = new Label();
-            masm.cmpq(AMD64.rsp, ValueUtil.asRegister(sp));
-            masm.jcc(ConditionFlag.Equal, done);
+            masm.cmpqAndJcc(AMD64.rsp, ValueUtil.asRegister(sp), ConditionFlag.Equal, done, true);
             /*
              * The callee pushes two word-sized values: first the return address, then the saved
              * RBP. The stack grows downwards, so the offset is negative relative to the new stack

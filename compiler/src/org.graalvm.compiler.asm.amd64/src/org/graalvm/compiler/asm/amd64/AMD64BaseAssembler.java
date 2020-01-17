@@ -356,8 +356,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
-    private static boolean needsRex(Register reg) {
-        return reg.encoding >= MinEncodingNeedsRex;
+    protected static boolean needsRex(Register reg) {
+        return reg.encoding >= MinEncodingNeedsRex || AMD64.rip.equals(reg);
+    }
+
+    protected static boolean needsRex(Register src, boolean srcIsByte) {
+        return srcIsByte ? src.encoding >= 4 : needsRex(src);
     }
 
     protected final void prefix(AMD64Address adr) {
@@ -559,7 +563,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         int disp = addr.getDisplacement();
 
         if (base.equals(AMD64.rip)) { // also matches addresses returned by getPlaceholder()
-            // [00 000 101] disp32
+            // [00 reg 101] disp32
             assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
             if (codePatchingAnnotationConsumer != null && addr.instructionStartPosition >= 0) {

@@ -974,9 +974,8 @@ public class AMD64Move {
         @Override
         protected final void emitConversion(Register resultRegister, Register inputRegister, Register nullRegister, AMD64MacroAssembler masm) {
             if (inputRegister.equals(resultRegister)) {
-                masm.subq(inputRegister, nullRegister);
                 Label done = new Label();
-                masm.jccb(Equal, done);
+                masm.subqAndJcc(inputRegister, nullRegister, Equal, done, true);
                 masm.addq(inputRegister, nullRegister);
                 masm.bind(done);
             } else {

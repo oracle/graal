@@ -944,8 +944,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.lir",
+        "org.graalvm.compiler.asm",
       ],
+      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Assembler,AMD64",
@@ -1098,6 +1099,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.lir",
         "org.graalvm.compiler.asm.amd64",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
