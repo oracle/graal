@@ -125,7 +125,7 @@ public final class ThreadLocalAllocation {
     }
 
     /** Slow path of instance allocation snippet. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewInstance(Word objectHeader) {
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         /* Allocation might cause a collection. */
@@ -192,7 +192,7 @@ public final class ThreadLocalAllocation {
     }
 
     /** Slow path of array allocation snippet. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewArray(Word objectHeader, int length) {
         /*
          * Length check allocates an exception and so must be hoisted away from RestrictHeapAccess

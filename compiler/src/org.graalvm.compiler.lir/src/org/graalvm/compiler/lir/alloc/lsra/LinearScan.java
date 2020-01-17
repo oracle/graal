@@ -763,7 +763,7 @@ public class LinearScan {
                 }
             }
         }
-        debug.dump(DebugContext.VERBOSE_LEVEL, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
+        debug.dump(DebugContext.INFO_LEVEL, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
     }
 
     boolean verify() {

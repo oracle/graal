@@ -103,6 +103,18 @@ public class CodeInfoQueryResult {
     }
 
     /**
+     * Returns true if the method containing the IP has callee-saved registers.
+     */
+    public boolean hasCalleeSavedRegisters() {
+        return hasCalleeSavedRegisters(encodedFrameSize);
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public static boolean hasCalleeSavedRegisters(long encodedFrameSize) {
+        return CodeInfoDecoder.decodeHasCalleeSavedRegisters(encodedFrameSize);
+    }
+
+    /**
      * Returns the exception handler offset, i.e., the IP difference between the regular return
      * address and the exception handler entry point, for the IP.
      */

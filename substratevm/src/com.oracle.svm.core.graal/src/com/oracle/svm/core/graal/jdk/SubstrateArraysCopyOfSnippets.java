@@ -69,7 +69,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         new SubstrateArraysCopyOfSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static Object doArraysCopyOf(DynamicHub hub, Object original, int originalLength, int newLength) {
         Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), newLength);
 

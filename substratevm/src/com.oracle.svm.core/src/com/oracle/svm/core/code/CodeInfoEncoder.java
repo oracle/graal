@@ -39,6 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
@@ -65,6 +66,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.code.VirtualObject;
@@ -89,6 +91,7 @@ public class CodeInfoEncoder {
         final Counter frameInfoSize = new Counter(group, "Frame info size", "Total size of encoded frame information");
         final Counter frameCount = new Counter(group, "Number of frames", "Number of frames encoded");
         final Counter stackValueCount = new Counter(group, "Number of stack values", "Number of stack values encoded");
+        final Counter registerValueCount = new Counter(group, "Number of register values", "Number of register values encoded");
         final Counter constantValueCount = new Counter(group, "Number of constant values", "Number of constant values encoded");
         final Counter virtualObjectsCount = new Counter(group, "Number of virtual objects", "Number of virtual objects encoded");
     }
@@ -130,16 +133,17 @@ public class CodeInfoEncoder {
     public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset) {
         int totalFrameSize = compilation.getTotalFrameSize();
         boolean isEntryPoint = method.isEntryPoint();
+        boolean hasCalleeSavedRegisters = method.hasCalleeSavedRegisters();
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
-        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint);
+        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
         while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
-            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint);
+            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
@@ -205,12 +209,13 @@ public class CodeInfoEncoder {
      * Inverse of {@link CodeInfoDecoder#decodeTotalFrameSize} and
      * {@link CodeInfoDecoder#decodeMethodStart}.
      */
-    protected int encodeFrameSize(int totalFrameSize, boolean methodStart, boolean isEntryPoint) {
+    protected int encodeFrameSize(int totalFrameSize, boolean methodStart, boolean isEntryPoint, boolean hasCalleeSavedRegisters) {
         VMError.guarantee((totalFrameSize & CodeInfoDecoder.FRAME_SIZE_STATUS_MASK) == 0, "Frame size must be aligned");
 
         return totalFrameSize |
                         (methodStart ? CodeInfoDecoder.FRAME_SIZE_METHOD_START : 0) |
-                        (isEntryPoint ? CodeInfoDecoder.FRAME_SIZE_ENTRY_POINT : 0);
+                        (isEntryPoint ? CodeInfoDecoder.FRAME_SIZE_ENTRY_POINT : 0) |
+                        (hasCalleeSavedRegisters ? CodeInfoDecoder.FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS : 0);
     }
 
     private void encodeIPData() {
@@ -396,6 +401,7 @@ class CodeInfoVerifier {
             CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
             assert queryResult.isEntryPoint() == method.isEntryPoint();
+            assert queryResult.hasCalleeSavedRegisters() == method.hasCalleeSavedRegisters();
             assert queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
             assert CodeInfoAccess.lookupReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
@@ -472,6 +478,13 @@ class CodeInfoVerifier {
             int expectedOffset = ((StackSlot) expectedValue).getOffset(compilation.getTotalFrameSize());
             long actualOffset = actualValue.getData();
             assert expectedOffset == actualOffset;
+
+        } else if (CalleeSavedRegisters.supportedByPlatform() && expectedValue instanceof RegisterValue) {
+            assert actualValue.getType() == ValueType.Register;
+            int expectedOffset = CalleeSavedRegisters.singleton().getOffsetInFrame(ValueUtil.asRegister((RegisterValue) expectedValue));
+            long actualOffset = actualValue.getData();
+            assert expectedOffset == actualOffset;
+            assert actualOffset < 0 : "Registers are stored in callee saved area of callee frame, i.e., with negative offset";
 
         } else if (ValueUtil.isVirtualObject(expectedValue)) {
             assert actualValue.getType() == ValueType.VirtualObject;

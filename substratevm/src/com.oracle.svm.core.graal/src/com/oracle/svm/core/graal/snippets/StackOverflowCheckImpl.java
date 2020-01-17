@@ -319,7 +319,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
      * that the method with the stack overflow check must never allocate.
      */
     @Uninterruptible(reason = "Must not have a stack overflow check: we are here because the stack overflow check failed.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedStackOverflowError() {
         VMError.guarantee(StackOverflowCheckImpl.yellowZoneStateTL.get() != StackOverflowCheckImpl.STATE_UNINITIALIZED,
                         "Stack boundary for the current thread not yet initialized. Only uninterruptible code with no stack overflow checks can run at this point.");
@@ -333,7 +333,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
      * {@link StackOverflowError} is thrown.
      */
     @Uninterruptible(reason = "Must not have a stack overflow check: we are here because the stack overflow check failed.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewStackOverflowError() {
         int state = StackOverflowCheckImpl.yellowZoneStateTL.get();
         VMError.guarantee(state != StackOverflowCheckImpl.STATE_UNINITIALIZED,

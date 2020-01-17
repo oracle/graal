@@ -174,7 +174,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
-    public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer) {
+    public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer, boolean fromMethodWithCalleeSavedRegisters) {
         /* Exception unwinding is handled by libunwind */
         throw unimplemented();
     }

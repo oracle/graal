@@ -77,7 +77,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
      * The actual implementation of {@link System#arraycopy}, called via the foreign call
      * {@link #ARRAYCOPY}.
      */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static void doArraycopy(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         if (fromArray == null || toArray == null) {
             throw new NullPointerException();

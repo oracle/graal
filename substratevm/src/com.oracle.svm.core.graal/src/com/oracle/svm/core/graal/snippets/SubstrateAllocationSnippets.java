@@ -172,7 +172,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object newMultiArrayStub(Word dynamicHub, int rank, Word dimensionsStackValue) {
         /*
          * All dimensions must be checked here up front, since a previous dimension of length 0
@@ -236,7 +236,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native void callHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
     /** Foreign call: {@link #HUB_ERROR}. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void hubErrorStub(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
@@ -270,7 +270,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native void callArrayHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     /** Foreign call: {@link #ARRAY_HUB_ERROR}. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void arrayHubErrorStub(DynamicHub elementType) {
         if (elementType == null) {
             throw new NullPointerException("Allocation type is null.");

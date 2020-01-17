@@ -50,12 +50,14 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
     @Use({REG, ILLEGAL}) AllocatableValue result;
     @Use(REG) AllocatableValue sp;
     @Use(REG) AllocatableValue ip;
+    private final boolean fromMethodWithCalleeSavedRegisters;
 
-    public AMD64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip) {
+    public AMD64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip, boolean fromMethodWithCalleeSavedRegisters) {
         super(TYPE);
         this.result = result;
         this.sp = sp;
         this.ip = ip;
+        this.fromMethodWithCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
     }
 
     @Override
@@ -80,6 +82,20 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         }
 
         masm.movq(AMD64.rsp, ValueUtil.asRegister(sp));
-        masm.jmp(ValueUtil.asRegister(ip));
+
+        if (fromMethodWithCalleeSavedRegisters) {
+            /*
+             * Restoring the callee saved registers is going to overwrite the register that holds
+             * the new instruction pointern (ip). We therefore spill the new ip to the stack, and do
+             * the indirect jump with an address operand to avoid a temporary register.
+             */
+            AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
+            masm.movq(ipAddress, ValueUtil.asRegister(ip));
+            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result));
+            masm.jmp(ipAddress);
+
+        } else {
+            masm.jmp(ValueUtil.asRegister(ip));
+        }
     }
 }

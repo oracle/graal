@@ -125,7 +125,7 @@ public class MonitorSupport {
      *
      * This is a static method so that it can be called directly via a foreign call from snippets.
      */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
     public static void monitorEnter(Object obj) {
         /*
@@ -183,7 +183,7 @@ public class MonitorSupport {
      *
      * This is a static method so that it can be called directly via a foreign call from snippets.
      */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
     public static void monitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();

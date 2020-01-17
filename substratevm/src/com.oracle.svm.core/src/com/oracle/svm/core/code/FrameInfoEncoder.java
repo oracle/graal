@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -53,9 +54,11 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.code.VirtualObject;
@@ -297,7 +300,7 @@ public class FrameInfoEncoder {
 
             valueInfos = new ValueInfo[numValues];
             for (int i = 0; i < numValues; i++) {
-                valueInfos[i] = makeValueInfo(data, getFrameValueKind(frame, i), values[i]);
+                valueInfos[i] = makeValueInfo(data, getFrameValueKind(frame, i), values[i], isDeoptEntry);
             }
         }
         result.valueInfos = valueInfos;
@@ -318,7 +321,7 @@ public class FrameInfoEncoder {
         }
     }
 
-    private ValueInfo makeValueInfo(FrameData data, JavaKind kind, JavaValue value) {
+    private ValueInfo makeValueInfo(FrameData data, JavaKind kind, JavaValue value, boolean isDeoptEntry) {
         ValueInfo result = new ValueInfo();
         result.kind = kind;
         if (ValueUtil.isIllegalJavaValue(value)) {
@@ -331,6 +334,18 @@ public class FrameInfoEncoder {
             result.data = stackSlot.getOffset(data.totalFrameSize);
             result.isCompressedReference = isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
+
+        } else if (CalleeSavedRegisters.supportedByPlatform() && value instanceof RegisterValue) {
+            if (isDeoptEntry) {
+                throw VMError.shouldNotReachHere("Cannot encode registers in deoptimization entry point: value " + value + " in method " +
+                                data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
+            }
+
+            RegisterValue register = (RegisterValue) value;
+            result.type = ValueType.Register;
+            result.data = CalleeSavedRegisters.singleton().getOffsetInFrame(ValueUtil.asRegister(register));
+            result.isCompressedReference = isCompressedReference(register);
+            ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
         } else if (value instanceof JavaConstant) {
             JavaConstant constant = (JavaConstant) value;
@@ -353,7 +368,7 @@ public class FrameInfoEncoder {
             VirtualObject virtualObject = (VirtualObject) value;
             result.type = ValueType.VirtualObject;
             result.data = virtualObject.getId();
-            makeVirtualObject(data, virtualObject);
+            makeVirtualObject(data, virtualObject, isDeoptEntry);
         } else {
             throw shouldNotReachHere();
         }
@@ -367,7 +382,7 @@ public class FrameInfoEncoder {
 
     private static final ValueInfo[] MARKER = new ValueInfo[0];
 
-    private void makeVirtualObject(FrameData data, VirtualObject virtualObject) {
+    private void makeVirtualObject(FrameData data, VirtualObject virtualObject, boolean isDeoptEntry) {
         int id = virtualObject.getId();
         if (data.virtualObjects[id] != null) {
             return;
@@ -378,7 +393,7 @@ public class FrameInfoEncoder {
         List<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
-        valueList.add(makeValueInfo(data, JavaKind.Object, SubstrateObjectConstant.forObject(type.getHub())));
+        valueList.add(makeValueInfo(data, JavaKind.Object, SubstrateObjectConstant.forObject(type.getHub()), isDeoptEntry));
 
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
         assert type.isArray() == LayoutEncoding.isArray(type.getHub().getLayoutEncoding()) : "deoptimization code uses layout encoding to determine if type is an array";
@@ -398,12 +413,12 @@ public class FrameInfoEncoder {
                      * elements - so we have to write this element with the actual value kind and
                      * add 2 to the length.
                      */
-                    valueList.add(makeValueInfo(data, valueKind, value));
+                    valueList.add(makeValueInfo(data, valueKind, value, isDeoptEntry));
                     length += 2;
 
                 } else {
                     assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind());
-                    valueList.add(makeValueInfo(data, kind, value));
+                    valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
                     length++;
                 }
 
@@ -411,7 +426,7 @@ public class FrameInfoEncoder {
             }
 
             assert valueList.get(1) == null;
-            valueList.set(1, makeValueInfo(data, JavaKind.Int, JavaConstant.forInt(length)));
+            valueList.set(1, makeValueInfo(data, JavaKind.Int, JavaConstant.forInt(length), isDeoptEntry));
 
         } else {
             /*
@@ -445,25 +460,25 @@ public class FrameInfoEncoder {
                 if (field.getLocation() >= 0) {
                     assert curOffset <= field.getLocation();
                     while (curOffset + 7 < field.getLocation()) {
-                        valueList.add(makeValueInfo(data, JavaKind.Long, JavaConstant.LONG_0));
+                        valueList.add(makeValueInfo(data, JavaKind.Long, JavaConstant.LONG_0, isDeoptEntry));
                         curOffset += 8;
                     }
                     if (curOffset + 3 < field.getLocation()) {
-                        valueList.add(makeValueInfo(data, JavaKind.Int, JavaConstant.INT_0));
+                        valueList.add(makeValueInfo(data, JavaKind.Int, JavaConstant.INT_0, isDeoptEntry));
                         curOffset += 4;
                     }
                     if (curOffset + 1 < field.getLocation()) {
-                        valueList.add(makeValueInfo(data, JavaKind.Short, JavaConstant.forShort((short) 0)));
+                        valueList.add(makeValueInfo(data, JavaKind.Short, JavaConstant.forShort((short) 0), isDeoptEntry));
                         curOffset += 2;
                     }
                     if (curOffset < field.getLocation()) {
-                        valueList.add(makeValueInfo(data, JavaKind.Byte, JavaConstant.forByte((byte) 0)));
+                        valueList.add(makeValueInfo(data, JavaKind.Byte, JavaConstant.forByte((byte) 0), isDeoptEntry));
                         curOffset += 1;
                     }
                     assert curOffset == field.getLocation();
                     assert curOffset == computeOffset(valueList);
 
-                    valueList.add(makeValueInfo(data, kind, value));
+                    valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
                     curOffset += objectLayout.sizeInBytes(kind);
                 }
             }

@@ -89,7 +89,7 @@ public class KnownIntrinsics {
      * Note that this is very dangerous. You have to know what you are doing. The parameters are not
      * checked for correctness in any way.
      */
-    public static native void farReturn(Object result, Pointer sp, CodePointer ip);
+    public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
 
     /**
      * For deoptimization testing only. Performs a deoptimization in a regular method, but is a
