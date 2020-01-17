@@ -55,10 +55,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * Save the array of bytes to a file with the specified name.
- * Such a file is later available to the test suite.
+ * Save the array of bytes to a file with the specified name. Such a file is later available to the
+ * test suite.
  */
-public class SaveBinaryFile extends WasmBuiltinRootNode  {
+public class SaveBinaryFile extends WasmBuiltinRootNode {
     private final Path temporaryDirectory;
 
     SaveBinaryFile(WasmLanguage language, Path temporaryDirectory) {
