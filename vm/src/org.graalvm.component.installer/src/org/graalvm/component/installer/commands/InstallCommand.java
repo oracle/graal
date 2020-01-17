@@ -45,6 +45,7 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
+import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
@@ -52,6 +53,7 @@ import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -330,6 +332,16 @@ public class InstallCommand implements InstallerCommand {
             // component will be skipped, do not bother with validation
             feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
             return false;
+        }
+        ComponentInfo existing = input.getLocalRegistry().findComponent(info.getId());
+        if (existing != null) {
+            // will refuse to install existing bundled components:
+            if (existing.getDistributionType() != DistributionType.OPTIONAL) {
+                throw new DependencyException.Conflict(
+                                existing.getId(), info.getVersionString(), existing.getVersionString(),
+                                feedback.l10n("INSTALL_CannotReplaceBundledComponent",
+                                                existing.getName(), existing, existing.getVersionString()));
+            }
         }
         Version minV = vrf.getMinVersion();
         if (minV != null && minV.compareTo(this.minRequiredGraalVersion) > 0) {

@@ -596,11 +596,30 @@ public class SystemUtils {
         if (arch == null) {
             return null;
         }
-        switch (arch) {
+        switch (arch.toLowerCase(Locale.ENGLISH)) {
             case CommonConstants.ARCH_X8664:
                 return CommonConstants.ARCH_AMD64;
             default:
                 return arch;
+        }
+    }
+
+    /**
+     * Normalizes OS name string.
+     * 
+     * @param os OS name
+     * @param arch arch name
+     * @return normalized os name, or {@code null}.
+     */
+    public static String normalizeOSName(String os, String arch) {
+        if (os == null) {
+            return null;
+        }
+        switch (os.toLowerCase(Locale.ENGLISH)) {
+            case CommonConstants.OS_MACOS_DARWIN:
+                return CommonConstants.OS_TOKEN_MACOS;
+            default:
+                return os;
         }
     }
 }

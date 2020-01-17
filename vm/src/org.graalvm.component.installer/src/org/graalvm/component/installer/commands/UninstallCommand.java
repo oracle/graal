@@ -51,6 +51,7 @@ import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 
 public class UninstallCommand implements InstallerCommand {
 
@@ -146,7 +147,10 @@ public class UninstallCommand implements InstallerCommand {
                 throw feedback.failure("UNINSTALL_CoreComponent", null, compId);
             }
             if (info.isNativeComponent()) {
-                throw feedback.failure("UNINSTALL_NativeComponent", null, compId);
+                throw feedback.failure("UNINSTALL_NativeComponent", null, info.getId(), info.getName());
+            }
+            if (info.getDistributionType() != DistributionType.OPTIONAL) {
+                throw feedback.failure("UNINSTALL_BundledComponent", null, info.getId(), info.getName());
             }
             toUninstall.put(compId, info);
         }
