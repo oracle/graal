@@ -412,7 +412,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(WordFactory.nullPointer());
             result = runtimeCall(ENTER_ISOLATE_MT, isolate, inCrashHandler);
             if (result == CEntryPointErrors.NO_ERROR) {
-                if (!inCrashHandler || VMThreads.StatusSupport.isStatusNative(CurrentIsolate.getCurrentThread())) {
+                if (!inCrashHandler || VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
                     Safepoint.transitionNativeToJava();
                 }
             }

@@ -273,7 +273,7 @@ public final class VMOperationControl {
     @Uninterruptible(reason = "Called from a non-Java thread.")
     public void enqueueFromNonJavaThread(NativeVMOperation operation, NativeVMOperationData data) {
         assert UseDedicatedVMOperationThread.getValue() && MultiThreaded.getValue();
-        assert CurrentIsolate.getCurrentThread().isNull() || StatusSupport.isStatusNative() || StatusSupport.isStatusSafepoint() : StatusSupport.getStatusString(CurrentIsolate.getCurrentThread());
+        assert CurrentIsolate.getCurrentThread().isNull() || StatusSupport.isStatusNativeOrSafepoint() : StatusSupport.getStatusString(CurrentIsolate.getCurrentThread());
         assert dedicatedVMOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
 
         mainQueues.enqueueUninterruptibly(operation, data);
