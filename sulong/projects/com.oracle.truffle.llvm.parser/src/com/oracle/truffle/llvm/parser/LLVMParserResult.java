@@ -91,5 +91,7 @@ public final class LLVMParserResult {
         return dataLayout;
     }
 
-    public int getSymbolTableSize() { return symbolTableSize; }
+    public int getSymbolTableSize() {
+        return symbolTableSize;
+    }
 }

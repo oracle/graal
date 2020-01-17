@@ -269,7 +269,7 @@ final class Runner {
                 }
             }
 
-            for (int i = shouldInit.nextSetBit(0); i >= 0; i = shouldInit.nextSetBit(i+1)) {
+            for (int i = shouldInit.nextSetBit(0); i >= 0; i = shouldInit.nextSetBit(i + 1)) {
                 roSections[i] = initSymbols[i].execute(ctx);
             }
         }
