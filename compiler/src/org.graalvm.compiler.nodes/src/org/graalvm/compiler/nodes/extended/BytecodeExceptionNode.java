@@ -108,7 +108,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (tool.allUsagesAvailable() && getUsageCount() == 0) {
+        if (tool.allUsagesAvailable() && (hasNoUsages() || (hasExactlyOneUsage() && usages().first() == stateAfter))) {
             return null;
         }
         return this;
