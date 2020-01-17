@@ -63,11 +63,21 @@ public class ExportMessageData extends MessageContainer {
     private final AnnotationMirror annotation;
     private NodeData specializedNode;
 
+    private boolean overriden;
+
     ExportMessageData(ExportsLibrary exports, LibraryMessage resolvedMessage, Element element, AnnotationMirror annotation) {
         this.exports = exports;
         this.resolvedMessage = resolvedMessage;
         this.element = element;
         this.annotation = annotation;
+    }
+
+    public void setOverriden(boolean overriden) {
+        this.overriden = overriden;
+    }
+
+    public boolean isOverriden() {
+        return overriden;
     }
 
     @Override
@@ -133,6 +143,11 @@ public class ExportMessageData extends MessageContainer {
 
     public boolean isGenerated() {
         return element instanceof GeneratedElement;
+    }
+
+    @Override
+    public String toString() {
+        return "ExportMessageData [element=" + element + ", exports=" + exports + ", message=" + resolvedMessage + "]";
     }
 
 }

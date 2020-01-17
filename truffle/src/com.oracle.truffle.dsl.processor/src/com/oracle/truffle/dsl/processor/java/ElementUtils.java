@@ -1616,36 +1616,53 @@ public class ElementUtils {
         return null;
     }
 
-    public static String getReadableReference(Element element, boolean qualifiedType) {
+    public static String getReadableReference(Element relativeTo, Element element) {
         String parent;
         switch (element.getKind()) {
             case CLASS:
             case INTERFACE:
             case ENUM:
-                if (qualifiedType) {
-                    return getQualifiedName((TypeElement) element);
+                // same package
+                TypeElement type = (TypeElement) element;
+                if (ElementUtils.elementEquals(findPackageElement(relativeTo),
+                                findPackageElement(element))) {
+                    if (!isDeclaredIn(relativeTo, type)) {
+                        Element enclosing = element.getEnclosingElement();
+                        if (enclosing.getKind().isClass() || enclosing.getKind().isInterface()) {
+                            return getReadableReference(relativeTo, enclosing) + "." + getSimpleName(type);
+                        }
+                    }
+                    return getSimpleName(type);
                 } else {
-                    return getSimpleName((TypeElement) element);
+                    return getQualifiedName(type);
                 }
             case PACKAGE:
                 return ((PackageElement) element).getQualifiedName().toString();
             case CONSTRUCTOR:
             case METHOD:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + getReadableSignature((ExecutableElement) element);
             case PARAMETER:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + " parameter " + element.getSimpleName().toString();
             case FIELD:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + element.getSimpleName().toString();
             default:
                 return "Unknown Element";
         }
     }
 
-    public static String getReadableReference(Element element) {
-        return getReadableReference(element, true);
+    public static boolean isDeclaredIn(Element search, Element elementHierarchy) {
+        Element searchEnclosing = search.getEnclosingElement();
+        while (searchEnclosing != null) {
+            if (ElementUtils.elementEquals(searchEnclosing, elementHierarchy)) {
+                return true;
+            }
+            searchEnclosing = searchEnclosing.getEnclosingElement();
+        }
+        return false;
+
     }
 
 }
