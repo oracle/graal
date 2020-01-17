@@ -77,7 +77,7 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
 
     @Override
     public long getProcessID(java.lang.Process process) {
-        throw VMError.unimplemented();
+        return WindowsUtils.getpid(process);
     }
 
     @Override
