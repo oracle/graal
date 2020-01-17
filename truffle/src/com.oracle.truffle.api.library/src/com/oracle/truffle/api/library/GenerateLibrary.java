@@ -268,7 +268,7 @@ public @interface GenerateLibrary {
      * explicit exports on the receiver type or exports that use dynamic dispatch.
      *
      * @see ExportLibrary#priority()
-     * @since 20.0
+     * @since 20.1
      */
     boolean defaultExportLookupEnabled() default false;
 
@@ -279,7 +279,7 @@ public @interface GenerateLibrary {
      * library. Only default exports and exports declared with the receiver type will be used
      * instead for this library.
      *
-     * @since 20.0
+     * @since 20.1
      */
     boolean dynamicDispatchEnabled() default true;
 
