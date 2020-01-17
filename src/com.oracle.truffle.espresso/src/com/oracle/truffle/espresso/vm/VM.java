@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
@@ -905,21 +906,82 @@ public final class VM extends NativeEnv implements ContextAccess {
         return null;
     }
 
-    private static Method getCallerMethod(int depth) {
-        FrameInstance callerFrame = getCallerFrame(depth, true);
-        if (callerFrame == null) {
-            return null;
-        }
-        return getMethodFromFrame(callerFrame);
-    }
-
     @VmImpl
     @JniImpl
-    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
-        Method callerMethod = getCallerMethod(depth);
+    public @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+        // HotSpot comment:
+        // Pre-JDK 8 and early builds of JDK 8 don't have a CallerSensitive annotation; or
+        // sun.reflect.Reflection.getCallerClass with a depth parameter is provided
+        // temporarily for existing code to use until a replacement API is defined.
+        if (depth != JVM_CALLER_DEPTH) {
+            FrameInstance callerFrame = getCallerFrame(depth, true);
+            if (callerFrame != null) {
+                Method callerMethod = getMethodFromFrame(callerFrame);
+                if (callerMethod != null) {
+                    return callerMethod.getDeclaringKlass().mirror();
+                }
+            }
+            // Not found.
+            return StaticObject.NULL;
+        }
+
+        // Getting the class of the caller frame.
+        //
+        // The call stack at this point looks something like this:
+        //
+        // [0] [ @CallerSensitive public sun.reflect.Reflection.getCallerClass ]
+        // [1] [ @CallerSensitive API.method ]
+        // [.] [ (skipped intermediate frames) ]
+        // [n] [ caller ]
+        Meta meta = getMeta();
+        StaticObject[] exception = new StaticObject[]{null};
+        Method callerMethod = Truffle.getRuntime().iterateFrames(
+                        new FrameInstanceVisitor<Method>() {
+                            private int depth = 0;
+
+                            @SuppressWarnings("fallthrough")
+                            @Override
+                            public Method visitFrame(FrameInstance frameInstance) {
+                                Method method = getMethodFromFrame(frameInstance);
+                                if (method != null) {
+                                    switch (depth) {
+                                        case 0:
+                                            // This must only be called from
+                                            // Reflection.getCallerClass.
+                                            if (method != meta.sun_reflect_Reflection_getCallerClass) {
+                                                exception[0] = meta.initExWithMessage(InternalError.class, "JVM_GetCallerClass must only be called from Reflection.getCallerClass");
+                                                return /* ignore */ method;
+                                            }
+                                            // fall-through
+                                        case 1:
+                                            // Frame 0 and 1 must be caller sensitive.
+                                            if ((method.getModifiers() & ACC_CALLER_SENSITIVE) == 0) {
+                                                exception[0] = meta.initExWithMessage(InternalError.class, "CallerSensitive annotation expected at frame " + depth);
+                                                return /* ignore */ method;
+                                            }
+                                            break;
+                                        default:
+                                            if (!isIgnoredBySecurityStackWalk(method, meta)) {
+                                                return method;
+                                            }
+                                    }
+                                    ++depth;
+                                }
+                                return null;
+                            }
+                        });
+
+        // InternalError was recorded.
+        StaticObject internalError = exception[0];
+        if (internalError != null) {
+            assert InterpreterToVM.instanceOf(internalError, meta.InternalError);
+            throw new EspressoException(internalError);
+        }
+
         if (callerMethod == null) {
             return StaticObject.NULL;
         }
+
         return callerMethod.getDeclaringKlass().mirror();
     }
 

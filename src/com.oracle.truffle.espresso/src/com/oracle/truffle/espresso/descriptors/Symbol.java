@@ -230,6 +230,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
         public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
         public static final Symbol<Name> Null = StaticSymbols.putName("null");
+        public static final Symbol<Name> getCallerClass = StaticSymbols.putName("getCallerClass");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -464,6 +465,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
         public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
+        public static final Symbol<Signature> Class = StaticSymbols.putSignature(Type.Class);
 
         public static final Symbol<Signature> _void_Object = StaticSymbols.putSignature(Type._void, Type.Object);
 
