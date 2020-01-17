@@ -591,31 +591,6 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusCreated(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_CREATED);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusNative(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_IN_NATIVE);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusNative() {
-            return (statusTL.getVolatile() == STATUS_IN_NATIVE);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusVM(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_IN_VM);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusVM() {
-            return (statusTL.getVolatile() == STATUS_IN_VM);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusNative() {
             statusTL.setVolatile(STATUS_IN_NATIVE);
         }
@@ -625,30 +600,9 @@ public abstract class VMThreads {
             statusTL.setVolatile(vmThread, STATUS_IN_NATIVE);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusSafepoint(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_IN_SAFEPOINT);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusSafepoint() {
-            return (statusTL.getVolatile() == STATUS_IN_SAFEPOINT);
-        }
-
         /** There is no unguarded change to safepoint. */
         public static boolean compareAndSetNativeToSafepoint(IsolateThread vmThread) {
             return statusTL.compareAndSet(vmThread, STATUS_IN_NATIVE, STATUS_IN_SAFEPOINT);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusJava() {
-            return (statusTL.getVolatile() == STATUS_IN_JAVA);
-        }
-
-        /** An <em>unguarded</em> transition to Java. */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setStatusJavaUnguarded(IsolateThread vmThread) {
-            statusTL.setVolatile(vmThread, STATUS_IN_JAVA);
         }
 
         /** An <em>unguarded</em> transition to Java. */
@@ -661,15 +615,41 @@ public abstract class VMThreads {
             statusTL.setVolatile(STATUS_IN_VM);
         }
 
-        public static void setStatusVM(IsolateThread thread) {
-            statusTL.setVolatile(thread, STATUS_IN_VM);
-        }
-
         /** A guarded transition from native to another status. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @ForceFixedRegisterReads
         public static boolean compareAndSetNativeToNewStatus(int newStatus) {
             return statusTL.compareAndSet(STATUS_IN_NATIVE, newStatus);
+        }
+
+        /*
+         * When querying and checking the thread status, be careful that the status is read only
+         * once. Reading the status multiple times is prone to race conditions. For example, the
+         * condition 'isStatusSafepoint() || isStatusNative()' could return false if another thread
+         * requests a safepoint after the first check was already executed. The condition
+         * 'isStatusNative() || isStatusSafepoint()' could return false if the safepoint is released
+         * after the first condition was checked.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusCreated(IsolateThread vmThread) {
+            return (statusTL.getVolatile(vmThread) == STATUS_CREATED);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusNativeOrSafepoint(IsolateThread vmThread) {
+            int status = statusTL.getVolatile(vmThread);
+            return status == STATUS_IN_NATIVE || status == STATUS_IN_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusNativeOrSafepoint() {
+            int status = statusTL.getVolatile();
+            return status == STATUS_IN_NATIVE || status == STATUS_IN_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusJava() {
+            return (statusTL.getVolatile() == STATUS_IN_JAVA);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
