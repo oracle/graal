@@ -61,7 +61,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.ServiceProvider;
 
 /**
  * Library factories allow to create instances of libraries used to call library messages. A library
