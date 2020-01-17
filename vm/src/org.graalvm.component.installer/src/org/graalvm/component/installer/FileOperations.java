@@ -163,11 +163,13 @@ public abstract class FileOperations {
 
     public static FileOperations createPlatformInstance(Feedback f, Path rootPath) {
         FileOperations inst;
-        if (!ImageInfo.inImageCode() && SystemUtils.isWindows()) {
+        if (SystemUtils.isWindows()) {
             WindowsFileOperations w = new WindowsFileOperations();
             inst = w;
-            w.setDelayDeletedList(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_DELETE_LIST)));
-            w.setCopyContents(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_COPY_CONTENTS)));
+            if (!ImageInfo.inImageCode()) {
+                w.setDelayDeletedList(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_DELETE_LIST)));
+                w.setCopyContents(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_COPY_CONTENTS)));
+            }
         } else {
             inst = new DefaultFileOperations();
         }
