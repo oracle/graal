@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -42,7 +43,11 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -54,7 +59,7 @@ import org.graalvm.options.OptionStability;
     id = AgentScriptInstrument.ID,
     name = AgentScriptInstrument.NAME,
     version = AgentScriptInstrument.VERSION,
-    services = AgentScript.class
+    services = { Function.class, AgentScript.class }
 )
 // @formatter:on
 public final class AgentScriptInstrument extends TruffleInstrument implements AgentScript {
@@ -74,7 +79,10 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     @Override
     protected void onCreate(Env tmp) {
         this.env = tmp;
-        env.registerService(this);
+        AgentScript as = maybeProxy(AgentScript.class, this);
+        env.registerService(as);
+        final Function<?, ?> api = functionApi(this);
+        env.registerService(api);
         final String path = env.getOptions().get(SCRIPT);
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
@@ -107,9 +115,9 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
         registerAgentScript(() -> script);
     }
 
-    private void registerAgentScript(final Supplier<Source> src) {
+    private AutoCloseable registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
-        instrumenter.attachContextsListener(new ContextsListener() {
+        class InitializeAgent implements ContextsListener, AutoCloseable {
             private AgentObject agent;
             private EventBinding<?> agentBinding;
 
@@ -132,8 +140,8 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     throw AgentException.raise(ex);
                 }
                 if (initializeAgentObject()) {
+                    agent.ignoreSource(script);
                     target.call(agent);
-                    agent.initializationFinished();
                 }
             }
 
@@ -189,10 +197,51 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             @Override
             public void onContextClosed(TruffleContext context) {
             }
-        }, true);
+
+            @Override
+            public void close() {
+                if (agent != null) {
+                    agent.onClosed();
+                }
+                if (agentBinding != null) {
+                    agentBinding.dispose();
+                }
+            }
+        }
+        final InitializeAgent initializeAgent = new InitializeAgent();
+        instrumenter.attachContextsListener(initializeAgent, true);
+        return initializeAgent;
     }
 
     @Override
     protected void onDispose(Env tmp) {
+    }
+
+    private static Function<?, ?> functionApi(AgentScriptInstrument agentScript) {
+        Function<org.graalvm.polyglot.Source, AutoCloseable> f = (text) -> {
+            final Source.LiteralBuilder b = Source.newBuilder(text.getLanguage(), text.getCharacters(), text.getName());
+            b.uri(text.getURI());
+            b.mimeType(text.getMimeType());
+            b.internal(text.isInternal());
+            b.interactive(text.isInteractive());
+            Source src = b.build();
+            return agentScript.registerAgentScript(() -> src);
+        };
+        return maybeProxy(Function.class, f);
+    }
+
+    private static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
+        if (TruffleOptions.AOT) {
+            return delegate;
+        } else {
+            return proxy(type, delegate);
+        }
+    }
+
+    private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
+        InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
+            return method.invoke(delegate, args);
+        };
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
     }
 }

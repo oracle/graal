@@ -40,13 +40,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
-import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.ByteArrayOutputStream;
 import java.util.function.Predicate;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Assert;
 
@@ -78,21 +75,18 @@ final class AgentObjectFactory extends ProxyLanguage {
         return Truffle.getRuntime().createCallTarget(new AgentRootNode(ProxyLanguage.getCurrentLanguage(), scriptName, source));
     }
 
-    public static Value createAgentObject(Context context) {
+    @SuppressWarnings("try")
+    public static Value createAgentObject(Context context) throws Exception {
         cleanAgentObject();
         ProxyLanguage.setDelegate(new AgentObjectFactory());
 
-        // BEGIN: AgentObjectFactory#createAgentObject
-        final Engine engine = context.getEngine();
-        Instrument instrument = engine.getInstruments().get(AgentScript.ID);
-        AgentScript access = instrument.lookup(AgentScript.class);
-        assertNotNull("Accessor found", access);
-        Source agentSrc = createAgentSource();
-        access.registerAgentScript(agentSrc);
-        // END: AgentObjectFactory#createAgentObject
+        Value value;
 
-        Value value = context.eval(ProxyLanguage.ID, "");
-        assertNotNull("Agent object has been initialized", agentObject);
+        try (AutoCloseable handle = Embedding.enableAgentScript(AgentObjectFactory.createAgentSource(), context)) {
+            value = context.eval(ProxyLanguage.ID, "");
+            assertNotNull("Agent object has been initialized", agentObject);
+        }
+
         return value;
     }
 
@@ -100,8 +94,8 @@ final class AgentObjectFactory extends ProxyLanguage {
         agentObject = null;
     }
 
-    private static Source createAgentSource() {
-        return Source.newBuilder(ProxyLanguage.ID, "", "agent.px").build();
+    private static org.graalvm.polyglot.Source createAgentSource() {
+        return org.graalvm.polyglot.Source.newBuilder(ProxyLanguage.ID, "", "agent.px").buildLiteral();
     }
 
     private static class AgentRootNode extends RootNode {

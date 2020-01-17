@@ -52,19 +52,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
-    private final AtomicBoolean initializationFinished;
+    private final ExcludeAgentScriptsFilter excludeSources = new ExcludeAgentScriptsFilter();
     private final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
     private Object closeFn;
 
     AgentObject(TruffleInstrument.Env env) {
         this.env = env;
-        this.initializationFinished = new AtomicBoolean(false);
     }
 
     private void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
@@ -89,25 +87,23 @@ final class AgentObject implements TruffleObject {
         }
     }
 
+    void ignoreSource(Source script) {
+        excludeSources.ignoreSource(script);
+    }
+
     private static final class ExcludeAgentScriptsFilter implements SourceSectionFilter.SourcePredicate {
-        private final AtomicBoolean initializationFinished;
         private final Map<Source, Boolean> ignore = new WeakHashMap<>();
 
-        ExcludeAgentScriptsFilter(AtomicBoolean initializationFinished) {
-            this.initializationFinished = initializationFinished;
+        ExcludeAgentScriptsFilter() {
         }
 
         @Override
         public boolean test(Source source) {
-            if (initializationFinished.get()) {
-                if (Boolean.TRUE.equals(ignore.get(source))) {
-                    return false;
-                }
-                return true;
-            } else {
-                ignore.put(source, Boolean.TRUE);
-                return false;
-            }
+            return !Boolean.TRUE.equals(ignore.get(source));
+        }
+
+        void ignoreSource(Source source) {
+            ignore.put(source, Boolean.TRUE);
         }
     }
 
@@ -147,7 +143,7 @@ final class AgentObject implements TruffleObject {
                 AgentType type = AgentType.find((String) args[0]);
                 switch (type) {
                     case SOURCE: {
-                        SourceFilter filter = SourceFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false).build();
+                        SourceFilter filter = SourceFilter.newBuilder().sourceIs(obj.excludeSources).includeInternal(false).build();
                         EventBinding<LoadSourceListener> handle = instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
@@ -157,7 +153,7 @@ final class AgentObject implements TruffleObject {
                                     throw AgentException.raise(ex);
                                 }
                             }
-                        }, true);
+                        }, false);
                         obj.registerHandle(type, handle, args[1]);
                         break;
                     }
@@ -198,7 +194,7 @@ final class AgentObject implements TruffleObject {
     }
 
     private static SourceSectionFilter createFilter(AgentObject obj, Object[] args) throws IllegalArgumentException, UnsupportedMessageException {
-        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false);
+        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().sourceIs(obj.excludeSources).includeInternal(false);
         List<Class<? extends Tag>> allTags = new ArrayList<>();
         if (args.length > 2) {
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
@@ -236,7 +232,7 @@ final class AgentObject implements TruffleObject {
                                 if (!iop.isExecutable(rootNameFilter)) {
                                     throw new IllegalArgumentException("rootNameFilter has to be a function!");
                                 }
-                                builder.rootNameIs(new RootNameFilter(rootNameFilter, obj.initializationFinished));
+                                builder.rootNameIs(new RootNameFilter(rootNameFilter));
                             }
                         } catch (UnknownIdentifierException ex) {
                             // OK
@@ -262,12 +258,16 @@ final class AgentObject implements TruffleObject {
         return false;
     }
 
-    void initializationFinished() {
-        this.initializationFinished.set(true);
-    }
-
     @CompilerDirectives.TruffleBoundary
     void onClosed() {
+        synchronized (listeners) {
+            for (Map.Entry<AgentType, Map<Object, EventBinding<?>>> entry : listeners.entrySet()) {
+                Map<Object, EventBinding<?>> val = entry.getValue();
+                for (EventBinding<?> binding : val.values()) {
+                    binding.dispose();
+                }
+            }
+        }
         if (closeFn == null) {
             return;
         }
