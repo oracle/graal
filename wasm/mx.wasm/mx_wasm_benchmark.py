@@ -119,7 +119,7 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         jars = classpath.split(delimiter)
         jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR_SUFFIX)]), None)
         if jar is None:
-            mx.abort("No " + BENCHMARK_JAR + " specified in the classpath.")
+            mx.abort("No benchmark jar file is specified in the classpath.")
 
         suite, benchmark = self.parse_suite_benchmark(args)
         return jar, suite, benchmark
