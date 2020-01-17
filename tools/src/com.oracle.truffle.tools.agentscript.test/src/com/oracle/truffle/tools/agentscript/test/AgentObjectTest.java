@@ -83,9 +83,10 @@ public class AgentObjectTest {
 
             Object members = iop.getMembers(AgentObjectFactory.agentObject);
             long membersCount = iop.getArraySize(members);
-            assertEquals(1, membersCount);
+            assertEquals(2, membersCount);
 
-            assertEquals("version", iop.readArrayElement(members, 0));
+            assertEquals("id", iop.readArrayElement(members, 0));
+            assertEquals("version", iop.readArrayElement(members, 1));
         }
     }
 

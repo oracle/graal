@@ -36,6 +36,14 @@ import java.util.function.Predicate;
  * {@link AgentScript#registerAgentScript registered scripts}.
  */
 public interface AgentScriptAPI {
+    /** ID of the instrument. Version {@code 0.3} has been released as
+     * part of GraalVM 20.0.0 release.
+     *
+     * @return same value of {@link AgentScript#ID} - e.g. {@code "agentscript"}
+     * @since 0.3
+     */
+    String id();
+
     /** Version of the API. Version {@code 0.1} has been released as
      * part of GraalVM 19.3.0 release.
      *
