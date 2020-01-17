@@ -151,7 +151,7 @@ final class AgentObject implements TruffleObject {
                                     throw AgentException.raise(ex);
                                 }
                             }
-                        }, true);
+                        }, false);
                         obj.registerHandle(type, handle, args[1]);
                         break;
                     }
