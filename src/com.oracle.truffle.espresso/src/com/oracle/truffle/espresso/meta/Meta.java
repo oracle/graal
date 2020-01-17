@@ -351,6 +351,8 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_packages = AssertionStatusDirectives.lookupField(Name.packages, Type.String_array);
         AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
+
+        sun_reflect_Reflection_getCallerClass = knownKlass(sun.reflect.Reflection.class).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
     }
 
     // Checkstyle: stop field name check
@@ -631,6 +633,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ReferenceQueue;
     public final Field ReferenceQueue_NULL;
+    public final Method sun_reflect_Reflection_getCallerClass;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
