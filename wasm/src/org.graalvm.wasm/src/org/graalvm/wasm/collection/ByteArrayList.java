@@ -64,7 +64,17 @@ public final class ByteArrayList {
         return array[offset];
     }
 
+    public void set(int index, byte b) {
+        if (index >= size()) {
+            throw new IndexOutOfBoundsException("Index " + index + " greater or equal to list size" + size() + ".");
+        }
+        array[index] = b;
+    }
+
     public byte get(int index) {
+        if (index >= size()) {
+            throw new IndexOutOfBoundsException("Index " + index + " greater or equal to list size" + size() + ".");
+        }
         return array[index];
     }
 
