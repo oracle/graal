@@ -85,8 +85,8 @@ public class ExecutionState {
         stackSize -= n;
     }
 
-    public void setStackPointer(int stackPointer) {
-        stackSize = stackPointer;
+    public void setStackSize(int stackSize) {
+        this.stackSize = stackSize;
     }
 
     public void useByteConstant(byte constant) {
