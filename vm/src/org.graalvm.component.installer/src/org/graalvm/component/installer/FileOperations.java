@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import org.graalvm.component.installer.os.DefaultFileOperations;
 import org.graalvm.component.installer.os.WindowsFileOperations;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  *
@@ -165,8 +166,10 @@ public abstract class FileOperations {
         if (SystemUtils.isWindows()) {
             WindowsFileOperations w = new WindowsFileOperations();
             inst = w;
-            w.setDelayDeletedList(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_DELETE_LIST)));
-            w.setCopyContents(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_COPY_CONTENTS)));
+            if (!ImageInfo.inImageCode()) {
+                w.setDelayDeletedList(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_DELETE_LIST)));
+                w.setCopyContents(SystemUtils.fromUserString(System.getenv(CommonConstants.ENV_COPY_CONTENTS)));
+            }
         } else {
             inst = new DefaultFileOperations();
         }
