@@ -123,8 +123,12 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         return arguments;
     }
 
+    /**
+     * Create a new stateDuring for use by a foreign call.
+     */
     public FrameState createStateDuring() {
-        return stateAfter.duplicateModified(graph(), stateAfter.bci, false, true, JavaKind.Object, null, null);
+        return stateAfter.duplicateModified(graph(), stateAfter.bci, /* rethrowException */ false, /* duringCall */ true,
+                        JavaKind.Object, null, null);
     }
 
 }
