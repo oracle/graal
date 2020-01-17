@@ -42,7 +42,7 @@ import jdk.vm.ci.sparc.SPARC;
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
  */
-@Opcode("DEOPT_CALLER")
+@Opcode("DEOPT_WITH_EXCEPTION_IN_CALLER")
 final class SPARCHotSpotDeoptimizeWithExceptionCallerOp extends SPARCHotSpotEpilogueOp {
     public static final LIRInstructionClass<SPARCHotSpotDeoptimizeWithExceptionCallerOp> TYPE = LIRInstructionClass.create(SPARCHotSpotDeoptimizeWithExceptionCallerOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(32);
