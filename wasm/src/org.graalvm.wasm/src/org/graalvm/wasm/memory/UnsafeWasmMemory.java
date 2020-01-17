@@ -78,7 +78,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private final void trapOutOfBounds(Node node, long address, long offset) {
+    private void trapOutOfBounds(Node node, long address, long offset) {
         String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
         throw new WasmTrap(node, message);
