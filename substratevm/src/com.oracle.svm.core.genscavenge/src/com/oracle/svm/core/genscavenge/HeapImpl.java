@@ -38,6 +38,7 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.word.Word;
@@ -61,7 +62,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -90,7 +90,7 @@ public class HeapImpl extends Heap {
     final HeapChunkProvider chunkProvider;
 
     // Singleton instances, created during image generation.
-    private final PlatformConfigurationProvider platformConfigurationProvider;
+    private final GenScavengePlatformConfigurationProvider platformConfigurationProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
 
@@ -120,7 +120,7 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.platformConfigurationProvider = new SubstratePlatformConfigurationProvider(new CardTableBarrierSet());
+        this.platformConfigurationProvider = new GenScavengePlatformConfigurationProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
         this.readOnlyPrimitiveWalker = new ReadOnlyPrimitiveMemoryWalkerAccess();
@@ -134,6 +134,24 @@ public class HeapImpl extends Heap {
             report(Log.log(), true).newline();
             Log.log().newline();
         });
+    }
+
+    private static class GenScavengePlatformConfigurationProvider implements PlatformConfigurationProvider {
+        private final BarrierSet barrierSet;
+
+        GenScavengePlatformConfigurationProvider() {
+            this.barrierSet = new CardTableBarrierSet();
+        }
+
+        @Override
+        public BarrierSet getBarrierSet() {
+            return barrierSet;
+        }
+
+        @Override
+        public boolean canVirtualizeLargeByteArrayAccess() {
+            return true;
+        }
     }
 
     @Fold

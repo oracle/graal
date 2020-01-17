@@ -28,7 +28,6 @@ import java.lang.management.MemoryMXBean;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -119,7 +118,8 @@ public abstract class Heap {
     public abstract void endSafepoint();
 
     /**
-     * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
+     * Returns a suitable {@link PlatformConfigurationProvider} for the garbage collector that is
+     * used for this heap.
      */
     public abstract PlatformConfigurationProvider getPlatformConfigurationProvider();
 
