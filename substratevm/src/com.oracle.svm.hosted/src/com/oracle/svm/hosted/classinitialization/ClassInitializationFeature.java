@@ -137,6 +137,7 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
+        initializeSVMClasses(initializationSupport);
         String[] initializationInfo = Options.ClassInitialization.getValue();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
@@ -150,6 +151,23 @@ public class ClassInitializationFeature implements GraalFeature {
                 elementType.getRight().stringConsumer(initializationSupport).accept(elementType.getLeft());
             }
         }
+    }
+
+    private static void initializeSVMClasses(ClassInitializationSupport initializationSupport) {
+        initializationSupport.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
+
+        initializationSupport.initializeAtBuildTime("com.oracle.svm", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("com.oracle.graal", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("com.oracle.graalvm.locator", "Native Image classes are always initialized at build time");
+
+        initializationSupport.initializeAtBuildTime("org.graalvm.collections", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.compiler", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.word", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.util", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.home", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.options", "Native Image classes are always initialized at build time");
     }
 
     @Override
