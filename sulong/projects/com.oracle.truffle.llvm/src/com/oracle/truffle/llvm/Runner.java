@@ -319,19 +319,28 @@ final class Runner {
 
     private static final class AllocLLVMFunctionNode extends AllocFunctionNode {
 
-        final boolean lazyParsing;
-
-        AllocLLVMFunctionNode(LLVMFunction function, boolean lazyParsing) {
+        AllocLLVMFunctionNode(LLVMFunction function) {
             super(function);
-            this.lazyParsing = lazyParsing;
         }
 
         @Override
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
-            if (!lazyParsing) {
-                functionDescriptor.resolveIfLazyLLVMIRFunction();
-            }
+            return LLVMManagedPointer.create(functionDescriptor);
+        }
+    }
+
+    private static final class AllocLLVMLazyFunctionNode extends AllocFunctionNode {
+
+        AllocLLVMLazyFunctionNode(LLVMFunction function) {
+            super(function);
+        }
+
+        @Override
+        @TruffleBoundary
+        LLVMPointer allocate(LLVMContext context) {
+            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
+            functionDescriptor.resolveIfLazyLLVMIRFunction();
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }
@@ -513,7 +522,11 @@ final class Runner {
                 if (intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory));
                 } else {
-                    allocFunctionsList.add(new AllocLLVMFunctionNode(function, lazyParsing));
+                    if (lazyParsing) {
+                        allocFunctionsList.add(new AllocLLVMFunctionNode(function));
+                    } else {
+                        allocFunctionsList.add(new AllocLLVMLazyFunctionNode(function));
+                    }
                 }
             }
 
