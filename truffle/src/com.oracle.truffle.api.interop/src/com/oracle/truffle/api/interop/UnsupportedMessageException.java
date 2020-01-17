@@ -47,32 +47,11 @@ import com.oracle.truffle.api.CompilerDirectives;
  *
  * @since 0.11
  */
-@SuppressWarnings("deprecation")
 public final class UnsupportedMessageException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
 
-    private static final Message LEGACY = new Message() {
-
-        @Override
-        public int hashCode() {
-            return 13;
-        }
-
-        @Override
-        public boolean equals(Object message) {
-            return this == message;
-        }
-    };
-
-    private final Message message;
-
     private UnsupportedMessageException() {
-        this.message = LEGACY;
-    }
-
-    private UnsupportedMessageException(Message message) {
-        this.message = message;
     }
 
     /**
@@ -83,28 +62,6 @@ public final class UnsupportedMessageException extends InteropException {
     @Override
     public String getMessage() {
         return "Message not supported.";
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated The unsupported message is no longer available. The unsupported message is known
-     *             by the caller anyway, therefore it is redundant. Will be removed without
-     *             replacement.
-     */
-    @Deprecated
-    public Message getUnsupportedMessage() {
-        return message;
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #create()} instead. Interop exceptions should directly be thrown and
-     *             no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(Message message) {
-        CompilerDirectives.transferToInterpreter();
-        return silenceException(RuntimeException.class, new UnsupportedMessageException(message));
     }
 
     /**

@@ -72,13 +72,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Testing the behavior of proxies towards languages.
@@ -87,17 +87,19 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
     static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    static class TestFunction extends ProxyLegacyInteropObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class TestFunction implements TruffleObject {
 
         TruffleObject lastFunction;
 
-        @Override
-        public boolean isExecutable() {
+        @ExportMessage
+        boolean isExecutable() {
             return true;
         }
 
-        @Override
-        public Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        @ExportMessage
+        Object execute(Object[] arguments) {
             lastFunction = (TruffleObject) arguments[0];
             return lastFunction;
         }

@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.api.test.host;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -57,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,7 +72,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.graalvm.polyglot.HostAccess;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AsCollectionsTest {
@@ -134,7 +132,7 @@ public class AsCollectionsTest {
     public void testAsList() {
         List origList = Arrays.asList(new String[]{"a", "b", "c"});
         TruffleObject to = new ListBasedTO(origList);
-        assertTrue(HostInteropTest.isArray(to));
+        assertTrue(INTEROP.hasArrayElements(to));
         List interopList = asJavaObject(List.class, to);
         assertEquals(origList.size(), interopList.size());
         assertEquals(origList.toString(), new ArrayList<>(interopList).toString());
@@ -165,7 +163,7 @@ public class AsCollectionsTest {
             origMap.put(Integer.toString(i), Integer.toHexString(i));
         }
         TruffleObject to = new MapBasedTO(origMap);
-        assertFalse(HostInteropTest.isArray(to));
+        assertFalse(INTEROP.hasArrayElements(to));
         Map interopMap = asJavaObject(Map.class, to);
         assertEquals(origMap.size(), interopMap.size());
         assertEquals(origMap.toString(), new LinkedHashMap<>(interopMap).toString());
@@ -178,13 +176,6 @@ public class AsCollectionsTest {
         assertNull(old);
         assertEquals("news", interopMap.get("new"));
 
-        TruffleObject badMapObject = new HostInteropTest.HasKeysObject(false);
-        try {
-            interopMap = asJavaObject(Map.class, badMapObject);
-            fail();
-        } catch (Exception ex) {
-            assertThat(ex, instanceOf(ClassCastException.class));
-        }
     }
 
     @Test

@@ -86,10 +86,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
 
@@ -871,8 +874,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         List<Data> data();
     }
 
-    @SuppressWarnings("deprecation")
-    static class ListArray extends ProxyLegacyInteropObject {
+    @ExportLibrary(InteropLibrary.class)
+    static class ListArray implements TruffleObject {
 
         private final List<String> array;
 
@@ -880,132 +883,115 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             this.array = array;
         }
 
-        @Override
-        public int keyInfo(Number key) {
-            if (key.intValue() < array.size() && key.intValue() >= 0) {
-                return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-            }
-            return super.keyInfo(key);
-        }
-
-        @Override
-        public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-            return array.get(key.intValue());
-        }
-
-        @Override
-        public boolean remove(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-            array.remove(key.intValue());
+        @ExportMessage
+        boolean hasArrayElements() {
             return true;
         }
 
-        @Override
-        public boolean hasSize() {
-            return true;
+        @ExportMessage
+        @TruffleBoundary
+        final Object readArrayElement(long index) {
+            return array.get((int) index);
         }
 
-        @Override
-        public int getSize() {
+        @ExportMessage
+        final void removeArrayElement(long index) {
+            array.remove((int) index);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final long getArraySize() {
             return array.size();
+        }
+
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementRemovable")
+        @TruffleBoundary
+        final boolean isArrayElementExisting(long index) {
+            return index < array.size() && index >= 0;
         }
 
     }
 
-    @SuppressWarnings("deprecation")
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
     static final class RemoveKeysObject implements TruffleObject {
-
         private final Map<String, ?> keys;
 
         RemoveKeysObject(Map<String, ?> keys) {
             this.keys = keys;
         }
 
-        @Override
-        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
-            return RemoveKeysObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof RemoveKeysObject;
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            List<String> list = new AbstractList<String>() {
+                final Set<String> keys = RemoveKeysObject.this.keys.keySet();
+
+                @Override
+                public String get(int index) {
+                    Iterator<String> iterator = keys.iterator();
+                    for (int i = 0; i < index; i++) {
+                        iterator.next();
+                    }
+                    return iterator.next();
+                }
+
+                @Override
+                public int size() {
+                    return keys.size();
+                }
+
+                @Override
+                public String remove(int index) {
+                    Iterator<String> iterator = keys.iterator();
+                    for (int i = 0; i < index; i++) {
+                        iterator.next();
+                    }
+                    String removed = iterator.next();
+                    iterator.remove();
+                    return removed;
+                }
+            };
+            return new ListArray(list);
         }
 
-        @com.oracle.truffle.api.interop.MessageResolution(receiverType = RemoveKeysObject.class)
-        static final class RemoveKeysObjectMessageResolution {
-
-            @com.oracle.truffle.api.interop.Resolve(message = "KEYS")
-            public abstract static class PropertiesKeysOnlyNode extends Node {
-
-                public Object access(RemoveKeysObject receiver) {
-                    List<String> list = new AbstractList<String>() {
-                        final Set<String> keys = receiver.keys.keySet();
-
-                        @Override
-                        public String get(int index) {
-                            Iterator<String> iterator = keys.iterator();
-                            for (int i = 0; i < index; i++) {
-                                iterator.next();
-                            }
-                            return iterator.next();
-                        }
-
-                        @Override
-                        public int size() {
-                            return keys.size();
-                        }
-
-                        @Override
-                        public String remove(int index) {
-                            Iterator<String> iterator = keys.iterator();
-                            for (int i = 0; i < index; i++) {
-                                iterator.next();
-                            }
-                            String removed = iterator.next();
-                            iterator.remove();
-                            return removed;
-                        }
-                    };
-                    return new ListArray(list);
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "READ")
-            public abstract static class ReadKeyNode extends Node {
-
-                public Object access(RemoveKeysObject receiver, String name) {
-                    if (!receiver.keys.containsKey(name)) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnknownIdentifierException.raise(name);
-                    }
-                    return receiver.keys.get(name);
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
-            public abstract static class RemoveKeyNode extends Node {
-
-                public Object access(RemoveKeysObject receiver, String name) {
-                    if (!receiver.keys.containsKey(name)) {
-                        return false;
-                    }
-                    receiver.keys.remove(name);
-                    return true;
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
-            public abstract static class KeyInfoNode extends Node {
-
-                public Object access(RemoveKeysObject receiver, String name) {
-                    if (!receiver.keys.containsKey(name)) {
-                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
-                    }
-                    return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-                }
-            }
+        @ExportMessage(name = "isMemberReadable")
+        @ExportMessage(name = "isMemberRemovable")
+        @TruffleBoundary
+        boolean isMemberExisting(String member) {
+            return keys.containsKey(member);
         }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (!keys.containsKey(member)) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(member);
+            }
+            return keys.get(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        void removeMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (!keys.containsKey(member)) {
+                throw UnknownIdentifierException.create(member);
+            }
+            keys.remove(member);
+        }
+
     }
 
-    @SuppressWarnings("deprecation")
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
     static final class ArrayTruffleObject implements TruffleObject {
 
         private int size;
@@ -1014,102 +1000,46 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             this.size = size;
         }
 
-        @Override
-        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
-            return ArrayTruffleObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ArrayTruffleObject;
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index >= size) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return size - index;
         }
 
-        @com.oracle.truffle.api.interop.MessageResolution(receiverType = ArrayTruffleObject.class)
-        static final class ArrayTruffleObjectMessageResolution {
-
-            @com.oracle.truffle.api.interop.Resolve(message = "HAS_SIZE")
-            public abstract static class ArrayHasSizeNode extends Node {
-
-                public Object access(ArrayTruffleObject receiver) {
-                    assert receiver != null;
-                    return true;
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "GET_SIZE")
-            public abstract static class ArrayGetSizeNode extends Node {
-
-                public Object access(ArrayTruffleObject receiver) {
-                    return receiver.size;
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "READ")
-            public abstract static class ArrayReadSizeNode extends Node {
-
-                public Object access(ArrayTruffleObject receiver, Number number) {
-                    int index = number.intValue();
-                    if (index < 0 || index >= receiver.size) {
-                        throw new ArrayIndexOutOfBoundsException(index);
-                    }
-                    return receiver.size - index;
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
-            public abstract static class ArrayRemoveNode extends Node {
-
-                public Object access(ArrayTruffleObject receiver, Number number) {
-                    int index = number.intValue();
-                    if (index < 0 || index >= receiver.size) {
-                        throw new ArrayIndexOutOfBoundsException(index);
-                    }
-                    receiver.size--;
-                    return true;
-                }
-            }
-
-            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
-            public abstract static class KeyInfoNode extends Node {
-
-                public int access(ArrayTruffleObject receiver, Number number) {
-                    int index = number.intValue();
-                    if (index != number.doubleValue() || index < 0 || index >= receiver.size) {
-                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
-                    }
-                    return com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
-                }
-            }
+        @ExportMessage
+        long getArraySize() {
+            return size;
         }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return false;
+        }
+
     }
 
-    @SuppressWarnings("deprecation")
-    @com.oracle.truffle.api.interop.MessageResolution(receiverType = FunctionObject.class)
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
     static final class FunctionObject implements TruffleObject {
-        @com.oracle.truffle.api.interop.Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutable extends Node {
-            @SuppressWarnings("unused")
-            protected Object access(FunctionObject obj) {
-                return true;
-            }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
 
-        @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
-        @SuppressWarnings("unused")
-        abstract static class Execute extends Node {
-
-            @TruffleBoundary
-            protected Object access(FunctionObject obj, Object[] args) {
-                return Arrays.stream(args).mapToInt(o -> (int) o).sum();
-            }
+        @ExportMessage
+        @TruffleBoundary
+        Object execute(Object[] arguments) {
+            return Arrays.stream(arguments).mapToInt(o -> (int) o).sum();
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof FunctionObject;
-        }
-
-        @Override
-        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
-            return FunctionObjectForeign.ACCESS;
-        }
     }
+
 }

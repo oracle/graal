@@ -409,18 +409,24 @@ public class ContextAPITest {
         context.close();
     }
 
-    private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new ProxyLegacyInteropObject() {
-            @Override
-            public boolean isExecutable() {
-                return true;
-            }
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static final class TestFunction implements TruffleObject {
 
-            @Override
-            public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-                return 42;
-            }
-        };
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            return 42;
+        }
+
+    }
+
+    private static void testExecute(Context context) {
+        ContextAPITestLanguage.runinside = (env) -> new TestFunction();
         Value executable = context.eval(ContextAPITestLanguage.ID, "");
         assertEquals(42, executable.execute().asInt());
         assertEquals(42, executable.execute(42).asInt());

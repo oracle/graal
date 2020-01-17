@@ -147,7 +147,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
-@DefaultExport(DefaultTruffleObjectExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -1192,7 +1191,7 @@ public abstract class InteropLibrary extends Library {
     private boolean assertAdoptedImpl() {
         Node node = this;
         do {
-            if (node instanceof RootNode || node instanceof LegacyToLibraryNode || node instanceof InteropAccessNode) {
+            if (node instanceof RootNode) {
                 // we all nodes with root nodes or
                 // unadopted that use the compatibility bridge
                 return true;

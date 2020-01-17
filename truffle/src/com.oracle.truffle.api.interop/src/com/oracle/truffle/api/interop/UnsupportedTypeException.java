@@ -78,27 +78,6 @@ public final class UnsupportedTypeException extends InteropException {
     }
 
     /**
-     * @since 0.11
-     * @deprecated use {@link #create(Object[])} instead. Interop exceptions should directly be
-     *             thrown and no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(Object[] suppliedValues) {
-        return raise(null, suppliedValues);
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #create(Object[])} instead. Interop exceptions should directly be
-     *             thrown and no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(Exception cause, Object[] suppliedValues) {
-        CompilerDirectives.transferToInterpreter();
-        return silenceException(RuntimeException.class, new UnsupportedTypeException(cause, suppliedValues));
-    }
-
-    /**
      * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
      * supported.
      *

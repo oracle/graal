@@ -102,16 +102,4 @@ public final class ArityException extends InteropException {
         CompilerDirectives.transferToInterpreter();
         return new ArityException(expectedArity, actualArity);
     }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #create(int, int)} instead. Interop exceptions should directly be
-     *             thrown and no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(int expectedArity, int actualArity) {
-        CompilerDirectives.transferToInterpreter();
-        return silenceException(RuntimeException.class, new ArityException(expectedArity, actualArity));
-    }
-
 }
