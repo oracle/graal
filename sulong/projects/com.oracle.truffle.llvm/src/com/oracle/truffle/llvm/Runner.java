@@ -484,6 +484,8 @@ final class Runner {
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
             this.checkGlobals = LLVMCheckSymbolVariableStorageNodeGen.create();
+            this.globalLength = res.getSymbolTableSize();
+            this.bitcodeID = res.getRuntime().getbitcodeID();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -520,9 +522,6 @@ final class Runner {
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
             this.allocFuncs = allocFunctionsList.toArray(AllocFunctionNode.EMPTY);
             this.writeSymbols = LLVMWriteSymbolVariableStorageNodeGen.create();
-
-            this.bitcodeID = res.getRuntime().getbitcodeID();
-            this.globalLength = res.getDefinedGlobals().size() + res.getExternalGlobals().size() + res.getDefinedFunctions().size() + res.getExternalFunctions().size();
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {

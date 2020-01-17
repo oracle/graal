@@ -44,6 +44,7 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> externalGlobals;
     private final List<String> importedSymbols;
     private final DataLayout dataLayout;
+    private final int symbolTableSize;
 
     LLVMParserResult(LLVMParserRuntime runtime,
                     List<FunctionSymbol> definedFunctions,
@@ -59,6 +60,7 @@ public final class LLVMParserResult {
         this.externalGlobals = externalGlobals;
         this.importedSymbols = importedSymbols;
         this.dataLayout = dataLayout;
+        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
     }
 
     public LLVMParserRuntime getRuntime() {
@@ -88,4 +90,6 @@ public final class LLVMParserResult {
     public DataLayout getDataLayout() {
         return dataLayout;
     }
+
+    public int getSymbolTableSize() { return symbolTableSize; }
 }
