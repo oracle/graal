@@ -260,3 +260,35 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   return len;
 }
 #endif
+
+/*
+ * Signal support, used to implement the shutdown sequence.  Every VM must
+ * support JVM_SIGINT and JVM_SIGTERM, raising the former for user interrupts
+ * (^C) and the latter for external termination (kill, system shutdown, etc.).
+ * Other platform-dependent signal values may also be supported.
+ */
+#include "JvmFuncs_SignalImpl.h"
+
+JNIEXPORT jint JNICALL JVM_FindSignal(const char *name) {
+  return os__get_signal_number(name);
+}
+
+JNIEXPORT jboolean JNICALL JVM_RaiseSignal(jint sig) {
+  os__signal_raise(sig);
+  return JNI_TRUE;
+}
+
+JNIEXPORT void * JNICALL JVM_RegisterSignal(jint sig, void *handler) {
+  // Copied from classic vm
+  // signals_md.c       1.4 98/08/23
+  void* newHandler = handler == (void *)2
+                   ? os__user_handler()
+                   : handler;
+
+  void* oldHandler = os__signal(sig, newHandler);
+  if (oldHandler == os__user_handler()) {
+      return (void *)2;
+  } else {
+      return oldHandler;
+  }
+}

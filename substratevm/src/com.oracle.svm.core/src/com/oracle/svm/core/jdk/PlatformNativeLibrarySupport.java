@@ -63,6 +63,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "javax_script",
                     "javax_security",
                     "jdk_internal_org",
+                    "jdk_internal_misc",
                     "jdk_internal_util",
                     "jdk_net",
                     "sun_invoke",
@@ -160,7 +161,7 @@ public abstract class PlatformNativeLibrarySupport {
      * implicitly shared between the isolates of the process (for example, because they have a
      * single native state that does not distinguish between isolates).
      */
-    protected boolean isFirstIsolate() {
+    public boolean isFirstIsolate() {
         return firstIsolate;
     }
 
