@@ -468,18 +468,20 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.IF: {
+                    // Pop the condition.
+                    state.pop();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     // For the if block, we save the stack size reduced by 1, because of the
                     // condition value that will be popped before executing the if statement.
-                    state.pushStackState(state.stackSize() - 1);
+                    state.pushStackState(state.stackSize());
                     WasmIfNode ifNode = readIf(context, codeEntry, state);
                     nestedControlTable.add(ifNode);
                     state.popStackState();
                     break;
                 }
                 case Instructions.ELSE:
-                    break;
+                    // We handle the else instruction in the same way as the end instruction.
                 case Instructions.END:
                     // If the end instruction is not reachable, then the stack size must be adjusted
                     // to match the stack size at the continuation point.
@@ -488,7 +490,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     // After the end instruction, the semantics of Wasm stack size require
                     // that we consider the code again reachable.
-                    state.isReachable();
+                    state.setReachable(true);
                     break;
                 case Instructions.BR: {
                     // TODO: restore check
@@ -975,45 +977,24 @@ public class BinaryParser extends BinaryStreamParser {
 
     private WasmIfNode readIf(WasmContext context, WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
-        int initialStackPointer = state.stackSize();
-
-        // Pop the condition value from the stack.
-        state.pop();
+        // Note: the condition value was already popped at this point.
+        int stackSizeAfterCondition = state.stackSize();
 
         // Read true branch.
         int startOffset = offset();
         WasmBlockNode trueBranchBlock = readBlockBody(context, codeEntry, state, blockTypeId, blockTypeId);
 
-        // TODO: Hack to correctly set the stack pointer for abstract interpretation.
         // If a block has branch instructions that target "shallower" blocks which return no value,
         // then it can leave no values in the stack, which is invalid for our abstract
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackSize(blockTypeId != ValueTypes.VOID_TYPE ? initialStackPointer : initialStackPointer - 1);
+        state.setStackSize(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
         WasmNode falseBranchBlock;
         if (peek1(-1) == Instructions.ELSE) {
-            // If the if instruction has a true and a false branch, and it has non-void type, then
-            // each one of the two
-            // readBlockBody above and below would push once, hence we need to pop once to
-            // compensate for the extra push.
-            if (blockTypeId != ValueTypes.VOID_TYPE) {
-                state.pop();
-            }
-
             falseBranchBlock = readBlockBody(context, codeEntry, state, blockTypeId, blockTypeId);
-
-            if (blockTypeId != ValueTypes.VOID_TYPE) {
-                // TODO: Hack to correctly set the stack pointer for abstract interpretation.
-                // If a block has branch instructions that target "shallower" blocks which return no
-                // value, then it can leave no values in the stack, which is invalid for our
-                // abstract interpretation.
-                // Correct the stack pointer to the value it would have in case there were no branch
-                // instructions.
-                state.setStackSize(initialStackPointer);
-            }
         } else {
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 Assert.fail("An if statement without an else branch block cannot return values.");
@@ -1021,7 +1002,8 @@ public class BinaryParser extends BinaryStreamParser {
             falseBranchBlock = new WasmEmptyNode(module, codeEntry, 0);
         }
 
-        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer);
+        int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
+        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
 
     private void readElementSection(WasmContext context) {
