@@ -263,6 +263,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components
+        self.with_polyglot_launcher = with_polyglot_launcher
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -1582,8 +1583,9 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
             yield e
             if single:
                 return
-        out = self.polyglot_config_output_file()
-        yield out, basename(out)
+        if self.get_containing_graalvm().with_polyglot_launcher:
+            out = self.polyglot_config_output_file()
+            yield out, basename(out)
 
 
 class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
@@ -1603,7 +1605,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         reason = self.native_image_needs_build(out_file)
         if reason:
             return True, reason
-        if isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig):
+        if self.with_polyglot_config():
             reason = _file_needs_build(newestInput, self.subject.polyglot_config_output_file(), self.polyglot_config_contents)
             if reason:
                 return True, reason
@@ -1612,7 +1614,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
     def polyglot_config_contents(self):
         if self._polyglot_config_contents is None:
             image_config = self.subject.native_image_config
-            assert isinstance(image_config, mx_sdk.LanguageLauncherConfig)
+            assert self.with_polyglot_config()
             graalvm_dist = self.subject.get_containing_graalvm()
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:{}/polyglot.config'.format(self.subject.name)))
             classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component)
@@ -1620,18 +1622,21 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
             return u"|".join((u":".join(classpath), main_class))
         return self._polyglot_config_contents
 
+    def with_polyglot_config(self):
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and self.subject.get_containing_graalvm().with_polyglot_launcher
+
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
         return None
 
     def newestOutput(self):
         paths = [self.subject.output_file()]
-        if isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig):
+        if self.with_polyglot_config():
             paths.append(self.subject.polyglot_config_output_file())
         return mx.TimeStampFile.newest(paths)
 
     def build(self):
-        if isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig):
+        if self.with_polyglot_config():
             with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
                 f.write(self.polyglot_config_contents())
 
@@ -1639,7 +1644,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         out_file = self.subject.output_file()
         if exists(out_file):
             os.unlink(out_file)
-        if isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig):
+        if self.with_polyglot_config():
             if exists(self.subject.polyglot_config_output_file()):
                 os.unlink(self.subject.polyglot_config_output_file())
 
