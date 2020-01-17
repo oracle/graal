@@ -1888,6 +1888,70 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "org.graalvm.compiler.truffle.jfr" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.jfr.impl",
+      "checkPackagePrefix" : "false",
+      "javaCompliance" : "8",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.truffle.jfr.impl.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr",
+      ],
+      "requires" : [
+        "jdk.jfr"
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.jfr.impl",
+      "checkPackagePrefix" : "false",
+      "javaCompliance" : "11+",
+      "multiReleaseJarVersion" : "11",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
     "org.graalvm.compiler.truffle.runtime" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1895,7 +1959,11 @@ suite = {
         "org.graalvm.compiler.truffle.common",
         "org.graalvm.compiler.truffle.options",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
+        "org.graalvm.compiler.truffle.jfr",
         "truffle:TRUFFLE_API",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.truffle.jfr.EventFactory.Provider"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2308,6 +2376,26 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_TRUFFLE_JFR_IMPL" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "jdk.internal.vm.compiler.truffle.jfr",
+      },
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr.impl",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+      ],
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "JVMCI_HOTSPOT",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TRUFFLE_OPTIONS" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2373,6 +2461,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "org.graalvm.compiler.truffle.runtime",
+        "org.graalvm.compiler.truffle.jfr",
       ],
       "distDependencies" : [
         "GRAAL_TRUFFLE_COMMON",
@@ -2523,6 +2612,7 @@ suite = {
           "org.graalvm.compiler.runtime                to jdk.aot",
           "org.graalvm.compiler.replacements           to jdk.aot",
           "org.graalvm.compiler.serviceprovider        to jdk.aot,jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -2599,6 +2689,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.jfr",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
