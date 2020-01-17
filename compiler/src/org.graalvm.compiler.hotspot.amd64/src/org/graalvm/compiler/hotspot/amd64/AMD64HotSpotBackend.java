@@ -217,7 +217,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                         !((AMD64FrameMap) frameMap).useStandardFrameProlog();
 
         Stub stub = gen.getStub();
-        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
+        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
         masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());

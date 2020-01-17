@@ -107,7 +107,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public static class Options {
         // @formatter:off
         @Option(help = "Force branch instructions to align with 32-bytes boundary, to mitigate the jcc erratum. " +
-                "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details.", type = OptionType.User)
+                "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details. " +
+                "If not set explicitly, the default value will be overwritten according to the CPU model. " + 
+                "See VM_Version::compute_has_intel_jcc_erratum for more details.", type = OptionType.User)
         public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
         // @formatter:on
     }
@@ -120,17 +122,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     protected CodePatchShifter codePatchShifter = null;
 
+    /**
+     * Constructs an assembler for the AMD64 architecture.
+     */
     public AMD64Assembler(TargetDescription target) {
         super(target);
         useBranchesWithin32ByteBoundary = false;
     }
 
-    /**
-     * Constructs an assembler for the AMD64 architecture.
-     */
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
         useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+    }
+
+    public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
+        super(target);
+        if (Options.UseBranchesWithin32ByteBoundary.hasBeenSet(optionValues)) {
+            useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+        } else {
+            useBranchesWithin32ByteBoundary = hasIntelJccErratum;
+        }
     }
 
     public void setCodePatchShifter(CodePatchShifter codePatchShifter) {
