@@ -145,6 +145,7 @@ public final class Support {
         public final JNIMethodId javaLangReflectMemberGetName;
         public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
         public final JNIMethodId javaUtilEnumerationHasMoreElements;
+        public final JNIMethodId javaUtilMissingResourceExceptionCtor3;
         public final JNIObjectHandle javaLangSecurityException;
         public final JNIObjectHandle javaLangNoClassDefFoundError;
         public final JNIObjectHandle javaLangNoSuchMethodError;
@@ -153,6 +154,7 @@ public final class Support {
         public final JNIObjectHandle javaLangNoSuchFieldException;
         public final JNIObjectHandle javaLangClassNotFoundException;
         public final JNIObjectHandle javaLangRuntimeException;
+        public final JNIObjectHandle javaUtilMissingResourceException;
 
         // HotSpot crashes when looking these up eagerly
         private JNIObjectHandle javaLangReflectField;
@@ -161,6 +163,9 @@ public final class Support {
 
         private JNIObjectHandle javaUtilCollections;
         private JNIMethodId javaUtilCollectionsEmptyEnumeration;
+
+        private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
+        private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
         private JavaHandles(JNIEnvironment env) {
             JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
@@ -185,6 +190,8 @@ public final class Support {
             javaLangNoSuchFieldException = newClassGlobalRef(env, "java/lang/NoSuchFieldException");
             javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
             javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
+            javaUtilMissingResourceException = newClassGlobalRef(env, "java/util/MissingResourceException");
+            javaUtilMissingResourceExceptionCtor3 = getMethodId(env, javaUtilMissingResourceException, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false);
         }
 
         private static JNIObjectHandle findClass(JNIEnvironment env, String className) {
@@ -200,15 +207,18 @@ public final class Support {
         }
 
         private static JNIMethodId getMethodId(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
+            JNIMethodId id = getMethodIdOptional(env, clazz, name, signature, isStatic);
+            guarantee(id.isNonNull());
+            return id;
+        }
+
+        private static JNIMethodId getMethodIdOptional(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
             try (CCharPointerHolder cname = toCString(name); CCharPointerHolder csignature = toCString(signature)) {
-                JNIMethodId id;
                 if (isStatic) {
-                    id = jniFunctions.getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
+                    return jniFunctions.getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
                 } else {
-                    id = jniFunctions.getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
+                    return jniFunctions.getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
                 }
-                guarantee(id.isNonNull());
-                return id;
             }
         }
 
@@ -261,6 +271,16 @@ public final class Support {
                 javaUtilCollectionsEmptyEnumeration = getMethodId(env, getJavaUtilCollections(env), "emptyEnumeration", "()Ljava/util/Enumeration;", true);
             }
             return javaUtilCollectionsEmptyEnumeration;
+        }
+
+        public JNIMethodId tryGetJavaUtilResourceBundleGetBundleImplSLCC(JNIEnvironment env) {
+            if (!queriedJavaUtilResourceBundleGetBundleImplSLCC) {
+                JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+                javaUtilResourceBundleGetBundleImplSLCC = getMethodIdOptional(env, javaUtilResourceBundle, "getBundleImpl",
+                                "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/Class;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;", true);
+                queriedJavaUtilResourceBundleGetBundleImplSLCC = true;
+            }
+            return javaUtilResourceBundleGetBundleImplSLCC;
         }
 
         public void destroy(JNIEnvironment env) {

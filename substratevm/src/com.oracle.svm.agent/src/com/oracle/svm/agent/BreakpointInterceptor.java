@@ -92,6 +92,8 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod0Fun
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod1FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod2FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod3FunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod4FunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod5FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -706,6 +708,64 @@ final class BreakpointInterceptor {
         return classNames;
     }
 
+    private static boolean getBundleImplJDK8OrEarlier(JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle directCallerClass, Breakpoint bp) {
+        JNIObjectHandle callerClass = getCallerClass(2); // actual caller of a getBundle method
+        JNIObjectHandle baseName = getObjectArgument(0);
+        boolean allowed = (resourceVerifier == null || resourceVerifier.verifyGetBundle(jni, baseName, callerClass));
+        JNIObjectHandle result = nullHandle();
+        if (allowed) {
+            JNIObjectHandle locale = getObjectArgument(1);
+            JNIObjectHandle loader = getObjectArgument(2);
+            JNIObjectHandle control = getObjectArgument(3);
+            result = jniFunctions().<CallObjectMethod4FunctionPointer> getCallStaticObjectMethod().invoke(jni, bp.clazz, bp.method, baseName, locale, loader, control);
+            if (clearException(jni)) {
+                result = nullHandle();
+            }
+        }
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
+                        fromJniString(jni, baseName), TraceWriter.UNKNOWN_VALUE, TraceWriter.UNKNOWN_VALUE, TraceWriter.UNKNOWN_VALUE);
+        return endGetBundleImpl(jni, baseName, allowed);
+    }
+
+    private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle directCallerClass, Breakpoint bp) {
+        JNIMethodId intermediateMethod = getCallerMethod(2);
+        JNIMethodId callerMethod; // caller of getBundle(), not immediate caller
+        if (intermediateMethod.equal(handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
+            // getBundleImpl <- getBundleImpl <- getBundleImpl(S,L,C,C) <- getBundle <- [caller]
+            callerMethod = getCallerMethod(4);
+        } else { // getBundleImpl <- getBundle(Impl|FromModule) <- getBundle <- [caller]
+            callerMethod = getCallerMethod(3);
+        }
+        JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
+        JNIObjectHandle baseName = getObjectArgument(2);
+        boolean allowed = (resourceVerifier == null || resourceVerifier.verifyGetBundle(jni, baseName, callerClass));
+        JNIObjectHandle result = nullHandle();
+        if (allowed) {
+            JNIObjectHandle callerModule = getObjectArgument(0);
+            JNIObjectHandle module = getObjectArgument(1);
+            JNIObjectHandle locale = getObjectArgument(3);
+            JNIObjectHandle control = getObjectArgument(4);
+            result = jniFunctions().<CallObjectMethod5FunctionPointer> getCallStaticObjectMethod().invoke(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
+            if (clearException(jni)) {
+                result = nullHandle();
+            }
+        }
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
+                        TraceWriter.UNKNOWN_VALUE, TraceWriter.UNKNOWN_VALUE, fromJniString(jni, baseName), TraceWriter.UNKNOWN_VALUE, TraceWriter.UNKNOWN_VALUE);
+        return endGetBundleImpl(jni, baseName, allowed);
+    }
+
+    private static boolean endGetBundleImpl(JNIEnvironment jni, JNIObjectHandle baseName, boolean allowed) {
+        if (!allowed) {
+            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to resource bundle: " + fromJniString(jni, baseName))) {
+                JNIObjectHandle ex = jniFunctions().<CallObjectMethod3FunctionPointer> getNewObject().invoke(jni, handles().javaUtilMissingResourceException,
+                                handles().javaUtilMissingResourceExceptionCtor3, message.get(), nullHandle(), nullHandle());
+                jniFunctions().getThrow().invoke(jni, ex);
+            }
+        }
+        return allowed;
+    }
+
     private static String asInternalSignature(Object paramTypesArray) {
         if (paramTypesArray instanceof Object[]) {
             StringBuilder sb = new StringBuilder("(");
@@ -954,6 +1014,15 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
+
+                    optionalBrk("java/util/ResourceBundle",
+                                    "getBundleImpl",
+                                    "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/ClassLoader;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
+                                    BreakpointInterceptor::getBundleImplJDK8OrEarlier),
+                    optionalBrk("java/util/ResourceBundle",
+                                    "getBundleImpl",
+                                    "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
+                                    BreakpointInterceptor::getBundleImplJDK11OrLater),
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("sun/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", BreakpointInterceptor::objectFieldOffset),

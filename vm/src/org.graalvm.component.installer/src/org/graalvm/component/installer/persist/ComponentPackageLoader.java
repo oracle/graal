@@ -40,6 +40,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -50,6 +51,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 
 /**
  * Loads information from the component's bundle.
@@ -210,6 +212,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {
         parse(
                         () -> base.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
+                        () -> base.setDistributionType(parseDistributionType()),
                         () -> loadWorkingDirectories(base),
                         () -> loadMessages(base),
                         () -> loadLicenseType(base));
@@ -219,6 +222,16 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public ComponentInfo createComponentInfo() {
         ComponentInfo nfo = createBaseComponentInfo();
         return loadExtendedMetadata(nfo);
+    }
+
+    private DistributionType parseDistributionType() {
+        String dtString = parseHeader(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION, null).getContents(DistributionType.OPTIONAL.name());
+        try {
+            return DistributionType.valueOf(dtString.toUpperCase(Locale.ENGLISH));
+        } catch (IllegalArgumentException ex) {
+            throw new MetadataException(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION,
+                            feedback.l10n("ERROR_InvalidDistributionType", dtString));
+        }
     }
 
     private void loadLicenseType(ComponentInfo nfo) {

@@ -107,6 +107,11 @@ public final class ComponentInfo {
      */
     private String origin;
 
+    /**
+     * The distribution type.
+     */
+    private DistributionType distributionType = DistributionType.OPTIONAL;
+
     public ComponentInfo(String id, String name, String versionString) {
         this.id = id;
         this.versionString = versionString;
@@ -131,6 +136,14 @@ public final class ComponentInfo {
 
     public String getName() {
         return name;
+    }
+
+    public DistributionType getDistributionType() {
+        return distributionType;
+    }
+
+    public void setDistributionType(DistributionType distributionType) {
+        this.distributionType = distributionType;
     }
 
     public Map<String, String> getRequiredGraalValues() {

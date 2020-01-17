@@ -27,7 +27,9 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -46,21 +48,27 @@ public class ResourceConfiguration implements JsonPrintable {
 
         @Override
         public void addResources(String pattern) {
-            configuration.add(pattern);
+            configuration.addResourcePattern(pattern);
         }
 
         @Override
         public void addResourceBundles(String name) {
+            configuration.addBundle(name);
         }
     }
 
     private final Map<String, Pattern> resources = new HashMap<>();
+    private final Set<String> bundles = new HashSet<>();
 
-    public void add(String pattern) {
+    public void addResourcePattern(String pattern) {
         resources.computeIfAbsent(pattern, Pattern::compile);
     }
 
-    public boolean anyMatches(String s) {
+    public void addBundle(String bundle) {
+        bundles.add(bundle);
+    }
+
+    public boolean anyResourceMatches(String s) {
         /*
          * Naive -- if the need arises, we could match in the order of most frequently matched
          * patterns, or somehow merge the patterns into a single big pattern.
@@ -73,11 +81,18 @@ public class ResourceConfiguration implements JsonPrintable {
         return false;
     }
 
+    public boolean anyBundleMatches(String s) {
+        return bundles.contains(s);
+    }
+
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         writer.quote("resources").append(':');
         JsonPrinter.printCollection(writer, resources.keySet(), Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(p).append('}'));
+        writer.append(',').newline();
+        writer.quote("bundles").append(':');
+        JsonPrinter.printCollection(writer, bundles, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("name").append(':').quote(p).append('}'));
         writer.unindent().newline().append('}').newline();
     }
 }

@@ -190,6 +190,12 @@ public final class ComponentRegistry implements ComponentCollection {
         if (v != null) {
             m.put(CommonConstants.CAP_OS_ARCH, v);
         }
+        v = SystemUtils.normalizeOSName(
+                        m.get(CommonConstants.CAP_OS_NAME),
+                        m.get(CommonConstants.CAP_OS_ARCH));
+        if (v != null) {
+            m.put(CommonConstants.CAP_OS_NAME, v);
+        }
         return graalAttributes;
     }
 

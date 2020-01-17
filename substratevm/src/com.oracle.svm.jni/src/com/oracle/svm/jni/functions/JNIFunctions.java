@@ -1064,6 +1064,8 @@ final class JNIFunctions {
 
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+            DynamicHub.fromClass(clazz).ensureInitialized();
+
             String name = CTypeConversion.toJavaString(cname);
             String signature = CTypeConversion.toJavaString(csig);
             return getMethodID(clazz, name, signature, isStatic);
@@ -1087,13 +1089,15 @@ final class JNIFunctions {
         }
 
         static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
-            // TODO: check signature
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+            DynamicHub.fromClass(clazz).ensureInitialized();
+
             String name = CTypeConversion.toJavaString(cname);
             JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
+            // TODO: check field signature
             return fieldID;
         }
 

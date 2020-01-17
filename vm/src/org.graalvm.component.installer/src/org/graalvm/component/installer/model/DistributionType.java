@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package org.graalvm.component.installer.model;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+/**
+ * Distribution type for a component. Distribution type determines the operations that can be
+ * applied to it.
+ * 
+ * @author sdedic
+ */
+public enum DistributionType {
+    /**
+     * Component is bundled, was installed with the GraalVM package. The component is NOT removable.
+     */
+    BUNDLED,
 
-public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PartialEvaluator getPartialEvaluator();
+    /**
+     * Component was installed as an add-on. It can be removed by the user. This is the default
+     * value when no distribution type is specified.
+     */
+    OPTIONAL
 }

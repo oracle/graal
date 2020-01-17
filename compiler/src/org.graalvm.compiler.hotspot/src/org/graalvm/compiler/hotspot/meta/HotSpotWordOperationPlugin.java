@@ -127,17 +127,17 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
 
             case FROM_POINTER:
                 assert args.length == 1;
-                b.addPush(returnKind, new PointerCastNode(StampFactory.forKind(wordKind), args[0]));
+                b.addPush(returnKind, PointerCastNode.create(StampFactory.forKind(wordKind), args[0]));
                 break;
 
             case TO_KLASS_POINTER:
                 assert args.length == 1;
-                b.addPush(returnKind, new PointerCastNode(KlassPointerStamp.klass(), args[0]));
+                b.addPush(returnKind, PointerCastNode.create(KlassPointerStamp.klass(), args[0]));
                 break;
 
             case TO_METHOD_POINTER:
                 assert args.length == 1;
-                b.addPush(returnKind, new PointerCastNode(MethodPointerStamp.method(), args[0]));
+                b.addPush(returnKind, PointerCastNode.create(MethodPointerStamp.method(), args[0]));
                 break;
 
             case READ_KLASS_POINTER:
