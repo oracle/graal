@@ -481,8 +481,8 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.ELSE:
                     break;
                 case Instructions.END:
-                    // If the end instruction is not reachable, then the stack size must be adjusted to match
-                    // the stack size at the continuation point.
+                    // If the end instruction is not reachable, then the stack size must be adjusted
+                    // to match the stack size at the continuation point.
                     if (!state.isReachable()) {
                         state.setStackSize(state.getStackState(0) + state.getContinuationReturnLength(0));
                     }
