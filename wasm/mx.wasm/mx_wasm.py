@@ -319,7 +319,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         fv = float(string)
         iv = int(fv)
         if float(iv) != fv:
-            mx.abort("Cannot parse initialization directive: " + string);
+            mx.abort("Cannot parse initialization directive: " + string)
         return iv
 
     def extractInitialization(self, output_js_path):
