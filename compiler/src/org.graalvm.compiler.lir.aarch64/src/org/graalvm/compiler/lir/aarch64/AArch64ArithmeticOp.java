@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,8 @@ public enum AArch64ArithmeticOp {
     SHL(SHIFT),
     LSHR(SHIFT),
     ASHR(SHIFT),
+    ROR(SHIFT),
+    RORV(SHIFT),
     ABS,
 
     FADD,
@@ -233,6 +235,9 @@ public enum AArch64ArithmeticOp {
                 case ASHR:
                     masm.ashr(size, dst, src, b.asLong());
                     break;
+                case ROR:
+                    masm.ror(size, dst, src, (int) b.asLong());
+                    break;
                 default:
                     throw GraalError.shouldNotReachHere("op=" + op.name());
             }
@@ -318,6 +323,9 @@ public enum AArch64ArithmeticOp {
                     break;
                 case ASHR:
                     masm.ashr(size, dst, src1, src2);
+                    break;
+                case RORV:
+                    masm.rorv(size, dst, src1, src2);
                     break;
                 case FADD:
                     masm.fadd(size, dst, src1, src2);

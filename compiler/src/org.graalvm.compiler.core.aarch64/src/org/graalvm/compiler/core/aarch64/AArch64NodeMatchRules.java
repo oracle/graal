@@ -261,6 +261,60 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return emitBitField(op, a, distance, width);
     }
 
+    @MatchRule("(Or=op (LeftShift=x src Constant=shiftAmt1) (UnsignedRightShift src Constant=shiftAmt2))")
+    @MatchRule("(Or=op (UnsignedRightShift=x src Constant=shiftAmt1) (LeftShift src Constant=shiftAmt2))")
+    @MatchRule("(Add=op (LeftShift=x src Constant=shiftAmt1) (UnsignedRightShift src Constant=shiftAmt2))")
+    @MatchRule("(Add=op (UnsignedRightShift=x src Constant=shiftAmt1) (LeftShift src Constant=shiftAmt2))")
+    public ComplexMatchResult rotationConstant(ValueNode op, ValueNode x, ValueNode src, ConstantNode shiftAmt1, ConstantNode shiftAmt2) {
+        assert src.getStackKind().isNumericInteger();
+        assert shiftAmt1.getStackKind().getBitCount() == 32;
+        assert shiftAmt2.getStackKind().getBitCount() == 32;
+
+        int shift1 = shiftAmt1.asJavaConstant().asInt();
+        int shift2 = shiftAmt2.asJavaConstant().asInt();
+        if (op instanceof AddNode && (0 == shift1 || 0 == shift2)) {
+            return null;
+        }
+        if ((0 == shift1 + shift2) || (src.getStackKind().getBitCount() == shift1 + shift2)) {
+            return builder -> {
+                Value a = operand(src);
+                Value b = x instanceof LeftShiftNode ? operand(shiftAmt2) : operand(shiftAmt1);
+                return getArithmeticLIRGenerator().emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ROR, false, a, b);
+            };
+        }
+        return null;
+    }
+
+    @MatchRule("(Or (LeftShift=x src shiftAmount) (UnsignedRightShift src (Sub=y Constant shiftAmount)))")
+    @MatchRule("(Or (UnsignedRightShift=x src shiftAmount) (LeftShift src (Sub=y Constant shiftAmount)))")
+    @MatchRule("(Or (LeftShift=x src (Negate shiftAmount)) (UnsignedRightShift src (Add=y Constant shiftAmount)))")
+    @MatchRule("(Or (UnsignedRightShift=x src (Negate shiftAmount)) (LeftShift src (Add=y Constant shiftAmount)))")
+    @MatchRule("(Or (LeftShift=x src shiftAmount) (UnsignedRightShift src (Negate=y shiftAmount)))")
+    @MatchRule("(Or (UnsignedRightShift=x src shiftAmount) (LeftShift src (Negate=y shiftAmount)))")
+    public ComplexMatchResult rotationExpander(ValueNode src, ValueNode shiftAmount, ValueNode x, ValueNode y) {
+        assert src.getStackKind().isNumericInteger();
+        assert shiftAmount.getStackKind().getBitCount() == 32;
+
+        if (y instanceof SubNode || y instanceof AddNode) {
+            BinaryNode binary = (BinaryNode) y;
+            ConstantNode delta = (ConstantNode) (binary.getX() instanceof ConstantNode ? binary.getX() : binary.getY());
+            if (delta.asJavaConstant().asInt() != src.getStackKind().getBitCount()) {
+                return null;
+            }
+        }
+
+        return builder -> {
+            Value a = operand(src);
+            Value b;
+            if (y instanceof AddNode) {
+                b = x instanceof LeftShiftNode ? operand(shiftAmount) : getArithmeticLIRGenerator().emitNegate(operand(shiftAmount));
+            } else {
+                b = x instanceof LeftShiftNode ? getArithmeticLIRGenerator().emitNegate(operand(shiftAmount)) : operand(shiftAmount);
+            }
+            return getArithmeticLIRGenerator().emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.RORV, false, a, b);
+        };
+    }
+
     @MatchRule("(Add=binary a (LeftShift=shift b Constant))")
     @MatchRule("(Add=binary a (RightShift=shift b Constant))")
     @MatchRule("(Add=binary a (UnsignedRightShift=shift b Constant))")

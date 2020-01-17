@@ -2180,14 +2180,14 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
-     * dst = rotateRight(src1, (src2 & log2(size))).
+     * dst = rotateRight(src1, (src2 & (size - 1))).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src1 general purpose register. May not be null or stackpointer.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
-    protected void ror(int size, Register dst, Register src1, Register src2) {
+    protected void rorv(int size, Register dst, Register src1, Register src2) {
         dataProcessing2SourceOp(RORV, dst, src1, src2, generalFromSize(size));
     }
 
