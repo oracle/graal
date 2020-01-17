@@ -449,6 +449,8 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.NOP:
                     break;
                 case Instructions.BLOCK: {
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     int stackSize = state.stackSize();
@@ -456,20 +458,26 @@ public class BinaryParser extends BinaryStreamParser {
                     WasmBlockNode nestedBlock = readBlock(context, codeEntry, state);
                     nestedControlTable.add(nestedBlock);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.LOOP: {
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     state.pushStackState(state.stackSize());
                     LoopNode loopBlock = readLoop(context, codeEntry, state);
                     nestedControlTable.add(loopBlock);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.IF: {
                     // Pop the condition.
                     state.pop();
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     // For the if block, we save the stack size reduced by 1, because of the
@@ -478,6 +486,7 @@ public class BinaryParser extends BinaryStreamParser {
                     WasmIfNode ifNode = readIf(context, codeEntry, state);
                     nestedControlTable.add(ifNode);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.ELSE:
