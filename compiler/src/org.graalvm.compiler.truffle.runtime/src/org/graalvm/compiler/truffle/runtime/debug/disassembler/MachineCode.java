@@ -48,10 +48,6 @@ public class MachineCode {
         this.code = code;
     }
 
-    public long getAddress() {
-        return address;
-    }
-
     public int getLength() {
         return code.length;
     }
