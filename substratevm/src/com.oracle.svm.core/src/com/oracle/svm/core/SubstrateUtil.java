@@ -247,6 +247,10 @@ public class SubstrateUtil {
 
     private static volatile boolean diagnosticsInProgress = false;
 
+    public static boolean isPrintDiagnosticsInProgress() {
+        return diagnosticsInProgress;
+    }
+
     /**
      * Prints extensive diagnostic information to the given Log.
      */
@@ -254,7 +258,6 @@ public class SubstrateUtil {
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
-            BreakpointNode.breakpoint();
             return;
         }
         diagnosticsInProgress = true;
