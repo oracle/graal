@@ -35,9 +35,11 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
@@ -58,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
@@ -921,10 +924,20 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createGetUniqueStackSpace(Type type, UniquesRegion uniquesRegion) {
         int alignment = getByteAlignment(type);
-        int byteSize = getByteSize(type);
-        UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
-        LLVMGetStackForConstInstruction getStackSpace = LLVMGetUniqueStackSpaceInstructionNodeGen.create(byteSize, alignment, type, slot);
-        return createGetStackSpace(type, getStackSpace, byteSize);
+        try {
+            int byteSize = getByteSize(type);
+            UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
+            LLVMGetStackForConstInstruction getStackSpace = LLVMGetUniqueStackSpaceInstructionNodeGen.create(byteSize, alignment, type, slot);
+            return createGetStackSpace(type, getStackSpace, byteSize);
+        } catch (StackOverflowError soe) {
+            return new LLVMExpressionNode() {
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new LLVMAllocationFailureException(this, soe);
+                }
+            };
+        }
     }
 
     protected LLVMExpressionNode createGetStackSpace(Type type, LLVMGetStackForConstInstruction getStackSpace, int byteSize) {

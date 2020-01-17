@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,6 +43,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public final class LLVMStack {
 
     public static final String FRAME_ID = "<stackpointer>";
+    private static final long MAX_ALLOCATION_SIZE = Integer.MAX_VALUE;
 
     private final long stackSize;
 
@@ -234,6 +235,11 @@ public final class LLVMStack {
     }
 
     private static long getAlignedAllocation(long address, long size, int alignment) {
+        if (Long.compareUnsigned(size, MAX_ALLOCATION_SIZE) > 0) {
+            CompilerDirectives.transferToInterpreter();
+            throw new StackOverflowError(String.format(String.format("Stack allocation of %s bytes exceeds limit of %s",
+                            Long.toUnsignedString(size), Long.toUnsignedString(MAX_ALLOCATION_SIZE))));
+        }
         assert size >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
         long alignedAllocation = (address - size) & -alignment;
