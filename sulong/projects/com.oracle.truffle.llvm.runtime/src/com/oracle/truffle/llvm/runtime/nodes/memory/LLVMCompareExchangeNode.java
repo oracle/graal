@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI32;
@@ -244,8 +245,12 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         private LLVMNativePointer allocateResult(VirtualFrame frame, LLVMMemory memory) {
-            LLVMNativePointer allocation = LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
-            return allocation;
+            try {
+                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
+            } catch (StackOverflowError soe) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMAllocationFailureException(this, soe);
+            }
         }
 
         protected static LLVMI8LoadNode createI8Read() {
