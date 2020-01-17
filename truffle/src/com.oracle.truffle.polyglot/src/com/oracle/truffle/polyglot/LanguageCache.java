@@ -154,7 +154,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Collections.emptySet(),
                         null,
                         Collections.emptySet(),
-                        false, false, servicesClassNames, LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
+                        false, false, servicesClassNames,
+                        LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
     }
 
     static Map<String, LanguageCache> languageMimes() {

@@ -289,10 +289,12 @@ meth public abstract boolean test(com.oracle.truffle.api.source.Source)
 CLSS public final com.oracle.truffle.api.instrumentation.StandardTags
 innr public final static CallTag
 innr public final static ExpressionTag
+innr public final static ReadVariableTag
 innr public final static RootBodyTag
 innr public final static RootTag
 innr public final static StatementTag
 innr public final static TryBlockTag
+innr public final static WriteVariableTag
 supr java.lang.Object
 hfds ALL_TAGS
 
@@ -302,6 +304,11 @@ supr com.oracle.truffle.api.instrumentation.Tag
 
 CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$ExpressionTag
  outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$ReadVariableTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+fld public final static java.lang.String NAME = "readVariableName"
 supr com.oracle.truffle.api.instrumentation.Tag
 
 CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$RootBodyTag
@@ -319,6 +326,11 @@ supr com.oracle.truffle.api.instrumentation.Tag
 CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$TryBlockTag
  outer com.oracle.truffle.api.instrumentation.StandardTags
 fld public final static java.lang.String CATCHES = "catches"
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$WriteVariableTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+fld public final static java.lang.String NAME = "writeVariableName"
 supr com.oracle.truffle.api.instrumentation.Tag
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.Tag

@@ -58,7 +58,8 @@ public final class StandardTags {
         /* No instances */
     }
 
-    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class};
+    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class,
+                    ReadVariableTag.class, WriteVariableTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
@@ -239,6 +240,70 @@ public final class StandardTags {
         public static final String CATCHES = "catches";
 
         private TryBlockTag() {
+            /* No instances */
+        }
+
+    }
+
+    /**
+     * Marks program locations to be considered as reads of variables of the languages.
+     * <p>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Language Server Protocol:</b> Marks every read of a variable to support the
+     * <i>documentHighlight</i>, <i>hover</i>, <i>definition</i> and <i>references</i> requests.
+     * </li>
+     * </ul>
+     * To determine the name of the variable, it is required that a node tagged with
+     * {@link ReadVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
+     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
+     * {@link ReadVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     *
+     * @since 20.0.0
+     */
+    @Tag.Identifier("READ_VARIABLE")
+    public static final class ReadVariableTag extends Tag {
+
+        /**
+         * Property of the node object that contains name of the variable.
+         *
+         * @since 20.0.0
+         */
+        public static final String NAME = "readVariableName";
+
+        private ReadVariableTag() {
+            /* No instances */
+        }
+
+    }
+
+    /**
+     * Marks program locations to be considered as writes of variables of the languages.
+     * <p>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Language Server Protocol:</b> Marks every write of a variable to support the
+     * <i>documentHighlight</i>, <i>hover</i>, <i>definition</i> and <i>references</i> requests.
+     * </li>
+     * </ul>
+     * To determine the name of the variable, it is required that a node tagged with
+     * {@link WriteVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
+     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
+     * {@link WriteVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     *
+     * @since 20.0.0
+     */
+    @Tag.Identifier("WRITE_VARIABLE")
+    public static final class WriteVariableTag extends Tag {
+
+        /**
+         * Property of the node object that contains name of the variable.
+         *
+         * @since 20.0.0
+         */
+        public static final String NAME = "writeVariableName";
+
+        private WriteVariableTag() {
             /* No instances */
         }
 
