@@ -939,6 +939,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         new FrameInstanceVisitor<Method>() {
                             private int depth = 0;
 
+                            @SuppressWarnings("fallthrough")
                             @Override
                             public Method visitFrame(FrameInstance frameInstance) {
                                 Method method = getMethodFromFrame(frameInstance);
