@@ -1204,6 +1204,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
+if mx.is_linux() and mx.get_arch() == "amd64":
+    jdk = mx.get_jdk(tag='default')
+    if jdk.javaCompliance == '11':
+        mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmStaticLib(
+            suite=suite,
+            name='JDK11 static libraries compiled with muslc',
+            short_name='mjdksl',
+            dir_name=False,
+            license_files=[],
+            third_party_license_files=[],
+            support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT']
+        ))
+
+
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
 def helloworld(args, config=None):
     """

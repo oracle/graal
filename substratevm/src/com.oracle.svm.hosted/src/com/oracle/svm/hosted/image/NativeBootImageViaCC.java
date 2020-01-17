@@ -38,8 +38,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -118,6 +120,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
+
+            LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
+            additionalPreOptions.addAll(currentLibc.getLinkerPreOptions());
         }
 
         @Override
