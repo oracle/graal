@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
@@ -66,6 +67,26 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             assertEquals(AgentScript.VERSION, agentAPI.version());
+        }
+    }
+
+    @Test
+    public void versionOfTheAgentDirect() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            assertNotNull("agent created", agent);
+            assertNotNull("we have agent's truffle object", AgentObjectFactory.agentObject);
+
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+
+            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.agentObject));
+
+            Object members = iop.getMembers(AgentObjectFactory.agentObject);
+            long membersCount = iop.getArraySize(members);
+            assertEquals(2, membersCount);
+
+            assertEquals("id", iop.readArrayElement(members, 0));
+            assertEquals("version", iop.readArrayElement(members, 1));
         }
     }
 

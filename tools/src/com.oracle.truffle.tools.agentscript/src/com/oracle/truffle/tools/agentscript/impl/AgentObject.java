@@ -123,12 +123,14 @@ final class AgentObject implements TruffleObject {
 
     @ExportMessage
     static Object getMembers(AgentObject obj, boolean includeInternal) {
-        return new Object[0];
+        return ArrayObject.array("id", "version");
     }
 
     @ExportMessage
     Object readMember(String name) throws UnknownIdentifierException {
         switch (name) {
+            case "id":
+                return AgentScript.ID;
             case "version":
                 return AgentScript.VERSION;
         }

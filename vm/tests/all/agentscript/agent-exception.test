@@ -32,8 +32,8 @@ agentscript: Unknown attribute misnamedAttribute
 >[1] js --jvm --experimental-options --agentscript=agent-error3.js log.js
 agentscript: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --experimental-options --agentscript=agent-error.js log.js
-Error while initializing Object
+Error while initializing {id: "agentscript", version: "0.3"}
 .*at <js> .*Unknown.*
 >[7] js --experimental-options --agentscript=agent-error.js log.js
-Error while initializing Object
+Error while initializing {id: "agentscript", version: "0.3"}
 .*at <js> .*Unknown.*
