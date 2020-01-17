@@ -114,6 +114,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
             exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), classpath, nativeImageClassLoader);
         } finally {
+            unhookCustomClassLoaders();
             if (timerTask != null) {
                 timerTask.cancel();
             }
@@ -121,11 +122,48 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         System.exit(exitStatus);
     }
 
+    private static void unhookCustomClassLoaders() {
+        NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
+        customSystemClassLoader.setDelegate(null);
+        Thread.currentThread().setContextClassLoader(customSystemClassLoader.getDefaultSystemClassLoader());
+    }
+
+    /**
+     * Installs a class loader hierarchy that resolves classes and resources available in
+     * {@code classpath}. The parent for the installed {@link NativeImageClassLoader} is the default
+     * system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
+     * sun.misc.Launcher.AppClassLoader for JDK8,11 respectively)
+     *
+     * In the presence of the custom system class loader {@link NativeImageSystemClassLoader} the
+     * delegate is to {@link NativeImageClassLoader} allowing the resolution of classes in
+     * {@code classpath} via the system class loader. Note that any custom system class loader has
+     * the default system class loader as its parent
+     *
+     * @param classpath
+     * @return the native image class loader
+     */
     public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
-        NativeImageClassLoader nativeImageClassLoader;
-        ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
-        nativeImageClassLoader = new NativeImageClassLoader(verifyClassPathAndConvertToURLs(classpath), applicationClassLoader);
+        if (!(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader)) {
+            String badCustomClassLoaderError = "SystemClassLoader is the default system class loader. This might create problems when using reflection " +
+                            "during class initialization at build-time. " +
+                            "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
+            UserError.abort(badCustomClassLoaderError);
+        }
+        // Acquire the custom system class loader
+        NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
+
+        // To avoid class loading cycles we make the parent of NativeImageClass the default class
+        // loader
+        NativeImageClassLoader nativeImageClassLoader = new NativeImageClassLoader(verifyClassPathAndConvertToURLs(classpath),
+                        customSystemClassLoader.getDefaultSystemClassLoader());
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
+        /*
+         * Finally the system class loader will delegate to NativeImageClassLoader, enabling
+         * resolution of classes and resources during image build-time present in the image
+         * classpath
+         */
+        customSystemClassLoader.setDelegate(nativeImageClassLoader);
+
         return nativeImageClassLoader;
     }
 
@@ -278,9 +316,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                          */
                         javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
                     } catch (ReflectionUtilError ex) {
-                        throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "' is declared as the main entry point but it can not be found. " +
-                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.",
-                                        ex.getCause());
+                        throw UserError.abort(ex.getCause(),
+                                        String.format("Method '%s.%s' is declared as the main entry point but it can not be found. " +
+                                                        "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
+                                                        mainClass.getName(),
+                                                        mainEntryPointName,
+                                                        mainClass.getName(),
+                                                        mainEntryPointName));
                     }
 
                     if (javaMainMethod.getReturnType() != void.class) {
@@ -482,6 +524,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
             NativeImageGeneratorRunner.main(args);
         }
     }

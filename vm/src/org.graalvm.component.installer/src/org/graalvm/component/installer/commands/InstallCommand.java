@@ -45,6 +45,7 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
+import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
@@ -52,6 +53,7 @@ import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
@@ -91,6 +93,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
         OPTIONS.put(Commands.OPTION_NO_VERIFY_JARS, "");
         OPTIONS.put(Commands.OPTION_LOCAL_DEPENDENCIES, "");
+        OPTIONS.put(Commands.OPTION_NO_DEPENDENCIES, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
@@ -103,6 +106,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
         OPTIONS.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
         OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
+        OPTIONS.put(Commands.LONG_OPTION_NO_DEPENDENCIES, Commands.OPTION_NO_DEPENDENCIES);
 
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
@@ -248,6 +252,10 @@ public class InstallCommand implements InstallerCommand {
     }
 
     void addDependencies(ComponentInfo ci) {
+        if (input.hasOption(Commands.OPTION_NO_DEPENDENCIES)) {
+            return;
+        }
+
         Set<ComponentInfo> deps = new HashSet<>();
 
         LOG.log(Level.FINE, "Inspecting dependencies of {0}", ci);
@@ -324,6 +332,16 @@ public class InstallCommand implements InstallerCommand {
             // component will be skipped, do not bother with validation
             feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
             return false;
+        }
+        ComponentInfo existing = input.getLocalRegistry().findComponent(info.getId());
+        if (existing != null) {
+            // will refuse to install existing bundled components:
+            if (existing.getDistributionType() != DistributionType.OPTIONAL) {
+                throw new DependencyException.Conflict(
+                                existing.getId(), info.getVersionString(), existing.getVersionString(),
+                                feedback.l10n("INSTALL_CannotReplaceBundledComponent",
+                                                existing.getName(), existing, existing.getVersionString()));
+            }
         }
         Version minV = vrf.getMinVersion();
         if (minV != null && minV.compareTo(this.minRequiredGraalVersion) > 0) {

@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
@@ -117,6 +117,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
+import org.graalvm.compiler.truffle.runtime.debug.JFRListener;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
@@ -400,6 +401,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TraceSplittingListener.install(this);
         StatisticsListener.install(this);
         TraceASTCompilationListener.install(this);
+        JFRListener.install(this);
         installShutdownHooks();
     }
 
@@ -685,6 +687,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    void onEngineClosed(EngineData runtimeData) {
+        getListener().onEngineClosed(runtimeData);
+    }
+
     protected void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         List<OptimizedCallTarget> blockCompilations = OptimizedBlockNode.preparePartialBlockCompilations(callTarget);
         for (OptimizedCallTarget blockTarget : blockCompilations) {
@@ -700,7 +706,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler();
+            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                 listeners.onCompilationStarted(callTarget);
                 TruffleInlining inlining = createInliningPlan(callTarget, task);
@@ -876,15 +882,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return callMethods;
     }
 
-    // cached field access to make it fast in the interpreter
-    private Boolean profilingEnabled;
-
-    @Override
-    public final boolean isProfilingEnabled() {
-        if (profilingEnabled == null) {
-            profilingEnabled = TruffleRuntimeOptions.getValue(TruffleProfilingEnabled);
-        }
-        return profilingEnabled;
+    /**
+     * Use {@link OptimizedCallTarget#engine} whenever possible as it's much faster.
+     */
+    protected static EngineData getEngineData(RootNode rootNode) {
+        return GraalTVMCI.getEngineData(rootNode);
     }
 
     private static LayoutFactory loadObjectLayoutFactory() {

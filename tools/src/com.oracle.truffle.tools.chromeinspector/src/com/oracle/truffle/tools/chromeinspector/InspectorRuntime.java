@@ -252,7 +252,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             result = RemoteObject.createJSONResultValue(value, context.getErr());
                         } else {
                             RemoteObject ro = new RemoteObject(value, generatePreview, context);
-                            context.getRemoteObjectsHandler().register(ro);
+                            context.getRemoteObjectsHandler().register(ro, objectGroup);
                             result = ro.toJSON();
                             if (!ro.isReplicable()) {
                                 suspendedInfo.lastEvaluatedValue.set(Pair.create(value, ro.getRawValue()));
@@ -283,6 +283,7 @@ public final class InspectorRuntime extends RuntimeDomain {
             throw new CommandProcessException("An objectId required.");
         }
         RemoteObject object = context.getRemoteObjectsHandler().getRemote(objectId);
+        String objectGroup = context.getRemoteObjectsHandler().getObjectGroupOf(objectId);
         JSONObject json = new JSONObject();
         if (object != null) {
             DebugValue value = object.getDebugValue();
@@ -308,7 +309,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             } else {
                                 array = value.getArray();
                             }
-                            putResultProperties(json, value, properties, array, generatePreview);
+                            putResultProperties(json, value, properties, array, generatePreview, objectGroup);
                             return null;
                         }
 
@@ -327,7 +328,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             for (DebugValue p : scope.getDeclaredValues()) {
                                 properties.add(p);
                             }
-                            putResultProperties(json, null, properties, Collections.emptyList(), generatePreview);
+                            putResultProperties(json, null, properties, Collections.emptyList(), generatePreview, objectGroup);
                             return null;
                         }
 
@@ -346,7 +347,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         return new Params(json);
     }
 
-    private void putResultProperties(JSONObject json, DebugValue value, Collection<DebugValue> properties, Collection<DebugValue> arrayElements, boolean generatePreview) {
+    private void putResultProperties(JSONObject json, DebugValue value, Collection<DebugValue> properties, Collection<DebugValue> arrayElements, boolean generatePreview, String objectGroup) {
         final String functionLocation = "[[FunctionLocation]]";
         JSONArray result = new JSONArray();
         JSONArray internals = new JSONArray();
@@ -368,12 +369,12 @@ public final class InspectorRuntime extends RuntimeDomain {
                         v = propertiesIterator.next();
                         if (v.isReadable()) {
                             if (!v.isInternal()) {
-                                result.put(createPropertyJSON(v, generatePreview));
+                                result.put(createPropertyJSON(v, generatePreview, objectGroup));
                                 if (storedPropertyNames != null) {
                                     storedPropertyNames.add(v.getName());
                                 }
                             } else {
-                                internals.put(createPropertyJSON(v, generatePreview));
+                                internals.put(createPropertyJSON(v, generatePreview, objectGroup));
                             }
                             if (!hasFunctionLocation && functionLocation.equals(v.getName())) {
                                 hasFunctionLocation = true;
@@ -392,7 +393,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                 String name = Integer.toString(i++);
                 try {
                     if (v.isReadable() && (storedPropertyNames == null || !storedPropertyNames.contains(name))) {
-                        result.put(createPropertyJSON(v, name, generatePreview));
+                        result.put(createPropertyJSON(v, name, generatePreview, objectGroup));
                     }
                 } catch (DebugException ex) {
                     if (exception == null) {
@@ -405,7 +406,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                 // Add __proto__ when in JavaScript:
                 DebugValue prototype = value.getProperty("__proto__");
                 if (prototype != null && !prototype.isNull()) {
-                    result.put(createPropertyJSON(prototype, null, generatePreview, true, false));
+                    result.put(createPropertyJSON(prototype, null, generatePreview, true, false, objectGroup));
                 }
             }
         } catch (DebugException ex) {
@@ -455,8 +456,8 @@ public final class InspectorRuntime extends RuntimeDomain {
     }
 
     @Override
-    public Params callFunctionOn(String objectId, String functionDeclaration, JSONArray arguments, boolean silent, boolean returnByValue, boolean generatePreview, boolean awaitPromise)
-                    throws CommandProcessException {
+    public Params callFunctionOn(String objectId, String functionDeclaration, JSONArray arguments, boolean silent, boolean returnByValue, boolean generatePreview, boolean awaitPromise,
+                    int executionContextId, String objectGroup) throws CommandProcessException {
         if (objectId == null) {
             throw new CommandProcessException("An objectId required.");
         }
@@ -595,7 +596,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 int start = ((JSONObject) arguments.get(0)).getInt("value");
                                 int count = ((JSONObject) arguments.get(1)).getInt("value");
                                 RemoteObject ro = new RemoteObject(value, true, generatePreview, context, new RemoteObject.IndexRange(start, start + count, false));
-                                context.getRemoteObjectsHandler().register(ro);
+                                context.getRemoteObjectsHandler().register(ro, objectGroup);
                                 result = ro.toJSON();
                             } else if (FUNCTION_GET_NAMED_VARS_PATTERN.matcher(functionTrimmed).matches()) {
                                 Collection<DebugValue> props = value.getProperties();
@@ -608,7 +609,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 int start = ((JSONObject) arguments.get(0)).getInt("value");
                                 int count = ((JSONObject) arguments.get(1)).getInt("value");
                                 RemoteObject ro = new RemoteObject(value, true, generatePreview, context, new RemoteObject.IndexRange(start, start + count, true));
-                                context.getRemoteObjectsHandler().register(ro);
+                                context.getRemoteObjectsHandler().register(ro, objectGroup);
                                 result = ro.toJSON();
                             } else {
                                 // Process CustomPreview body:
@@ -678,7 +679,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                             } else {
                                 if (!returnByValue) {
                                     RemoteObject ro = new RemoteObject(v, true, generatePreview, context);
-                                    context.getRemoteObjectsHandler().register(ro);
+                                    context.getRemoteObjectsHandler().register(ro, objectGroup);
                                     result = ro.toJSON();
                                 } else {
                                     result = RemoteObject.createJSONResultValue(v, context.getErr());
@@ -693,6 +694,16 @@ public final class InspectorRuntime extends RuntimeDomain {
             }
         }
         return new Params(json);
+    }
+
+    @Override
+    public void releaseObject(String objectId) {
+        context.getRemoteObjectsHandler().releaseObject(objectId);
+    }
+
+    @Override
+    public void releaseObjectGroup(String objectGroup) {
+        context.getRemoteObjectsHandler().releaseObjectGroup(objectGroup);
     }
 
     private void setPropertyValue(DebugValue object, DebugScope scope, Object property, CallArgument newValue, Pair<DebugValue, Object> evaluatedValue) throws CommandProcessException {
@@ -800,18 +811,18 @@ public final class InspectorRuntime extends RuntimeDomain {
         context.setCustomObjectFormatterEnabled(enabled);
     }
 
-    private JSONObject createPropertyJSON(DebugValue v, boolean generatePreview) {
-        return createPropertyJSON(v, null, generatePreview);
+    private JSONObject createPropertyJSON(DebugValue v, boolean generatePreview, String objectGroup) {
+        return createPropertyJSON(v, null, generatePreview, objectGroup);
     }
 
-    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview) {
-        return createPropertyJSON(v, defaultName, generatePreview, false, true);
+    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, String objectGroup) {
+        return createPropertyJSON(v, defaultName, generatePreview, false, true, objectGroup);
     }
 
-    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, boolean readEagerly, boolean enumerable) {
+    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, boolean readEagerly, boolean enumerable, String objectGroup) {
         PropertyDescriptor pd;
         RemoteObject rv = new RemoteObject(v, readEagerly, generatePreview, context);
-        context.getRemoteObjectsHandler().register(rv);
+        context.getRemoteObjectsHandler().register(rv, objectGroup);
         String name = v.getName();
         if (name == null && defaultName != null) {
             name = defaultName;

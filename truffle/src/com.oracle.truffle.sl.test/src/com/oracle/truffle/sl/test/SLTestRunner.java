@@ -58,7 +58,9 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -97,14 +99,16 @@ public class SLTestRunner extends ParentRunner<TestCase> {
         protected final String sourceName;
         protected final String testInput;
         protected final String expectedOutput;
+        protected final Map<String, String> options;
         protected String actualOutput;
 
-        protected TestCase(Class<?> testClass, String baseName, String sourceName, Path path, String testInput, String expectedOutput) {
+        protected TestCase(Class<?> testClass, String baseName, String sourceName, Path path, String testInput, String expectedOutput, Map<String, String> options) {
             this.name = Description.createTestDescription(testClass, baseName);
             this.sourceName = sourceName;
             this.path = path;
             this.testInput = testInput;
             this.expectedOutput = expectedOutput;
+            this.options = options;
         }
     }
 
@@ -136,6 +140,11 @@ public class SLTestRunner extends ParentRunner<TestCase> {
         }
 
         String[] paths = suite.value();
+        Map<String, String> options = new HashMap<>();
+        String[] optionsList = suite.options();
+        for (int i = 0; i < optionsList.length; i += 2) {
+            options.put(optionsList[i], optionsList[i + 1]);
+        }
 
         Class<?> testCaseDirectory = c;
         if (suite.testCaseDirectory() != SLTestSuite.class) {
@@ -178,7 +187,7 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                         expectedOutput = readAllLines(outputFile);
                     }
 
-                    foundCases.add(new TestCase(c, baseName, sourceName, sourceFile, testInput, expectedOutput));
+                    foundCases.add(new TestCase(c, baseName, sourceName, sourceFile, testInput, expectedOutput, options));
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -292,7 +301,11 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                 SLLanguage.installBuiltin(builtin);
             }
 
-            context = Context.newBuilder().in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out).build();
+            Context.Builder builder = Context.newBuilder().allowExperimentalOptions(true).in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out);
+            for (Map.Entry<String, String> e : testCase.options.entrySet()) {
+                builder.option(e.getKey(), e.getValue());
+            }
+            context = builder.build();
             PrintWriter printer = new PrintWriter(out);
             run(context, testCase.path, printer);
             printer.flush();

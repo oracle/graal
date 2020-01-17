@@ -243,7 +243,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 cmd.add(staticLibrary.toString());
             }
 
-            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
+            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT");
 
             // Add clibrary paths to command
             for (String libraryPath : nativeLibs.getLibraryPaths()) {

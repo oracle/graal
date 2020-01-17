@@ -152,6 +152,15 @@ public class SLInspectDebugTest {
                     "  debugger;\n" +
                     "  return obj;\n" +
                     "}\n";
+    private static final String CODE_OBJECT_GROUPS = "function main() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.a = new();\n" +
+                    "  obj.b = obj;\n" +
+                    "  debugger;\n" +
+                    "  obj.c = obj;\n" +
+                    "  obj.a.a = new();\n" +
+                    "  return obj;\n" +
+                    "}\n";
     private static final String GUEST_FUNCTIONS = "function main() {\n" +
                     "  foo0();\n" +
                     "  foo1();\n" +
@@ -1921,6 +1930,73 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"(function(x){var a=[];for(var o=x;o!==null&&typeof o !== 'undefined';o=o.__proto__){a.push(Object.getOwnPropertyNames(o))};return a})(obj)\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":{\"type\":\"object\",\"value\":[[\"a\",\"b\",\"c\"]]}},\"id\":6}\n"));
+
+        // Resume to finish:
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":20}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.finish();
+    }
+
+    @Test
+    public void testObjectGroups() throws Exception {
+        tester = InspectorTester.start(false);
+        Source source = Source.newBuilder("sl", CODE_OBJECT_GROUPS, "SLObjectGroups.sl").build();
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        String srcURL = InspectorTester.getStringURI(source.getURI());
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":1}\n" +
+                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":0,\"executionContextId\":" + id + ",\"url\":\"" + SL_BUILTIN_URI + "\",\"hash\":\"ffffffffffffffffffffffffffffffffffffffff\"}}\n" +
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":8,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":" + CODE_OBJECT_GROUPS.length() + ",\"executionContextId\":" + id + ",\"url\":\"" + slTestURI + "\",\"hash\":\"fdcfbca4f86efacaf153f7f0fe92832bff485978\"}}\n"));
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":4}," +
+                                                 "\"url\":\"" + srcURL + "\"}]}}\n"));
+        assertEquals("[1, 2]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
+        tester.sendMessage("{\"id\":5,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"obj\",\"objectGroup\":\"testGroup\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":{\"description\":\"Object\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"4\"}},\"id\":5}\n"));
+        assertEquals("[1, 2, 4]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
+        // Release the test object group:
+        tester.sendMessage("{\"id\":6,\"method\":\"Runtime.releaseObjectGroup\",\"params\":{\"objectGroup\":\"testGroup\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":6}\n"));
+        assertEquals("[1, 2]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
+
+        tester.sendMessage("{\"id\":10,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"obj\",\"objectGroup\":\"testGroup2\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":{\"description\":\"Object\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"5\"}},\"id\":10}\n"));
+        tester.sendMessage("{\"id\":11,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"5\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"Object\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"6\"},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"Object\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"7\"},\"configurable\":true,\"writable\":true}]," +
+                                                "\"internalProperties\":[]},\"id\":11}\n"));
+        assertEquals("[1, 2, 5, 6, 7]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
+        // Release an object
+        tester.sendMessage("{\"id\":15,\"method\":\"Runtime.releaseObject\",\"params\":{\"objectId\":\"2\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":15}\n"));
+        assertEquals("[1, 5, 6, 7]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
+        // Release the test object group that covers the object properties:
+        tester.sendMessage("{\"id\":16,\"method\":\"Runtime.releaseObjectGroup\",\"params\":{\"objectGroup\":\"testGroup2\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":16}\n"));
+        assertEquals("[1]", tester.getInspectorContext().getRemoteObjectsHandler().getRegisteredIDs().toString());
 
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
 
 import java.lang.ref.WeakReference;

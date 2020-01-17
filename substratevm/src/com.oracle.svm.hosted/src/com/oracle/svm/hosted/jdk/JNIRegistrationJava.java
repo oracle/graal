@@ -55,14 +55,13 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(JNIRegistrationSupport.class, new JNIRegistrationSupport());
 
-        rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment");
+        rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory");
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             if (isPosix()) {
                 rerunClassInit(a, "java.lang.UNIXProcess");
             }
         } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl",
-                            "java.io.FilePermission");
+            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
         }
     }
 
@@ -137,6 +136,14 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
             /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
         }
+
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
+        }
+    }
+
+    private static void registerProcessHandleImplInfoInitIDs(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(fields(a, "java.lang.ProcessHandleImpl$Info", "command", "commandLine", "arguments", "startTime", "totalTime", "user"));
     }
 
     private static void registerRandomAccessFileInitIDs(DuringAnalysisAccess a) {

@@ -97,6 +97,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionKey;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -128,6 +129,10 @@ public abstract class Accessor {
 
     protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
         getTVMCI().reloadEngineOptions(runtimeData, optionValues);
+    }
+
+    protected void onEngineClosed(Object runtimeData) {
+        getTVMCI().onEngineClosed(runtimeData);
     }
 
     public abstract static class NodeSupport {
@@ -287,6 +292,8 @@ public abstract class Accessor {
 
         public abstract void closeInternalContext(Object polyglotContext);
 
+        public abstract boolean isInternalContextEntered(Object polyglotContext);
+
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
         public abstract void reportAllContextThreads(Object polyglotEngine, Object threadsListener);
@@ -397,6 +404,14 @@ public abstract class Accessor {
         public abstract boolean isIOAllowed();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
+
+        public abstract Set<String> getLanguageIds();
+
+        public abstract Set<String> getInstrumentIds();
+
+        public abstract Set<String> getInternalIds();
+
+        public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
     }
 
     public abstract static class LanguageSupport {
@@ -693,6 +708,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
             case "org.graalvm.compiler.truffle.runtime.CompilerRuntimeAccessor":
+            case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":
                 // OK, classes allowed to use accessors
                 break;

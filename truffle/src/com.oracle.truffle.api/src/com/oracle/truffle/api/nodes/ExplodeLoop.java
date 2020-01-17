@@ -170,7 +170,7 @@ public @interface ExplodeLoop {
      *
      * @since 0.15
      */
-    LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL;
+    LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
 
 }
 

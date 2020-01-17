@@ -27,11 +27,13 @@ package com.oracle.svm.core.heap;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
+@DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {

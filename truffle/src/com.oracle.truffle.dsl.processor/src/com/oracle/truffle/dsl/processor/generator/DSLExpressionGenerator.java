@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Cast;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
@@ -82,6 +83,15 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
         CodeTree right = stack.pop();
         CodeTree left = stack.pop();
         stack.push(combine(left, string(" " + binary.getOperator() + " "), right));
+    }
+
+    public void visitCast(Cast cast) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.string("(");
+        builder.cast(cast.getCastType());
+        builder.tree(pop());
+        builder.string(")");
+        push(builder.build());
     }
 
     public void visitCall(Call call) {

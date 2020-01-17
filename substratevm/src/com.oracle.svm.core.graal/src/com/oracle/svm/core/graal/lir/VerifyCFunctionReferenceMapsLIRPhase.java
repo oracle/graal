@@ -89,7 +89,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
                 LIRInstruction op = instructions.get(i);
                 if (op instanceof VerificationMarkerOp && ((VerificationMarkerOp) op).getMarker() instanceof CFunctionPrologueMarker) {
                     CFunctionPrologueMarker prologueMarker = (CFunctionPrologueMarker) ((VerificationMarkerOp) op).getMarker();
-                    new VerificationInstance(ir, prologueMarker.getEpilogueMarker()).run(block, i);
+                    new VerificationInstance(ir, prologueMarker.getNewThreadStatus(), prologueMarker.getEpilogueMarker()).run(block, i);
                 }
             }
         }
@@ -98,6 +98,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
     static class VerificationInstance {
 
         private final LIR ir;
+        private final int newThreadStatus;
         private final CFunctionEpilogueMarker epilogueMarker;
 
         private final Set<AbstractBlockBase<?>> processed = new HashSet<>();
@@ -105,8 +106,9 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
 
         private final List<LIRFrameState> states = new ArrayList<>();
 
-        VerificationInstance(LIR ir, CFunctionEpilogueMarker epilogueMarker) {
+        VerificationInstance(LIR ir, int newThreadStatus, CFunctionEpilogueMarker epilogueMarker) {
             this.ir = ir;
+            this.newThreadStatus = newThreadStatus;
             this.epilogueMarker = epilogueMarker;
         }
 
@@ -123,11 +125,12 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
             }
 
             /*
-             * We must have at least the 2 call instructions. We can have more instructions, e.g.,
-             * infopoints that capture the debugger state.
+             * Depending on the transition, we expect a certain minimum number of frame states. It
+             * is always possible that we have more instructions with a framestate, e.g., infopoints
+             * also capture the debugger state.
              */
-            if (states.size() < 2) {
-                throw VMError.shouldNotReachHere("Expected at least 2 instructions with states, but found " + states.size());
+            if (states.size() < expectedFrameStates()) {
+                throw VMError.shouldNotReachHere("Expected at least " + expectedFrameStates() + " instructions with states, but found " + states.size());
             }
 
             /*
@@ -166,6 +169,26 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
                 if (!processed.contains(successor)) {
                     worklist.add(successor);
                 }
+            }
+        }
+
+        /**
+         * When doing a C function call with a Java to native transition, we expect at least 2 call
+         * instructions with a frame state (the C function call and the slowpath transition back to
+         * the Java thread status).
+         *
+         * When doing a C function call with a Java to VM transition, we only expect 1 call
+         * instruction with a frame state (only the C function call) as we only need the fastpath
+         * when doing the transition back to the Java thread status.
+         */
+        private int expectedFrameStates() {
+            switch (newThreadStatus) {
+                case StatusSupport.STATUS_IN_NATIVE:
+                    return 2;
+                case StatusSupport.STATUS_IN_VM:
+                    return 1;
+                default:
+                    throw VMError.shouldNotReachHere("Unexpected thread status: " + newThreadStatus);
             }
         }
     }

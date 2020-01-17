@@ -169,6 +169,8 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
     @CEntryPoint(name = "detach_threads", documentation = {
+                    "- This function is DEPRECATED AND WILL BE REMOVED ENTIRELY in a future release -",
+                    "",
                     "Using the context of the isolate thread from the first argument, detaches the",
                     "threads in an array pointed to by the second argument, with the length of the",
                     "array given in the third argument. All of the passed threads must be in the",
@@ -178,7 +180,7 @@ public final class CEntryPointNativeFunctions {
                     "the array, however, using detach_thread() should be preferred for detaching only",
                     "the current thread.",
                     "Returns 0 on success, or a non-zero value on failure."})
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class, publishAs = CEntryPointOptions.Publish.SymbolOnly)
     public static int detachThreads(IsolateThread thread, IsolateThreadPointer array, int length) {
         int result = CEntryPointActions.enter(thread);
         if (result != 0) {
@@ -241,6 +243,36 @@ public final class CEntryPointNativeFunctions {
             return result;
         }
         return CEntryPointActions.leaveTearDownIsolate();
+    }
+
+    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
+    @CEntryPoint(name = "detach_all_threads_and_tear_down_isolate", documentation = {
+                    "In the isolate of the passed isolate thread, detach all those threads that were",
+                    "externally started (not within Java, which includes the \"main thread\") and were",
+                    "attached to the isolate afterwards. Afterwards, all threads that were started",
+                    "within Java undergo a regular shutdown process, followed by the tear-down of the",
+                    "entire isolate, which detaches the current thread and discards the objects,",
+                    "threads, and any other state or context associated with the isolate.",
+                    "None of the manually attached threads targeted by this function may be executing",
+                    "Java code at the time when this function is called or at any point in the future",
+                    "or this will cause entirely undefined (and likely fatal) behavior.",
+                    "Returns 0 on success, or a non-zero value on (non-fatal) failure."})
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
+    public static int detachAllThreadsAndTearDownIsolate(IsolateThread isolateThread) {
+        int result = CEntryPointActions.enter(isolateThread);
+        if (result != 0) {
+            CEntryPointActions.leave();
+            return result;
+        }
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            detachAllThreadsAndTearDownIsolate0();
+        }
+        return CEntryPointActions.leaveTearDownIsolate();
+    }
+
+    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
+    private static void detachAllThreadsAndTearDownIsolate0() {
+        VMThreads.singleton().detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
     }
 
     private CEntryPointNativeFunctions() {

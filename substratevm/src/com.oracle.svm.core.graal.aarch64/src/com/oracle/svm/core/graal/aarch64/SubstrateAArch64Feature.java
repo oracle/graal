@@ -40,6 +40,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
+import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 
 import jdk.vm.ci.code.RegisterConfig;
@@ -76,6 +77,7 @@ class SubstrateAArch64Feature implements Feature {
             });
 
             ImageSingletons.add(TargetGraphBuilderPlugins.class, new AArch64GraphBuilderPlugins());
+            ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateAArch64SuitesCreatorProvider());
         }
     }
 }

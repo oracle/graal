@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,15 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXT
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_BASE;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_INDEX;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
 
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -54,6 +57,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
+
+    // Last immediate ldr/str instruction, which is a candidate to be merged.
+    private AArch64MemoryEncoding lastImmLoadStoreEncoding;
+    private boolean isImmLoadStoreMerged = false;
 
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
@@ -79,6 +86,43 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public ScratchRegister getScratchRegister() {
         return scratchRegister[nextFreeScratchRegister++];
+    }
+
+    @Override
+    public void bind(Label l) {
+        super.bind(l);
+        // Clear last ldr/str instruction to prevent the labeled ldr/str being merged.
+        lastImmLoadStoreEncoding = null;
+    }
+
+    private static class AArch64MemoryEncoding {
+        private AArch64Address address;
+        private Register result;
+        private int sizeInBytes;
+        private int position;
+        private boolean isStore;
+
+        AArch64MemoryEncoding(int sizeInBytes, Register result, AArch64Address address, boolean isStore, int position) {
+            this.sizeInBytes = sizeInBytes;
+            this.result = result;
+            this.address = address;
+            this.isStore = isStore;
+            this.position = position;
+            AArch64Address.AddressingMode addressingMode = address.getAddressingMode();
+            assert addressingMode == IMMEDIATE_SCALED || addressingMode == IMMEDIATE_UNSCALED : "Invalid address mode" +
+                            "to merge: " + addressingMode;
+        }
+
+        Register getBase() {
+            return address.getBase();
+        }
+
+        int getOffset() {
+            if (address.getAddressingMode() == IMMEDIATE_UNSCALED) {
+                return address.getImmediateRaw();
+            }
+            return address.getImmediate() * sizeInBytes;
+        }
     }
 
     /**
@@ -321,6 +365,132 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
+    private boolean tryMerge(int sizeInBytes, Register rt, AArch64Address address, boolean isStore) {
+        isImmLoadStoreMerged = false;
+        if (lastImmLoadStoreEncoding == null) {
+            return false;
+        }
+
+        // Only immediate scaled/unscaled address can be merged.
+        // Pre-index and post-index mode can't be merged.
+        AArch64Address.AddressingMode addressMode = address.getAddressingMode();
+        if (addressMode != IMMEDIATE_SCALED && addressMode != IMMEDIATE_UNSCALED) {
+            return false;
+        }
+
+        // Only the two adjacent ldrs/strs can be merged.
+        int lastPosition = position() - 4;
+        if (lastPosition < 0 || lastPosition != lastImmLoadStoreEncoding.position) {
+            return false;
+        }
+
+        if (isStore != lastImmLoadStoreEncoding.isStore) {
+            return false;
+        }
+
+        // Only merge ldr/str with the same size of 32bits or 64bits.
+        if (sizeInBytes != lastImmLoadStoreEncoding.sizeInBytes || (sizeInBytes != 4 && sizeInBytes != 8)) {
+            return false;
+        }
+
+        // Base register must be the same one.
+        Register curBase = address.getBase();
+        Register preBase = lastImmLoadStoreEncoding.getBase();
+        if (!curBase.equals(preBase)) {
+            return false;
+        }
+
+        // If the two ldrs have the same rt register, they can't be merged.
+        // If the two ldrs have dependence, they can't be merged.
+        Register curRt = rt;
+        Register preRt = lastImmLoadStoreEncoding.result;
+        if (!isStore && (curRt.equals(preRt) || preRt.equals(curBase))) {
+            return false;
+        }
+
+        // Offset checking. Offsets of the two ldrs/strs must be continuous.
+        int curOffset = address.getImmediateRaw();
+        if (addressMode == IMMEDIATE_SCALED) {
+            curOffset = curOffset * sizeInBytes;
+        }
+        int preOffset = lastImmLoadStoreEncoding.getOffset();
+        if (Math.abs(curOffset - preOffset) != sizeInBytes) {
+            return false;
+        }
+
+        // Offset must be in ldp/stp instruction's range.
+        int offset = curOffset > preOffset ? preOffset : curOffset;
+        int minOffset = -64 * sizeInBytes;
+        int maxOffset = 63 * sizeInBytes;
+        if (offset < minOffset || offset > maxOffset) {
+            return false;
+        }
+
+        // Alignment checking.
+        if (isFlagSet(AArch64.Flag.AvoidUnalignedAccesses)) {
+            // AArch64 sp is 16-bytes aligned.
+            if (curBase.equals(sp)) {
+                long pairMask = sizeInBytes * 2 - 1;
+                if ((offset & pairMask) != 0) {
+                    return false;
+                }
+            } else {
+                // If base is not sp, we can't guarantee the access is aligned.
+                return false;
+            }
+        } else {
+            // ldp/stp only supports sizeInBytes aligned offset.
+            long mask = sizeInBytes - 1;
+            if ((curOffset & mask) != 0 || (preOffset & mask) != 0) {
+                return false;
+            }
+        }
+
+        // Merge two ldrs/strs to ldp/stp.
+        Register rt1 = preRt;
+        Register rt2 = curRt;
+        if (curOffset < preOffset) {
+            rt1 = curRt;
+            rt2 = preRt;
+        }
+        int immediate = offset / sizeInBytes;
+        Instruction instruction = isStore ? STP : LDP;
+        int size = sizeInBytes * Byte.SIZE;
+        insertLdpStp(size, instruction, rt1, rt2, curBase, immediate, lastPosition);
+        lastImmLoadStoreEncoding = null;
+        isImmLoadStoreMerged = true;
+        return true;
+    }
+
+    /**
+     * Try to merge two continuous ldr/str to one ldp/stp. If this current ldr/str is not merged,
+     * save it as the last ldr/str.
+     */
+    private boolean tryMergeLoadStore(int srcSize, Register rt, AArch64Address address, boolean isStore) {
+        int sizeInBytes = srcSize / Byte.SIZE;
+        if (tryMerge(sizeInBytes, rt, address, isStore)) {
+            return true;
+        }
+
+        // Save last ldr/str if it is not merged.
+        AArch64Address.AddressingMode addressMode = address.getAddressingMode();
+        if (addressMode == IMMEDIATE_SCALED || addressMode == IMMEDIATE_UNSCALED) {
+            if (addressMode == IMMEDIATE_UNSCALED) {
+                long mask = sizeInBytes - 1;
+                int offset = address.getImmediateRaw();
+                if ((offset & mask) != 0) {
+                    return false;
+                }
+            }
+            lastImmLoadStoreEncoding = new AArch64MemoryEncoding(sizeInBytes, rt, address, isStore, position());
+        }
+        return false;
+    }
+
+    public boolean isImmLoadStoreMerged() {
+        return isImmLoadStoreMerged;
+    }
+
     public void movx(Register dst, Register src) {
         mov(64, dst, src);
     }
@@ -334,34 +504,193 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * Generates a 32-bit immediate move code sequence.
+     *
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param imm the value to move into the register.
+     * @param needsImmAnnotation Flag denoting if annotation should be added.
+     */
+    private void mov32(Register dst, int imm, boolean needsImmAnnotation) {
+        MovAction[] includeSet = {MovAction.SKIPPED, MovAction.SKIPPED};
+        int pos = position();
+
+        // Split 32-bit imm into low16 and high16 parts.
+        int low16 = imm & 0xFFFF;
+        int high16 = (imm >>> 16) & 0xFFFF;
+
+        // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
+        if (high16 == 0) {
+            movz(32, dst, low16, 0);
+            includeSet[0] = MovAction.USED;
+        } else if (high16 == 0xFFFF) {
+            movn(32, dst, low16 ^ 0xFFFF, 0);
+            includeSet[0] = MovAction.NEGATED;
+        } else if (low16 == 0) {
+            movz(32, dst, high16, 16);
+            includeSet[1] = MovAction.USED;
+        } else if (low16 == 0xFFFF) {
+            movn(32, dst, high16 ^ 0xFFFF, 16);
+            includeSet[1] = MovAction.NEGATED;
+        } else {
+            // Neither of the 2 parts is all-0s or all-1s. Generate 2 instructions.
+            movz(32, dst, low16, 0);
+            movk(32, dst, high16, 16);
+            includeSet[0] = MovAction.USED;
+            includeSet[1] = MovAction.USED;
+        }
+        if (needsImmAnnotation) {
+            annotateImmediateMovSequence(pos, includeSet);
+        }
+    }
+
+    /**
      * Generates a 64-bit immediate move code sequence.
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm the value to move into the register
-     * @param annotateImm Flag denoting if annotation should be added.
+     * @param needsImmAnnotation Flag denoting if annotation should be added.
      */
-    private void mov64(Register dst, long imm, boolean annotateImm) {
-        // We have to move all non zero parts of the immediate in 16-bit chunks
-        int numMovs = 0;
+    private void mov64(Register dst, long imm, boolean needsImmAnnotation) {
+        MovAction[] includeSet = {MovAction.SKIPPED, MovAction.SKIPPED, MovAction.SKIPPED, MovAction.SKIPPED};
         int pos = position();
-        boolean firstMove = true;
-        for (int offset = 0; offset < 64; offset += 16) {
-            int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
+        int[] chunks = new int[4];
+        int zeroCount = 0;
+        int negCount = 0;
+
+        // Split 64-bit imm into 4 chunks and count the numbers of all-0 and all-1 chunks.
+        for (int i = 0; i < 4; i++) {
+            int chunk = (int) ((imm >>> (i * 16)) & 0xFFFFL);
             if (chunk == 0) {
-                continue;
+                zeroCount++;
+            } else if (chunk == 0xFFFF) {
+                negCount++;
             }
-            if (firstMove) {
-                movz(64, dst, chunk, offset);
-                firstMove = false;
-            } else {
-                movk(64, dst, chunk, offset);
+            chunks[i] = chunk;
+        }
+
+        // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
+        if (zeroCount == 4) {
+            // Generate only one MOVZ.
+            movz(64, dst, 0, 0);
+            includeSet[0] = MovAction.USED;
+        } else if (negCount == 4) {
+            // Generate only one MOVN.
+            movn(64, dst, 0, 0);
+            includeSet[0] = MovAction.NEGATED;
+        } else if (zeroCount == 3) {
+            // Generate only one MOVZ.
+            for (int i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    includeSet[i] = MovAction.USED;
+                    break;
+                }
             }
-            ++numMovs;
+        } else if (negCount == 3) {
+            // Generate only one MOVN.
+            for (int i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    includeSet[i] = MovAction.NEGATED;
+                    break;
+                }
+            }
+        } else if (zeroCount == 2) {
+            // Generate one MOVZ and one MOVK.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    includeSet[i] = MovAction.USED;
+                    break;
+                }
+            }
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0) {
+                    movk(64, dst, chunks[k], k * 16);
+                    includeSet[k] = MovAction.USED;
+                    break;
+                }
+            }
+        } else if (negCount == 2) {
+            // Generate one MOVN and one MOVK.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    includeSet[i] = MovAction.NEGATED;
+                    break;
+                }
+            }
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0xFFFF) {
+                    movk(64, dst, chunks[k], k * 16);
+                    includeSet[k] = MovAction.USED;
+                    break;
+                }
+            }
+        } else if (zeroCount == 1) {
+            // Generate one MOVZ and two MOVKs.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    includeSet[i] = MovAction.USED;
+                    break;
+                }
+            }
+            int numMovks = 0;
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0) {
+                    movk(64, dst, chunks[k], k * 16);
+                    includeSet[k] = MovAction.USED;
+                    numMovks++;
+                }
+            }
+            assert numMovks == 2;
+        } else if (negCount == 1) {
+            // Generate one MOVN and two MOVKs.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    includeSet[i] = MovAction.NEGATED;
+                    break;
+                }
+            }
+            int numMovks = 0;
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0xFFFF) {
+                    movk(64, dst, chunks[k], k * 16);
+                    includeSet[k] = MovAction.USED;
+                    numMovks++;
+                }
+            }
+            assert numMovks == 2;
+        } else {
+            // Generate one MOVZ and three MOVKs
+            movz(64, dst, chunks[0], 0);
+            movk(64, dst, chunks[1], 16);
+            movk(64, dst, chunks[2], 32);
+            movk(64, dst, chunks[3], 48);
+            includeSet[0] = MovAction.USED;
+            includeSet[1] = MovAction.USED;
+            includeSet[2] = MovAction.USED;
+            includeSet[3] = MovAction.USED;
         }
-        assert !firstMove;
-        if (annotateImm) {
-            annotateImmediateMovSequence(pos, numMovs);
+        if (needsImmAnnotation) {
+            annotateImmediateMovSequence(pos, includeSet);
         }
+    }
+
+    /**
+     * Loads immediate into register.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm immediate loaded into register.
+     */
+    public void mov(Register dst, int imm) {
+        mov(dst, imm, false);
     }
 
     /**
@@ -379,13 +708,30 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      * @param imm immediate loaded into register.
-     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
-    public void mov(Register dst, long imm, boolean annotateImm) {
+    public void mov(Register dst, int imm, boolean needsImmAnnotation) {
+        if (imm == 0) {
+            mov(32, dst, zr);
+        } else if (isLogicalImmediate(imm)) {
+            or(32, dst, zr, imm);
+        } else {
+            mov32(dst, imm, needsImmAnnotation);
+        }
+    }
+
+    /**
+     * Loads immediate into register.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm immediate loaded into register.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
+     */
+    public void mov(Register dst, long imm, boolean needsImmAnnotation) {
         assert dst.getRegisterCategory().equals(CPU);
         if (imm == 0L) {
             movx(dst, zr);
-        } else if (LogicalImmediateTable.isRepresentable(true, imm) != LogicalImmediateTable.Representable.NO) {
+        } else if (isLogicalImmediate(imm)) {
             or(64, dst, zr, imm);
         } else if (imm >> 32 == -1L && (int) imm < 0 && LogicalImmediateTable.isRepresentable((int) imm) != LogicalImmediateTable.Representable.NO) {
             // If the higher 32-bit are 1s and the sign bit of the lower 32-bits is set *and* we can
@@ -395,18 +741,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             mov(dst, (int) imm);
             sxt(64, 32, dst, dst);
         } else {
-            mov64(dst, imm, annotateImm);
+            mov64(dst, imm, needsImmAnnotation);
         }
-    }
-
-    /**
-     * Loads immediate into register.
-     *
-     * @param dst general purpose register. May not be null, zero-register or stackpointer.
-     * @param imm immediate loaded into register.
-     */
-    public void mov(Register dst, int imm) {
-        mov(dst, imm & 0xFFFF_FFFFL);
     }
 
     /**
@@ -432,9 +768,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm The immediate address
-     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
-    public void movNativeAddress(Register dst, long imm, boolean annotateImm) {
+    public void movNativeAddress(Register dst, long imm, boolean needsImmAnnotation) {
         assert (imm & 0xFFFF_0000_0000_0000L) == 0;
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
@@ -448,8 +784,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 movk(64, dst, chunk, offset);
             }
         }
-        if (annotateImm) {
-            annotateImmediateMovSequence(pos, 3);
+        if (needsImmAnnotation) {
+            MovAction[] includeSet = {MovAction.USED, MovAction.USED, MovAction.USED};
+            annotateImmediateMovSequence(pos, includeSet);
         }
         assert !firstMove;
     }
@@ -505,7 +842,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert targetSize == 32 || targetSize == 64;
         assert srcSize <= targetSize;
         if (targetSize == srcSize) {
-            super.ldr(srcSize, rt, address);
+            ldr(srcSize, rt, address);
         } else {
             super.ldrs(targetSize, srcSize, rt, address);
         }
@@ -521,7 +858,25 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void ldr(int srcSize, Register rt, AArch64Address address) {
-        super.ldr(srcSize, rt, address);
+        // Try to merge two adjacent loads into one ldp.
+        if (!tryMergeLoadStore(srcSize, rt, address, false)) {
+            super.ldr(srcSize, rt, address);
+        }
+    }
+
+    /**
+     * Stores register rt into memory pointed by address.
+     *
+     * @param destSize number of bits written to memory. Must be 8, 16, 32 or 64.
+     * @param rt general purpose register. May not be null or stackpointer.
+     * @param address all addressing modes allowed. May not be null.
+     */
+    @Override
+    public void str(int destSize, Register rt, AArch64Address address) {
+        // Try to merge two adjacent stores into one stp.
+        if (!tryMergeLoadStore(destSize, rt, address, true)) {
+            super.str(destSize, rt, address);
+        }
     }
 
     /**
@@ -1872,24 +2227,23 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         umov(fixedSize, dst, 0, vreg);
     }
 
-    public interface MacroInstruction {
-        void patch(int codePos, int relative, byte[] code);
-    }
-
     /**
      * Emits elf patchable adrp ldr sequence.
      */
     public void adrpLdr(int srcSize, Register result, AArch64Address a) {
         if (codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new AdrpLdrMacroInstruction(position()));
+            codePatchingAnnotationConsumer.accept(new AdrpLdrMacroInstruction(position(), srcSize));
         }
         super.adrp(a.getBase());
         this.ldr(srcSize, result, a);
     }
 
-    public static class AdrpLdrMacroInstruction extends CodeAnnotation implements MacroInstruction {
-        public AdrpLdrMacroInstruction(int position) {
+    public static class AdrpLdrMacroInstruction extends AArch64Assembler.PatchableCodeAnnotation {
+        public final int srcSize;
+
+        public AdrpLdrMacroInstruction(int position, int srcSize) {
             super(position);
+            this.srcSize = srcSize;
         }
 
         @Override
@@ -1899,11 +2253,33 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         @Override
         public void patch(int codePos, int relative, byte[] code) {
-            throw GraalError.unimplemented();
+            int shiftSize = srcSize == 64 ? 3 : 2; // srcSize is either 64 or 32
+            int pos = instructionPosition;
+
+            int targetAddress = pos + relative;
+            assert (targetAddress & ((1 << shiftSize) - 1)) == 0 : "shift bits must be zero";
+
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
+
+            // adrp imm_hi bits
+            int curValue = (relativePageDifference >> 2) & 0x7FFFF;
+            int[] adrHiBits = {3, 8, 8};
+            int[] adrHiOffsets = {5, 0, 0};
+            PatcherUtil.writeBitSequence(code, pos, curValue, adrHiBits, adrHiOffsets);
+            // adrp imm_lo bits
+            curValue = relativePageDifference & 0x3;
+            int[] adrLoBits = {2};
+            int[] adrLoOffsets = {5};
+            PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
+            // ldr bits
+            curValue = (targetAddress >> shiftSize) & 0x1FF;
+            int[] ldrBits = {6, 6};
+            int[] ldrOffsets = {2, 0};
+            PatcherUtil.writeBitSequence(code, pos + 5, curValue, ldrBits, ldrOffsets);
         }
     }
 
-    public static class AdrpAddMacroInstruction extends CodeAnnotation implements MacroInstruction {
+    public static class AdrpAddMacroInstruction extends AArch64Assembler.PatchableCodeAnnotation {
         public AdrpAddMacroInstruction(int position) {
             super(position);
         }
@@ -1915,7 +2291,94 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         @Override
         public void patch(int codePos, int relative, byte[] code) {
-            throw GraalError.unimplemented();
+            int pos = instructionPosition;
+            int targetAddress = pos + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
+            // adrp imm_hi bits
+            int curValue = (relativePageDifference >> 2) & 0x7FFFF;
+            int[] adrHiBits = {3, 8, 8};
+            int[] adrHiOffsets = {5, 0, 0};
+            PatcherUtil.writeBitSequence(code, pos, curValue, adrHiBits, adrHiOffsets);
+            // adrp imm_lo bits
+            curValue = relativePageDifference & 0x3;
+            int[] adrLoBits = {2};
+            int[] adrLoOffsets = {5};
+            PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
+            // add bits
+            curValue = targetAddress & 0xFFF;
+            int[] addBits = {6, 6};
+            int[] addOffsets = {2, 0};
+            PatcherUtil.writeBitSequence(code, pos + 5, curValue, addBits, addOffsets);
+        }
+    }
+
+    private void annotateImmediateMovSequence(int pos, MovSequenceAnnotation.MovAction[] includeSet) {
+        if (codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new MovSequenceAnnotation(pos, includeSet));
+        }
+    }
+
+    public static class MovSequenceAnnotation extends AArch64Assembler.PatchableCodeAnnotation {
+
+        /**
+         * An enum to indicate how each 16-bit immediate chunk is represented within a sequence of
+         * mov instructions.
+         */
+        public enum MovAction {
+            USED, // mov instruction is in place for this chunk.
+            SKIPPED, // no mov instruction is in place for this chunk.
+            NEGATED; // movn instruction is in place for this chunk.
+        }
+
+        /**
+         * The size of the operand, in bytes.
+         */
+        public final MovAction[] includeSet;
+
+        MovSequenceAnnotation(int instructionPosition, MovAction[] includeSet) {
+            super(instructionPosition);
+            this.includeSet = includeSet;
+        }
+
+        @Override
+        public String toString() {
+            return "MOV_SEQ";
+        }
+
+        @Override
+        public void patch(int codePos, int relative, byte[] code) {
+            /*
+             * Each move has a 16 bit immediate operand. We use a series of shifted moves to
+             * represent immediate values larger than 16 bits.
+             */
+            int curValue = relative;
+            int[] bitsUsed = {3, 8, 5};
+            int[] offsets = {5, 0, 0};
+            int siteOffset = 0;
+            boolean containsNegatedMov = false;
+            for (MovAction include : includeSet) {
+                if (include == MovAction.NEGATED) {
+                    containsNegatedMov = true;
+                    break;
+                }
+            }
+            for (int i = 0; i < includeSet.length; i++) {
+                int value = curValue & 0xFFFF;
+                curValue = curValue >> 16;
+                switch (includeSet[i]) {
+                    case USED:
+                        break;
+                    case SKIPPED:
+                        assert value == (containsNegatedMov ? 0xFFFF : 0) : "Unable to patch this value.";
+                        continue;
+                    case NEGATED:
+                        value = value ^ 0xFFFF;
+                        break;
+                }
+                int bytePosition = instructionPosition + siteOffset;
+                PatcherUtil.writeBitSequence(code, bytePosition, value, bitsUsed, offsets);
+                siteOffset += 4;
+            }
         }
     }
 }

@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
@@ -34,7 +35,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -43,9 +49,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AgentObjectTest {
+    @Before
+    public void cleanAgentObject() {
+        AgentObjectFactory.cleanAgentObject();
+    }
+
     @Test
     public void versionOfTheAgent() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
@@ -54,6 +67,42 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             assertEquals(AgentScript.VERSION, agentAPI.version());
+        }
+    }
+
+    @Test
+    public void versionOfTheAgentDirect() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            assertNotNull("agent created", agent);
+            assertNotNull("we have agent's truffle object", AgentObjectFactory.agentObject);
+
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+
+            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.agentObject));
+
+            Object members = iop.getMembers(AgentObjectFactory.agentObject);
+            long membersCount = iop.getArraySize(members);
+            assertEquals(2, membersCount);
+
+            assertEquals("id", iop.readArrayElement(members, 0));
+            assertEquals("version", iop.readArrayElement(members, 1));
+        }
+    }
+
+    @Test
+    public void onErrorneousCallbackRegistration() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            };
+            agentAPI.on("enterOrLeave", listener);
+            fail("Should have failed with PolyglotException");
+        } catch (PolyglotException t) {
+            assertTrue(t.getMessage(), t.getMessage().startsWith("agentscript: Unknown event type"));
         }
     }
 
@@ -181,6 +230,77 @@ public class AgentObjectTest {
     }
 
     @Test
+    public void evalFirstAndThenOnEnterCallback() throws Throwable {
+        Executor direct = (c) -> c.run();
+        evalFirstAndThenOnEnterCallbackImpl(direct);
+    }
+
+    @Test
+    public void evalFirstAndThenOnEnterCallbackInBackground() throws Throwable {
+        Executor background = Executors.newSingleThreadExecutor();
+        evalFirstAndThenOnEnterCallbackImpl(background);
+    }
+
+    private static void evalFirstAndThenOnEnterCallbackImpl(Executor registerIn) throws Throwable {
+        try (Context c = AgentObjectFactory.newContext()) {
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] functionName = {null};
+            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
+                if (ctx.name().length() == 0) {
+                    return;
+                }
+                assertNull("No function entered yet", functionName[0]);
+                functionName[0] = ctx.name();
+            };
+
+            CountDownLatch await = new CountDownLatch(1);
+            Throwable[] err = {null};
+            registerIn.execute(() -> {
+                try {
+                    agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
+                } catch (Throwable t) {
+                    err[0] = t;
+                } finally {
+                    await.countDown();
+                }
+            });
+            await.await(10, TimeUnit.SECONDS);
+            if (err[0] != null) {
+                throw err[0];
+            }
+
+            // @formatter:off
+            Source runScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n"
+                    + "  CALL(foo)\n"
+                    + ")",
+                    "run.px"
+            ).build();
+            // @formatter:on
+            c.eval(runScript);
+
+            assertEquals("Function foo has been called", "foo", functionName[0]);
+        }
+    }
+
+    @Test
     public void onEnterCallbackWithFilterOnRootName() throws Exception {
         boolean[] finished = {false};
         try (Context c = AgentObjectFactory.newContext()) {
@@ -259,8 +379,12 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] expressionCounter = {0};
+            int[] expressionReturnCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionReturnCounter[0]++;
             }, AgentObjectFactory.createConfig(true, false, false, null));
 
             // @formatter:off
@@ -277,7 +401,54 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
+            assertEquals("Same amount of expressions", expressionCounter[0], expressionReturnCounter[0]);
         }
+    }
+
+    @Test
+    public void internalScriptsAreIgnored() throws Exception {
+        int[] closeCounter = {0};
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).internal(true).build();
+            // @formatter:on
+
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+                if (ev.name().equals(sampleScript.getName())) {
+                    Assert.fail("Don't load internal scripts: " + ev.uri());
+                }
+            };
+            agentAPI.on("source", listener);
+
+            int[] expressionCounter = {0};
+            agentAPI.on("enter", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+            agentAPI.on("return", (ev, frame) -> {
+                expressionCounter[0]++;
+            }, AgentObjectFactory.createConfig(true, false, false, null));
+
+            agentAPI.on("close", () -> {
+                closeCounter[0]++;
+            });
+
+            c.eval(sampleScript);
+
+            assertEquals("No expressions entered & exited", 0, expressionCounter[0]);
+        }
+        assertEquals("Close is reported", 1, closeCounter[0]);
     }
 
     @Test

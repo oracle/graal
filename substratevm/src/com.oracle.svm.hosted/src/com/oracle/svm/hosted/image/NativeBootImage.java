@@ -239,7 +239,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.appendln("#endif");
         Path fileNamePath = outDir.getFileName();
         if (fileNamePath == null) {
-            throw UserError.abort("Cannot determine header file name for directory " + outDir);
+            throw UserError.abort("Cannot determine header file name for directory %s", outDir);
         } else {
             String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
             writer.writeFile(fileName, false);
@@ -275,7 +275,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         try {
             return ReflectionUtil.newInstance(header);
         } catch (ReflectionUtilError ex) {
-            throw UserError.abort("CHeader " + header.getName() + " cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.", ex.getCause());
+            throw UserError.abort(ex.getCause(), "CHeader " + header.getName() + " cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.");
         }
     }
 

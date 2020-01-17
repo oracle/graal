@@ -83,7 +83,6 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -379,8 +378,6 @@ public final class CompileTheWorld {
         CompilationBailoutAsFailure.putIfAbsent(compilerOptionsMap, true);
         CompilationFailureAction.putIfAbsent(compilerOptionsMap, Print);
 
-        // By default only report statistics for the CTW threads themselves
-        DebugOptions.MetricsThreadFilter.putIfAbsent(compilerOptionsMap, "^CompileTheWorld");
         this.compilerOptions = new OptionValues(compilerOptionsMap);
     }
 

@@ -36,19 +36,20 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -61,6 +62,7 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -76,6 +78,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
+class SubstateTruffleOptions {
+
+    @Option(help = "Enable support for Truffle background compilation")//
+    static final HostedOptionKey<Boolean> TruffleMultiThreaded = new HostedOptionKey<>(true);
+
+    @Fold
+    static boolean isMultiThreaded() {
+        /*
+         * Multi-threading (= Truffle background compilation) can be disabled either by disabling
+         * thread support of Substrate VM completely, or by disabling only the Truffle-specific
+         * background compile queue. The latter is useful when background compilation is not needed,
+         * but recurring callbacks (which depend on the safepoint mechanism) are required.
+         */
+        return SubstrateOptions.MultiThreaded.getValue() && SubstateTruffleOptions.TruffleMultiThreaded.getValue();
+    }
+}
+
 public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
@@ -84,6 +103,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private CallMethods hostedCallMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
+    private volatile Boolean profilingEnabled;
 
     @Override
     protected BackgroundCompileQueue getCompileQueue() {
@@ -103,19 +123,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         truffleCompiler = null;
     }
 
-    private void initializeAtRuntime() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+    private void initializeAtRuntime(RootNode rootNode) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             compileQueue = new BackgroundCompileQueue();
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
         }
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter)) {
+        if (getEngineData(rootNode).traceTransferToInterpreter) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
                 Log.log().string("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.").newline();
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
-
-        getTruffleCompiler().initializeAtRuntime();
+        getTruffleCompiler().initialize();
         installDefaultListeners();
     }
 
@@ -194,16 +213,19 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
-        ensureInitializedAtRuntime();
+        if (profilingEnabled == null) {
+            profilingEnabled = getEngineData(rootNode).profilingEnabled;
+        }
+        ensureInitializedAtRuntime(rootNode);
         return TruffleFeature.getSupport().createOptimizedCallTarget(source, rootNode);
     }
 
-    private void ensureInitializedAtRuntime() {
+    private void ensureInitializedAtRuntime(RootNode rootNode) {
         if (!SubstrateUtil.HOSTED && !initialized) {
             // Checkstyle: stop
             synchronized (this) {
                 if (!initialized) {
-                    initializeAtRuntime();
+                    initializeAtRuntime(rootNode);
                     initialized = true;
                 }
             }
@@ -226,6 +248,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public boolean isProfilingEnabled() {
+        if (profilingEnabled == null) {
+            profilingEnabled = getEngineData(null).profilingEnabled;
+        }
+        return profilingEnabled;
+    }
+
+    @Override
     public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         if (SubstrateUtil.HOSTED) {
             /*
@@ -242,9 +272,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
          * already created in the boot image and they are directly compiled then the compile queue
          * might not yet be initialized.
          */
-        ensureInitializedAtRuntime();
+        ensureInitializedAtRuntime(optimizedCallTarget.getRootNode());
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
         }
 
@@ -252,7 +282,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             // Single threaded compilation does not require cancellation.
             doCompile(optimizedCallTarget, null);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
-            if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
+            if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
         }
@@ -262,14 +292,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             super.finishCompilation(optimizedCallTarget, task, mayBeAsynchronous);
         }
     }
 
     @Override
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             return super.cancelInstalledTask(optimizedCallTarget, source, reason);
         }
 
@@ -278,7 +308,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             super.waitForCompilation(optimizedCallTarget, timeout);
             return;
         }
@@ -288,7 +318,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
+        if (SubstateTruffleOptions.isMultiThreaded()) {
             return super.isCompiling(optimizedCallTarget);
         }
 

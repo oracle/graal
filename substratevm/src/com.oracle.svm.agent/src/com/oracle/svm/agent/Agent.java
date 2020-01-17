@@ -36,6 +36,7 @@ import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -80,6 +81,8 @@ import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.filters.FilterConfigurationParser;
+import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
@@ -130,9 +133,11 @@ public final class Agent {
         ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean restrict = false;
-        boolean noFilter = false;
+        boolean builtinCallerFilter = true;
+        boolean builtinHeuristicFilter = true;
+        List<String> callerFilterFiles = new ArrayList<>();
         boolean build = false;
-        if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
+        if (options.isNonNull()) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
                 System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
@@ -161,10 +166,22 @@ public final class Agent {
                     restrict = true;
                 } else if (token.startsWith("restrict=")) {
                     restrict = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-filter")) {
-                    noFilter = true;
-                } else if (token.startsWith("no-filter=")) {
-                    noFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-builtin-caller-filter")) {
+                    builtinCallerFilter = false;
+                } else if (token.startsWith("builtin-caller-filter=")) {
+                    builtinCallerFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-builtin-heuristic-filter")) {
+                    builtinHeuristicFilter = false;
+                } else if (token.startsWith("builtin-heuristic-filter=")) {
+                    builtinHeuristicFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-filter")) { // legacy
+                    builtinCallerFilter = false;
+                    builtinHeuristicFilter = false;
+                } else if (token.startsWith("no-filter=")) { // legacy
+                    builtinCallerFilter = !Boolean.parseBoolean(getTokenValue(token));
+                    builtinHeuristicFilter = builtinCallerFilter;
+                } else if (token.startsWith("caller-filter-file=")) {
+                    callerFilterFiles.add(getTokenValue(token));
                 } else if (token.equals("build")) {
                     build = true;
                 } else if (token.startsWith("build=")) {
@@ -174,9 +191,32 @@ public final class Agent {
                     return 1;
                 }
             }
-        } else {
+        }
+
+        if (traceOutputFile == null && configOutputDir == null && !restrict && restrictConfigs.isEmpty() && !build) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
-            System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
+            System.err.println(MESSAGE_PREFIX + "no output/restrict/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
+        }
+
+        RuleNode callersFilter = null;
+        if (!builtinCallerFilter) {
+            callersFilter = RuleNode.createRoot();
+            callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        }
+        if (!callerFilterFiles.isEmpty()) {
+            if (callersFilter == null) {
+                callersFilter = AccessAdvisor.copyBuiltinFilterTree();
+            }
+            for (String path : callerFilterFiles) {
+                try {
+                    FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
+                    parser.parseAndRegister(new FileReader(path));
+                } catch (Exception e) {
+                    System.err.println(MESSAGE_PREFIX + "cannot parse filter file " + path + ": " + e);
+                    return 1;
+                }
+            }
+            callersFilter.removeRedundantNodes();
         }
 
         if (configOutputDir != null) {
@@ -198,7 +238,10 @@ public final class Agent {
                 };
                 TraceProcessor processor = new TraceProcessor(mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
-                processor.setFilterEnabled(!noFilter);
+                processor.setHeuristicsEnabled(builtinHeuristicFilter);
+                if (callersFilter != null) {
+                    processor.setCallerFilterTree(callersFilter);
+                }
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 System.err.println(MESSAGE_PREFIX + t);
@@ -235,6 +278,7 @@ public final class Agent {
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
         accessAdvisor = new AccessAdvisor();
+        accessAdvisor.setHeuristicsEnabled(builtinHeuristicFilter);
         TypeAccessChecker reflectAccessChecker = null;
         try {
             ReflectAccessVerifier verifier = null;

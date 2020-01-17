@@ -34,22 +34,16 @@ BREAK 43 CONTINUE "main"
 	END
 
 BREAK 46 CONTINUE "main"
-	"a" "1"
-	"b" "2"
 	"*pa" "1"
 	"*pb" "2"
 	END
 
 BREAK 48 CONTINUE "main"
-	"a" "2"
-	"b" "1"
 	"*pa" "2"
 	"*pb" "1"
 	END
 
 BREAK 50 CONTINUE "main"
-	"a" "1"
-	"b" "2"
 	"*pa" "1"
 	"*pb" "2"
 	END

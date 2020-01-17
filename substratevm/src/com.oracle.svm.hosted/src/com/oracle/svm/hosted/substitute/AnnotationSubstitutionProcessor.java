@@ -684,7 +684,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
+                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
             }
 
             boolean onlyWithResult;
@@ -793,7 +793,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 className = ReflectionUtil.newInstance(target.classNameProvider()).apply(target);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.", ex.getCause());
+                throw UserError.abort(ex.getCause(), "Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.");
             }
         } else {
             guarantee(!target.className().isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
@@ -805,7 +805,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
+                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
             }
 
             boolean onlyWithResult;

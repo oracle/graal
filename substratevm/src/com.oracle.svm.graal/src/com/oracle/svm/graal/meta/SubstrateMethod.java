@@ -197,6 +197,11 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
     }
 
     @Override
+    public boolean hasCalleeSavedRegisters() {
+        return false;
+    }
+
+    @Override
     public SubstrateMethod[] getImplementations() {
         if (implementations == null) {
             return new SubstrateMethod[0];

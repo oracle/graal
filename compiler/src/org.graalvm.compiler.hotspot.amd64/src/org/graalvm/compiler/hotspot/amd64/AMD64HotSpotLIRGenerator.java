@@ -138,6 +138,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return config.maxVectorSize;
     }
 
+    @Override
+    protected int getAVX3Threshold() {
+        return config.useAVX3Threshold;
+    }
+
     /**
      * Utility for emitting the instruction to save RBP.
      */

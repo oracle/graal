@@ -24,41 +24,45 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.BackgroundCompilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Compilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompileImmediately;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompileOnly;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Mode;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MultiTier;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Splitting;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingAllowForcedSplits;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingGrowthLimit;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingTraceEvents;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilationDetails;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.EngineModeEnum;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
@@ -73,10 +77,14 @@ public final class EngineData {
         }
     };
 
+    private static final AtomicLong engineCounter = new AtomicLong();
+
     int splitLimit;
     int splitCount;
+    public final long id;
     @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
+    @CompilationFinal public StatisticsListener statisticsListener;
 
     /*
      * Important while visible, options must not be modified except in loadOptions.
@@ -105,6 +113,9 @@ public final class EngineData {
     @CompilationFinal public boolean performanceWarningsAreFatal;
     @CompilationFinal public String compileOnly;
     @CompilationFinal public boolean callTargetStatistics;
+    @CompilationFinal public boolean callTargetStatisticDetails;
+    @CompilationFinal public boolean profilingEnabled;
+    @CompilationFinal public boolean traceTransferToInterpreter;
 
     // computed fields.
     @CompilationFinal public int firstTierCallThreshold;
@@ -112,6 +123,7 @@ public final class EngineData {
     @CompilationFinal public int lastTierCallThreshold;
 
     EngineData(OptionValues options) {
+        this.id = engineCounter.incrementAndGet();
         // splitting options
         loadOptions(options);
 
@@ -121,35 +133,38 @@ public final class EngineData {
 
     void loadOptions(OptionValues options) {
         this.engineOptions = options;
-        this.splitting = getValue(options, Splitting) &&
-                        getValue(options, Mode) != EngineModeEnum.LATENCY;
-        this.splittingAllowForcedSplits = getValue(options, SplittingAllowForcedSplits);
-        this.splittingDumpDecisions = getValue(options, SplittingDumpDecisions);
-        this.splittingMaxCalleeSize = getValue(options, SplittingMaxCalleeSize);
-        this.splittingMaxPropagationDepth = getValue(options, SplittingMaxPropagationDepth);
-        this.splittingTraceEvents = getValue(options, SplittingTraceEvents);
-        this.traceSplittingSummary = getValue(options, TraceSplittingSummary);
-        this.splittingGrowthLimit = getValue(options, SplittingGrowthLimit);
-        this.splittingMaxNumberOfSplitNodes = getValue(options, SplittingMaxNumberOfSplitNodes);
+        this.splitting = getPolyglotOptionValue(options, Splitting) &&
+                        getPolyglotOptionValue(options, Mode) != EngineModeEnum.LATENCY;
+        this.splittingAllowForcedSplits = getPolyglotOptionValue(options, SplittingAllowForcedSplits);
+        this.splittingDumpDecisions = getPolyglotOptionValue(options, SplittingDumpDecisions);
+        this.splittingMaxCalleeSize = getPolyglotOptionValue(options, SplittingMaxCalleeSize);
+        this.splittingMaxPropagationDepth = getPolyglotOptionValue(options, SplittingMaxPropagationDepth);
+        this.splittingTraceEvents = getPolyglotOptionValue(options, SplittingTraceEvents);
+        this.traceSplittingSummary = getPolyglotOptionValue(options, TraceSplittingSummary);
+        this.splittingGrowthLimit = getPolyglotOptionValue(options, SplittingGrowthLimit);
+        this.splittingMaxNumberOfSplitNodes = getPolyglotOptionValue(options, SplittingMaxNumberOfSplitNodes);
 
         // compilation options
-        this.compilation = getValue(options, Compilation);
-        this.compileOnly = getValue(options, CompileOnly);
-        this.compileImmediately = getValue(options, CompileImmediately);
-        this.multiTier = getValue(options, MultiTier);
+        this.compilation = getPolyglotOptionValue(options, Compilation);
+        this.compileOnly = getPolyglotOptionValue(options, CompileOnly);
+        this.compileImmediately = getPolyglotOptionValue(options, CompileImmediately);
+        this.multiTier = getPolyglotOptionValue(options, MultiTier);
 
-        this.returnTypeSpeculation = getValue(options, ReturnTypeSpeculation);
-        this.argumentTypeSpeculation = getValue(options, ArgumentTypeSpeculation);
-        this.traceCompilation = getValue(options, TraceCompilation);
-        this.traceCompilationDetails = getValue(options, TraceCompilationDetails);
-        this.backgroundCompilation = getValue(options, BackgroundCompilation);
-        this.compilationExceptionsAreThrown = getValue(options, CompilationExceptionsAreThrown);
-        this.performanceWarningsAreFatal = getValue(options, PerformanceWarningsAreFatal);
+        this.returnTypeSpeculation = getPolyglotOptionValue(options, ReturnTypeSpeculation);
+        this.argumentTypeSpeculation = getPolyglotOptionValue(options, ArgumentTypeSpeculation);
+        this.traceCompilation = getPolyglotOptionValue(options, TraceCompilation);
+        this.traceCompilationDetails = getPolyglotOptionValue(options, TraceCompilationDetails);
+        this.backgroundCompilation = getPolyglotOptionValue(options, BackgroundCompilation);
+        this.compilationExceptionsAreThrown = getPolyglotOptionValue(options, CompilationExceptionsAreThrown);
+        this.performanceWarningsAreFatal = getPolyglotOptionValue(options, PerformanceWarningsAreFatal);
         this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
         this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
-        this.callTargetStatistics = TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
-                        TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails);
+        this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
+        this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
+        this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
+        this.profilingEnabled = getPolyglotOptionValue(options, Profiling);
+        this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {
@@ -157,9 +172,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return Math.min(getValue(options, FirstTierMinInvokeThreshold), getValue(options, FirstTierCompilationThreshold));
+            return Math.min(getPolyglotOptionValue(options, FirstTierMinInvokeThreshold), getPolyglotOptionValue(options, FirstTierCompilationThreshold));
         } else {
-            return Math.min(getValue(options, MinInvokeThreshold), getValue(options, CompilationThreshold));
+            return Math.min(getPolyglotOptionValue(options, MinInvokeThreshold), getPolyglotOptionValue(options, CompilationThreshold));
         }
     }
 
@@ -168,9 +183,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return getValue(options, FirstTierCompilationThreshold);
+            return getPolyglotOptionValue(options, FirstTierCompilationThreshold);
         } else {
-            return getValue(options, CompilationThreshold);
+            return getPolyglotOptionValue(options, CompilationThreshold);
         }
     }
 

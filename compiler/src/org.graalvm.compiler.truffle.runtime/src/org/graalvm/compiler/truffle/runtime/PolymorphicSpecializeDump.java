@@ -40,10 +40,10 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
 class PolymorphicSpecializeDump {
 
-    public static void dumpPolymorphicSpecialize(List<Node> toDump, List<OptimizedDirectCallNode> knownCallNodes) {
+    public static void dumpPolymorphicSpecialize(OptimizedCallTarget callTarget, List<Node> toDump, List<OptimizedDirectCallNode> knownCallNodes) {
         assert toDump.size() > 0;
         assert knownCallNodes.size() > 0;
-        try (TruffleDebugContext debugContext = openDebugContext()) {
+        try (TruffleDebugContext debugContext = openDebugContext(callTarget)) {
             Collections.reverse(toDump);
             PolymorphicSpecializeDump.PolymorphicSpecializeGraph graph = new PolymorphicSpecializeDump.PolymorphicSpecializeGraph(knownCallNodes, toDump);
             final GraphOutput<PolymorphicSpecializeGraph, ?> output = debugContext.buildOutput(
@@ -57,8 +57,8 @@ class PolymorphicSpecializeDump {
         }
     }
 
-    private static TruffleDebugContext openDebugContext() {
-        return GraalTruffleRuntime.getRuntime().getTruffleCompiler().openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(), null);
+    private static TruffleDebugContext openDebugContext(OptimizedCallTarget callTarget) {
+        return GraalTruffleRuntime.getRuntime().getTruffleCompiler().openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), null);
     }
 
     static class PolymorphicSpecializeGraph {

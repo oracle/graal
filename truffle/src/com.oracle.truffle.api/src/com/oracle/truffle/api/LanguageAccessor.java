@@ -46,6 +46,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -69,7 +70,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
 
 final class LanguageAccessor extends Accessor {
 

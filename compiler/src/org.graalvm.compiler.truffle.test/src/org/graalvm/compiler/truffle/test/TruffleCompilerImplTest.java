@@ -28,11 +28,14 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Assume;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     protected final TruffleCompilerImpl truffleCompiler;
+    private Context activeContext;
 
     protected TruffleCompilerImplTest() {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
@@ -46,5 +49,28 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
      * Executed before initialization. This hook can be used to override specific flags.
      */
     protected void beforeInitialization() {
+    }
+
+    protected final void setupContext(Context newContext) {
+        cleanup();
+        newContext.enter();
+        activeContext = newContext;
+    }
+
+    protected final void setupContext() {
+        setupContext(Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
+    }
+
+    protected final Context getContext() {
+        return activeContext;
+    }
+
+    @After
+    public final void cleanup() {
+        if (activeContext != null) {
+            activeContext.leave();
+            activeContext.close();
+            activeContext = null;
+        }
     }
 }

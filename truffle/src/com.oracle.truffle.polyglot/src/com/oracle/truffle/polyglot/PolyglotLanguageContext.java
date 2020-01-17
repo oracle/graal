@@ -84,7 +84,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContextFactory.ToGuestValueNo
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
-    private static final TruffleLogger LOG = TruffleLogger.getLogger("engine", PolyglotLanguageContext.class);
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotLanguageContext.class);
 
     /*
      * Lazily created when a language context is created.

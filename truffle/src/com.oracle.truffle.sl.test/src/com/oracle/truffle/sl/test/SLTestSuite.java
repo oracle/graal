@@ -61,4 +61,13 @@ public @interface SLTestSuite {
      * i.e., the test cases must be in the same project as the test class.
      */
     Class<?> testCaseDirectory() default SLTestSuite.class;
+
+    /**
+     * The options passed to {@code Context.Builder} to configure the {@code Context} executing the
+     * tests. The options are given as an string array containing an option name followed by an
+     * option value.
+     *
+     * @since 20.0.0
+     */
+    String[] options() default {};
 }

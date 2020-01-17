@@ -36,6 +36,24 @@ meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds ASSUMPTION_UPDATER,assumption,name
 
+CLSS public final com.oracle.truffle.api.utilities.FinalBitSet
+fld public final static com.oracle.truffle.api.utilities.FinalBitSet EMPTY
+meth public boolean equals(java.lang.Object)
+meth public boolean get(int)
+meth public boolean isEmpty()
+meth public int cardinality()
+meth public int hashCode()
+meth public int length()
+meth public int nextClearBit(int)
+meth public int nextSetBit(int)
+meth public int size()
+meth public java.lang.String toString()
+meth public long[] toLongArray()
+meth public static com.oracle.truffle.api.utilities.FinalBitSet valueOf(java.util.BitSet)
+meth public static com.oracle.truffle.api.utilities.FinalBitSet valueOf(long[])
+supr java.lang.Object
+hfds ADDRESS_BITS_PER_WORD,BITS_PER_WORD,WORD_MASK,words
+
 CLSS public final com.oracle.truffle.api.utilities.JSONHelper
 innr public abstract static JSONStringBuilder
 innr public final static JSONArrayBuilder

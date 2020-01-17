@@ -41,8 +41,6 @@
 package com.oracle.truffle.dsl.processor.library;
 
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createClass;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.findExecutableElement;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.findVariableElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -51,6 +49,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -327,6 +326,116 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
             }
         }
+
+        CodeExecutableElement createMessageBitSet = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "createMessageBitSet"));
+        createMessageBitSet.getModifiers().remove(Modifier.ABSTRACT);
+        createMessageBitSet.renameArguments("messages");
+        builder = createMessageBitSet.createBuilder();
+        builder.declaration(context.getType(BitSet.class), "bitSet", "new BitSet(2)");
+
+        builder.startFor();
+        builder.type(types.Message);
+        builder.string(" message : messages");
+
+        builder.end().startBlock();
+        builder.startStatement();
+        builder.string("bitSet.set(((").type(messageClass.asType()).string(") message).index)");
+        builder.end();
+        builder.end(); // for
+
+        builder.startReturn();
+        builder.startStaticCall(types.FinalBitSet, "valueOf").string("bitSet").end();
+        builder.end();
+
+        genClass.add(createMessageBitSet);
+
+        // class Delegate
+        CodeTypeElement delegateClass = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "Delegate", libraryTypeMirror);
+        genClass.add(delegateClass);
+        CodeVariableElement delegateField = delegateClass.add(new CodeVariableElement(modifiers(PRIVATE), libraryTypeMirror, "delegateLibrary"));
+        delegateField.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Child));
+        delegateClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), delegateClass));
+
+        CodeExecutableElement createDelegate = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "createDelegate"));
+        createDelegate.getModifiers().remove(Modifier.ABSTRACT);
+        createDelegate.renameArguments("delegateLibrary");
+        createDelegate.changeTypes(libraryTypeMirror);
+        createDelegate.setReturnType(libraryTypeMirror);
+        createDelegate.createBuilder().startReturn().startNew(delegateClass.asType()).string("delegateLibrary").end().end();
+        genClass.add(createDelegate);
+
+        for (MessageObjects message : methods) {
+            CodeExecutableElement executeImpl = delegateClass.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
+            removeAbstractModifiers(executeImpl);
+            if (executeImpl.getReturnType().getKind() == TypeKind.TYPEVAR) {
+                executeImpl.getAnnotationMirrors().add(createSuppressWarningsUnchecked());
+            }
+            executeImpl.renameArguments("receiver_");
+            builder = executeImpl.createBuilder();
+
+            boolean uncheckedCast = false;
+            if (message.model.getName().equals(ACCEPTS)) {
+                builder.startReturn().string("delegateLibrary.accepts(receiver_)").end();
+            } else {
+                injectReceiverType(executeImpl, 0, model.getSignatureReceiverType());
+                builder.startIf().startStaticCall(types.LibraryFactory, "isDelegated");
+                builder.string("delegateLibrary");
+                builder.string(Integer.toString(message.messageIndex));
+                builder.end().end().startBlock();
+
+                // Object delegate = readDelegate(delegateLibrary, receiver_);
+                builder.startStatement();
+                builder.type(context.getType(Object.class));
+                builder.string(" delegate = ");
+                builder.startStaticCall(types.LibraryFactory, "readDelegate");
+                builder.string("this.delegateLibrary").string("receiver_");
+                builder.end();
+                builder.end();
+
+                // return getDelegateLibrary(delegateLibrary, delegate).m0(delegate, arg0);
+                builder.startReturn();
+                builder.startStaticCall(types.LibraryFactory, "getDelegateLibrary");
+                builder.string("this.delegateLibrary").string("delegate");
+                builder.end();
+                builder.string(".").startCall(executeImpl.getSimpleName().toString());
+                if (!ElementUtils.typeEquals(context.getType(Object.class), model.getSignatureReceiverType())) {
+                    builder.startGroup();
+                    builder.cast(model.getSignatureReceiverType());
+                    builder.string("delegate");
+                    builder.end();
+                } else {
+                    builder.string("delegate");
+                }
+                for (VariableElement param : executeImpl.getParameters().subList(1, executeImpl.getParameters().size())) {
+                    builder.string(param.getSimpleName().toString());
+                }
+                builder.end(); // getDelegateLibrary
+                builder.end(); // message
+                builder.end(); // return
+
+                builder.end().startElseBlock();
+                builder.startReturn();
+                builder.startCall("this.delegateLibrary", executeImpl.getSimpleName().toString());
+                builder.string("receiver_");
+                for (VariableElement param : executeImpl.getParameters().subList(1, executeImpl.getParameters().size())) {
+                    builder.string(param.getSimpleName().toString());
+                }
+                builder.end();
+                builder.end();
+                builder.end(); // else block
+            }
+            if (uncheckedCast) {
+                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+            }
+        }
+
+        CodeExecutableElement delegateNodeCost = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost"));
+        delegateNodeCost.createBuilder().startReturn().staticReference(types.NodeCost, "NONE").end();
+        delegateClass.add(delegateNodeCost);
+
+        CodeExecutableElement delegateIsAdoptable = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
+        delegateIsAdoptable.createBuilder().startReturn().string("this.delegateLibrary.isAdoptable()").end();
+        delegateClass.add(delegateIsAdoptable);
 
         genClass.add(createGenericDispatch(methods, messageClass));
 
@@ -626,17 +735,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     }
 
     private CodeAnnotationMirror createExplodeLoop() {
-        DeclaredType explodeLoopType = types.ExplodeLoop;
-        CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(explodeLoopType);
-
-        DeclaredType loopExplosionKind = types.ExplodeLoop_LoopExplosionKind;
-        if (loopExplosionKind != null) {
-            VariableElement kindValue = findVariableElement(loopExplosionKind, "FULL_EXPLODE_UNTIL_RETURN");
-            if (kindValue != null) {
-                explodeLoop.setElementValue(findExecutableElement(explodeLoopType, "kind"), new CodeAnnotationValue(kindValue));
-            }
-        }
-        return explodeLoop;
+        return new CodeAnnotationMirror(types.ExplodeLoop);
     }
 
     private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods, CodeTypeElement messageClass) {

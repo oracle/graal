@@ -75,9 +75,9 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
-    public static final String ExplodeLoop_LoopExplosionKind_Name = "com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
+    public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -106,8 +106,8 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
-    public final DeclaredType ExplodeLoop_LoopExplosionKind = c.getDeclaredType(ExplodeLoop_LoopExplosionKind_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
+    public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
@@ -202,6 +202,7 @@ public class TruffleTypes {
     public static final String GenerateLibrary_Name = "com.oracle.truffle.api.library.GenerateLibrary";
     public static final String Library_Name = "com.oracle.truffle.api.library.Library";
     public static final String LibraryExport_Name = "com.oracle.truffle.api.library.LibraryExport";
+    public static final String LibraryExport_DelegateExport_Name = "com.oracle.truffle.api.library.LibraryExport.DelegateExport";
     public static final String LibraryFactory_Name = "com.oracle.truffle.api.library.LibraryFactory";
     public static final String Message_Name = "com.oracle.truffle.api.library.Message";
     public static final String ReflectionLibrary_Name = "com.oracle.truffle.api.library.ReflectionLibrary";
@@ -218,6 +219,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateLibrary_DefaultExport = c.getDeclaredType(GenerateLibrary_DefaultExport_Name);
     public final DeclaredType Library = c.getDeclaredType(Library_Name);
     public final DeclaredType LibraryExport = c.getDeclaredType(LibraryExport_Name);
+    public final DeclaredType LibraryExport_DelegateExport = c.getDeclaredType(LibraryExport_DelegateExport_Name);
     public final DeclaredType LibraryFactory = c.getDeclaredType(LibraryFactory_Name);
     public final DeclaredType Message = c.getDeclaredType(Message_Name);
     public final DeclaredType ReflectionLibrary = c.getDeclaredType(ReflectionLibrary_Name);

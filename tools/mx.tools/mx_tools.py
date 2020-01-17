@@ -34,6 +34,7 @@ import re
 
 import mx
 
+from mx_sigtest import sigtest
 from mx_unittest import unittest
 from mx_jackpot import jackpot
 from mx_gate import Task
@@ -151,10 +152,24 @@ mx_unittest.add_config_participant(_unittest_config_participant)
 def _tools_gate_runner(args, tasks):
     with Task('Jackpot check', tasks) as t:
         if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
+    with Task('Tools Signature Tests', tasks) as t:
+        if t: sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
         if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Language Server',
+    short_name='lsp',
+    dir_name='lsp',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['tools:LSP_API', 'tools:LSP'],
+    support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,

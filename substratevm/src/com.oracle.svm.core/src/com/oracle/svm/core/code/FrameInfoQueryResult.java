@@ -26,10 +26,12 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.Constant;
@@ -49,6 +51,13 @@ public class FrameInfoQueryResult {
          * slot.
          */
         StackSlot(true),
+
+        /**
+         * A {@link Register} value. The {@link ValueInfo#data} is the frame offset of the stack
+         * slot in the callee where the register value was spilled to according to the
+         * {@link CalleeSavedRegisters}.
+         */
+        Register(true),
 
         /**
          * A {@link Constant} value. The {@link ValueInfo#data} is the primitive data value of the

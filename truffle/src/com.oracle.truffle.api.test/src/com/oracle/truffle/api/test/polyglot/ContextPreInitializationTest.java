@@ -1222,6 +1222,47 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    public void testSetCurrentWorkingDirectory() throws Exception {
+        setPatchable(FIRST);
+        Path newCwd = Files.createTempDirectory("testSetCWD");
+        Path absoluteFolder = Files.createTempDirectory("testSetCWDAbs");
+        try {
+            List<TruffleFile> filesFromPreInitialization = new ArrayList<>();
+            ContextPreInitializationTestFirstLanguage.onPreInitAction = new Consumer<TruffleLanguage.Env>() {
+                @Override
+                public void accept(TruffleLanguage.Env env) {
+                    TruffleFile f = env.getPublicTruffleFile("relative");
+                    filesFromPreInitialization.add(f);
+                    f = env.getPublicTruffleFile(absoluteFolder.toString());
+                    filesFromPreInitialization.add(f);
+                    f = env.getInternalTruffleFile("relative");
+                    filesFromPreInitialization.add(f);
+                    f = env.getInternalTruffleFile(absoluteFolder.toString());
+                    filesFromPreInitialization.add(f);
+                }
+            };
+            ContextPreInitializationTestFirstLanguage.onPatchAction = new Consumer<TruffleLanguage.Env>() {
+                @Override
+                public void accept(TruffleLanguage.Env t) {
+                    Assert.assertEquals(newCwd.resolve("relative"), Paths.get(filesFromPreInitialization.get(0).getAbsoluteFile().getPath()));
+                    Assert.assertEquals(absoluteFolder, Paths.get(filesFromPreInitialization.get(1).getAbsoluteFile().getPath()));
+                    Assert.assertEquals(newCwd.resolve("relative"), Paths.get(filesFromPreInitialization.get(2).getAbsoluteFile().getPath()));
+                    Assert.assertEquals(absoluteFolder, Paths.get(filesFromPreInitialization.get(3).getAbsoluteFile().getPath()));
+                }
+            };
+            doContextPreinitialize(FIRST);
+            assertFalse(filesFromPreInitialization.isEmpty());
+            try (Context ctx = Context.newBuilder().allowIO(true).currentWorkingDirectory(newCwd).build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        } finally {
+            delete(newCwd);
+            delete(absoluteFolder);
+        }
+    }
+
     private static void delete(Path file) throws IOException {
         if (Files.isDirectory(file)) {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(file)) {

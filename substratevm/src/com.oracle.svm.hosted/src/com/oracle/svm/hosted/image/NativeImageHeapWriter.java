@@ -193,18 +193,11 @@ public final class NativeImageHeapWriter {
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (NativeImageHeap.useHeapBase()) {
             long targetOffset = targetInfo.getAddress();
-            long headerBits = objectHeader.getHeaderForImageHeapObject(targetOffset);
-            int reservedBits = objectHeader.getReservedBits();
-            if (reservedBits == 0) {
-                // We only apply a shift to the hub reference if there are no reserved bits in the
-                // header. Otherwise, we would not have any space for the reserved bits.
-                int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
-                headerBits = headerBits >>> shift;
-            }
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(targetOffset);
             writeReferenceValue(buffer, index, headerBits);
         } else {
             // The address of the DynamicHub target will be added by the link editor.
-            long headerBits = objectHeader.getHeaderForImageHeapObject(0L);
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(0L);
             addDirectRelocationWithAddend(buffer, index, target, headerBits);
         }
     }

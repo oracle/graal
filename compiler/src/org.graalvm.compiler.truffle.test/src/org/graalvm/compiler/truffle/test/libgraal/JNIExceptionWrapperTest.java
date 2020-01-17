@@ -26,12 +26,16 @@ package org.graalvm.compiler.truffle.test.libgraal;
 
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.graalvm.compiler.core.CompilationWrapper;
+import org.graalvm.compiler.core.GraalCompilerOptions;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -41,40 +45,64 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
-public class JNIExceptionWrapperTest {
+public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     @Test
-    @SuppressWarnings({"unused", "try"})
     public void testMergedStackTrace() throws Exception {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope runtimeScope = TruffleRuntimeOptions.overrideOptions(
-                        SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown, true)) {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
-            TruffleCompiler compiler = runtime.getTruffleCompiler();
-            try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-                Map<String, Object> options = new HashMap<>();
-                options.put("CompilationFailureAction", CompilationWrapper.ExceptionAction.Silent);
-                options.put("TruffleCompilationExceptionsAreFatal", false);
-                try (TruffleDebugContext debug = compiler.openDebugContext(options, compilation)) {
-                    TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
-                    TestListener listener = new TestListener();
-                    compiler.doCompile(debug, compilation, options, inliningPlan, null, listener);
-                }
-            } catch (Throwable t) {
-                String message = t.getMessage();
-                int runtimeIndex = findFrame(message, JNIExceptionWrapperTest.class, "testMergedStackTrace");
-                assertNotEquals(message, -1, runtimeIndex);
-                int listenerIndex = findFrame(message, TestListener.class, "onTruffleTierFinished");
-                assertNotEquals(message, -1, listenerIndex);
-                int compilerIndex = findFrame(message, TruffleCompilerImpl.class, "compileAST");
-                assertNotEquals(message, -1, compilerIndex);
-                assertTrue(listenerIndex < compilerIndex);
-                assertTrue(compilerIndex < runtimeIndex);
+        if (isSilent()) {
+            testMergedStackTraceImpl();
+        } else {
+            SubprocessUtil.Subprocess proc = SubprocessUtil.java(makeSilent(getVmArgs()), "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
+            int exitCode = proc.exitCode;
+            if (exitCode != 0) {
+                fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
             }
+        }
+    }
+
+    private static boolean isSilent() {
+        Object value = System.getProperty(String.format("graal.%s", GraalCompilerOptions.CompilationFailureAction.getName()));
+        return CompilationWrapper.ExceptionAction.Silent.toString().equals(value);
+    }
+
+    private static List<String> getVmArgs() {
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+        return vmArgs;
+    }
+
+    private static List<String> makeSilent(List<? extends String> vmArgs) {
+        List<String> newVmArgs = new ArrayList<>();
+        newVmArgs.addAll(vmArgs.stream().filter((vmArg) -> !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList()));
+        newVmArgs.add(1, String.format("-Dgraal.%s=%s", GraalCompilerOptions.CompilationFailureAction.getName(), CompilationWrapper.ExceptionAction.Silent.toString()));
+        return newVmArgs;
+    }
+
+    private void testMergedStackTraceImpl() throws Exception {
+        setupContext("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreFatal", Boolean.FALSE.toString());
+        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
+        TruffleCompiler compiler = runtime.getTruffleCompiler();
+        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
+            try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
+                TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
+                TestListener listener = new TestListener();
+                compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
+            }
+        } catch (Throwable t) {
+            String message = t.getMessage();
+            int runtimeIndex = findFrame(message, JNIExceptionWrapperTest.class, "testMergedStackTrace");
+            assertNotEquals(message, -1, runtimeIndex);
+            int listenerIndex = findFrame(message, TestListener.class, "onTruffleTierFinished");
+            assertNotEquals(message, -1, listenerIndex);
+            int compilerIndex = findFrame(message, TruffleCompilerImpl.class, "compileAST");
+            assertNotEquals(message, -1, compilerIndex);
+            assertTrue(listenerIndex < compilerIndex);
+            assertTrue(compilerIndex < runtimeIndex);
         }
     }
 

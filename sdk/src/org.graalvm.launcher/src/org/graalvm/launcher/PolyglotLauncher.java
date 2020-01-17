@@ -70,7 +70,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
-public final class PolyglotLauncher extends Launcher {
+public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private String mainLanguage = null;
     private boolean verbose = false;
@@ -94,11 +94,11 @@ public final class PolyglotLauncher extends Launcher {
         }
         System.out.println();
         System.out.println("Basic Options:");
-        printOption("--language <lang>",      "Specifies the main language.");
-        printOption("--file [<lang>:]FILE",   "Additional file to execute.");
-        printOption("--eval [<lang>:]CODE",   "Evaluates code snippets, for example, '--eval js:42'.");
-        printOption("--shell",                "Start a multi language shell.");
-        printOption("--verbose",              "Enable verbose stack trace for internal errors.");
+        launcherOption("--language <lang>",      "Specifies the main language.");
+        launcherOption("--file [<lang>:]FILE",   "Additional file to execute.");
+        launcherOption("--eval [<lang>:]CODE",   "Evaluates code snippets, for example, '--eval js:42'.");
+        launcherOption("--shell",                "Start a multi language shell.");
+        launcherOption("--verbose",              "Enable verbose stack trace for internal errors.");
         // @formatter:on
     }
 
@@ -109,19 +109,21 @@ public final class PolyglotLauncher extends Launcher {
                         "--file [<lang>:]FILE",
                         "--eval [<lang>:]CODE",
                         "--shell"));
+        super.collectArguments(args);
     }
 
     @Override
     protected void printVersion() {
         printVersion(getTempEngine());
+        printPolyglotVersions();
     }
 
-    protected static void printVersion(Engine engine) {
+    protected void printVersion(Engine engine) {
         String engineImplementationName = engine.getImplementationName();
         if (isAOT()) {
             engineImplementationName += " Native";
         }
-        System.out.println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
+        println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
     }
 
     /**
@@ -180,7 +182,7 @@ public final class PolyglotLauncher extends Launcher {
     private void launch(String[] args) {
         List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
         if (isAOT()) {
-            nativeAccess.maybeExec(argumentsList, true, Collections.emptyMap(), VMType.Native);
+            maybeNativeExec(argumentsList, true, Collections.emptyMap());
         }
 
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);
@@ -196,11 +198,11 @@ public final class PolyglotLauncher extends Launcher {
         List<String> unrecognizedArgs = parsePolyglotLauncherOptions(arguments, scripts);
 
         Map<String, String> polyglotOptions = new HashMap<>();
-        parsePolyglotOptions(null, polyglotOptions, unrecognizedArgs);
+        parseUnrecognizedOptions(null, polyglotOptions, unrecognizedArgs);
 
         String[] programArgs = arguments.toArray(new String[0]);
 
-        if (runPolyglotAction()) {
+        if (runLauncherAction()) {
             return;
         }
         argumentsProcessingDone();
@@ -208,7 +210,7 @@ public final class PolyglotLauncher extends Launcher {
         final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
 
         contextBuilder.allowAllAccess(true);
-        setupLogHandler(contextBuilder);
+        setupContextBuilder(contextBuilder);
 
         if (version) {
             printVersion(Engine.newBuilder().options(polyglotOptions).build());
@@ -428,19 +430,19 @@ public final class PolyglotLauncher extends Launcher {
     }
 
     public static void main(String[] args) {
+        PolyglotLauncher launcher = new PolyglotLauncher();
         try {
-            PolyglotLauncher launcher = new PolyglotLauncher();
             try {
                 launcher.launch(args);
             } catch (AbortException e) {
                 throw e;
             } catch (PolyglotException e) {
-                handlePolyglotException(e);
+                launcher.handlePolyglotException(e);
             } catch (Throwable t) {
                 throw launcher.abort(t);
             }
         } catch (AbortException e) {
-            handleAbortException(e);
+            launcher.handleAbortException(e);
         }
     }
 

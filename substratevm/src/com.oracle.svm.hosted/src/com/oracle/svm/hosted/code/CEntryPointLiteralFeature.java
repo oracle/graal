@@ -67,8 +67,8 @@ public class CEntryPointLiteralFeature implements Feature {
                 if (javaMethod instanceof AnalysisMethod) {
                     AnalysisMethod aMethod = (AnalysisMethod) javaMethod;
                     CEntryPoint annotation = aMethod.getAnnotation(CEntryPoint.class);
-                    UserError.guarantee(annotation != null, "Method referenced by " + CEntryPointLiteral.class.getSimpleName() +
-                                    " must be annotated with @" + CEntryPoint.class.getSimpleName() + ": " + javaMethod.format("%H.%n(%p)"));
+                    UserError.guarantee(annotation != null, "Method referenced by %s must be annotated with @%s: %s", CEntryPointLiteral.class.getSimpleName(),
+                                    CEntryPoint.class.getSimpleName(), javaMethod);
                     CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
                 } else if (javaMethod instanceof HostedMethod) {
                     HostedMethod hMethod = (HostedMethod) javaMethod;

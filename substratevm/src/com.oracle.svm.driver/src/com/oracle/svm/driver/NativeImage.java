@@ -85,12 +85,14 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
+    private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -696,6 +698,12 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
+        addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        /*
+         * The presence of CDS and custom system class loaders disables the use of archived
+         * non-system class and and triggers a warning.
+         */
+        addImageBuilderJavaArgs("-Xshare:off");
 
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
         config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);

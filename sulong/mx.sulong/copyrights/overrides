@@ -1,18 +1,6 @@
 mx.sulong/suite.py,no.copyright
 
 # The following files are copied from the LLVM project, they have a different license header.
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/__config,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/__nullptr,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/cstddef,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/cstdint,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/cstdlib,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/cstring,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/exception,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/iosfwd,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/new,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/stdexcept,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/type_traits,llvm.copyright
-projects/com.oracle.truffle.llvm.libraries.bitcode/libcxx/typeinfo,llvm.copyright
 projects/com.oracle.truffle.llvm.libraries.bitcode/libcxxabi/__cxxabi_config.h,llvm.copyright
 projects/com.oracle.truffle.llvm.libraries.bitcode/libcxxabi/__threading_support,llvm.copyright
 projects/com.oracle.truffle.llvm.libraries.bitcode/libcxxabi/abort_message.cpp,llvm.copyright

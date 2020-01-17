@@ -27,11 +27,11 @@ package com.oracle.svm.core.graal.snippets;
 import static com.oracle.svm.core.graal.nodes.UnreachableNode.unreachable;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.core.snippets.SnippetRuntime.UNWIND_EXCEPTION;
 
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -53,6 +53,8 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 public final class ExceptionSnippets extends SubstrateTemplates implements Snippets {
 
@@ -60,9 +62,13 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
     @NeverInline("All methods accessing caller frame must have this annotation. " +
                     "The requirement would not be necessary for a snippet, but the annotation does not matter on the snippet root method, " +
                     "so having the annotation is easier than coding an exception to the annotation checker.")
-    protected static void unwindSnippet(Throwable exception) {
+    protected static void unwindSnippet(Throwable exception, @ConstantParameter boolean fromMethodWithCalleeSavedRegisters) {
         Pointer callerSP = readCallerStackPointer();
-        runtimeCall(UNWIND_EXCEPTION, exception, callerSP);
+        if (fromMethodWithCalleeSavedRegisters) {
+            runtimeCall(ExceptionUnwind.UNWIND_EXCEPTION_WITH_CALLEE_SAVED_REGISTERS, exception, callerSP);
+        } else {
+            runtimeCall(ExceptionUnwind.UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS, exception, callerSP);
+        }
         throw unreachable();
     }
 
@@ -87,6 +93,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         public void lower(UnwindNode node, LoweringTool tool) {
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
+            args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

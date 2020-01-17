@@ -70,8 +70,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final boolean enableContended = getFlag("EnableContended", Boolean.class);
     public final boolean restrictContended = getFlag("RestrictContended", Boolean.class);
     public final int contendedPaddingWidth = getFlag("ContendedPaddingWidth", Integer.class);
-    public final int fieldsAllocationStyle = getFlag("FieldsAllocationStyle", Integer.class);
-    public final boolean compactFields = getFlag("CompactFields", Boolean.class);
+    public final int fieldsAllocationStyle = versioned.fieldsAllocationStyle;
+    public final boolean compactFields = versioned.compactFields;
     public final boolean verifyOops = getFlag("VerifyOops", Boolean.class);
     public final boolean ciTime = getFlag("CITime", Boolean.class);
     public final boolean ciTimeEach = getFlag("CITimeEach", Boolean.class);
@@ -96,7 +96,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = versioned.useCRC32CIntrinsics;
-    public final boolean threadLocalHandshakes = getFlag("ThreadLocalHandshakes", Boolean.class, false);
+    public final boolean threadLocalHandshakes = versioned.threadLocalHandshakes;
 
     private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
@@ -110,6 +110,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class, false);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class, false);
+    public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096);
 
     public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class, false);
 

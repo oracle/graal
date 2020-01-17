@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,7 +131,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -176,18 +176,20 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public static final LIRInstructionClass<SubstrateAArch64DirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAArch64DirectCallOp.class);
 
         private final RuntimeConfiguration runtimeConfiguration;
+        private final int newThreadStatus;
         @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
 
         public SubstrateAArch64DirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
-                        Value javaFrameAnchor) {
+                        Value javaFrameAnchor, int newThreadStatus) {
             super(TYPE, callTarget, result, parameters, temps, state);
             this.runtimeConfiguration = runtimeConfiguration;
             this.javaFrameAnchor = javaFrameAnchor;
+            this.newThreadStatus = newThreadStatus;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state);
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state, newThreadStatus);
             AArch64Call.directCall(crb, masm, callTarget, null, state);
         }
     }
@@ -196,27 +198,32 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     public static class SubstrateAArch64IndirectCallOp extends AArch64Call.IndirectCallOp {
         public static final LIRInstructionClass<SubstrateAArch64IndirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAArch64IndirectCallOp.class);
         private final RuntimeConfiguration runtimeConfiguration;
+        private final int newThreadStatus;
         @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
 
         public SubstrateAArch64IndirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state, Value javaFrameAnchor) {
+                        LIRFrameState state, Value javaFrameAnchor, int newThreadStatus) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.runtimeConfiguration = runtimeConfiguration;
             this.javaFrameAnchor = javaFrameAnchor;
+            this.newThreadStatus = newThreadStatus;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state);
+            maybeTransitionToNative(crb, masm, runtimeConfiguration, javaFrameAnchor, state, newThreadStatus);
             super.emitCode(crb, masm);
         }
     }
 
-    static void maybeTransitionToNative(CompilationResultBuilder crb, AArch64MacroAssembler masm, RuntimeConfiguration runtimeConfiguration, Value javaFrameAnchor, LIRFrameState state) {
+    static void maybeTransitionToNative(CompilationResultBuilder crb, AArch64MacroAssembler masm, RuntimeConfiguration runtimeConfiguration, Value javaFrameAnchor, LIRFrameState state,
+                    int newThreadStatus) {
         if (ValueUtil.isIllegal(javaFrameAnchor)) {
             /* Not a call that needs to set up a JavaFrameAnchor. */
+            assert newThreadStatus == StatusSupport.STATUS_ILLEGAL;
             return;
         }
+        assert StatusSupport.isValidStatus(newThreadStatus);
 
         Register anchor = ValueUtil.asRegister(javaFrameAnchor);
 
@@ -243,7 +250,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             /* Change the VMThread status from Java to Native. */
             try (ScratchRegister scratch = masm.getScratchRegister()) {
                 Register tempRegister = scratch.getRegister();
-                masm.mov(tempRegister, VMThreads.StatusSupport.STATUS_IN_NATIVE);
+                masm.mov(tempRegister, newThreadStatus);
                 masm.str(32, tempRegister,
                                 AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
             }
@@ -308,7 +315,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             ResolvedJavaMethod targetMethod = callTarget.getMethod();
-            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL));
+            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL));
         }
 
         @Override
@@ -327,7 +334,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        public void emitFarReturn(AllocatableValue result, Value stackPointer, Value ip) {
+        public void emitInstructionSynchronizationBarrier() {
+            append(new AArch64InstructionSynchronizationBarrierOp());
+        }
+
+        @Override
+        public void emitFarReturn(AllocatableValue result, Value stackPointer, Value ip, boolean fromMethodWithCalleeSavedRegisters) {
             append(new AArch64FarReturnOp(asAllocatable(result), asAllocatable(stackPointer), asAllocatable(ip)));
         }
 
@@ -443,7 +455,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState, setupJavaFrameAnchor(callTarget)));
+            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState, setupJavaFrameAnchor(callTarget),
+                            getNewThreadStatus(callTarget)));
         }
 
         @Override
@@ -453,7 +466,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            append(new SubstrateAArch64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget)));
+            append(new SubstrateAArch64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
+                            getNewThreadStatus(callTarget)));
         }
 
         private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
@@ -727,8 +741,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 crb.recordInlineDataInCode(inputConstant);
                 masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
             } else {
-                AArch64Address address = (AArch64Address) crb.recordDataReferenceInCode(inputConstant, referenceSize);
-                masm.loadAddress(resultReg, address, 1);
+                crb.recordDataReferenceInCode(inputConstant, referenceSize);
+                AArch64Address address = AArch64Address.createScaledImmediateAddress(resultReg, 0x0);
+                masm.adrpLdr(referenceSize * 8, resultReg, address);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
                 Register baseReg = getBaseRegister(crb);
@@ -912,6 +927,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
-        return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool()));
+        return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool(), false));
     }
 }

@@ -273,7 +273,7 @@ public abstract class NativeImageCodeCache {
 
     private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
+            CodeInfoEncoder.verifyMethod(entry.getKey(), entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
         }
         codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;

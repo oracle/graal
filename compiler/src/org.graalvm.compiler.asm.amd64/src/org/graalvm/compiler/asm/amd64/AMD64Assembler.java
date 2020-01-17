@@ -3964,6 +3964,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
 
+    public final void evmovdqu64(AMD64Address dst, Register src) {
+        assert supports(CPUFeature.AVX512F);
+        assert inRC(XMM, src);
+        evexPrefix(src, Register.None, Register.None, dst, AVXSize.ZMM, P_F3, M_0F, W1, Z0, B0);
+        emitByte(0x7F);
+        emitOperandHelper(src, dst, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
+    }
+
     // Insn: VPMOVZXBW zmm1, m256
 
     public final void evpmovzxbw(Register dst, AMD64Address src) {

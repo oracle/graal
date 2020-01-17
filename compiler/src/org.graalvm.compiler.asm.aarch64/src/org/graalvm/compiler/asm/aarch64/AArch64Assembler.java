@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -82,6 +82,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSQR
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.HINT;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.HLT;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ISB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDAR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDAXR;
@@ -676,6 +677,7 @@ public abstract class AArch64Assembler extends Assembler {
         MRS(0xD5300000),
         MSR(0xD5100000),
         DC(0xD5087000),
+        ISB(0xD5033FDF),
 
         BLR_NATIVE(0xc0000000),
 
@@ -1302,13 +1304,23 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
+     * Insert ldp/stp at the specified position.
+     */
+    protected void insertLdpStp(int size, Instruction instr, Register rt, Register rt2, Register base, int offset, int position) {
+        InstructionType type = generalFromSize(size);
+        int scaledOffset = maskField(7, offset);
+        int memop = type.encoding | instr.encoding | scaledOffset << LoadStorePairImm7Offset | rt2(rt2) | rn(base) | rt(rt);
+        emitInt(memop | LoadStorePairOp | (0b010 << 23), position);
+    }
+
+    /**
      * Load Pair of Registers calculates an address from a base register value and an immediate
      * offset, and stores two 32-bit words or two 64-bit doublewords to the calculated address, from
      * two registers.
      */
     public void ldp(int size, Register rt, Register rt2, AArch64Address address) {
         assert size == 32 || size == 64;
-        loadStorePairInstruction(LDP, rt, rt2, address, generalFromSize(size));
+        loadStorePairInstruction(size, LDP, rt, rt2, address);
     }
 
     /**
@@ -1318,15 +1330,24 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void stp(int size, Register rt, Register rt2, AArch64Address address) {
         assert size == 32 || size == 64;
-        loadStorePairInstruction(STP, rt, rt2, address, generalFromSize(size));
+        loadStorePairInstruction(size, STP, rt, rt2, address);
     }
 
-    private void loadStorePairInstruction(Instruction instr, Register rt, Register rt2, AArch64Address address, InstructionType type) {
-        int scaledOffset = maskField(7, address.getImmediateRaw());  // LDP/STP use a 7-bit scaled
-                                                                     // offset
+    private void loadStorePairInstruction(int size, Instruction instr, Register rt, Register rt2, AArch64Address address) {
+        InstructionType type = generalFromSize(size);
+        // LDP/STP uses a 7-bit scaled offset
+        int offset = address.getImmediateRaw();
+        if (address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED) {
+            int sizeInBytes = size / Byte.SIZE;
+            long mask = sizeInBytes - 1;
+            assert (offset & mask) == 0 : "LDP/STP only supports aligned offset.";
+            offset = offset / sizeInBytes;
+        }
+        int scaledOffset = maskField(7, offset);
         int memop = type.encoding | instr.encoding | scaledOffset << LoadStorePairImm7Offset | rt2(rt2) | rn(address.getBase()) | rt(rt);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_SCALED:
+            case IMMEDIATE_UNSCALED:
                 emitInt(memop | LoadStorePairOp | (0b010 << 23));
                 break;
             case IMMEDIATE_POST_INDEXED:
@@ -3002,19 +3023,69 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(DC.encoding | type.encoding() | rt(src));
     }
 
+    /**
+     * Instruction Synchronization Barrier.
+     */
+    public void isb() {
+        emitInt(ISB.encoding);
+    }
+
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
         if (codePatchingAnnotationConsumer != null) {
             codePatchingAnnotationConsumer.accept(new SingleInstructionAnnotation(pos, instruction, operandSizeBits, offsetBits, shift));
         }
     }
 
-    void annotateImmediateMovSequence(int pos, int numInstrs) {
-        if (codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new MovSequenceAnnotation(pos, numInstrs));
+    public abstract static class PatchableCodeAnnotation extends CodeAnnotation {
+
+        PatchableCodeAnnotation(int instructionStartPosition) {
+            super(instructionStartPosition);
+        }
+
+        abstract void patch(int codePos, int relative, byte[] code);
+    }
+
+    /**
+     * Contains methods used for patching instruction(s) within AArch64.
+     */
+    public static class PatcherUtil {
+        /**
+         * Method to patch a series a bytes within a byte address with a given value.
+         *
+         * @param code the array of bytes in which patch is to be performed
+         * @param codePos where in the array the patch should be performed
+         * @param value the value to be added to the series of bytes
+         * @param bitsUsed the number of bits to patch within each byte
+         * @param offsets where with the bytes the value should be added
+         */
+        public static void writeBitSequence(byte[] code, int codePos, int value, int[] bitsUsed, int[] offsets) {
+            assert bitsUsed.length == offsets.length : "bitsUsed and offsets parameter arrays do not match";
+            int curValue = value;
+            for (int i = 0; i < bitsUsed.length; i++) {
+                int usedBits = bitsUsed[i];
+                if (usedBits == 0) {
+                    continue;
+                }
+
+                int offset = offsets[i];
+                int mask = (1 << usedBits) - 1;
+
+                byte patchTarget = code[codePos + i];
+                byte patch = (byte) (((curValue & mask) << offset) & 0xFF);
+                byte retainedPatchTarget = (byte) (patchTarget & ((~(mask << offset)) & 0xFF));
+                patchTarget = (byte) (retainedPatchTarget | patch);
+                code[codePos + i] = patchTarget;
+                curValue = curValue >> usedBits;
+            }
+        }
+
+        public static int computeRelativePageDifference(int target, int curPos, int pageSize) {
+            int relative = target / pageSize - curPos / pageSize;
+            return relative;
         }
     }
 
-    public static class SingleInstructionAnnotation extends CodeAnnotation {
+    public static class SingleInstructionAnnotation extends PatchableCodeAnnotation {
 
         /**
          * The size of the operand, in bytes.
@@ -3031,18 +3102,44 @@ public abstract class AArch64Assembler extends Assembler {
             this.shift = shift;
             this.instruction = instruction;
         }
-    }
 
-    public static class MovSequenceAnnotation extends CodeAnnotation {
+        @Override
+        public String toString() {
+            return "SINGLE_INSTRUCTION";
+        }
 
-        /**
-         * The size of the operand, in bytes.
-         */
-        public final int numInstrs;
+        @Override
+        public void patch(int codePos, int relative, byte[] code) {
+            int curValue = relative;
+            assert (curValue & ((1 << shift) - 1)) == 0 : "relative offset has incorrect alignment";
+            curValue = curValue >> shift;
 
-        MovSequenceAnnotation(int instructionPosition, int numInstrs) {
-            super(instructionPosition);
-            this.numInstrs = numInstrs;
+            // right this is only BL instructions are being patched here
+            assert instruction == AArch64Assembler.Instruction.BL : "trying to patch an unexpected instruction";
+            GraalError.guarantee(NumUtil.isSignedNbit(operandSizeBits, curValue), "value too large to fit into space");
+
+            // fill in immediate operand of operandSizeBits starting at offsetBits within
+            // instruction
+            int bitsRemaining = operandSizeBits;
+            int offsetRemaining = offsetBits;
+
+            int[] bitsUsed = new int[4];
+            int[] offsets = new int[4];
+
+            for (int i = 0; i < 4; ++i) {
+                if (offsetRemaining >= 8) {
+                    offsetRemaining -= 8;
+                    continue;
+                }
+                offsets[i] = offsetRemaining;
+                // number of bits to be filled within this byte
+                int bits = Math.min(8 - offsetRemaining, bitsRemaining);
+                bitsUsed[i] = bits;
+                bitsRemaining -= bits;
+
+                offsetRemaining = 0;
+            }
+            PatcherUtil.writeBitSequence(code, instructionPosition, curValue, bitsUsed, offsets);
         }
     }
 

@@ -113,8 +113,12 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 startServer = true;
                 SERVERS.put(isa, wss);
             }
+            if (wss.sessions.containsKey(path)) {
+                // We have a session with this path already
+                throw new IOException("Inspector session with the same path exists already on " + isa.getHostString() + ":" + isa.getPort());
+            }
+            wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
         }
-        wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
         if (startServer) {
             wss.start(Integer.MAX_VALUE);
         }

@@ -63,6 +63,10 @@ final class Target_jdk_internal_loader_URLClassPath {
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
     private HashMap<String, ?> lmap;
 
+    /* The original locations of the .jar files are no longer available at run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
+    private ArrayList<URL> path;
+
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
      * are reachable, the user is certainly doing something wrong. But we do not want to fail with a

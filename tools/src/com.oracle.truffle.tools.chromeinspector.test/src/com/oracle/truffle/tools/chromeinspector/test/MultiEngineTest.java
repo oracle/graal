@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
@@ -195,6 +196,42 @@ public class MultiEngineTest {
         }
     }
 
+    @Test
+    public void testMultipleEnginesSamePath() throws Exception {
+        Source[] sources = new Source[]{
+                        Source.newBuilder("sl", CODE1, "MTest1.sl").buildLiteral(),
+                        Source.newBuilder("sl", CODE2, "MTest2.sl").buildLiteral(),
+        };
+        List<Throwable> errors = Collections.synchronizedList(new LinkedList<>());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        CountDownLatch isUp = new CountDownLatch(1);
+        Thread t = new Thread(() -> {
+            try {
+                runEngine(sources[0], "samePath", out, isUp);
+            } catch (Throwable thr) {
+                errors.add(thr);
+            }
+        }, sources[0].getName());
+        t.start();
+        isUp.await();
+        try {
+            runEngine(sources[1], "samePath", out, isUp);
+            fail();
+        } catch (Throwable thr) {
+            String message = thr.getMessage();
+            assertTrue(message, message.contains("Inspector session with the same path exists already"));
+        }
+        checkSuspendAndResume("samePath");
+        t.join();
+        if (!errors.isEmpty()) {
+            AssertionError err = new AssertionError();
+            for (Throwable thr : errors) {
+                err.addSuppressed(thr);
+            }
+            throw err;
+        }
+    }
+
     private static void verifyParallelDebug(CountDownLatch[] isUp, List<Throwable> errors) {
         new Thread(() -> {
             try {
@@ -225,7 +262,11 @@ public class MultiEngineTest {
     }
 
     private static String runEngine(Source src, OutputStream out, CountDownLatch isUp) {
-        try (Engine e = Engine.newBuilder().option("inspect.Path", src.getName()).err(out).build()) {
+        return runEngine(src, src.getName(), out, isUp);
+    }
+
+    private static String runEngine(Source src, String path, OutputStream out, CountDownLatch isUp) {
+        try (Engine e = Engine.newBuilder().option("inspect.Path", path).err(out).build()) {
             Context c = Context.newBuilder().engine(e).allowAllAccess(true).build();
             isUp.countDown();
             Value result = c.eval(src);

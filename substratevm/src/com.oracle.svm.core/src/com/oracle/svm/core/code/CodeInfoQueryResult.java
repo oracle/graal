@@ -26,20 +26,15 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Information about an instruction pointer (IP), created and returned by methods in
  * {@link CodeInfoTable}.
  */
 public class CodeInfoQueryResult {
-
-    /**
-     * Marker value for the frame size of entry points that is used by {@link #isEntryPoint()}.
-     */
-    public static final int ENTRY_POINT_FRAME_SIZE = 1;
 
     /**
      * Marker value returned by {@link #getExceptionOffset()} when no exception handler is
@@ -67,7 +62,7 @@ public class CodeInfoQueryResult {
     protected static final FrameInfoQueryResult NO_FRAME_INFO = null;
 
     protected CodePointer ip;
-    protected long totalFrameSize;
+    protected long encodedFrameSize;
     protected long exceptionOffset;
     protected long referenceMapIndex;
     protected FrameInfoQueryResult frameInfo;
@@ -79,19 +74,44 @@ public class CodeInfoQueryResult {
         return ip;
     }
 
-    /**
-     * Indicates if the method containing the IP is an entry point method.
-     */
-    public boolean isEntryPoint() {
-        return totalFrameSize == ENTRY_POINT_FRAME_SIZE;
+    public long getEncodedFrameSize() {
+        return encodedFrameSize;
     }
 
     /**
      * Returns the frame size of the method containing the IP.
      */
     public long getTotalFrameSize() {
-        VMError.guarantee(totalFrameSize != ENTRY_POINT_FRAME_SIZE, "Entry point method: no valid frame size");
-        return totalFrameSize;
+        return getTotalFrameSize(encodedFrameSize);
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public static long getTotalFrameSize(long encodedFrameSize) {
+        return CodeInfoDecoder.decodeTotalFrameSize(encodedFrameSize);
+    }
+
+    /**
+     * Returns true if the method containing the IP is an entry point method.
+     */
+    public boolean isEntryPoint() {
+        return isEntryPoint(encodedFrameSize);
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public static boolean isEntryPoint(long encodedFrameSize) {
+        return CodeInfoDecoder.decodeIsEntryPoint(encodedFrameSize);
+    }
+
+    /**
+     * Returns true if the method containing the IP has callee-saved registers.
+     */
+    public boolean hasCalleeSavedRegisters() {
+        return hasCalleeSavedRegisters(encodedFrameSize);
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public static boolean hasCalleeSavedRegisters(long encodedFrameSize) {
+        return CodeInfoDecoder.decodeHasCalleeSavedRegisters(encodedFrameSize);
     }
 
     /**

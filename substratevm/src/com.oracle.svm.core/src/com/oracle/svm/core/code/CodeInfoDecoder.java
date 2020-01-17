@@ -32,6 +32,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
@@ -87,12 +88,7 @@ public final class CodeInfoDecoder {
         return -1;
     }
 
-    static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfo) {
-
-        codeInfo.exceptionOffset = CodeInfoQueryResult.NO_EXCEPTION_OFFSET;
-        codeInfo.referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
-        codeInfo.frameInfo = CodeInfoQueryResult.NO_FRAME_INFO;
-
+    static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
         long sizeEncoding = initialSizeEncoding();
         long entryIP = lookupEntryIP(ip);
         long entryOffset = loadEntryOffset(info, ip);
@@ -100,17 +96,44 @@ public final class CodeInfoDecoder {
             int entryFlags = loadEntryFlags(info, entryOffset);
             sizeEncoding = updateSizeEncoding(info, entryOffset, entryFlags, sizeEncoding);
             if (entryIP == ip) {
-                codeInfo.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
-                codeInfo.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
-                codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags);
-                break;
+                codeInfoQueryResult.encodedFrameSize = sizeEncoding;
+                codeInfoQueryResult.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
+                codeInfoQueryResult.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
+                codeInfoQueryResult.frameInfo = loadFrameInfo(info, entryOffset, entryFlags);
+                return;
             }
 
             entryIP = advanceIP(info, entryOffset, entryIP);
             entryOffset = advanceOffset(entryOffset, entryFlags);
         } while (entryIP <= ip);
 
-        codeInfo.totalFrameSize = decodeTotalFrameSize(sizeEncoding);
+        codeInfoQueryResult.encodedFrameSize = sizeEncoding;
+        codeInfoQueryResult.exceptionOffset = CodeInfoQueryResult.NO_EXCEPTION_OFFSET;
+        codeInfoQueryResult.referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
+        codeInfoQueryResult.frameInfo = CodeInfoQueryResult.NO_FRAME_INFO;
+    }
+
+    static void lookupCodeInfo(CodeInfo info, long ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
+        long sizeEncoding = initialSizeEncoding();
+        long entryIP = lookupEntryIP(ip);
+        long entryOffset = loadEntryOffset(info, ip);
+        do {
+            int entryFlags = loadEntryFlags(info, entryOffset);
+            sizeEncoding = updateSizeEncoding(info, entryOffset, entryFlags, sizeEncoding);
+            if (entryIP == ip) {
+                codeInfoQueryResult.setEncodedFrameSize(sizeEncoding);
+                codeInfoQueryResult.setExceptionOffset(loadExceptionOffset(info, entryOffset, entryFlags));
+                codeInfoQueryResult.setReferenceMapIndex(loadReferenceMapIndex(info, entryOffset, entryFlags));
+                return;
+            }
+
+            entryIP = advanceIP(info, entryOffset, entryIP);
+            entryOffset = advanceOffset(entryOffset, entryFlags);
+        } while (entryIP <= ip);
+
+        codeInfoQueryResult.setEncodedFrameSize(sizeEncoding);
+        codeInfoQueryResult.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
+        codeInfoQueryResult.setReferenceMapIndex(CodeInfoQueryResult.NO_REFERENCE_MAP);
     }
 
     static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
@@ -145,7 +168,7 @@ public final class CodeInfoDecoder {
             }
 
             if (isDeoptEntryPoint(info, entryOffset, entryFlags, encodedBci)) {
-                codeInfo.totalFrameSize = decodeTotalFrameSize(sizeEncoding);
+                codeInfo.encodedFrameSize = sizeEncoding;
                 codeInfo.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
                 codeInfo.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
                 codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags);
@@ -158,37 +181,6 @@ public final class CodeInfoDecoder {
         } while (!endOfTable(entryIP));
 
         return -1;
-    }
-
-    static long lookupTotalFrameSize(CodeInfo info, long ip) {
-        long sizeEncoding = initialSizeEncoding();
-        long entryIP = lookupEntryIP(ip);
-        long entryOffset = loadEntryOffset(info, ip);
-        do {
-            int entryFlags = loadEntryFlags(info, entryOffset);
-            sizeEncoding = updateSizeEncoding(info, entryOffset, entryFlags, sizeEncoding);
-
-            entryIP = advanceIP(info, entryOffset, entryIP);
-            entryOffset = advanceOffset(entryOffset, entryFlags);
-        } while (entryIP <= ip);
-
-        return decodeTotalFrameSize(sizeEncoding);
-    }
-
-    static long lookupExceptionOffset(CodeInfo info, long ip) {
-        long entryIP = lookupEntryIP(ip);
-        long entryOffset = loadEntryOffset(info, ip);
-        do {
-            int entryFlags = loadEntryFlags(info, entryOffset);
-            if (entryIP == ip) {
-                return loadExceptionOffset(info, entryOffset, entryFlags);
-            }
-
-            entryIP = advanceIP(info, entryOffset, entryIP);
-            entryOffset = advanceOffset(entryOffset, entryFlags);
-        } while (entryIP <= ip);
-
-        return CodeInfoQueryResult.NO_EXCEPTION_OFFSET;
     }
 
     static long lookupReferenceMapIndex(CodeInfo info, long ip) {
@@ -279,9 +271,28 @@ public final class CodeInfoDecoder {
         }
     }
 
-    private static long decodeTotalFrameSize(long sizeEncoding) {
-        assert sizeEncoding != initialSizeEncoding();
-        return Math.abs(sizeEncoding);
+    static final int FRAME_SIZE_METHOD_START = 0b001;
+    static final int FRAME_SIZE_ENTRY_POINT = 0b010;
+    static final int FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS = 0b100;
+
+    static final int FRAME_SIZE_STATUS_MASK = FRAME_SIZE_METHOD_START | FRAME_SIZE_ENTRY_POINT | FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS;
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    static boolean decodeIsEntryPoint(long sizeEncoding) {
+        assert sizeEncoding != INVALID_SIZE_ENCODING;
+        return (sizeEncoding & FRAME_SIZE_ENTRY_POINT) != 0;
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    static boolean decodeHasCalleeSavedRegisters(long sizeEncoding) {
+        assert sizeEncoding != INVALID_SIZE_ENCODING;
+        return (sizeEncoding & FRAME_SIZE_HAS_CALLEE_SAVED_REGISTERS) != 0;
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    static long decodeTotalFrameSize(long sizeEncoding) {
+        assert sizeEncoding != INVALID_SIZE_ENCODING;
+        return sizeEncoding & ~FRAME_SIZE_STATUS_MASK;
     }
 
     private static boolean decodeMethodStart(int entryFlags, long sizeEncoding) {
@@ -294,7 +305,7 @@ public final class CodeInfoDecoder {
             case FS_SIZE_S1:
             case FS_SIZE_S2:
             case FS_SIZE_S4:
-                return sizeEncoding < 0;
+                return (sizeEncoding & FRAME_SIZE_METHOD_START) != 0;
             default:
                 throw shouldNotReachHere();
         }

@@ -16,12 +16,15 @@ benchCommon: ${linux-amd64} ${oraclejdk8} {
   environment: {
     BENCH_RESULTS_FILE_PATH: "bench-results.json"
   },
-  targets: [bench, weekly],
-  timelimit: "1:00:00",
   setup : [
     ["cd", ${compiler-suite-root}],
     ["mx", "build" ]
   ] ${download-hsdis.setup}
+}
+
+benchWeekly: ${benchCommon} {
+  targets: [bench, weekly],
+  timelimit: "3:00:00",
   teardown : [
     ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
   ]
@@ -32,6 +35,7 @@ truffleWeekly: ${truffle-weekly-notifications} {
 }
 
 builds += [
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
@@ -44,13 +48,13 @@ builds += [
   },
   ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-solaris-lite-8"
-  }
+  },
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
-  }
+  },
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
-  }
+  },
   ${windows-amd64} ${oraclejdk8} ${truffleCommon} {
     # TODO make that a full gate run
     # currently, some truffle unittests fail on windows
@@ -63,13 +67,19 @@ builds += [
     }
     targets : [gate],
     name: "gate-truffle-nfi-windows-8",
-  }
+  },
   # BENCHMARKS
-  ${benchCommon} ${truffle-bench-notifications} {
+  ${benchWeekly} ${truffle-bench-notifications} {
     run: [
-      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle.api.benchmark*"]
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"]
     ],
     name: "bench-truffle-jmh"
+  },
+  ${benchCommon} {
+    run: [
+      ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"]
+    ],
+    targets: [gate],
+    name: "gate-truffle-test-benchmarks-8"
   }
-
 ]

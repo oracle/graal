@@ -25,13 +25,19 @@
 package com.oracle.svm.core.nodes;
 
 public class CFunctionPrologueMarker {
+    private int newThreadStatus;
     private CFunctionEpilogueMarker epilogueMarker;
 
-    CFunctionPrologueMarker() {
+    CFunctionPrologueMarker(int newThreadStatus) {
+        this.newThreadStatus = newThreadStatus;
     }
 
     public CFunctionEpilogueMarker getEpilogueMarker() {
         return epilogueMarker;
+    }
+
+    public int getNewThreadStatus() {
+        return newThreadStatus;
     }
 
     public void setEpilogueMarker(CFunctionEpilogueMarker epilogueMarker) {

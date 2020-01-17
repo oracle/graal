@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -144,10 +143,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         UniquesRegion uniquesRegion = new UniquesRegion();
         GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion);
 
-        PrintStream logLivenessStream = SulongEngineOption.isTrue(options.get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS))
-                        ? SulongEngineOption.getStream(options.get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS))
-                        : null;
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, logLivenessStream);
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, runtime.getContext().lifetimeAnalysisStream());
+
         // setup the frameDescriptor
         final FrameDescriptor frame = StackManager.createFrame(method);
 

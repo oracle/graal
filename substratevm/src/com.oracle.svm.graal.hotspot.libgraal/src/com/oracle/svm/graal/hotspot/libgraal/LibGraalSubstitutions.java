@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
+import java.util.Map;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -41,6 +43,14 @@ final class Target_jdk_vm_ci_services_Services {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     public static boolean IS_IN_NATIVE_IMAGE = true;
     // Checkstyle: resume
+
+    /*
+     * Ideally, the original field should be annotated with @NativeImageReinitialize. But that
+     * requires a larger JVMCI change because the annotation is not visible in that project, so we
+     * use this substitution instead.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Map<String, String> savedProperties;
 }
 
 @TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = LibGraalFeature.IsEnabled.class)

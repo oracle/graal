@@ -93,7 +93,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
 
     @Override
     protected GraalTestContext createTestContext(String testName) {
-        final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler();
+        final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(null);
         TruffleDebugContext debugContext = truffleRuntime.getTruffleCompiler().openDebugContext(optionsMap, null);
         return new GraalTestContext(testName, debugContext);
     }

@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeOf;
+import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,13 +40,14 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -57,11 +60,17 @@ public class LLVMUtils {
     public static final Pointer NULL = null;
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
+    static final int COMPRESSED_POINTER_ADDRESS_SPACE = 2;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     public static final String ALWAYS_INLINE = "alwaysinline";
+    public static final String COMPRESS_FUNCTION_NAME = "__llvm_compress";
+    public static final String UNCOMPRESS_FUNCTION_NAME = "__llvm_uncompress";
     public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String GC_REGISTER_COMPRESSED_FUNCTION_NAME = "__llvm_gc_register_compressed";
     public static final String ATOMIC_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_object_xchg";
+    public static final String ATOMIC_COMPRESSED_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_compressed_object_xchg";
     public static final String LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_object_from_untracked_pointer";
+    public static final String LOAD_COMPRESSED_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_compressed_object_from_untracked_pointer";
     public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
     public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
@@ -70,6 +79,34 @@ public class LLVMUtils {
         public static final int FUNCTION = 1;
         public static final int BLOCK = 2;
         public static final int NODE = 3;
+    }
+
+    public static Path getLLVMBinDir() {
+        final String property = System.getProperty("llvm.bin.dir");
+        if (property != null) {
+            return Paths.get(property);
+        }
+
+        // TODO (GR-18389): Set only for standalones currently
+        Path toolchainHome = HomeFinder.getInstance().getLanguageHomes().get("llvm-toolchain");
+        if (toolchainHome != null) {
+            return toolchainHome.resolve("bin");
+        }
+
+        return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
+    }
+
+    private static boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
+
+    private static Path getRuntimeDir() {
+        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
+        if (runtimeDir == null) {
+            throw new IllegalStateException("Could not find GraalVM home");
+        }
+        if (hasJreDir) {
+            runtimeDir = runtimeDir.resolve("jre");
+        }
+        return runtimeDir;
     }
 
     public enum LLVMIntrinsicOperation {
@@ -348,7 +385,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowOopKind() {
-            throw unimplemented();
+            return LIRKind.compressedReference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), COMPRESSED_POINTER_ADDRESS_SPACE)));
         }
 
         @Override
@@ -365,11 +402,14 @@ public class LLVMUtils {
         }
 
         static LIRKind toLIRKind(LLVMTypeRef type) {
-            if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind && LLVM.LLVMGetPointerAddressSpace(type) == TRACKED_POINTER_ADDRESS_SPACE) {
-                return LIRKind.reference(new LLVMKind(type));
-            } else {
-                return LIRKind.value(new LLVMKind(type));
+            if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind) {
+                if (LLVM.LLVMGetPointerAddressSpace(type) == TRACKED_POINTER_ADDRESS_SPACE) {
+                    return LIRKind.reference(new LLVMKind(type));
+                } else if (LLVM.LLVMGetPointerAddressSpace(type) == COMPRESSED_POINTER_ADDRESS_SPACE) {
+                    return LIRKind.compressedReference(new LLVMKind(type));
+                }
             }
+            return LIRKind.value(new LLVMKind(type));
         }
 
         @Override

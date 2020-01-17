@@ -8,6 +8,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as cp from 'child_process';
+import * as utils from './utils';
+import { Socket } from 'net';
+import { pathToFileURL } from 'url';
+import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
 import { addNativeImageToPOM } from './graalVMNativeImage';
 
@@ -15,6 +20,11 @@ const OPEN_SETTINGS: string = 'Open Settings';
 const INSTALL_GRAALVM: string = 'Install GraalVM';
 const SELECT_GRAALVM: string = 'Select GraalVM';
 const INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT: string = 'Install GraalVM native-image Component';
+const POLYGLOT: string = "polyglot";
+const LSPORT: number = 8123;
+
+let client: LanguageClient | undefined;
+let languageServerPID: number = 0;
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', () => {
@@ -32,12 +42,20 @@ export function activate(context: vscode.ExtensionContext) {
 	const configurationProvider = new GraalVMConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', configurationProvider));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('node', configurationProvider));
+	const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+	if (inProcessServer) {
+		context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('graalvm', new GraalVMDebugAdapterTracker()));
+	}
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
 		if (e.affectsConfiguration('graalvm.home')) {
 			config();
+			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
+		} else if (e.affectsConfiguration('graalvm.languageServer.currentWorkDir') || e.affectsConfiguration('graalvm.languageServer.inProcessServer')) {
+			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
 		}
 	}));
-	if (!vscode.workspace.getConfiguration('graalvm').get('home')) {
+	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	if (!graalVMHome) {
 		vscode.window.showInformationMessage('No path to GraalVM home specified.', SELECT_GRAALVM, INSTALL_GRAALVM, OPEN_SETTINGS).then(value => {
 			switch (value) {
 				case SELECT_GRAALVM:
@@ -53,10 +71,83 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	} else {
 		config();
+		startLanguageServer(graalVMHome);
 	}
 }
 
-export function deactivate() { }
+export function deactivate(): Thenable<void> {
+	return stopLanguageServer();
+}
+
+function startLanguageServer(graalVMHome: string) {
+	const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+	if (!inProcessServer) {
+		const re = utils.findExecutable(POLYGLOT, graalVMHome);
+		if (re) {
+			let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
+			if (!serverWorkDir) {
+				serverWorkDir = vscode.workspace.rootPath;
+			}
+			let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+			let lspOpt = '--lsp';
+			if (delegateServers) {
+				lspOpt = '--lsp.Delegates=' + delegateServers;
+			}
+			const serverProcess = cp.spawn(re, ['--jvm', lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
+			if (!serverProcess || !serverProcess.pid) {
+				vscode.window.showErrorMessage(`Launching server using command ${re} failed.`);
+			} else {
+				languageServerPID = serverProcess.pid;
+				serverProcess.stdout.once('data', () => {
+					connectToLanguageServer();
+					if (serverProcess) {
+					    serverProcess.stderr.on('data', data => {
+							if (client) {
+							    client.outputChannel.append(data.toString('utf8'));
+							}
+						});
+					}
+				});
+			}
+		} else {
+			vscode.window.showErrorMessage('Cannot find runtime ' + POLYGLOT + ' within your GraalVM installation.');
+		}
+	}
+}
+
+function connectToLanguageServer() {
+	const connection = () => new Promise<StreamInfo>((resolve, reject) => {
+		const socket = new Socket();
+		socket.once('error', (e) => {
+			reject(e);
+		});
+		socket.connect(LSPORT, '127.0.0.1', () => {
+			resolve({
+				reader: socket,
+				writer: socket
+			});
+		});
+	});
+	let clientOptions: LanguageClientOptions = {
+		documentSelector: [
+			{ scheme: 'file', language: 'javascript' },
+			{ scheme: 'file', language: 'sl' },
+			{ scheme: 'file', language: 'python' },
+			{ scheme: 'file', language: 'r' },
+			{ scheme: 'file', language: 'ruby' }
+		]
+	};
+	client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
+	let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
+	client.onReady().then(() => {
+		prepareStatus.dispose();
+		vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
+	}).catch(() => {
+		prepareStatus.dispose();
+		vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
+	});
+	client.start();
+}
 
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
@@ -88,6 +179,35 @@ function config() {
 	}
 }
 
+function stopLanguageServer(): Thenable<void> {
+	if (client) {
+		return client.stop().then(() => {
+			client = undefined;
+			if (languageServerPID > 0) {
+				terminateLanguageServer();
+			}
+		});
+	}
+	if (languageServerPID > 0) {
+		terminateLanguageServer();
+	}
+	return Promise.resolve();
+}
+
+function terminateLanguageServer() {
+	const groupPID = -languageServerPID;
+	try {
+		process.kill(groupPID, 'SIGKILL');
+	} catch (e) {
+		if (e.message === 'kill ESRCH') {
+			try {
+				process.kill(languageServerPID, 'SIGKILL');
+			} catch (e) {}
+		}
+	}
+	languageServerPID = 0;
+}
+
 function updatePath(path: string | undefined, graalVMBin: string): string {
 	if (!path) {
 		return graalVMBin;
@@ -100,9 +220,28 @@ function updatePath(path: string | undefined, graalVMBin: string): string {
 	return pathItems.join(':');
 }
 
+class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
+
+	createDebugAdapterTracker(_session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+		return {
+			onDidSendMessage(message: any) {
+				if (!client && message.type === 'event') {
+					if (message.event === 'output' && message.body.category === 'telemetry' && message.body.output === 'childProcessID') {
+						languageServerPID = message.body.data.pid;
+					}
+					if (message.event === 'initialized') {
+						connectToLanguageServer();
+					}
+				}
+			}
+		};
+	}
+}
+
 class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider {
 
 	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
+		const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
 		const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 		if (graalVMHome) {
 			config.graalVMHome = graalVMHome;
@@ -113,6 +252,113 @@ class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider 
 				config.env = { 'PATH': graalVMBin };
 			}
 		}
+		if (inProcessServer) {
+			stopLanguageServer();
+                        let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+			if (config.runtimeArgs) {
+				let idx = config.runtimeArgs.indexOf('--jvm');
+				if (idx < 0) {
+					config.runtimeArgs.unshift('--jvm');
+				}
+				idx = config.runtimeArgs.indexOf('--lsp');
+				if (idx < 0) {
+					config.runtimeArgs.unshift('--lsp');
+					if (delegateServers) {
+						config.runtimeArgs.unshift('--lsp.Delegates=' + delegateServers);
+					}
+				}
+				idx = config.runtimeArgs.indexOf('--experimental-options');
+				if (idx < 0) {
+					config.runtimeArgs.unshift('--experimental-options');
+				}
+			} else {
+				if (delegateServers) {
+					config.runtimeArgs = ['--jvm', '--lsp.Delegates=' + delegateServers, '--experimental-options'];
+				} else {
+					config.runtimeArgs = ['--jvm', '--lsp', '--experimental-options'];
+				}
+			}
+		} else if (config.program) {
+			vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
+		}
 		return config;
+	}
+
+	resolveVarRefs(programPath: string): string {
+		let re = /\${([\w:]+)}/ig;
+		let idx = 0;
+		let result = '';
+		let match;
+		while ((match = re.exec(programPath)) !== null) {
+			result += programPath.slice(idx, match.index);
+			idx = re.lastIndex;
+			switch (match[1]) {
+				case 'workspaceRoot':
+				case 'workspaceFolder':
+					if (vscode.workspace.rootPath) {
+						result += vscode.workspace.rootPath;
+					}
+					break;
+				case 'workspaceRootFolderName':
+				case 'workspaceFolderBasename':
+					if (vscode.workspace.rootPath) {
+						result += path.basename(vscode.workspace.rootPath);
+					}
+					break;
+				case 'file':
+					if (vscode.window.activeTextEditor) {
+						result += vscode.window.activeTextEditor.document.uri.fsPath;
+					}
+					break;
+				case 'relativeFile':
+					if (vscode.window.activeTextEditor) {
+						let filename = vscode.window.activeTextEditor.document.uri.fsPath;
+						result += vscode.workspace.rootPath ? path.normalize(path.relative(vscode.workspace.rootPath, filename)) : filename;
+					}
+					break;
+				case 'relativeFileDirname':
+					if (vscode.window.activeTextEditor) {
+						let dirname = path.dirname(vscode.window.activeTextEditor.document.uri.fsPath);
+						result += vscode.workspace.rootPath ?  path.normalize(path.relative(vscode.workspace.rootPath, dirname)) : dirname;
+					}
+					break;
+				case 'fileBasename':
+					if (vscode.window.activeTextEditor) {
+						result += path.basename(vscode.window.activeTextEditor.document.uri.fsPath);
+					}
+					break;
+				case 'fileBasenameNoExtension':
+					if (vscode.window.activeTextEditor) {
+						let basename = path.basename(vscode.window.activeTextEditor.document.uri.fsPath);
+						result += basename.slice(0, basename.length - path.extname(basename).length);
+					}
+					break;
+				case 'fileDirname':
+					if (vscode.window.activeTextEditor) {
+						result += path.dirname(vscode.window.activeTextEditor.document.uri.fsPath);
+					}
+					break;
+				case 'fileExtname':
+					if (vscode.window.activeTextEditor) {
+						result += path.extname(vscode.window.activeTextEditor.document.uri.fsPath);
+					}
+					break;
+				case 'cwd':
+					result += process.cwd;
+					break;
+				case 'lineNumber':
+					if (vscode.window.activeTextEditor) {
+						result += vscode.window.activeTextEditor.selection.active.line;
+					}
+					break;
+				case 'selectedText':
+					if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.selection) {
+						result += vscode.window.activeTextEditor.document.getText(new vscode.Range(vscode.window.activeTextEditor.selection.start, vscode.window.activeTextEditor.selection.end));
+					}
+					break;
+			}
+		}
+		result += programPath.slice(idx);
+		return result;
 	}
 }

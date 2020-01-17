@@ -75,7 +75,7 @@ public final class ResourcesFeature implements Feature {
     private class ResourcesRegistryImpl implements ResourcesRegistry {
         @Override
         public void addResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources added too late");
+            UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
             newResources.add(pattern);
         }
 

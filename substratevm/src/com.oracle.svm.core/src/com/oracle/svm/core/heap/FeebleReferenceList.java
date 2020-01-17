@@ -36,6 +36,7 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.TimeUtils;
 
 /** A feeble version of java.lang.ref.ReferenceQueue. */
@@ -253,8 +254,8 @@ public final class FeebleReferenceList<T> {
      * update) any object references in the stack called by this method until I return from native.
      * From here until I become uninterruptible I must only reference objects that are in the native
      * image heap, or ones allocated on the stack since those will not be collected or moved. The
-     * transition from native in {@link CFunctionEpilogueNode#cFunctionEpilogue()} might block if a
-     * safepoint is in progress when I reach that call.
+     * transition from native in {@link CFunctionEpilogueNode#cFunctionEpilogue(int)} might block if
+     * a safepoint is in progress when I reach that call.
      * <p>
      * This could be
      *
@@ -274,16 +275,16 @@ public final class FeebleReferenceList<T> {
      */
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static void awaitWithTransition() {
-        CFunctionPrologueNode.cFunctionPrologue();
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
         awaitInNative();
-        CFunctionEpilogueNode.cFunctionEpilogue();
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
     }
 
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static long awaitWithTransition(long waitNanos) {
-        CFunctionPrologueNode.cFunctionPrologue();
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
         final long result = awaitInNative(waitNanos);
-        CFunctionEpilogueNode.cFunctionEpilogue();
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
         return result;
     }
 

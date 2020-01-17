@@ -65,6 +65,10 @@ public class IdentityHashCodeNode extends FixedWithNextNode implements Canonical
         return HotSpotReplacementsUtil.MARK_WORD_LOCATION;
     }
 
+    public ValueNode object() {
+        return object;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object.isConstant()) {

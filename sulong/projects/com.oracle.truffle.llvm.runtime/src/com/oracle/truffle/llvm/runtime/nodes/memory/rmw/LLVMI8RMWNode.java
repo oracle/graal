@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,12 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
@@ -57,8 +58,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> b);
         }
 
         @Specialization
@@ -77,8 +78,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a + b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) (a + b)));
         }
 
         @Specialization
@@ -97,8 +98,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a - b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) (a - b)));
         }
 
         @Specialization
@@ -117,8 +118,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a & b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) (a & b)));
         }
 
         @Specialization
@@ -137,8 +138,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) ~(a & b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) ~(a & b)));
         }
 
         @Specialization
@@ -157,8 +158,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a | b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) (a | b)));
         }
 
         @Specialization
@@ -177,8 +178,8 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a ^ b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getAndOpI8(address, value, (a, b) -> ((byte) (a ^ b)));
         }
 
         @Specialization

@@ -190,7 +190,8 @@ public class JNIAccessFeature implements Feature {
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
         UserError.guarantee(!sealed,
-                        "All linkages for JNI calls must be created before the analysis has completed.\nOffending class: " + declaringClass + " name: " + name + " descriptor: " + descriptor + "\n");
+                        "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
+                        declaringClass, name, descriptor);
 
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
@@ -299,6 +300,13 @@ public class JNIAccessFeature implements Feature {
         field.registerAsRead(null);
         if (writable) {
             field.registerAsWritten(null);
+            AnalysisType fieldType = field.getType();
+            if (fieldType.isArray() && !access.isReachable(fieldType)) {
+                // For convenience, make the array type reachable if its elemental type becomes
+                // such, allowing the array creation via JNI without an explicit reflection config.
+                access.registerReachabilityHandler(a -> fieldType.registerAsAllocated(null),
+                                ((AnalysisType) fieldType.getElementalType()).getJavaClass());
+            }
         } else if (field.isStatic() && field.isFinal()) {
             MaterializedConstantFields.singleton().register(field);
         }

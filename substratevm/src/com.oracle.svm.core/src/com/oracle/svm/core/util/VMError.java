@@ -90,6 +90,10 @@ public final class VMError {
         throw new UnsupportedOperationException("unimplemented");
     }
 
+    public static RuntimeException unimplemented(String msg) {
+        throw new UnsupportedOperationException(msg);
+    }
+
     public static RuntimeException unsupportedFeature(String msg) {
         throw new HostedError("UNSUPPORTED FEATURE: " + msg);
     }

@@ -93,20 +93,20 @@ suite = {
     },
 
     "ANTLR4": {
-      "sha1" : "946f8aa9daa917dd81a8b818111bec7e288f821a",
+      "sha1" : "e27d8ab4f984f9d186f54da984a6ab1cccac755e",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
-        "version" : "4.7.1",
+        "version" : "4.7.2",
       }
     },
 
     "ANTLR4_COMPLETE": {
       "urls": [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.1-complete.jar",
-        "https://www.antlr.org/download/antlr-4.7.1-complete.jar"
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar",
+        "https://www.antlr.org/download/antlr-4.7.2-complete.jar"
       ],
-      "sha1": "90aa8308da72ae610207d8f6ca27736921be692a",
+      "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -167,7 +167,6 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.utilities",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -218,7 +217,7 @@ suite = {
     "com.oracle.truffle.api.library" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.dsl"],
+      "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
@@ -386,7 +385,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.api.utilities"
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",

@@ -42,6 +42,7 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
@@ -67,7 +68,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), null);
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier());
     }
 
     @Override

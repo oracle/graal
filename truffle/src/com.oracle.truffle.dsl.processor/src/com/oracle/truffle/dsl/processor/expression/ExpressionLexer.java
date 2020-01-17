@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings("all")
 public class ExpressionLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -71,20 +71,29 @@ public class ExpressionLexer extends Lexer {
 		"DEFAULT_MODE"
 	};
 
-	public static final String[] ruleNames = {
-		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "T__8", 
-		"T__9", "T__10", "T__11", "WS", "LETTER", "NON_ZERO_DIGIT", "DIGIT", "HEX_DIGIT", 
-		"OCT_DIGIT", "BINARY_DIGIT", "IDENTIFIER", "NUMERIC_LITERAL"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "T__8", 
+			"T__9", "T__10", "T__11", "WS", "LETTER", "NON_ZERO_DIGIT", "DIGIT", 
+			"HEX_DIGIT", "OCT_DIGIT", "BINARY_DIGIT", "IDENTIFIER", "NUMERIC_LITERAL"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'||'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'!'", "'('", 
-		"')'", "','", "'.'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, "WS", "IDENTIFIER", "NUMERIC_LITERAL"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'||'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'!'", "'('", 
+			"')'", "','", "'.'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, "WS", "IDENTIFIER", "NUMERIC_LITERAL"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**

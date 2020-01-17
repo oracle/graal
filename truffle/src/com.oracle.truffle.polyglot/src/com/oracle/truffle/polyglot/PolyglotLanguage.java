@@ -325,7 +325,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         if (optionValues == null) {
             synchronized (engine) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptions());
+                    optionValues = new OptionValuesImpl(engine, getOptions(), false);
                 }
             }
         }

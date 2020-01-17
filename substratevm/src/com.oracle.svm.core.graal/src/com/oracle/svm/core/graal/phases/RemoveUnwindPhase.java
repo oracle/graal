@@ -44,13 +44,13 @@ import org.graalvm.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 /**
- * The {@link SnippetRuntime#UNWIND_EXCEPTION exception handling mechanism} of Substrate VM is
- * capable of jumping over methods that have no exception handler registered. That saves us from
- * emitting boilerplate code in every call site in every method that just forwards the exception
- * object from the {@link InvokeWithExceptionNode} to the {@link UnwindNode}.
+ * The {@link ExceptionUnwind exception handling mechanism} of Substrate VM is capable of jumping
+ * over methods that have no exception handler registered. That saves us from emitting boilerplate
+ * code in every call site in every method that just forwards the exception object from the
+ * {@link InvokeWithExceptionNode} to the {@link UnwindNode}.
  */
 public class RemoveUnwindPhase extends Phase {
 

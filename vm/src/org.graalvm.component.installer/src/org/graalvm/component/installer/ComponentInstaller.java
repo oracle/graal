@@ -24,9 +24,13 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -40,18 +44,26 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.StreamHandler;
+import java.util.stream.Collectors;
 import org.graalvm.component.installer.CommandInput.CatalogFactory;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
 import org.graalvm.component.installer.commands.AvailableCommand;
@@ -68,11 +80,14 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
+import org.graalvm.launcher.Launcher;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
 
 /**
  * The launcher.
  */
-public class ComponentInstaller {
+public class ComponentInstaller extends Launcher {
     private static final Logger LOG = Logger.getLogger(ComponentInstaller.class.getName());
 
     public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../.."; // NOI18N
@@ -85,6 +100,7 @@ public class ComponentInstaller {
     private List<String> parameters = Collections.emptyList();
     private Path graalHomePath;
     private Path storagePath;
+    private SimpleGetopt options;
 
     static final Map<String, InstallerCommand> commands = new HashMap<>();
     public static final Map<String, String> globalOptions = new HashMap<>();
@@ -172,7 +188,7 @@ public class ComponentInstaller {
     }
 
     protected void printUsage(Feedback output) {
-        output.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
+        output.output("INFO_InstallerVersion", CommonConstants.INSTALLER_VERSION); // NOI18N
         printHelp(output);
     }
 
@@ -194,7 +210,7 @@ public class ComponentInstaller {
             extraS = ""; // NOI18N
         }
 
-        output.message("INFO_Usage", extraS); // NOI18N
+        output.output("INFO_Usage", extraS); // NOI18N
     }
 
     static void printErr(String messageKey, Object... args) {
@@ -239,6 +255,11 @@ public class ComponentInstaller {
 
         finddGraalHome();
         e.setGraalHome(graalHomePath);
+        // Use our own GraalVM's trust store contents; also bypasses embedded trust store
+        // when running AOT.
+        Path trustStorePath = SystemUtils.resolveRelative(SystemUtils.getRuntimeBaseDir(e.getGraalHomePath()),
+                        "lib/security/cacerts"); // NOI18N
+        System.setProperty("javax.net.ssl.trustStore", trustStorePath.normalize().toString()); // NOI18N
         DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
         storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
         e.setLocalRegistry(new ComponentRegistry(e, storage));
@@ -253,24 +274,33 @@ public class ComponentInstaller {
     }
 
     SimpleGetopt createOptions(LinkedList<String> cmdline) {
-        SimpleGetopt go = createOptionsObject(globalOptions);
+        SimpleGetopt go = createOptionsObject(globalOptions).ignoreUnknownOptions(true);
         go.setParameters(cmdline);
         for (String s : commands.keySet()) {
             go.addCommandOptions(s, commands.get(s).supportedOptions());
         }
         go.process();
+        options = go;
         command = go.getCommand();
         cmdHandler = commands.get(command);
-        Map<String, String> optValues = go.getOptValues();
+        parameters = go.getPositionalParameters();
+        // also sets up input and feedback.
+        env = setupEnvironment(go);
+        forSoftwareChannels(true, (ch) -> {
+            ch.init(input, feedback);
+        });
+
+        List<String> unknownOptions = go.getUnknownOptions();
+        if (env.hasOption(Commands.OPTION_HELP) && go.getCommand() == null) {
+            unknownOptions.add("help");
+        }
+        parseUnknownOptions(unknownOptions);
+        if (runLauncher()) {
+            return null;
+        }
         if (cmdHandler == null) {
-            if (optValues.containsKey(Commands.OPTION_HELP)) {
-                // regular Environment cannot be initialized.
-                printUsage(SIMPLE_ENV);
-                return null;
-            }
             error("ERROR_MissingCommand"); // NOI18N
         }
-        parameters = go.getPositionalParameters();
         return go;
     }
 
@@ -283,20 +313,20 @@ public class ComponentInstaller {
     }
 
     int processOptions(LinkedList<String> cmdline) {
+        // setOutput(new EnvStream(true, new ByteArrayOutputStream(100)));
+        // setError(new EnvStream(true, new ByteArrayOutputStream(100)));
+
+        launch(cmdline);
+
         if (cmdline.size() < 1) {
-            printUsage(SIMPLE_ENV);
+            env = SIMPLE_ENV;
+            printDefaultHelp(OptionCategory.USER);
             return 1;
         }
         SimpleGetopt go = createOptions(cmdline);
         if (go == null) {
             return 0;
         }
-        // also sets up input and feedback.
-        env = setupEnvironment(go);
-        forSoftwareChannels(true, (ch) -> {
-            ch.init(input, feedback);
-        });
-
         int srcCount = 0;
         if (input.hasOption(Commands.OPTION_FILES)) {
             srcCount++;
@@ -392,6 +422,10 @@ public class ComponentInstaller {
             if (retcode >= 0) {
                 return retcode;
             }
+            // do not print before retcode check; parameters like --help may end the processing
+            // early, and
+            // INFO would be printed on default log level.
+            LOG.log(Level.INFO, "Installer starting");
             retcode = doProcessCommand();
         } catch (FileAlreadyExistsException ex) {
             feedback.error("INSTALLER_FileExists", ex, ex.getLocalizedMessage()); // NOI18N
@@ -417,6 +451,9 @@ public class ComponentInstaller {
         } catch (InstallerStopException ex) {
             feedback.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
+        } catch (AbortException ex) {
+            feedback.error(null, ex, ex.getLocalizedMessage()); // NOI18N
+            return ex.getExitCode();
         } catch (RuntimeException ex) {
             feedback.error("INSTALLER_InternalError", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
@@ -531,6 +568,7 @@ public class ComponentInstaller {
             }
         } catch (IllegalArgumentException ex) {
             // expected, use the argument as it is.
+            ex.printStackTrace();
         }
         return s;
     }
@@ -545,5 +583,253 @@ public class ComponentInstaller {
      */
     public static void main(String[] args) {
         new ComponentInstaller(args).run();
+    }
+
+    /**
+     * Delegates the output to the {@link Environment} functions. The stream is configured into
+     * Launcher so that even SDK output goes through the single i/o point in GU.
+     */
+    final class EnvStream extends PrintStream {
+        private final boolean error;
+
+        EnvStream(boolean err, OutputStream dummyStream) {
+            super(dummyStream);
+            this.error = err;
+        }
+
+        @Override
+        public PrintStream append(char c) {
+            env.verbatimPart("" + c, error);
+            return this;
+        }
+
+        @Override
+        public PrintStream append(CharSequence csq, int start, int end) {
+            CharSequence cs = (csq == null ? "null" : csq);
+            append(cs.subSequence(start, end));
+            return this;
+        }
+
+        @Override
+        public PrintStream append(CharSequence csq) {
+            CharSequence cs = (csq == null ? "null" : csq);
+            env.verbatimPart(cs.toString(), error, false);
+            return this;
+        }
+
+        @Override
+        public void println(Object x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(String x) {
+            if (error) {
+                env.message(null, x);
+            } else {
+                env.output(null, x);
+            }
+        }
+
+        @Override
+        public void println(char[] x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(double x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(float x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(long x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(int x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(char x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println(boolean x) {
+            println(String.valueOf(x));
+        }
+
+        @Override
+        public void println() {
+            println("");
+        }
+
+        @Override
+        public void print(Object obj) {
+            print(String.valueOf(obj));
+        }
+
+        @Override
+        public void print(String s) {
+            env.verbatimPart(s, error, false);
+        }
+
+        @Override
+        public void print(char[] s) {
+            print(String.valueOf(s));
+        }
+
+        @Override
+        public void print(double d) {
+            print(String.valueOf(d));
+        }
+
+        @Override
+        public void print(float f) {
+            print(String.valueOf(f));
+        }
+
+        @Override
+        public void print(long l) {
+            print(String.valueOf(l));
+        }
+
+        @Override
+        public void print(int i) {
+            print(String.valueOf(i));
+        }
+
+        @Override
+        public void print(char c) {
+            print(String.valueOf(c));
+        }
+
+        @Override
+        public void print(boolean b) {
+            print(String.valueOf(b));
+        }
+    }
+
+    /**
+     * Configures logging, based on `log.*' options passed on commandline.
+     * 
+     * @param properties
+     */
+    void configureLogging(Map<String, String> properties) {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(os);
+        Collection<Logger> keep = new LinkedList<>();
+        boolean rootLevelSet = false;
+
+        for (String key : properties.keySet()) {
+            if (key.startsWith("log.") && key.endsWith(".level")) { // NOI18N
+                String v = properties.get(key);
+                if (v == null) {
+                    continue;
+                }
+                String k;
+
+                if (key.length() > 10) {
+                    k = key.substring(4);
+                } else {
+                    k = ".level"; // NOI18N
+                    rootLevelSet = true;
+                }
+                ps.print(k);
+                ps.print('='); // NOI18N
+                ps.println(v);
+                keep.add(Logger.getLogger(k.substring(0, k.length() - 6)));
+            }
+        }
+        if (!rootLevelSet) {
+            // the default logging level, will prevent INFO messages to come out.
+            ps.println(".level=WARNING");
+        }
+        // The default formatter is two -line; looks ugly.
+        ps.println("java.util.logging.SimpleFormatter.format=[%4$-7s] %5$s %n");
+        ps.println("");
+        try {
+            LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(os.toByteArray()));
+        } catch (IOException ex) {
+            env.error("WARN_CouldNotInitializeLogManager", ex, ex.getLocalizedMessage());
+            return;
+        }
+
+        Logger logger = Logger.getLogger(""); // NOI18N
+
+        Handler[] old = logger.getHandlers();
+        Path p = getLogFile();
+        if (old.length > 0) {
+            // if there are existing handlers, should be sufficient to
+            // just set level on them.
+            for (int i = 0; i < old.length; i++) {
+                old[i].setLevel(Level.ALL);
+            }
+        }
+        if (old.length == 0 || p != null) {
+            OutputStream logOs = new EnvStream(true, System.err);
+            try {
+                if (p != null) {
+                    logOs = newLogStream(getLogFile());
+                }
+            } catch (IOException ex) {
+                env.error("WARN_CouldNotCreateLog", ex, p.toString(), ex.getLocalizedMessage());
+            }
+            Handler h = new StreamHandler(logOs, new SimpleFormatter());
+            h.setLevel(Level.ALL);
+            logger.addHandler(h);
+        }
+    }
+
+    @Override
+    protected boolean canPolyglot() {
+        return false;
+    }
+
+    public void launch(List<String> args) {
+        maybeNativeExec(args, false, new LinkedHashMap<>());
+    }
+
+    public Map<String, String> parseUnknownOptions(List<String> uOpts) {
+        List<String> ooo = uOpts.stream().map((o) -> o.length() > 1 ? "--" + o : "-" + o).collect(Collectors.toList());
+        Map<String, String> polyOptions = new HashMap<>();
+        parseUnrecognizedOptions(null, polyOptions, ooo);
+
+        configureLogging(polyOptions);
+
+        return polyOptions;
+    }
+
+    @Override
+    protected void printHelp(OptionCategory maxCategory) {
+        printUsage(env);
+    }
+
+    @Override
+    protected void printVersion() {
+        env.output("MSG_InstallerVersion",
+                        CommonConstants.INSTALLER_VERSION,
+                        System.getProperty("java.version"));
+    }
+
+    public boolean runLauncher() {
+        return super.runLauncherAction();
+    }
+
+    @Override
+    protected void collectArguments(Set<String> result) {
+        result.addAll(options.getAllOptions());
+    }
+
+    @Override
+    protected OptionDescriptor findOptionDescriptor(String group, String key) {
+        return null;
     }
 }

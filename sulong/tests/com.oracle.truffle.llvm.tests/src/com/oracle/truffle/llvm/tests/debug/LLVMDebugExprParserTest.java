@@ -229,7 +229,7 @@ public final class LLVMDebugExprParserTest {
                 if (kv.getValue().startsWith("EXCEPTION ")) {
                     try {
                         String actual = frame.eval(kv.getKey()).as(String.class);
-                        assertTrue("Evaluation of expression \"" + kv.getKey() + "\" did evaluate to " + actual + " and did not throw expected " + kv.getValue(), false);
+                        assertTrue("Evaluation of expression \"" + kv.getKey() + "\"  on line " + currentLine + "did evaluate to " + actual + " and did not throw expected " + kv.getValue(), false);
                     } catch (DebugException e) {
                         // OK since expected exception has been thrown
                     }
@@ -238,11 +238,11 @@ public final class LLVMDebugExprParserTest {
                     String noNewLineActual = actual.replace("\n", "");
                     if (allowFailure) {
                         if (noNewLineActual.contains(kv.getValue())) {
-                            System.out.println("Evaluation of expression \"" + kv.getKey() + " produced correct failure error.");
+                            System.out.println("Evaluation of expression \"" + kv.getKey() + "  on line " + currentLine + "produced correct failure error.");
                             return;
                         }
                     }
-                    assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), noNewLineActual);
+                    assertEquals("Evaluation of expression \"" + kv.getKey() + "\" on line " + currentLine + " produced unexpected result: ", kv.getValue(), noNewLineActual);
                 }
             }
         }

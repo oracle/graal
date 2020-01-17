@@ -110,9 +110,7 @@ import org.graalvm.polyglot.proxy.ProxyTime;
 import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
@@ -127,17 +125,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class ValueAPITest {
 
     private Context context;
-
-    @BeforeClass
-    public static void beforeClass() {
-        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
-    }
 
     @Before
     public void setUp() {

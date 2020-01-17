@@ -30,6 +30,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -75,6 +76,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setQueuingThread(NativeVMOperationData data, IsolateThread thread) {
         queuingThread = thread;
     }
@@ -85,6 +87,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setFinished(NativeVMOperationData data, boolean value) {
         finished = value;
     }

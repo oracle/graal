@@ -118,11 +118,11 @@ public final class TruffleLogger {
      * @param id the unique id of language or instrument
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
+     * @throws IllegalArgumentException if {@code id} is not a valid language or instrument id.
      * @since 19.0
      */
     public static TruffleLogger getLogger(final String id) {
-        Objects.requireNonNull(id, "LanguageId must be non null.");
-        return LoggerCache.getInstance().getOrCreateLogger(id);
+        return getLogger(id, null, LoggerCache.getInstance());
     }
 
     /**
@@ -133,6 +133,7 @@ public final class TruffleLogger {
      * @param forClass the {@link Class} to create a logger for
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} or {@code forClass} is null
+     * @throws IllegalArgumentException if {@code id} is not a valid language or instrument id.
      * @since 19.0
      */
     public static TruffleLogger getLogger(final String id, final Class<?> forClass) {
@@ -149,6 +150,7 @@ public final class TruffleLogger {
      *            empty a root logger for language or instrument is returned
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
+     * @throws IllegalArgumentException if {@code id} is not a valid language or instrument id.
      * @since 19.0
      */
     public static TruffleLogger getLogger(final String id, final String loggerName) {
@@ -157,8 +159,7 @@ public final class TruffleLogger {
 
     static TruffleLogger getLogger(String id, String loggerName, LoggerCache loggerCache) {
         Objects.requireNonNull(id, "LanguageId must be non null.");
-        final String globalLoggerId = loggerName == null || loggerName.isEmpty() ? id : id + '.' + loggerName;
-        return loggerCache.getOrCreateLogger(globalLoggerId);
+        return loggerCache.getOrCreateLogger(id, loggerName);
     }
 
     static LoggerCache createLoggerCache(Object vmObject, Map<String, Level> logLevels) {
@@ -977,6 +978,7 @@ public final class TruffleLogger {
         private final LoggerNode root;
         private final Set<ContextWeakReference> activeContexts;
         private Map<String, Level> effectiveLevels;
+        private volatile Set<String> knownIds;
 
         private LoggerCache(Object owner) {
             this.ownerRef = owner == null ? null : new WeakReference<>(owner);
@@ -1048,7 +1050,7 @@ public final class TruffleLogger {
             return DEFAULT_VALUE;
         }
 
-        TruffleLogger getOrCreateLogger(final String loggerName) {
+        private TruffleLogger getOrCreateLogger(final String loggerName) {
             TruffleLogger found = getLogger(loggerName);
             if (found == null) {
                 for (final TruffleLogger logger = new TruffleLogger(loggerName, this, null); found == null;) {
@@ -1060,6 +1062,27 @@ public final class TruffleLogger {
                 }
             }
             return found;
+        }
+
+        private TruffleLogger getOrCreateLogger(final String id, final String loggerName) {
+            Set<String> ids = getKnownIds();
+            if (!ids.contains(id)) {
+                throw new IllegalArgumentException("Unknown language or instrument id " + id + ", known ids: " + String.join(", ", ids));
+            }
+            final String globalLoggerId = loggerName == null || loggerName.isEmpty() ? id : id + '.' + loggerName;
+            return getOrCreateLogger(globalLoggerId);
+        }
+
+        private Set<String> getKnownIds() {
+            Set<String> result = knownIds;
+            if (result == null) {
+                result = new HashSet<>();
+                result.addAll(LanguageAccessor.engineAccess().getInternalIds());
+                result.addAll(LanguageAccessor.engineAccess().getLanguageIds());
+                result.addAll(LanguageAccessor.engineAccess().getInstrumentIds());
+                knownIds = result;
+            }
+            return result;
         }
 
         private Object getOwner() {

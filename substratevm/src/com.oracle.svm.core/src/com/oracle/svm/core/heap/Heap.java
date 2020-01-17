@@ -47,18 +47,16 @@ public abstract class Heap {
     protected Heap() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract boolean initialize();
-
     /**
      * Notifies the heap that a new thread was attached to the VM. This allows to initialize
      * heap-specific datastructures, e.g., the TLAB. This method is called for every thread except
      * the main thread (i.e., the one that maps the image heap).
      */
+    @Uninterruptible(reason = "Called during startup.")
     public abstract void attachThread(IsolateThread isolateThread);
 
     /**
-     * Notifies the heap that a thread was detached from the VM. This allows to cleanup
+     * Notifies the heap that a thread will be detached from the VM. This allows to cleanup
      * heap-specific resources, e.g., the TLAB. This method is called for every thread except the
      * main thread (i.e., the one that maps the image heap).
      */
@@ -110,7 +108,8 @@ public abstract class Heap {
     public abstract MemoryMXBean getMemoryMXBean();
 
     /** Tear down the heap and free all allocated virtual memory chunks. */
-    public abstract void tearDown();
+    @Uninterruptible(reason = "Tear-down in progress.")
+    public abstract boolean tearDown();
 
     /** Prepare the heap for a safepoint. */
     public abstract void prepareForSafepoint();

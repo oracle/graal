@@ -60,6 +60,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single, ControlFlowAnchored {
     public static final NodeClass<CFunctionPrologueNode> TYPE = NodeClass.create(CFunctionPrologueNode.class);
 
+    private final int newThreadStatus;
     /**
      * The marker object prevents value numbering of the node. This means that the marker must be a
      * unique object per node, even after node cloning (e.g., because of method inlining).
@@ -70,15 +71,16 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
      */
     private CFunctionPrologueMarker marker;
 
-    public CFunctionPrologueNode() {
+    public CFunctionPrologueNode(int newThreadStatus) {
         super(TYPE, StampFactory.forVoid());
-        marker = new CFunctionPrologueMarker();
+        this.newThreadStatus = newThreadStatus;
+        marker = new CFunctionPrologueMarker(newThreadStatus);
     }
 
     @Override
     protected void afterClone(Node other) {
         super.afterClone(other);
-        marker = new CFunctionPrologueMarker();
+        marker = new CFunctionPrologueMarker(newThreadStatus);
     }
 
     public CFunctionPrologueMarker getMarker() {
@@ -95,6 +97,10 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
         return LocationIdentity.any();
     }
 
+    public int getNewThreadStatus() {
+        return newThreadStatus;
+    }
+
     @NodeIntrinsic
-    public static native void cFunctionPrologue();
+    public static native void cFunctionPrologue(@ConstantNodeParameter int newThreadStatus);
 }

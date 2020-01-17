@@ -30,9 +30,9 @@ import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.T
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleSplitting;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;

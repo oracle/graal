@@ -40,10 +40,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 
 /**
@@ -155,11 +158,44 @@ public final class ComponentRegistry implements ComponentCollection {
         return candidate;
     }
 
+    /**
+     * Regexp to extract specification version. Optional {@code "1."} in front, optional
+     * {@code ".micro_patchlevel"} suffix.
+     */
+    private static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("((?:1\\.)?[0-9]+)([._].*)?"); // NOI18N
+
     public Map<String, String> getGraalCapabilities() {
         if (graalAttributes != null) {
             return graalAttributes;
         }
-        graalAttributes = storage.loadGraalVersionInfo();
+        Map<String, String> m = new HashMap<>(storage.loadGraalVersionInfo());
+        String v = m.get(CommonConstants.CAP_JAVA_VERSION);
+        if (v != null) {
+            Matcher rm = JAVA_VERSION_PATTERN.matcher(v);
+            if (rm.matches()) {
+                v = rm.group(1);
+            }
+            int mv = SystemUtils.interpretJavaMajorVersion(v);
+            if (mv < 1) {
+                m.remove(CommonConstants.CAP_JAVA_VERSION);
+            } else {
+                m.put(CommonConstants.CAP_JAVA_VERSION, "" + mv); // NOI18N
+            }
+            graalAttributes = m;
+        }
+        // On JDK11, amd64 architecture name changed to x86_64.
+        v = SystemUtils.normalizeArchitecture(
+                        m.get(CommonConstants.CAP_OS_NAME),
+                        m.get(CommonConstants.CAP_OS_ARCH));
+        if (v != null) {
+            m.put(CommonConstants.CAP_OS_ARCH, v);
+        }
+        v = SystemUtils.normalizeOSName(
+                        m.get(CommonConstants.CAP_OS_NAME),
+                        m.get(CommonConstants.CAP_OS_ARCH));
+        if (v != null) {
+            m.put(CommonConstants.CAP_OS_NAME, v);
+        }
         return graalAttributes;
     }
 

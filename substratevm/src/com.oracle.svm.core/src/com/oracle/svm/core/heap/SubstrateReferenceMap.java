@@ -29,10 +29,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -43,7 +45,18 @@ import jdk.vm.ci.meta.Value;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
 
-    private final BitSet input = new BitSet();
+    /**
+     * Stores the reference map data. 3 bits are currently required per entry: the first bit at
+     * "offset" marks the offset in the reference map. The following bit at offset + 1 stores the
+     * "compressed" information. For verification purposes, the following bit must always be 0,
+     * otherwise {@link #isValidToMark} can have false positives.
+     *
+     * Offsets can also be negative, i.e., the reference map can contain stack slots of the callee
+     * frame. Because {@link BitSet} only supports positive indices, the whole bit set is shifted by
+     * {@link #shift} bits when negative offsets are required.
+     */
+    private BitSet shiftedOffsets;
+    private int shift;
 
     /* Maps base references with references pointing to the interior of that object */
     private EconomicMap<Integer, Set<Integer>> derived;
@@ -56,19 +69,29 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     }
 
     public boolean isOffsetMarked(int offset) {
-        return input.get(offset);
-    }
-
-    public boolean isOffsetCompressed(int offset) {
-        assert isOffsetMarked(offset);
-        return input.get(offset + 1);
+        return shiftedOffsets != null && offset + shift >= 0 && shiftedOffsets.get(offset + shift);
     }
 
     public void markReferenceAtOffset(int offset, boolean compressed) {
+        if (shiftedOffsets == null) {
+            shiftedOffsets = new BitSet();
+        }
+        if (offset < -shift) {
+            int newShift = NumUtil.roundUp(-offset, Long.SIZE);
+            int shiftDelta = newShift - shift;
+            assert shiftDelta > 0 && NumUtil.roundUp(shiftDelta, Long.SIZE) == shiftDelta;
+
+            long[] oldData = shiftedOffsets.toLongArray();
+            long[] newData = new long[oldData.length + shiftDelta / Long.SIZE];
+            System.arraycopy(oldData, 0, newData, shiftDelta / Long.SIZE, oldData.length);
+            shiftedOffsets = BitSet.valueOf(newData);
+            shift = newShift;
+        }
+
         assert isValidToMark(offset, compressed) : "already marked or would overlap with predecessor or successor";
-        input.set(offset);
+        shiftedOffsets.set(offset + shift);
         if (compressed) {
-            input.set(offset + 1);
+            shiftedOffsets.set(offset + 1 + shift);
         }
     }
 
@@ -102,20 +125,21 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         int uncompressedSize = FrameAccess.uncompressedReferenceSize();
         int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
 
-        int previousOffset = input.previousSetBit(offset - 1);
-        if (previousOffset != -1) {
-            int minOffset = previousOffset + uncompressedSize;
-            if (previousOffset != 0 && input.get(previousOffset - 1)) {
-                previousOffset--; // found a compression bit, previous bit represents the reference
-                minOffset = previousOffset + compressedSize;
+        int previousShiftedOffset = shiftedOffsets.previousSetBit(offset - 1 + shift);
+        if (previousShiftedOffset != -1) {
+            int minShiftedOffset = previousShiftedOffset + uncompressedSize;
+            if (previousShiftedOffset != 0 && shiftedOffsets.get(previousShiftedOffset - 1)) {
+                /* Found a compression bit, previous bit represents the reference. */
+                previousShiftedOffset--;
+                minShiftedOffset = previousShiftedOffset + compressedSize;
             }
-            if (offset < minOffset) {
+            if (offset + shift < minShiftedOffset) {
                 return false;
             }
         }
         int size = isCompressed ? compressedSize : uncompressedSize;
-        int nextIndex = input.nextSetBit(offset);
-        return (nextIndex == -1) || (offset + size <= nextIndex);
+        int nextShiftedOffset = shiftedOffsets.nextSetBit(offset + shift);
+        return (nextShiftedOffset == -1) || (offset + shift + size <= nextShiftedOffset);
     }
 
     public Map<Integer, Object> getDebugAllUsedRegisters() {
@@ -144,17 +168,17 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public boolean isEmpty() {
-        return input.isEmpty();
+        return shiftedOffsets == null || shiftedOffsets.isEmpty();
     }
 
     @Override
     public ReferenceMapEncoder.OffsetIterator getOffsets() {
         return new ReferenceMapEncoder.OffsetIterator() {
-            private int nextIndex = input.nextSetBit(0);
+            private int nextShiftedOffset = shiftedOffsets == null ? -1 : shiftedOffsets.nextSetBit(0);
 
             @Override
             public boolean hasNext() {
-                return (nextIndex != -1);
+                return (nextShiftedOffset != -1);
             }
 
             @Override
@@ -162,9 +186,10 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
-                int index = nextIndex;
-                nextIndex = input.nextSetBit(index + 2); // +1: skip compression bit
-                return index;
+                int result = nextShiftedOffset - shift;
+                /* +1: skip compression bit. */
+                nextShiftedOffset = shiftedOffsets.nextSetBit(nextShiftedOffset + 2);
+                return result;
             }
 
             @Override
@@ -172,7 +197,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
-                return isOffsetCompressed(nextIndex);
+                return shiftedOffsets.get(nextShiftedOffset + 1);
             }
 
             @Override
@@ -180,7 +205,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
-                return derived != null && derived.containsKey(nextIndex);
+                return derived != null && derived.containsKey(nextShiftedOffset - shift);
             }
 
             @Override
@@ -195,7 +220,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public int hashCode() {
-        return input.hashCode() + ((derived == null) ? 0 : derived.hashCode());
+        return shift ^ (shiftedOffsets == null ? 0 : shiftedOffsets.hashCode()) ^ (derived == null ? 0 : derived.hashCode());
     }
 
     @Override
@@ -204,7 +229,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             return true;
         } else if (obj instanceof SubstrateReferenceMap) {
             SubstrateReferenceMap other = (SubstrateReferenceMap) obj;
-            if (!input.equals(other.input)) {
+            if (shift != other.shift || !Objects.equals(shiftedOffsets, other.shiftedOffsets)) {
                 return false;
             }
 
@@ -244,14 +269,15 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         }
     }
 
-    public void dump(StringBuilder builder) {
-        if (input.isEmpty()) {
+    public StringBuilder dump(StringBuilder builder) {
+        if (shiftedOffsets == null || shiftedOffsets.isEmpty()) {
             builder.append("[]");
-            return;
+            return builder;
         }
 
         builder.append('[');
-        input.stream().forEach(offset -> {
+        shiftedOffsets.stream().forEach(shiftedOffset -> {
+            int offset = shiftedOffset - shift;
             builder.append(offset);
             if (derived != null && derived.containsKey(offset)) {
                 builder.append(" -> {");
@@ -264,5 +290,11 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             builder.append(", ");
         });
         builder.replace(builder.length() - 2, builder.length(), "]");
+        return builder;
+    }
+
+    @Override
+    public String toString() {
+        return dump(new StringBuilder()).toString();
     }
 }

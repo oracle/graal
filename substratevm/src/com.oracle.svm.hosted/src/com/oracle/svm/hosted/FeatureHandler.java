@@ -112,7 +112,7 @@ public class FeatureHandler {
         try {
             feature = (Feature) ReflectionUtil.newInstance(featureClass);
         } catch (ReflectionUtilError ex) {
-            throw UserError.abort("Error instantiating Feature class " + featureClass.getTypeName() + ". Ensure the class is not abstract and has a no-argument constructor.", ex.getCause());
+            throw UserError.abort(ex.getCause(), "Error instantiating Feature class " + featureClass.getTypeName() + ". Ensure the class is not abstract and has a no-argument constructor.");
         }
 
         if (!feature.isInConfiguration(access)) {

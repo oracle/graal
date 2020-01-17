@@ -164,7 +164,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public int getReservedBits() {
+    public int getReservedBitsMask() {
         assert MASK_HEADER_BITS.rawValue() == ALL_RESERVED_BITS;
         assert CLEAR_HEADER_BITS.rawValue() == ~ALL_RESERVED_BITS;
         return ALL_RESERVED_BITS;
@@ -229,8 +229,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return KnownIntrinsics.readHub(o);
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
+    public DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;
@@ -249,16 +250,16 @@ public class ObjectHeaderImpl extends ObjectHeader {
     public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
         assert heapKind == HeapKind.Unmanaged;
         // headers in unmanaged memory don't need any GC-specific bits set
-        initializeHeaderOfNewObject(objectPointer, hub, false, false);
+        Word objectHeader = encodeAsObjectHeader(hub, false, false);
+        initializeHeaderOfNewObject(objectPointer, objectHeader);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, boolean rememberedSet, boolean unaligned) {
-        WordBase header = formatHub(hub, rememberedSet, unaligned);
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
         if (getReferenceSize() == Integer.BYTES) {
-            objectPointer.writeInt(getHubOffset(), (int) header.rawValue(), LocationIdentity.INIT_LOCATION);
+            objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {
-            objectPointer.writeWord(getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+            objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
         }
     }
 
@@ -270,8 +271,13 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
+    @Override
+    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
+        return encodeAsObjectHeader(hub, false, false);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static WordBase formatHub(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
+    public Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
         /*
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
@@ -317,9 +323,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public long getHeaderForImageHeapObject(long value) {
-        assert (value & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
-        return (value | BOOT_IMAGE.rawValue());
+    public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
+        assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
+        return (heapBaseRelativeAddress | BOOT_IMAGE.rawValue());
     }
 
     public boolean isBootImageCarefully(Object o) {
@@ -671,7 +677,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         } else {
             headerBitsClassification = -1;
         }
-        final DynamicHub hub = dynamicHubFromObjectHeader(header);
+        final DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header);
         final int hubClassification = HeapVerifierImpl.classifyObject(hub);
         return ((1000 * hubClassification) + headerBitsClassification);
     }

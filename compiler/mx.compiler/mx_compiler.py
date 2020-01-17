@@ -396,6 +396,7 @@ def verify_jvmci_ci_versions(args):
 
     primary_suite = mx.primary_suite()
     hocon_version, hocon_dev = _grep_version(
+        [join(primary_suite.vc_dir, 'common.json')] +
         glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
         glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
@@ -570,7 +571,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
             try:
                 makegraaljdk_cli(['-a', join(ws, 'graaljdk-' + str(jdk.javaCompliance) + '.tar'), '-b', graaljdk])
             finally:
-                shutil.rmtree(ws)
+                mx.rmtree(ws)
 
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
@@ -1198,7 +1199,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     # may have changed and we want to pick up these changes.
     source_jdk_timestamps_file = dst_jdk_dir + '.source_jdk_timestamps'
     timestamps = []
-    nl = os.linesep
+    nl = '\n'
     for root, _, filenames in os.walk(jdk.home):
         for name in filenames:
             ts = mx.TimeStampFile(join(root, name))
@@ -1395,6 +1396,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
             'compiler:JAOTC',
         ]
     else:
@@ -1402,6 +1404,7 @@ def _jvmci_jars():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
+            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
         ]
 
 # The community compiler component

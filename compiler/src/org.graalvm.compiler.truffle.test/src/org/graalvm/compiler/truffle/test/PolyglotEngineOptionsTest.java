@@ -24,10 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -55,35 +53,28 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(2, SLFunction.INLINE_CACHE_SIZE);
 
         // doWhile must run isolated and should not affect other compilation thresholds
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold), null, doWhile);
+        testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 
     @Test
     public void testPolyglotCompilerOptionsAreUsed() {
-        Context context = Context.newBuilder() //
-                        .allowExperimentalOptions(true) //
-                        .option("engine.CompilationThreshold", "27") //
-                        .option("engine.TraceCompilation", "true") //
-                        .option("engine.TraceCompilationDetails", "true") //
-                        .option("engine.Inlining", "false") //
-                        .option("engine.Splitting", "false") //
-                        .option("engine.Mode", "latency").build();
-        context.enter();
-        try {
-            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-            Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
-            Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
-            Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
-            Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
-            Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
-            Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
-        } finally {
-            context.leave();
-            context.close();
-        }
+        setupContext("engine.CompilationThreshold", "27", //
+                        "engine.TraceCompilation", "true", //
+                        "engine.TraceCompilationDetails", "true", //
+                        "engine.Inlining", "false", //
+                        "engine.Splitting", "false", //
+                        "engine.Mode", "latency");
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+        Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
+        Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
+        Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
+        Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
+        Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -93,34 +84,24 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
                         .option("engine.Mode", "anUnknownMode").build();
     }
 
-    private static void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
-        Context.Builder builder = Context.newBuilder("sl");
-        if (compilationThresholdOption != null) {
-            builder.allowExperimentalOptions(true).option("engine.CompilationThreshold", compilationThresholdOption);
-        }
-        Context context = builder.build();
-        context.enter();
-        try {
-            context.eval("sl", "function test() {}");
-            SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
+    private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
+        Context ctx = setupContext(compilationThresholdOption == null ? new String[0] : new String[]{"engine.CompilationThreshold", compilationThresholdOption});
+        ctx.eval("sl", "function test() {}");
+        SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 
-            Assert.assertFalse(isExecuteCompiled(test));
-            for (int i = 0; i < iterations - 1; i++) {
-                Assert.assertFalse(isExecuteCompiled(test));
-                test.getCallTarget().call();
-            }
-            if (doWhile != null) {
-                doWhile.run();
-            }
+        Assert.assertFalse(isExecuteCompiled(test));
+        for (int i = 0; i < iterations - 1; i++) {
             Assert.assertFalse(isExecuteCompiled(test));
             test.getCallTarget().call();
-            Assert.assertTrue(isExecuteCompiled(test));
-            test.getCallTarget().call();
-            Assert.assertTrue(isExecuteCompiled(test));
-        } finally {
-            context.leave();
-            context.close();
         }
+        if (doWhile != null) {
+            doWhile.run();
+        }
+        Assert.assertFalse(isExecuteCompiled(test));
+        test.getCallTarget().call();
+        Assert.assertTrue(isExecuteCompiled(test));
+        test.getCallTarget().call();
+        Assert.assertTrue(isExecuteCompiled(test));
     }
 
     private static boolean isExecuteCompiled(SLFunction value) {

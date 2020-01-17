@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.XOptions;
 
 public class SubstrateOptions {
 
@@ -134,17 +136,57 @@ public class SubstrateOptions {
         return makeFilter(RuntimeAssertionsFilter.getValue());
     }
 
+    @Option(help = "Use a card remembered set heap for GC")//
+    public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
+
     @Option(help = "Print summary GC information after each collection")//
     public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print summary GC information after main completion")//
-    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
-    public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection")//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Verify the heap before and after each collection.")//
+    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
+
+    @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXms().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmx().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXmn().setValue(newValue);
+            }
+        }
+    };
+
+    @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+            if (!SubstrateUtil.HOSTED) {
+                XOptions.getXss().setValue(newValue);
+            }
+        }
+    };
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
@@ -156,7 +198,17 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates. ")//
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValue(OptionValues values) {
+            Boolean value = super.getValue(values);
+            /*
+             * Spawning isolates results in a significant performance hit, so we disable them on the
+             * LLVM backend unless they were explicitly requested.
+             */
+            return (value != null) ? value : !CompilerBackend.getValue().equals("llvm");
+        }
+    };
 
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
@@ -287,6 +339,9 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
+    public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
+
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
     public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
 
@@ -310,7 +365,7 @@ public class SubstrateOptions {
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 
-    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -351,5 +406,4 @@ public class SubstrateOptions {
     public static int codeAlignment() {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
-
 }

@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * An immutable VM operation that lives in the image heap. All mutable state is kept in native
  * memory (see {@linkplain NativeVMOperationData}). This construct is used in places where we can't
@@ -44,20 +46,20 @@ public abstract class NativeVMOperation extends VMOperation {
         VMOperationControl.get().enqueue(data);
     }
 
-    public NativeVMOperationData getNext(NativeVMOperationData data) {
-        return data.getNext();
+    @Uninterruptible(reason = "Called from a non-Java thread.")
+    public void enqueueFromNonJavaThread(NativeVMOperationData data) {
+        assert data.getNativeVMOperation() == this;
+        VMOperationControl.get().enqueueFromNonJavaThread(data);
     }
 
-    public void setNext(NativeVMOperationData data, NativeVMOperationData value) {
-        data.setNext(value);
-    }
-
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected boolean isFinished(NativeVMOperationData data) {
         return data.getFinished();
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setFinished(NativeVMOperationData data, boolean value) {
         data.setFinished(value);
     }
@@ -68,6 +70,7 @@ public abstract class NativeVMOperation extends VMOperation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setQueuingThread(NativeVMOperationData data, IsolateThread value) {
         data.setQueuingThread(value);
     }

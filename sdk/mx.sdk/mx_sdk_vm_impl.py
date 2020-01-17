@@ -43,6 +43,7 @@ from __future__ import print_function
 
 from abc import ABCMeta
 from argparse import ArgumentParser
+from collections import OrderedDict
 import io
 import json
 import os
@@ -491,12 +492,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             # Add release file
             _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-            _metadata = self._get_metadata(_sorted_suites)
+            _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
         # Add the rest of the GraalVM
 
         component_suites = {}
+        installables = {}
         has_graal_compiler = False
         for _component in self.components:
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
@@ -627,6 +629,28 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 # add language-specific release file
                 component_suites.setdefault(_component_base, []).append(_component.suite)
 
+            if _component.installable and not _disable_installable(_component):
+                installables.setdefault(_component.installable_id, []).append(_component)
+
+        installer = get_component('gu', stage1=stage1)
+        if installer:
+            # Register pre-installed components
+            components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
+            for components in installables.values():
+                main_component = min(components, key=lambda c: c.priority)
+                _add(layout, components_dir + main_component.installable_id + '.component', """string:Bundle-Name={name}
+Bundle-Symbolic-Name={id}
+Bundle-Version={version}
+
+x-GraalVM-Polyglot-Part={polyglot}
+x-GraalVM-Component-Distribution=bundled
+""".format(
+                    name=main_component.name,
+                    id=main_component.installable_id,
+                    version=_suite.release_version(),
+                    polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
+                             and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)))
+
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
@@ -645,11 +669,15 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         return BaseGraalVmLayoutDistributionTask(args, self)
 
     @staticmethod
-    def _get_metadata(suites):
+    def _get_metadata(suites, parent_release_file=None):
         """
         :type suites: list[mx.Suite]
-        :return:
+        :type parent_release_file: str | None
+        :rtype: str
         """
+        def quote(string):
+            return '"{}"'.format(string)
+
         _commit_info = {}
         for _s in suites:
             if _s.vc:
@@ -659,29 +687,36 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                     "commit.committer-ts": _info['committer-ts'],
                 }
-        _metadata = """\
-OS_NAME={os}
-OS_ARCH={arch}
-SOURCE="{source}"
-COMMIT_INFO={commit_info}
-GRAALVM_VERSION={version}""".format(
-            os=get_graalvm_os(),
-            arch=mx.get_arch(),
-            source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites]),
-            commit_info=json.dumps(_commit_info, sort_keys=True),
-            version=_suite.release_version()
-        )
+        _metadata_dict = OrderedDict()
+        if parent_release_file is not None and exists(parent_release_file):
+            with open(parent_release_file, 'r') as f:
+                for line in f:
+                    assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
+                    k, v = line.strip().split('=', 1)
+                    _metadata_dict[k] = v
 
+        _metadata_dict.setdefault('JAVA_VERSION', quote(_src_jdk.version))
+        _metadata_dict.setdefault('OS_NAME', quote(get_graalvm_os()))
+        _metadata_dict.setdefault('OS_ARCH', quote(mx.get_arch()))
+
+        _metadata_dict['GRAALVM_VERSION'] = quote(_suite.release_version())
+        _source = _metadata_dict.get('SOURCE') or ''
+        if _source:
+            if len(_source) > 1 and _source[0] == '"' and _source[-1] == '"':
+                _source = _source[1:-1]
+            _source += ' '
+        _source += ' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites])
+        _metadata_dict['SOURCE'] = quote(_source)
+        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)  # unquoted to simplify JSON parsing
         if _suite.is_release():
             catalog = _release_catalog()
         else:
             snapshot_catalog = _snapshot_catalog()
             catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir)) if snapshot_catalog else None
-
         if catalog:
-            _metadata += "\ncomponent_catalog={}".format(catalog)
+            _metadata_dict['component_catalog'] = quote(catalog)
 
-        return _metadata
+        return '\n'.join(['{}={}'.format(k, v) for k, v in _metadata_dict.items()])
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
@@ -1836,8 +1871,9 @@ x-GraalVM-Polyglot-Part: {polyglot}
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
         if isinstance(main_component, mx_sdk.GraalVmLanguage):
+            _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join('jre', 'languages', main_component.dir_name))
+""".format(workdir=join(_wd_base, main_component.dir_name))
 
         post_install_msg = None
         for component in self.components:
@@ -1967,6 +2003,10 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                     launcher_config.add_relative_home_path(language, relative_path_from_launcher_dir)
 
         add_files_from_component(component, base_dir, [])
+
+        sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+        metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
+        layout.setdefault(base_dir + '/release', []).append('string:' + metadata)
 
         for dependency_name, details in component.standalone_dependencies.items():
             dependency_path = details[0]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -93,7 +93,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     /**
      * @deprecated "This method should not be called directly. Use
-     *             {@link LLVMLanguage#getCapability(Class)} instead."
+     *             {@link LLVMLanguage#getLLVMMemory() } instead."
      */
     @Deprecated
     public static LLVMNativeMemory getInstance() {

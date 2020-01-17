@@ -90,6 +90,10 @@ fastr: {
   environment: {
     FASTR_RELEASE: "true"
   }
+  downloads: {
+    F2C_BINARY: { name: "f2c-binary", version: "4", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "2", platformspecific: true },
+  }
 }
 
 fastr_linux: ${fastr} {
@@ -98,17 +102,20 @@ fastr_linux: ${fastr} {
     pcre: "==8.43"
     zlib: ">=1.2.11"
     curl: ">=7.50.1"
+    gnur: "==3.6.1"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.2/lib64"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1/lib64/R",
   }
 }
 
 fastr_darwin: ${fastr} {
   packages: {
     "pcre" : "==8.43"
+    "gnur": "==3.6.1"
   }
   environment:  {
     # TODO: check these env vars
@@ -116,6 +123,7 @@ fastr_darwin: ${fastr} {
     FC: "/usr/local/bin/gfortran-4.9"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1/lib/R"
   }
 }
 
@@ -232,7 +240,7 @@ maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribut
 maven_deploy_dry_run_sdk: [--suite, sdk, maven-deploy, --dry-run, --validate, none, --all-distribution-types, "--tags=graalvm", --with-suite-revisions-metadata, ${binaries-repository}]
 
 full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
-full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
+full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
 builds += [

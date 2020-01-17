@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.runtime;
 
 import java.net.URI;
@@ -64,7 +65,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
         if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) || sourceTarget.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY ||
-                        TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining)) {
+                        sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
             return Collections.emptyList();
         }
         int[] visitedNodes = {0};

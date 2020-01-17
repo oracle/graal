@@ -38,11 +38,11 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
@@ -51,9 +51,9 @@ import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -131,8 +131,10 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     @Override
     protected LLVMValueRef emitCall(Invoke invoke, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
         if (!hasJavaFrameAnchor(callTarget)) {
+            assert SubstrateBackend.getNewThreadStatus(callTarget) == StatusSupport.STATUS_ILLEGAL;
             return super.emitCall(invoke, callTarget, callee, patchpointId, args);
         }
+        assert StatusSupport.isValidStatus(SubstrateBackend.getNewThreadStatus(callTarget));
 
         LLVMValueRef anchor = llvmOperand(getJavaFrameAnchor(callTarget));
         anchor = builder.buildIntToPtr(anchor, builder.rawPointerType());
@@ -145,10 +147,10 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
             LLVMValueRef threadLocalArea = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
             LLVMValueRef statusIndex = builder.constantInt(runtimeConfiguration.getVMThreadStatusOffset());
             LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
-            builder.buildStore(builder.constantInt(VMThreads.StatusSupport.STATUS_IN_NATIVE), statusAddress);
+            builder.buildStore(builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget)), statusAddress);
         }
 
-        LLVMValueRef wrapper = builder.createJNIWrapper(callee, patchpointId, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset(), gen.getBlockEnd((Block) gen.getCurrentBlock()));
+        LLVMValueRef wrapper = builder.createJNIWrapper(callee, patchpointId, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset());
 
         LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
         newArgs[0] = anchor;

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
 
@@ -178,7 +179,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                     }
                 }
 
-                if (PolyglotCompilerOptions.getValue(engineOptions, PolyglotCompilerOptions.TraceAssumptions)) {
+                if (TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceAssumptions)) {
                     logStackTrace = true;
                     logInvalidatedDependency(dependency, message);
                 }
@@ -284,7 +285,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
     private static void logStackTrace(OptionValues engineOptions) {
         final int skip = 1;
-        final int limit = PolyglotCompilerOptions.getValue(engineOptions, PolyglotCompilerOptions.TraceStackTraceLimit);
+        final int limit = TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         StringBuilder strb = new StringBuilder();
         String sep = "";

@@ -45,11 +45,13 @@ import org.graalvm.word.LocationIdentity;
 public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single, ControlFlowAnchored {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
+    private final int oldThreadStatus;
     /** See comment in {@link CFunctionPrologueNode}. */
     private CFunctionEpilogueMarker marker;
 
-    public CFunctionEpilogueNode() {
+    public CFunctionEpilogueNode(int oldThreadStatus) {
         super(TYPE, StampFactory.forVoid());
+        this.oldThreadStatus = oldThreadStatus;
         marker = new CFunctionEpilogueMarker();
     }
 
@@ -73,6 +75,10 @@ public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lo
         return LocationIdentity.any();
     }
 
+    public int getOldThreadStatus() {
+        return oldThreadStatus;
+    }
+
     @NodeIntrinsic
-    public static native void cFunctionEpilogue();
+    public static native void cFunctionEpilogue(@ConstantNodeParameter int oldThreadStatus);
 }

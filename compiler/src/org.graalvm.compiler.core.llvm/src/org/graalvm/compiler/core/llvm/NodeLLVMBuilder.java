@@ -90,9 +90,9 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
@@ -371,7 +371,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
                 builder.buildBranch(defaultSuccessor);
                 break;
             case 1:
-                LLVMValueRef hub = gen.emitLLVMConstant(builder.objectType(), (JavaConstant) switchNode.keyAt(0));
+                LLVMValueRef hub = gen.emitLLVMConstant(builder.objectType(false), (JavaConstant) switchNode.keyAt(0));
                 LLVMValueRef cond = builder.buildCompare(Condition.EQ, value, hub, false);
                 builder.buildIf(cond, gen.getBlock(switchNode.keySuccessor(0)), defaultSuccessor);
                 break;
@@ -407,7 +407,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
             }
             if (targetMethod != null) {
                 callee = builder.buildIntToPtr(computedAddress,
-                                builder.pointerType(gen.getLLVMFunctionType(targetMethod, false), false));
+                                builder.pointerType(gen.getLLVMFunctionType(targetMethod, false), false, false));
                 isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
@@ -416,7 +416,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
                 assert args.length == argTypes.length;
 
                 callee = builder.buildIntToPtr(computedAddress,
-                                builder.pointerType(builder.functionType(returnType, argTypes), false));
+                                builder.pointerType(builder.functionType(returnType, argTypes), false, false));
             }
             gen.getLLVMResult().recordIndirectCall(targetMethod, patchpointId, debugInfo);
 

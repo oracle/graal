@@ -50,13 +50,13 @@ public final class MachOFile {
     private static final int MH_OBJECT = 0x1; /* relocatable object file */
     private static final int MH_EXECUTE = 0x2; /* demand paged executable file */
     private static final int MH_DYLIB = 0x6; /* dynamically bound shared library */
+    private static final int MH_BUNDLE = 0x8; /* dynamicly bound bundle file */
 
     // currently unused types:
     @SuppressWarnings("unused") private static final int MH_FVMLIB = 0x3;
     @SuppressWarnings("unused") private static final int MH_CORE = 0x4;
     @SuppressWarnings("unused") private static final int MH_PRELOAD = 0x5;
     @SuppressWarnings("unused") private static final int MH_DYLINKER = 0x7;
-    @SuppressWarnings("unused") private static final int MH_BUNDLE = 0x8;
     @SuppressWarnings("unused") private static final int MH_DYLIB_STUB = 0x9;
 
     private final MachOHeader header;
@@ -107,6 +107,7 @@ public final class MachOFile {
             case MH_OBJECT:
                 return getSectionData(INTERMEDIATE_SEGMENT, BITCODE_SECTION);
             case MH_DYLIB:
+            case MH_BUNDLE:
             case MH_EXECUTE:
                 return getSectionData(LLVM_SEGMENT, BUNDLE_SECTION);
             default:

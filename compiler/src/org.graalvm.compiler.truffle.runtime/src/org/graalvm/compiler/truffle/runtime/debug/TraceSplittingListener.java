@@ -31,7 +31,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;

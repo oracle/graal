@@ -67,12 +67,14 @@ final class OptionValuesImpl implements OptionValues {
     private final PolyglotEngineImpl engine;
     private final OptionDescriptors descriptors;
     private final Map<OptionKey<?>, Object> values;
+    private final Map<OptionKey<?>, String> unparsedValues;
 
-    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors) {
+    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
         this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
+        this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
     }
 
     @Override
@@ -155,12 +157,16 @@ final class OptionValuesImpl implements OptionValues {
             }
         }
         values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
+        if (unparsedValues != null) {
+            unparsedValues.put(descriptor.getKey(), value);
+        }
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
         this.engine = copy.engine;
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
+        this.unparsedValues = copy.unparsedValues;
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {
@@ -215,6 +221,13 @@ final class OptionValuesImpl implements OptionValues {
     @Override
     public boolean hasSetOptions() {
         return !values.isEmpty();
+    }
+
+    String getUnparsedOptionValue(OptionKey<?> key) {
+        if (unparsedValues == null) {
+            throw new IllegalStateException("Unparsed values are not supported");
+        }
+        return unparsedValues.get(key);
     }
 
     private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions) {

@@ -87,9 +87,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         if (ImmutableCode.getValue(options)) {
             // lowering introduces class constants, therefore it must be after lowering
             ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(config));
+
             if (VerifyPhases.getValue(options)) {
                 ret.getHighTier().appendPhase(new AheadOfTimeVerificationPhase());
             }
+
             if (GeneratePIC.getValue(options)) {
                 ListIterator<BasePhase<? super HighTierContext>> highTierLowering = ret.getHighTier().findPhase(LoweringPhase.class);
                 highTierLowering.previous();

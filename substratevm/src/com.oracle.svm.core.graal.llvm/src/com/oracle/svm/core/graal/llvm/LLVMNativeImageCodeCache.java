@@ -62,7 +62,6 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -77,12 +76,12 @@ import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMObjectFileRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMSectionIteratorRef;
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMObjectFileRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
@@ -278,7 +277,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     /* Optimizations might have duplicated some calls. */
                     for (int actualPcOffset : info.getPatchpointOffsets(call.pcOffset)) {
                         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
-                        info.forEachStatepointOffset(call.pcOffset, actualPcOffset, (o, b) -> referenceMap.markReferenceAtOffset(o, b, SubstrateOptions.SpawnIsolates.getValue()));
+                        info.forEachStatepointOffset(call.pcOffset, actualPcOffset, referenceMap::markReferenceAtOffset);
                         call.debugInfo.setReferenceMap(referenceMap);
 
                         if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
@@ -462,7 +461,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("opt");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("opt").toString());
 
             if (LLVMOptions.BitcodeOptimizations.getValue()) {
                 cmd.add("-disable-inlining");
@@ -501,7 +500,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llc").toString());
             cmd.add("-relocation-model=pic");
             cmd.add("--trap-unreachable");
             cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
@@ -532,7 +531,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmLink(DebugContext debug, String outputPath, List<String> inputPaths) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("llvm-link");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llvm-link").toString());
             cmd.add("-v");
             cmd.add("-o");
             cmd.add(outputPath);

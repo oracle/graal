@@ -46,6 +46,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -237,7 +239,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         if (callback != null) {
-            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option " + enableSupportOption);
+            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option %s", enableSupportOption);
             UserError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
@@ -262,6 +264,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     static void onSafepointCheckSlowpath() {
+        assert StatusSupport.isStatusJava() : "must only be executed when the thread is in Java state";
         RecurringCallbackTimer timer = isRecurringCallbackSupported() ? activeTimer.get() : null;
         if (timer != null) {
             timer.evaluate();
@@ -276,7 +279,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     }
 
     static boolean needsNativeToJavaSlowpath() {
-        return isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null;
+        return ActionOnTransitionToJavaSupport.isActionPending() || (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null);
     }
 
     /**

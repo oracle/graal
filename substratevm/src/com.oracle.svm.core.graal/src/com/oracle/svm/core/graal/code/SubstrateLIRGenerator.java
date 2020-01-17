@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,11 @@ import jdk.vm.ci.meta.Value;
 
 public interface SubstrateLIRGenerator {
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip);
+    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
 
     void emitDeadEnd();
 
     void emitVerificationMarker(Object marker);
+
+    void emitInstructionSynchronizationBarrier();
 }

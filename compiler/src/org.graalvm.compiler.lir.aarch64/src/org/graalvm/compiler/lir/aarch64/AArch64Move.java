@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -255,10 +255,19 @@ public class AArch64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            if (state != null) {
-                crb.recordImplicitException(masm.position(), state);
-            }
+            int prePosition = masm.position();
             emitMemAccess(crb, masm);
+            if (state != null) {
+                int implicitExceptionPosition = prePosition;
+                // Adjust implicit exception position if this ldr/str has been merged to ldp/stp.
+                if (kind.isInteger() && prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
+                    implicitExceptionPosition = prePosition - 4;
+                    if (crb.isImplicitExceptionExist(implicitExceptionPosition)) {
+                        return;
+                    }
+                }
+                crb.recordImplicitException(implicitExceptionPosition, state);
+            }
         }
 
         @Override
@@ -346,8 +355,17 @@ public class AArch64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            crb.recordImplicitException(masm.position(), state);
+            int prePosition = masm.position();
             masm.ldr(64, zr, address.toAddress());
+            int implicitExceptionPosition = prePosition;
+            // Adjust implicit exception position if this ldr has been merged to ldp.
+            if (prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
+                implicitExceptionPosition = prePosition - 4;
+                if (crb.isImplicitExceptionExist(implicitExceptionPosition)) {
+                    return;
+                }
+            }
+            crb.recordImplicitException(implicitExceptionPosition, state);
         }
 
         @Override
@@ -537,7 +555,9 @@ public class AArch64Move {
                     crb.recordInlineDataInCode(input);
                     masm.mov(dst, 0xDEADDEADDEADDEADL, true);
                 } else {
-                    masm.ldr(64, dst, (AArch64Address) crb.recordDataReferenceInCode(input, 8));
+                    crb.recordDataReferenceInCode(input, 8);
+                    AArch64Address address = AArch64Address.createScaledImmediateAddress(dst, 0x0);
+                    masm.adrpLdr(64, dst, address);
                 }
                 break;
             default:

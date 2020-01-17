@@ -346,7 +346,14 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T addressOf(NonmovableArray<?> array, int index) {
         assert index >= 0 && index <= lengthOf(array);
-        return (T) ((Pointer) array).add(readArrayBase(array) + (index << readElementShift(array)));
+        return (T) getArrayBase(array).add(index << readElementShift(array));
+    }
+
+    /** Reads the value at the given index in an object array. */
+    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends Pointer> T getArrayBase(NonmovableArray<?> array) {
+        return (T) ((Pointer) array).add(readArrayBase(array));
     }
 
     /** Reads the value at the given index in an object array. */

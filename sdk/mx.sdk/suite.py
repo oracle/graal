@@ -91,31 +91,39 @@ suite = {
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-amd64.tar.gz"],
-            "sha1" : "e853f32336ca58d2077717420a9ba76b9ac9aab5",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-amd64.tar.gz"],
+            "sha1" : "99376a9944e2dfac27087df54c31915f29c6d47e",
           },
           "aarch64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-aarch64.tar.gz"],
-            "sha1" : "d2f502b216ef2689a79caa1a9f844be0f716da01",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-aarch64.tar.gz"],
+            "sha1" : "38ff56cf935b874d1937d1f83598e5ca5af0fb9d",
           }
         },
         "darwin" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-darwin-amd64.tar.gz"],
-            "sha1" : "11713f3d9c76d025b482771ef9ea45689cf50cb1",
+            # version difference due to rebuild for compatibility with older macOS versions
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-9.0.0-4-g9cf46c329d-bg2672c53415-darwin-amd64.tar.gz"],
+            "sha1" : "e55af4a2e74893c1024545d7a03d7e640d6c20dc",
           }
         },
         "<others>": {
             "<others>": {
                 "optional": True,
             }
-        }
+        },
+        "license" : "Apache-2.0-LLVM",
       }
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-amd64.tar.gz"],
-      "sha1" : "85aa08cfe1b28280d8267dc9ae2ef80463541d46",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84-linux-amd64.tar.gz"],
+      "sha1" : "d585d7165e658eade76c384d3bf0695560c2bf3a",
+      "license" : "Apache-2.0-LLVM",
+    },
+    "LLVM_ORG_LIBCXX_SRC" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-9.0.0-4-g9cf46c329d-bgf06552bd84.tar.gz"],
+      "sha1" : "0faf09895156642a821834f721499a6dc3731d38",
+      "license" : "Apache-2.0-LLVM",
     },
   },
   "projects" : {
@@ -252,7 +260,11 @@ suite = {
       "name" : "University of Illinois/NCSA Open Source License",
       "url" : "https://releases.llvm.org/8.0.0/LICENSE.TXT"
     },
-  },
+    "Apache-2.0-LLVM" : {
+      "name" : "Apache License 2.0 with LLVM Exceptions",
+      "url" : "http://releases.llvm.org/9.0.0/LICENSE.TXT"
+    },
+},
 
   # ------------- Distributions -------------
   "distributions" : {
@@ -272,6 +284,7 @@ suite = {
         "exports" : [
           "org.graalvm.collections",
           "org.graalvm.home",
+          "org.graalvm.home.impl",
           "org.graalvm.nativeimage.hosted",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",
@@ -350,13 +363,18 @@ suite = {
           "file:3rd_party_license_llvm-toolchain.txt",
         ],
         "./patches/" : [
+          "file:patches/*",
+        ],
+        "./patches/graalvm-llvm-runtime/" : [
           "file:../sulong/patches/*",
+        ],
+        "./patches/native-image/" : [
           # "file:../substratevm/patches/*"
         ],
       },
       "platformDependent" : True,
       "maven": False,
-      "license" : "NCSA",
+      "license" : "Apache-2.0-LLVM",
     },
   },
 }

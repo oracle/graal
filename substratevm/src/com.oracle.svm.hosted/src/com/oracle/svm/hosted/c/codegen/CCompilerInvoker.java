@@ -90,7 +90,7 @@ public class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
         } catch (IOException ex) {
-            throw UserError.abort("Unable to compile C-ABI query code. Make sure native software development toolchain is installed on your system.", ex);
+            throw UserError.abort(ex, "Unable to compile C-ABI query code. Make sure native software development toolchain is installed on your system.");
         }
     }
 

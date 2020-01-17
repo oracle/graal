@@ -71,7 +71,7 @@ based offerings. There is no other system that could compete with the
 multi-language offerings of GraalVM. The ability to create custom **T-Trace** 
 based insights in any language brings the combined offering to yet another level.
 GraalVM with **T-Trace** is the dream come true for anyone seeking security,
-embeddablity, configurability, robustness and performance at the cloud scale.
+[embeddablity](T-Trace-Embedding.md), configurability, robustness and performance at the cloud scale.
 
 ## Hacker's Handle to the Ultimate Tracing Framework
 
@@ -94,7 +94,7 @@ launch your GraalVM's `bin/node` launcher with the `--agentscript` instrument an
 observe what scripts are being loaded and evaluated:
 
 ```bash
-$ $H/bin/node --experimental-options --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
+$ graalvm/bin/node --experimental-options --js.print --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 29938 characters from url.js
 Loading 345 characters from internal/idna.js
 Loading 12642 characters from punycode.js
@@ -159,7 +159,7 @@ function. The latter is executed when the `node` process execution is over (regi
 `agent.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
-$ node --experimental-options --agentscript=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --experimental-options --js.print --agentscript=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
 === Histogram ===
 543 calls to isPosixPathSeparator
@@ -211,7 +211,7 @@ a sample script which uses a variant of the Sieve of Erathostenes to compute one
 thousand of prime numbers:
 
 ```bash
-$ js --experimental-options --agentscript=function-tracing.js sieve.js | grep -v Computed
+$ graalvm/bin/js --experimental-options --agentscript=function-tracing.js sieve.js | grep -v Computed
 Just called :program as 1 function invocation
 Just called Natural.next as 17 function invocation
 Just called Natural.next as 33 function invocation
@@ -226,7 +226,8 @@ Just called Natural.next as 4097 function invocation
 
 **T-Trace** scripts are ready to be used in any environment - be it the
 default `node` implementation, the lightweight `js` command line tool - 
-or your own application that decides to embedd GraalVM scripting capabilities!
+or your own application that decides to [embedd GraalVM scripting](T-Trace-Embedding.md)
+capabilities!
 
 ### Trully Polyglot - T-Trace any Language
 
@@ -244,7 +245,8 @@ agent.on('source', function(ev) {
 });
 ```
 
-and prepare your Ruby file `helloworld.rb`:
+and prepare your Ruby file `helloworld.rb` (make sure GraalVM Ruby is
+installed with `gu install ruby`):
 
 ```ruby
 puts 'Hello from GraalVM Ruby!'
@@ -254,7 +256,7 @@ when you apply the JavaScript instrument to the Ruby program, here is what
 you get:
 
 ```bash
-$ ruby --polyglot --experimental-options --agentscript=source-trace.js helloworld.rb
+$ graalvm/bin/ruby --polyglot --experimental-options --agentscript=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -320,7 +322,8 @@ the application at all the places representing `ROOT` of application functions.
 
 Not only one can instrument any GraalVM language, but also the **T-Trace**
 scripts can be written in any GraalVM supported language. Take for example
-Ruby and create `source-tracing.rb` file:
+Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
+`gu install ruby`) file:
 
 ```ruby
 puts "Ruby: Initializing T-Trace script"
@@ -337,7 +340,7 @@ and then you can launch your `node` application and instrument it with such
 Ruby written script:
 
 ```bash
-$ /graalvm/bin/node --experimental-options --polyglot --agentscript=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
+$ graalvm/bin/node --experimental-options --js.print --polyglot --agentscript=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
 Ruby: Initializing T-Trace script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -391,7 +394,7 @@ in `fib.js`, then invoking following command yields detailed information about
 the program execution and parameters passed between function invocations:
 
 ```bash
-$ /graalvm/bin/node --experimental-options --agentscript=fib-trace.js fib.js
+$ graalvm/bin/node --experimental-options --js.print --agentscript=fib-trace.js fib.js
 fib for 3
 fib for 2
 fib for 1
@@ -403,13 +406,19 @@ Two is the result 2
 **T-Trace** is a perfect tool for polyglot, language agnostic aspect oriented
 programming!
 
-### Compatibility of **T-Trace**
+### API of **T-Trace**
 
 The **T-Trace** functionality is offered as a technology preview and 
 requires one to use `--experimental-options` to enable the `--agentscript`
 instrument. Never the less, the compatibility of the **T-Trace** API 
 exposed via the `agent` object
-is treated seriously. Future versions will add new features, but whatever has
+is treated seriously.
+
+The [documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+of the `agent` object properties and functions is available as part of its
+[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION).
+
+Future versions will add new features, but whatever has
 once been exposed, remains functional. If your script depends on some fancy new
 feature, it may check version of the exposed API:
 
@@ -417,9 +426,10 @@ feature, it may check version of the exposed API:
 print(`Agent version is ${agent.version}`);
 ```
 
-and act accordingly to the obtained version. The documentation of the `agent`
-object properties and functions is available as part of its
-[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html).
+and act accordingly to the obtained version. New elements in the
+[documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+carry associated `@since` tag to describe the minimimal version the associated
+functionality/element is available since.
 
 ### Delaying **T-Trace** Initialization in **node.js**
 
@@ -453,11 +463,124 @@ function. Then it removes the probes using `agent.off` and invokes the actual
 access to all the node modules. The script can be used as
 
 ```js
-$ node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
+$ graalvm/bin/node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
 ```
 
 This initialization sequence is known to work on GraalVM's node `v12.10.0`
 launched with a main `yourScript.js` parameter.
+
+### Handling Exceptions
+
+The T-Trace agents can throw exceptions which are then propagated to the
+surrounding user scripts. Imagine you have a program `seq.js`
+logging various messages:
+
+```js
+function log(msg) {
+    print(msg);
+}
+
+log('Hello T-Trace!');
+log('How');
+log('are');
+log('You?');
+```
+
+You can register an instrument `term.js` and terminate the execution in the middle
+of the `seq.js` program execution based on observing the logged message:
+
+```js
+agent.on('enter', (ev, frame) => { 
+    if (frame.msg === 'are') {
+        throw 'great you are!';
+    }
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'log'
+});
+```
+
+The `term.js` instrument waits for a call to `log` function with message 'are'
+and at that moment it emits its own exception effectively interrupting the user
+program execution. As a result one gets:
+
+```bash
+$ graalvm/bin/js --polyglot --experimental-options --agentscript=term.js seq.js
+Hello T-Trace!
+How
+great you are!
+        at <js> :=>(term.js:3:75-97)
+        at <js> log(seq.js:1-3:18-36)
+        at <js> :program(seq.js:7:74-83)
+```
+
+The exceptions emitted by T-Trace instruments are treated as regular language
+exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... }`
+block to catch them and deal with them as if they were emitted by the regular
+user code.
+
+### Hack into the C Code!
+
+The polyglot capabilities of GraalVM know no limits. Not only it is possible
+to interpret dynamic languages, but with the help of the
+[lli launcher](https://www.graalvm.org/docs/reference-manual/languages/llvm/)
+one can mix in even *statically compiled* programs written in **C**, **C++**,
+**Fortran**, **Rust**, etc.
+
+Imagine you have a long running program just like
+[sieve.c](https://github.com/oracle/graal/blob/master/vm/tests/all/agentscript/agent-sieve.c)
+(which contains never-ending `for` loop in `main` method) and you'd like to give
+it some execution quota. That is quite easy to do with GraalVM and T-Trace! First
+of all execute the program on GraalVM:
+
+```bash
+$ export TOOLCHAIN_PATH=`graalvm/bin/lli --print-toolchain-path`
+$ ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o sieve
+$ graalvm/bin/lli sieve
+```
+
+Why toolchain? The GraalVM `clang` wrapper adds special options
+instructing the regular `clang` to keep the LLVM bitcode information in the `sieve`
+executable along the normal native code.
+The GraalVM's `lli` interpreter can then use the bitcode to interpret the program
+at full speed.  Btw. compare the result of direct native execution via `./sieve`
+and interpreter speed of `graalvm/bin/lli sieve` - quite good result for an
+interpreter, right?
+
+Anyway let's focus on breaking the endless loop. You can do it with a JavaScript
+`agent-limit.js` T-Trace script:
+
+```js
+var counter = 0;
+
+agent.on('enter', function(ctx, frame) {
+    if (++counter === 1000) {
+        throw `T-Trace: ${ctx.name} method called ${counter} times. enough!`;
+    }
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'nextNatural'
+});
+```
+
+The script counts the number of invocations of the C `nextNatural` function
+and when the function gets invoked a thousand times, it emits an error
+to terminate the `sieve` execution. Just run the program as:
+
+```bash
+$ lli --polyglot --agentscript=agent-limit.js --experimental-options sieve
+Computed 97 primes in 181 ms. Last one is 509
+T-Trace: nextNatural method called 1000 times. enough!
+        at <js> :anonymous(<eval>:7:117-185)
+        at <llvm> nextNatural(agent-sieve.c:14:186-221)
+        at <llvm> nextPrime(agent-sieve.c:74:1409)
+        at <llvm> measure(agent-sieve.c:104:1955)
+        at <llvm> main(agent-sieve.c:123:2452)
+```
+
+The mixture of `lli`, polyglot and T-Trace opens enormous possibilities in tracing,
+controlling and interactive or batch debugging of native programs. Write in
+C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 
 <!--
 
@@ -474,9 +597,6 @@ towards ease of use in microservices area - e.g. logging
 in a completely language agnostic way.
 - inspect values, types at invocation or allocation sites, gathering useful information
 - modify computed values, interrupt execution 
-
-- C, C++, Rust, Fortran, etc. - Enrich your static code behavior 
-by attaching your insights written in dynamic languages.
 
 - powerful tools to help you write, debug, manage, and organize
 your **T-Trace** insights scripts. It is a matter of pressing a single button
@@ -499,7 +619,7 @@ logging via standard OpenTracing API. Use the `npm` command to install
 one of the JavaScript libraries for tracing:
 
 ```bash
-$ npm install opentracing
+$ graalvm/bin/npm install opentracing
 ```
 
 Now you can use its API in your instrument `function-tracing.js` via the

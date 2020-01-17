@@ -39,6 +39,8 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     boolean isEntryPoint();
 
+    boolean hasCalleeSavedRegisters();
+
     SharedMethod[] getImplementations();
 
     boolean isDeoptTarget();

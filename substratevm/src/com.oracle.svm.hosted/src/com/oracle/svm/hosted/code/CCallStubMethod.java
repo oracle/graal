@@ -62,11 +62,11 @@ import jdk.vm.ci.meta.Signature;
 public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     private static final JavaKind cEnumKind = JavaKind.Int;
 
-    protected final boolean needsTransition;
+    protected final int newThreadStatus;
 
-    CCallStubMethod(ResolvedJavaMethod original, boolean needsTransition) {
+    CCallStubMethod(ResolvedJavaMethod original, int newThreadStatus) {
         super(original);
-        this.needsTransition = needsTransition;
+        this.newThreadStatus = newThreadStatus;
     }
 
     protected abstract String getCorrespondingAnnotationName();
@@ -82,7 +82,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit,
                         method.getSignature().getReturnType(null), method.toParameterTypes(), arguments);
         state.clearLocals();
-        ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
+        ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, newThreadStatus, deoptimizationTarget);
         returnValue = adaptReturnValue(method, providers, nativeLibraries, kit, returnValue);
         kit.createReturn(returnValue, signature.getReturnKind());
 
@@ -146,10 +146,12 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         }
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) declaredReturnType);
         if (typeInfo instanceof EnumInfo) {
-            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance), "Enum class " +
-                            declaredReturnType.toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class.getSimpleName() +
-                            " because it is used as the return type of a method annotated with @" + getCorrespondingAnnotationName() +
-                            ": " + getOriginal().format("%H.%n(%p)"));
+            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance),
+                            "Enum class %s needs a method that is annotated with @%s because it is used as the return type of a method annotated with @%s: %s",
+                            declaredReturnType,
+                            CEnumLookup.class.getSimpleName(),
+                            getCorrespondingAnnotationName(),
+                            getOriginal());
 
             // We take a word return type because checks expect word type replacements, but it is
             // narrowed to cEnumKind here.

@@ -39,17 +39,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.NoInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.After;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,32 +63,17 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope agnosticInliningScope;
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope budgetScope;
     protected final TruffleRuntime runtime = Truffle.getRuntime();
-    protected final RootCallTarget dummy = runtime.createCallTarget(new RootNode(null) {
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return null;
-        }
-    });
 
     @Before
     public void before() {
-        agnosticInliningScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining, true);
-        // ensure nothing is inlined so that we can observe the isInlinedNodes
-        budgetScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleInliningInliningBudget, 1);
-    }
-
-    @After
-    public void tearDown() {
-        budgetScope.close();
-        agnosticInliningScope.close();
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.LanguageAgnosticInlining", Boolean.TRUE.toString()).option("engine.InliningInliningBudget",
+                        "1").build());
     }
 
     @Test
     public void testInInlinedNode() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(dummy));
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(createDummyNode()));
         callTarget.call();
         final StructuredGraph graph = runLanguageAgnosticInliningPhase(callTarget);
         // Language agnostic inlining expects this particular pattern to be present in the graph
@@ -142,9 +124,18 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                         },
                         getSpeculationLog(),
                         null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, callNodeProvider, callTarget);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget);
         agnosticInliningPhase.apply(graph, truffleCompiler.getPartialEvaluator().getProviders());
         return graph;
+    }
+
+    protected final OptimizedCallTarget createDummyNode() {
+        return (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        });
     }
 
     private ResolvedJavaMethod rootCallForTarget(OptimizedCallTarget target) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {

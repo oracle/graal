@@ -31,9 +31,9 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -88,7 +88,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite(OptionValues options) {
+    protected boolean instrumentPerInlineSite(org.graalvm.compiler.options.OptionValues options) {
         return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
     }
 
@@ -108,7 +108,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified(OptionValues options) {
+        public boolean isPrettified(org.graalvm.compiler.options.OptionValues options) {
             return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
         }
 

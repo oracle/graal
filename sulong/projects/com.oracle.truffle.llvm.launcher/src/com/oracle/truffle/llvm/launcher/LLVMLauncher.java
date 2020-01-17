@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -222,7 +222,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 throw e;
             } else if (!e.isInternalError()) {
                 printStackTraceSkipTrailingHost(e);
-                return -1;
+                return 1;
             } else {
                 throw e;
             }

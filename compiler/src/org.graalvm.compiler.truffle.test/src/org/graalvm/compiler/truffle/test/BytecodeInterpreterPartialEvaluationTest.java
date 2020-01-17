@@ -24,6 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.ArrayList;
+import java.util.Formatter;
+import java.util.List;
+import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.MetricKey;
+import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -543,7 +552,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop04", bytecodes, 0, 3));
     }
 
-    @Test(timeout = 10000)
+    @Test
     public void manyIfsProgram() {
         byte[] bytecodes = new byte[]{
                         /* 0: */Bytecode.CONST,
@@ -591,7 +600,55 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 42: */Bytecode.CONST,
                         /* 43: */42,
                         /* 44: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("manyIfsProgram", bytecodes, 0, 3));
+        long[] times = new long[5];
+        String[] topPhases = new String[times.length];
+        for (int i = 0; i < times.length; i++) {
+            long start = System.currentTimeMillis();
+            assertPartialEvalEqualsAndRunsCorrect(new Program("manyIfsProgram", bytecodes, 0, 3));
+            long duration = System.currentTimeMillis() - start;
+            times[i] = duration;
+            Map<MetricKey, Long> metrics = lastDebug.getMetricsSnapshot();
+            List<Map.Entry<MetricKey, Long>> entries = new ArrayList<>(metrics.entrySet());
+            entries.sort((o1, o2) -> ((int) (o2.getValue() - o1.getValue())));
+            int printed = 0;
+            Formatter buf = new Formatter();
+            for (Map.Entry<MetricKey, Long> e : entries) {
+                if (printed++ > 20) {
+                    break;
+                }
+                MetricKey key = e.getKey();
+                if (key instanceof TimerKey) {
+                    TimerKey timer = (TimerKey) key;
+                    long value = e.getValue();
+                    long ms = timer.getTimeUnit().toMillis(value);
+                    buf.format("  %s ms\t%s%n", ms, key.getName());
+                }
+            }
+            topPhases[i] = buf.toString();
+        }
+        int limit = 15000;
+        for (int i = 0; i < times.length; i++) {
+            if (times[i] > limit) {
+                Formatter msg = new Formatter();
+                msg.format("manyIfsProgram iteration %d took %d ms which is longer than the limit of %d ms%n", i, times[i], limit);
+                msg.format("%nDetailed info for each iteration%n");
+                for (int j = 0; j < times.length; j++) {
+                    msg.format("%nIteration %d took %d ms%n", i, times[i]);
+                    msg.format("Top phase times in iteration %d:%n%s%n", i, topPhases[i]);
+                }
+                throw new AssertionError(msg.toString());
+
+            }
+        }
+        long maxDuration = 0L;
+        if (maxDuration > limit) {
+            throw new AssertionError("manyIfsProgram took " + maxDuration + " ms which is longer than the limit of " + limit + " ms");
+        }
+    }
+
+    @Override
+    protected OptionValues getOptions() {
+        return new OptionValues(super.getOptions(), DebugOptions.Count, "", DebugOptions.Time, "");
     }
 
     public abstract static class Inst {

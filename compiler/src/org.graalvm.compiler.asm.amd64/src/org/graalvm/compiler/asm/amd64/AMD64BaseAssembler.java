@@ -1037,6 +1037,17 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
+    public static final class EVEXComparisonPredicate {
+        public static final int EQ = 0;
+        public static final int LT = 1;
+        public static final int LE = 2;
+        public static final int FALSE = 3;
+        public static final int NEQ = 4;
+        public static final int NLT = 5;
+        public static final int NLE = 6;
+        public static final int TRUE = 7;
+    }
+
  // @formatter:off
  //
  // Instruction Format and EVEX illustrated below (optional []):

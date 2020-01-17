@@ -3,13 +3,24 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 20.0.0
-* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner *Type class.
+* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
 * Deprecated engine options engine.InvalidationReprofileCount and engine.ReplaceReprofileCount. They no longer have any effect. There is no longer reprofiling after compilation. 
 * Added [DebuggerSession.{suspend(), suspendAll,resume()}](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html) to allow suspending and resuming threads.
 * Add new loop explosion mode [LoopExplosionKind#FULL_UNROLL_UNTIL_RETURN](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html#FULL_UNROLL_UNTIL_RETURN), which can be used to duplicate loop exits during unrolling until function returns.
+* The default [LoopExplosionKind](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html) for `@ExplodeLoop` changed from `FULL_UNROLL` to `FULL_UNROLL_UNTIL_RETURN`, which we believe is more intuitive. We recommend reviewing your usages of `@ExplodeLoop`, especially those with `return`, `break` and `try/catch` in the loop body as those might duplicate more code than before.
 * The `TruffleCheckNeverPartOfCompilation` option when building a native image is now enabled by default, ensuring `neverPartOfCompilation()` is not reachable for runtime compilation. Use `CompilerDirectives.bailout()` if you want to test when a compilation fails, otherwise avoid `neverPartOfCompilation()` in code reachable for runtime compilation (e.g., by using `@TruffleBoundary`).
 * The `DirectoryStream` created by a relative `TruffleFile` passes relative `TruffleFile`s into the `FileVisitor`, even when an explicit [current working directory was set](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-).
+* Added `DebuggerTester.startExecute()` that allows to execute an arbitrary sequence of commands on the background thread.
 * Time specification in `InteropLibrary` relaxed to allow a fixed timezone when no date is present.
+* `TruffleLogger.getLogger` throws an `IllegalArgumentException` when given `id` is not a valid language or instrument id.
+* [Node#getEncapsulatingSourceSection()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getEncapsulatingSourceSection--) is no longer a fast-path method, because `getSourceSection()` is not fast-path.
+* The algorithm used to generate a unique [URI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
+* Added [ExportLibrary.delegateTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/ExportLibrary.html#delegateTo--) attribute that allows to delegate all messages of a library to value of a final delegate field. This can be used in combination with `ReflectionLibrary` to improve the ability to build wrappers.
+* `ReadVariableTag` and `WriteVariableTag` added to [StandardTags](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.html).
+
+* Truffle TCK now checks that instrumentable nodes are not used in the context of a Library.
+* Getter to check whether [TruffleContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#isEntered--) is activated or not
+* All Truffle Graal runtime options (-Dgraal.) will be deprecated with 20.1. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-). The `TRUFFLE_STRICT_OPTION_DEPRECATION` environment variable can be used to detect usages of deprecated Graal options. When the `TRUFFLE_STRICT_OPTION_DEPRECATION` is set to `true` and the deprecated Graal option is used the Truffle runtime throws an exception listing the used deprecated options and corresponding replacements.
 
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.

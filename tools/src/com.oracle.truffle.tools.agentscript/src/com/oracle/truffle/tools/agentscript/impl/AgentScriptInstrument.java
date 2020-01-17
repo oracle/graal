@@ -25,11 +25,18 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
@@ -79,10 +86,13 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     String mimeType = file.getMimeType();
                     String lang = null;
                     for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
-                        if (e.getValue().getMimeTypes().contains(mimeType)) {
+                        if (mimeType != null && e.getValue().getMimeTypes().contains(mimeType)) {
                             lang = e.getKey();
                             break;
                         }
+                    }
+                    if (lang == null) {
+                        throw AgentException.notRecognized(file);
                     }
                     return Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
                 } catch (IOException ex) {
@@ -101,6 +111,31 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
         final Instrumenter instrumenter = env.getInstrumenter();
         instrumenter.attachContextsListener(new ContextsListener() {
             private AgentObject agent;
+            private EventBinding<?> agentBinding;
+
+            @CompilerDirectives.TruffleBoundary
+            synchronized boolean initializeAgentObject() {
+                if (agent == null) {
+                    agent = new AgentObject(env);
+                    return true;
+                }
+                return false;
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            void initializeAgent() {
+                Source script = src.get();
+                CallTarget target;
+                try {
+                    target = env.parse(script, "agent");
+                } catch (IOException ex) {
+                    throw AgentException.raise(ex);
+                }
+                if (initializeAgentObject()) {
+                    target.call(agent);
+                    agent.initializationFinished();
+                }
+            }
 
             @Override
             public void onContextCreated(TruffleContext context) {
@@ -112,17 +147,31 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (agent != null || language.isInternal()) {
+                if (agentBinding != null || language.isInternal()) {
                     return;
                 }
-                try {
-                    Source script = src.get();
-                    agent = new AgentObject(env);
-                    CallTarget target = env.parse(script, "agent");
-                    target.call(agent);
-                    agent.initializationFinished();
-                } catch (IOException ex) {
-                    throw AgentException.raise(ex);
+                if (context.isEntered()) {
+                    initializeAgent();
+                } else {
+                    class InitializeLater implements ExecutionEventListener {
+
+                        @Override
+                        public void onEnter(EventContext ctx, VirtualFrame frame) {
+                            CompilerDirectives.transferToInterpreter();
+                            agentBinding.dispose();
+                            initializeAgent();
+                        }
+
+                        @Override
+                        public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                        }
+
+                        @Override
+                        public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                        }
+                    }
+                    final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
+                    agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater());
                 }
             }
 

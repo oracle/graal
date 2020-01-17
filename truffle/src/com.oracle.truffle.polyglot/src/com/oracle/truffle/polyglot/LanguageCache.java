@@ -100,6 +100,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final boolean internal;
     private final Set<String> services;
     private final LanguageReflection languageReflection;
+
+    /*
+     * When building a native image, this field is reset to null so that directories from the image
+     * build do not leak into the image heap. The value is lazily recomputed at image run time.
+     */
     private String languageHome;
 
     private LanguageCache(String id, String name, String implementationName, String version, String className,
@@ -149,7 +154,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Collections.emptySet(),
                         null,
                         Collections.emptySet(),
-                        false, false, servicesClassNames, LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
+                        false, false, servicesClassNames,
+                        LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
     }
 
     static Map<String, LanguageCache> languageMimes() {

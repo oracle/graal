@@ -187,9 +187,9 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
                 sizeProvider = ReflectionUtil.newInstance(sizeProviderClass);
             } catch (ReflectionUtilError ex) {
                 throw UserError.abort(
+                                ex.getCause(),
                                 "The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) +
-                                                " cannot be instantiated via no-argument constructor",
-                                ex.getCause());
+                                                " cannot be instantiated via no-argument constructor");
             }
 
             totalSize = sizeProvider.applyAsInt(currentOffset);

@@ -75,13 +75,16 @@ public class Timer {
     }
 
     private void print(long time) {
+        final String concurrentPrefix;
         if (prefix != null) {
             // Add the PID to further disambiguate concurrent builds of images with the same name
             String pid = GraalServices.getExecutionID();
-            System.out.format("[%s:%s] %12s: %,10.2f ms\n", prefix, pid, name, time / 1000000d);
+            concurrentPrefix = String.format("[%s:%s] ", prefix, pid);
         } else {
-            System.out.format("%12s: %,10.2f ms\n", name, time / 1000000d);
+            concurrentPrefix = "";
         }
+        final double heap = Runtime.getRuntime().totalMemory() / 1024.0 / 1024.0 / 1024.0;
+        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, heap);
     }
 
     public void print() {

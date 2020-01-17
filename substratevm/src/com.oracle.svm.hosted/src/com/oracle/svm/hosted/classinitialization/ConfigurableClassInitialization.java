@@ -199,7 +199,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
                 return InitKind.RUN_TIME;
             } else {
-                throw UserError.abort(msg, t);
+                throw UserError.abort(t, msg);
             }
         }
     }
@@ -357,7 +357,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         try {
             UNSAFE.ensureClassInitialized(clazz);
         } catch (Throwable ex) {
-            throw UserError.abort("Class initialization failed for " + clazz.getTypeName() + ". The class is requested for re-running (reason: " + reason + ")", ex);
+            throw UserError.abort(ex, "Class initialization failed for " + clazz.getTypeName() + ". The class is requested for re-running (reason: " + reason + ")");
         }
 
         /*

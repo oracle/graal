@@ -45,7 +45,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
@@ -62,8 +61,8 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
-import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
@@ -192,23 +191,21 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         double trueLabelProbability = x.probability(x.trueSuccessor());
         AMD64Kind kind = getMemoryKind(access);
         OperandSize size = kind == AMD64Kind.QWORD ? QWORD : DWORD;
-        if (value.isConstant()) {
+        if (value.isJavaConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (constant != null && kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
+            if (kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }
             return builder -> {
                 AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
-                gen.append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.TEST, size, address, (int) constant.asLong(), getState(access)));
-                gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
+                gen.append(new TestConstBranchOp(size, address, (int) constant.asLong(), getState(access), Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
         } else {
             return builder -> {
                 AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
-                gen.append(new AMD64BinaryConsumer.MemoryRMOp(AMD64RMOp.TEST, size, gen.asAllocatable(operand(value)), address, getState(access)));
-                gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
+                gen.append(new TestBranchOp(size, gen.asAllocatable(operand(value)), address, getState(access), Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
         }

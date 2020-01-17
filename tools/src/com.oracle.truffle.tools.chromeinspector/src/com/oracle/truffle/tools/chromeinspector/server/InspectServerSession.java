@@ -321,11 +321,21 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("silent"),
                                 json.optBoolean("returnByValue"),
                                 json.optBoolean("generatePreview"),
-                                json.optBoolean("awaitPromise"));
+                                json.optBoolean("awaitPromise"),
+                                json.optInt("executionContextId", -1),
+                                json.optString("objectGroup"));
                 break;
             case "Runtime.setCustomObjectFormatterEnabled":
                 json = cmd.getParams().getJSONObject();
                 runtime.setCustomObjectFormatterEnabled(json.optBoolean("enabled"));
+                break;
+            case "Runtime.releaseObject":
+                json = cmd.getParams().getJSONObject();
+                runtime.releaseObject(json.optString("objectId"));
+                break;
+            case "Runtime.releaseObjectGroup":
+                json = cmd.getParams().getJSONObject();
+                runtime.releaseObjectGroup(json.optString("objectGroup"));
                 break;
             case "Debugger.enable":
                 debugger.enable();

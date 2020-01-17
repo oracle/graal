@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.ReflectionLibraryDefault.Send;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -227,7 +226,7 @@ final class ReflectionLibraryDefaultGen {
                 return dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == dynamicDispatchTarget_;
             }
 
-            @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+            @ExplodeLoop
             @Override
             public Object send(Object arg0Value, Message arg1Value, Object... arg2Value) throws Exception {
                 assert getRootNode() != null : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
@@ -615,7 +614,7 @@ final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
 
         abstract int getLimit();
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         @Override
         public Object send(Object receiver_, Message message, Object... args) throws Exception {
             do {
