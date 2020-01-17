@@ -311,7 +311,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-java11-linux-amd64
   }
-  # Darwin, R recommended pkgs build temporarily disabled GR-20389
+  # Darwin
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
@@ -321,7 +321,7 @@ builds += [
     timelimit: "1:45:00"
     name: deploy-vm-base-java8-darwin-amd64
   }
-  ${vm_java_8} ${fastr_no_recommended} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
@@ -339,7 +339,7 @@ builds += [
     timelimit: "1:45:00"
     name: deploy-vm-base-java11-darwin-amd64
   }
-  ${vm_java_11} ${fastr_no_recommended} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
