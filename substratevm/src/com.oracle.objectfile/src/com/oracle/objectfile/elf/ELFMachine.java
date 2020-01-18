@@ -155,6 +155,10 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFAArch64Relocation.R_AARCH64_LD_PREL_LO19;
                     case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST64_ABS_LO12_NC;
+                    case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                        return ELFAArch64Relocation.R_AARCH64_LDST32_ABS_LO12_NC;
+                    case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                        return ELFAArch64Relocation.R_AARCH64_LDST16_ABS_LO12_NC;
                     case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
                         return ELFAArch64Relocation.R_AARCH64_LDST8_ABS_LO12_NC;
                     default:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -398,9 +398,6 @@ public class NativeImageGenerator {
                 architecture = new AMD64(features, SubstrateTargetDescription.allAMD64Flags());
             }
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
-            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
-                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, false);
-            }
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
@@ -414,12 +411,6 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
-            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
-                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, true);
-            }
-            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == false) {
-                throw UserError.abort("Code cache has to be writeable on AARCH64");
-            }
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
