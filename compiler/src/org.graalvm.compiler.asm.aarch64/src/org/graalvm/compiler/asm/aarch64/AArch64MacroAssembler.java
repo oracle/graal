@@ -1517,6 +1517,42 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = src1 & (~src2).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void bic(int size, Register dst, Register src1, Register src2) {
+        super.bic(size, dst, src1, src2, ShiftType.LSL, 0);
+    }
+
+    /**
+     * dst = src1 ^ (~src2).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void eon(int size, Register dst, Register src1, Register src2) {
+        super.eon(size, dst, src1, src2, ShiftType.LSL, 0);
+    }
+
+    /**
+     * dst = src1 | (~src2).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void orn(int size, Register dst, Register src1, Register src2) {
+        super.orn(size, dst, src1, src2, ShiftType.LSL, 0);
+    }
+
+    /**
      * dst = ~src.
      *
      * @param size register size. Has to be 32 or 64.

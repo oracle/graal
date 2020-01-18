@@ -72,13 +72,15 @@ public enum AArch64ArithmeticOp {
     ANDS(LOGICAL),
     OR(LOGICAL),
     XOR(LOGICAL),
+    BIC,
+    ORN,
+    EON,
     SHL(SHIFT),
     LSHR(SHIFT),
     ASHR(SHIFT),
     ROR(SHIFT),
     RORV(SHIFT),
     ABS,
-
     FADD,
     FSUB,
     FMUL,
@@ -315,6 +317,15 @@ public enum AArch64ArithmeticOp {
                 case XOR:
                     masm.eor(size, dst, src1, src2);
                     break;
+                case BIC:
+                    masm.bic(size, dst, src1, src2);
+                    break;
+                case ORN:
+                    masm.orn(size, dst, src1, src2);
+                    break;
+                case EON:
+                    masm.eon(size, dst, src1, src2);
+                    break;
                 case SHL:
                     masm.shl(size, dst, src1, src2);
                     break;
@@ -401,24 +412,19 @@ public enum AArch64ArithmeticOp {
         @Use(REG) protected AllocatableValue src2;
         private final AArch64MacroAssembler.ShiftType shiftType;
         private final int shiftAmt;
-        private final boolean isShiftNot;
 
         /**
-         * If shiftNot: Computes <code>result = src1 <op> ~(src2 <shiftType> <shiftAmt>)</code>
-         * (Only for logic ops). else: Computes
          * <code>result = src1 <op> src2 <shiftType> <shiftAmt></code>.
          */
         public BinaryShiftOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2,
-                        AArch64MacroAssembler.ShiftType shiftType, int shiftAmt, boolean isShiftNot) {
+                        AArch64MacroAssembler.ShiftType shiftType, int shiftAmt) {
             super(TYPE);
-            assert op == ADD || op == SUB || op == AND || op == OR || op == XOR;
             this.op = op;
             this.result = result;
             this.src1 = src1;
             this.src2 = src2;
             this.shiftType = shiftType;
             this.shiftAmt = shiftAmt;
-            this.isShiftNot = isShiftNot;
         }
 
         @Override
@@ -432,28 +438,25 @@ public enum AArch64ArithmeticOp {
                     masm.sub(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case AND:
-                    if (!isShiftNot) {
-                        masm.and(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    } else {
-                        masm.bic(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    }
+                    masm.and(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case OR:
-                    if (!isShiftNot) {
-                        masm.or(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    } else {
-                        masm.orn(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    }
+                    masm.or(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case XOR:
-                    if (!isShiftNot) {
-                        masm.eor(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    } else {
-                        masm.eon(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
-                    }
+                    masm.eor(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    break;
+                case BIC:
+                    masm.bic(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    break;
+                case ORN:
+                    masm.orn(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    break;
+                case EON:
+                    masm.eon(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
             }
         }
     }
