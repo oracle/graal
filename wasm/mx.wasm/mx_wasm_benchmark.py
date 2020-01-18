@@ -42,6 +42,7 @@ import mx
 import mx_benchmark
 
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -57,10 +58,15 @@ _suite = mx.suite("wasm")
 
 BENCHMARK_NAME_PREFIX = "-Dwasmbench.benchmarkName="
 SUITE_NAME_SUFFIX = "BenchmarkSuite"
-BENCHMARK_JAR = "wasm-benchmarkcases.jar"
+BENCHMARK_JAR_SUFFIX = "benchmarkcases.jar"
 
 
 node_dir = mx.get_env("NODE_DIR", None)
+
+
+def _toKebabCase(name, skewer="-"):
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1" + skewer + r"\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1" + skewer + r"\2", s1).lower()
 
 
 class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
@@ -94,8 +100,8 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         suite = next(iter([arg for arg in args if arg.endswith(SUITE_NAME_SUFFIX)]), None)
         if suite is None:
             mx.abort("Suite must specify a flag that ends with " + SUITE_NAME_SUFFIX)
-        else:
-            suite = suite[:-len(SUITE_NAME_SUFFIX)].lower()
+        suite = suite[:-len(SUITE_NAME_SUFFIX)]
+        suite = _toKebabCase(suite, "/")
 
         benchmark = next(iter([arg for arg in args if arg.startswith(BENCHMARK_NAME_PREFIX)]), None)
         if benchmark is None:
@@ -111,9 +117,9 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         classpath = args[args.index("-cp") + 1]
         delimiter = ";" if mx.is_windows() else ":"
         jars = classpath.split(delimiter)
-        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR)]), None)
+        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR_SUFFIX)]), None)
         if jar is None:
-            mx.abort("No " + BENCHMARK_JAR + " specified in the classpath.")
+            mx.abort("No benchmark jar file is specified in the classpath.")
 
         suite, benchmark = self.parse_suite_benchmark(args)
         return jar, suite, benchmark

@@ -174,6 +174,8 @@ public class Integer32Suite extends WasmSuiteBase {
                                     "(module (func (export \"_main\") (result i32) i32.const -2 i32.const 1 i32.rotl))"),
                     WasmCase.create("ROTATE_RIGHT", WasmCase.expected(-2),
                                     "(module (func (export \"_main\") (result i32) i32.const -3 i32.const 1 i32.rotr))"),
+                    WasmCase.create("WRAP_I64", WasmCase.expected(-1794634296),
+                                    "(module (func (export \"_main\") (result i32) i64.const 2500333000 i32.wrap_i64))"),
     };
 
     @Override

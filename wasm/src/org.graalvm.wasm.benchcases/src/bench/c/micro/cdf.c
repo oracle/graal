@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,71 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include "harness.h"
 
-#define IMAGE_SIZE (1024 * 1024)
-#define N 256
-#define ITERATIONS (IMAGE_SIZE * N)
+#define DIFFERENTIAL_SIZE (0.0002)
+#define PI 3.14159265358979323846
 
-uint32_t image[IMAGE_SIZE];
+double inverseGaussian(double x, double mu, double lambda) {
+  double exponent = -lambda * (x - mu) * (x - mu) / (2 * mu * mu * x);
+  double factor = sqrt(lambda / (2 * PI * x * x * x));
+  return factor * exp(exponent);
+}
+
+double logCauchy(double x, double mu, double sigma) {
+  double diff = log(x) - mu;
+  return 1 / (x * PI) * sigma / (diff * diff + sigma * sigma);
+}
+
+double pareto(double x, double alpha, double xm) {
+  if (x < xm) {
+    return 0.0;
+  } else {
+    return alpha * pow(xm, alpha) / pow(x, alpha + 1);
+  }
+}
+
+int32_t integrate() {
+  double start = 1.0;
+  double end = 1000.0;
+
+  double p0 = 0.0;
+  for (double x = start; x < end; x += DIFFERENTIAL_SIZE) {
+    p0 += DIFFERENTIAL_SIZE * inverseGaussian(x, 4.5, 2.1);
+  }
+
+  double p1 = 0.0;
+  for (double x = start; x < end; x += DIFFERENTIAL_SIZE) {
+    p1 += DIFFERENTIAL_SIZE * logCauchy(x, 2.1, 1.6);
+  }
+
+  double p2 = 0.0;
+  for (double x = start; x < end; x += DIFFERENTIAL_SIZE) {
+    p2 += DIFFERENTIAL_SIZE * pareto(x, 1.0, 0.5);
+  }
+
+  double checksum = p0 + p1 + p2;
+  // fprintf(stderr, "Checksum: %f\n", checksum);
+
+  return (int) (checksum * 100);
+}
 
 int benchmarkWarmupCount() {
-  return 10;
+  return 16;
 }
 
 void benchmarkSetupOnce() {
-  for (uint32_t i = 0; i != IMAGE_SIZE; ++i) {
-    uint32_t value;
-    value |= (((i + 1) * 8) % 128) << 24;
-    value |= (((i + 1) * 16) % 128) << 16;
-    value |= (((i + 1) * 24) % 128) << 8;
-    image[i] = value;
-  }
+}
+
+void benchmarkSetupEach() {
+}
+
+void benchmarkTeardownEach() {
 }
 
 int benchmarkRun() {
-  double total_luminance;
-  total_luminance = 0.0;
-  for (uint32_t pixel = 0; pixel != ITERATIONS; ++pixel) {
-    uint32_t color = image[pixel % IMAGE_SIZE];
-    uint8_t R = (color & 0xFF000000) >> 24;
-    uint8_t G = (color & 0x00FF0000) >> 16;
-    uint8_t B = (color & 0x0000FF00) >> 8;
-    total_luminance += (0.2126 * R + 0.7152 * G + 0.0722 * B);
-  }
-  return total_luminance / (double) ITERATIONS;
+  return (int) integrate();
 }

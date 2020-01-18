@@ -47,7 +47,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
@@ -151,7 +151,7 @@ public abstract class WasmCase {
     }
 
     public static WasmCase collectFileCase(String type, String resource, String caseSpec) throws IOException {
-        Map<String, Object> mainContents = new HashMap<>();
+        Map<String, Object> mainContents = new LinkedHashMap<>();
         String caseName;
         if (caseSpec.contains("/")) {
             // Collect multi-module test case.

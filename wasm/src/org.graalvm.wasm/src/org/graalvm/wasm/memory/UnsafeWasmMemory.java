@@ -42,6 +42,7 @@ package org.graalvm.wasm.memory;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.WasmTracing;
@@ -71,9 +72,16 @@ public class UnsafeWasmMemory extends WasmMemory {
     @Override
     public void validateAddress(Node node, long address, long offset) {
         WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
-        if (address < 0 || address + offset >= this.byteSize()) {
-            throw new WasmTrap(node, "Accessed memory address out-of-bounds: " + address);
+        if (address < 0 || address + offset > this.byteSize()) {
+            trapOutOfBounds(node, address, offset);
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void trapOutOfBounds(Node node, long address, long offset) {
+        String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+                        offset, address, address, byteSize());
+        throw new WasmTrap(node, message);
     }
 
     @Override
@@ -128,170 +136,193 @@ public class UnsafeWasmMemory extends WasmMemory {
 
     // Checkstyle: stop
     @Override
-    public int load_i32(long address) {
+    public int load_i32(Node node, long address) {
         WasmTracing.trace("load.i32 address = %d", address);
+        validateAddress(node, address, 4);
         int value = unsafe.getInt(startAddress + address);
         WasmTracing.trace("load.i32 value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64(long address) {
+    public long load_i64(Node node, long address) {
         WasmTracing.trace("load.i64 address = %d", address);
+        validateAddress(node, address, 8);
         long value = unsafe.getLong(startAddress + address);
         WasmTracing.trace("load.i64 value = 0x%016X (%d)", value, value);
         return value;
     }
 
     @Override
-    public float load_f32(long address) {
+    public float load_f32(Node node, long address) {
         WasmTracing.trace("load.f32 address = %d", address);
+        validateAddress(node, address, 4);
         float value = unsafe.getFloat(startAddress + address);
         WasmTracing.trace("load.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
         return value;
     }
 
     @Override
-    public double load_f64(long address) {
+    public double load_f64(Node node, long address) {
         WasmTracing.trace("load.f64 address = %d", address);
+        validateAddress(node, address, 8);
         double value = unsafe.getDouble(startAddress + address);
         WasmTracing.trace("load.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
         return value;
     }
 
     @Override
-    public int load_i32_8s(long address) {
+    public int load_i32_8s(Node node, long address) {
         WasmTracing.trace("load.i32_8s address = %d", address);
+        validateAddress(node, address, 1);
         int value = unsafe.getByte(startAddress + address);
         WasmTracing.trace("load.i32_8s value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
-    public int load_i32_8u(long address) {
+    public int load_i32_8u(Node node, long address) {
         WasmTracing.trace("load.i32_8u address = %d", address);
+        validateAddress(node, address, 1);
         int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
         WasmTracing.trace("load.i32_8u value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
-    public int load_i32_16s(long address) {
+    public int load_i32_16s(Node node, long address) {
         WasmTracing.trace("load.i32_16s address = %d", address);
+        validateAddress(node, address, 2);
         int value = unsafe.getShort(startAddress + address);
         WasmTracing.trace("load.i32_16s value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
-    public int load_i32_16u(long address) {
+    public int load_i32_16u(Node node, long address) {
         WasmTracing.trace("load.i32_16u address = %d", address);
+        validateAddress(node, address, 2);
         int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
         WasmTracing.trace("load.i32_16u value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_8s(long address) {
+    public long load_i64_8s(Node node, long address) {
         WasmTracing.trace("load.i64_8s address = %d", address);
+        validateAddress(node, address, 1);
         long value = unsafe.getByte(startAddress + address);
         WasmTracing.trace("load.i64_8s value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_8u(long address) {
+    public long load_i64_8u(Node node, long address) {
         WasmTracing.trace("load.i64_8u address = %d", address);
+        validateAddress(node, address, 1);
         long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
         WasmTracing.trace("load.i64_8u value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_16s(long address) {
+    public long load_i64_16s(Node node, long address) {
         WasmTracing.trace("load.i64_16s address = %d", address);
+        validateAddress(node, address, 2);
         long value = unsafe.getShort(startAddress + address);
         WasmTracing.trace("load.i64_16s value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_16u(long address) {
+    public long load_i64_16u(Node node, long address) {
         WasmTracing.trace("load.i64_16u address = %d", address);
+        validateAddress(node, address, 2);
         long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
         WasmTracing.trace("load.i64_16u value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_32s(long address) {
+    public long load_i64_32s(Node node, long address) {
         WasmTracing.trace("load.i64_32s address = %d", address);
+        validateAddress(node, address, 4);
         long value = unsafe.getInt(startAddress + address);
         WasmTracing.trace("load.i64_32s value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
-    public long load_i64_32u(long address) {
+    public long load_i64_32u(Node node, long address) {
         WasmTracing.trace("load.i64_32u address = %d", address);
+        validateAddress(node, address, 4);
         long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
         WasmTracing.trace("load.i64_32u value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
-    public void store_i32(long address, int value) {
+    public void store_i32(Node node, long address, int value) {
         WasmTracing.trace("store.i32 address = %d, value = 0x%08X (%d)", address, value, value);
+        validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
 
     @Override
-    public void store_i64(long address, long value) {
+    public void store_i64(Node node, long address, long value) {
         WasmTracing.trace("store.i64 address = %d, value = 0x%016X (%d)", address, value, value);
+        validateAddress(node, address, 8);
         unsafe.putLong(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f32(long address, float value) {
+    public void store_f32(Node node, long address, float value) {
         WasmTracing.trace("store.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
+        validateAddress(node, address, 4);
         unsafe.putFloat(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f64(long address, double value) {
+    public void store_f64(Node node, long address, double value) {
         WasmTracing.trace("store.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
+        validateAddress(node, address, 8);
         unsafe.putDouble(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_8(long address, byte value) {
+    public void store_i32_8(Node node, long address, byte value) {
         WasmTracing.trace("store.i32_8 address = %d, value = 0x%02X (%d)", address, value, value);
+        validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_16(long address, short value) {
+    public void store_i32_16(Node node, long address, short value) {
         WasmTracing.trace("store.i32_16 address = %d, value = 0x%04X (%d)", address, value, value);
+        validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_8(long address, byte value) {
+    public void store_i64_8(Node node, long address, byte value) {
         WasmTracing.trace("store.i64_8 address = %d, value = 0x%02X (%d)", address, value, value);
+        validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_16(long address, short value) {
+    public void store_i64_16(Node node, long address, short value) {
         WasmTracing.trace("store.i64_16 address = %d, value = 0x%04X (%d)", address, value, value);
+        validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_32(long address, int value) {
+    public void store_i64_32(Node node, long address, int value) {
         WasmTracing.trace("store.i64_32 address = %d, value = 0x%08X (%d)", address, value, value);
+        validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
     // Checkstyle: resume

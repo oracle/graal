@@ -335,7 +335,7 @@ public class Linker {
             memory.validateAddress(null, baseAddress, byteLength);
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
-                memory.store_i32_8(baseAddress + writeOffset, b);
+                memory.store_i32_8(null, baseAddress + writeOffset, b);
             }
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();

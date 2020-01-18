@@ -337,10 +337,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return startOffset;
     }
 
-    public Node[] callNodeTable() {
-        return callNodeTable;
-    }
-
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public TargetOffset execute(WasmContext context, VirtualFrame frame) {
@@ -499,15 +495,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // but since we are returning, it does not really matter.
 
                     int returnTypeLength = table[0];
-                    int targetOffsetValue = table[1 + 2 * index];
+                    int unwindCounterValue = table[1 + 2 * index];
                     int continuationStackPointer = table[1 + 2 * index + 1];
-                    trace("br_table, target = %d", targetOffsetValue);
+                    trace("br_table, target = %d", unwindCounterValue);
 
                     // Populate the stack with the return values of the current block (the one we
                     // are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
 
-                    return TargetOffset.createOrCached(targetOffsetValue);
+                    return TargetOffset.createOrCached(unwindCounterValue);
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e.
@@ -598,6 +594,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
                     // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT instruction.
+                    // TODO: Add validation that this is really zero.
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
@@ -938,86 +935,72 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     try {
                         switch (opcode) {
                             case I32_LOAD: {
-                                memory.validateAddress(this, address, 32);
-                                int value = memory.load_i32(address);
+                                int value = memory.load_i32(this, address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD: {
-                                memory.validateAddress(this, address, 64);
-                                long value = memory.load_i64(address);
+                                long value = memory.load_i64(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case F32_LOAD: {
-                                memory.validateAddress(this, address, 32);
-                                float value = memory.load_f32(address);
+                                float value = memory.load_f32(this, address);
                                 pushFloat(frame, stackPointer, value);
                                 break;
                             }
                             case F64_LOAD: {
-                                memory.validateAddress(this, address, 64);
-                                double value = memory.load_f64(address);
+                                double value = memory.load_f64(this, address);
                                 pushDouble(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD8_S: {
-                                memory.validateAddress(this, address, 8);
-                                int value = memory.load_i32_8s(address);
+                                int value = memory.load_i32_8s(this, address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD8_U: {
-                                memory.validateAddress(this, address, 8);
-                                int value = memory.load_i32_8u(address);
+                                int value = memory.load_i32_8u(this, address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_S: {
-                                memory.validateAddress(this, address, 16);
-                                int value = memory.load_i32_16s(address);
+                                int value = memory.load_i32_16s(this, address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_U: {
-                                memory.validateAddress(this, address, 16);
-                                int value = memory.load_i32_16u(address);
+                                int value = memory.load_i32_16u(this, address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD8_S: {
-                                memory.validateAddress(this, address, 8);
-                                long value = memory.load_i64_8s(address);
+                                long value = memory.load_i64_8s(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD8_U: {
-                                memory.validateAddress(this, address, 8);
-                                long value = memory.load_i64_8u(address);
+                                long value = memory.load_i64_8u(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_S: {
-                                memory.validateAddress(this, address, 16);
-                                long value = memory.load_i64_16s(address);
+                                long value = memory.load_i64_16s(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_U: {
-                                memory.validateAddress(this, address, 16);
-                                long value = memory.load_i64_16u(address);
+                                long value = memory.load_i64_16u(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD32_S: {
-                                memory.validateAddress(this, address, 32);
-                                long value = memory.load_i64_32s(address);
+                                long value = memory.load_i64_32s(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD32_U: {
-                                memory.validateAddress(this, address, 32);
-                                long value = memory.load_i64_32u(address);
+                                long value = memory.load_i64_32u(this, address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
@@ -1060,8 +1043,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 32);
-                                memory.store_i32(address, value);
+                                memory.store_i32(this, address, value);
                                 break;
                             }
                             case I64_STORE: {
@@ -1070,8 +1052,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 64);
-                                memory.store_i64(address, value);
+                                memory.store_i64(this, address, value);
                                 break;
                             }
                             case F32_STORE: {
@@ -1080,8 +1061,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 32);
-                                memory.store_f32(address, value);
+                                memory.store_f32(this, address, value);
                                 break;
                             }
                             case F64_STORE: {
@@ -1090,8 +1070,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 64);
-                                memory.store_f64(address, value);
+                                memory.store_f64(this, address, value);
                                 break;
                             }
                             case I32_STORE_8: {
@@ -1100,8 +1079,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 8);
-                                memory.store_i32_8(address, (byte) value);
+                                memory.store_i32_8(this, address, (byte) value);
                                 break;
                             }
                             case I32_STORE_16: {
@@ -1110,8 +1088,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 16);
-                                memory.store_i32_16(address, (short) value);
+                                memory.store_i32_16(this, address, (short) value);
                                 break;
                             }
                             case I64_STORE_8: {
@@ -1120,8 +1097,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 8);
-                                memory.store_i64_8(address, (byte) value);
+                                memory.store_i64_8(this, address, (byte) value);
                                 break;
                             }
                             case I64_STORE_16: {
@@ -1130,8 +1106,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 16);
-                                memory.store_i64_16(address, (short) value);
+                                memory.store_i64_16(this, address, (short) value);
                                 break;
                             }
                             case I64_STORE_32: {
@@ -1140,8 +1115,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                memory.validateAddress(this, address, 32);
-                                memory.store_i64_32(address, (int) value);
+                                memory.store_i64_32(this, address, (int) value);
                                 break;
                             }
                             default: {
@@ -2223,7 +2197,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I32_WRAP_I64: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    int result = (int) (x % 0x8000_0000);
+                    int result = (int) (x & 0xFFFF_FFFFL);
                     pushInt(frame, stackPointer, result);
                     stackPointer++;
                     trace("push wrap_i64(0x%016X) = 0x%08X (%d) [i32]", x, result, result);

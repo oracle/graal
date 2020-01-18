@@ -38,77 +38,83 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
-
-import java.util.function.Consumer;
+package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.WasmVoidResult;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
 
-public class WasiFdWrite extends WasmBuiltinRootNode {
+/**
+ * Save the array of bytes to a file with the specified name. Such a file is later available to the
+ * test suite.
+ */
+public class SaveBinaryFile extends WasmBuiltinRootNode {
+    private final Path temporaryDirectory;
 
-    public WasiFdWrite(WasmLanguage language, WasmModule module) {
-        super(language, module);
-    }
-
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 4;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        int stream = (int) args[0];
-        int iov = (int) args[1];
-        int iovcnt = (int) args[2];
-        int pnum = (int) args[3];
-
-        return fdWrite(stream, iov, iovcnt, pnum);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private Object fdWrite(int stream, int iov, int iovcnt, int pnum) {
-        Consumer<Character> charPrinter;
-        switch (stream) {
-            case 1:
-                charPrinter = System.out::print;
-                break;
-            case 2:
-                charPrinter = System.err::print;
-                break;
-            default:
-                throw new WasmTrap(this, "WasiFdWrite: invalid file stream");
-        }
-
-        trace("WasiFdWrite EXECUTE");
-
-        WasmMemory memory = module.symbolTable().memory();
-        int num = 0;
-        for (int i = 0; i < iovcnt; i++) {
-            int ptr = memory.load_i32(this, iov + (i * 8 + 0));
-            int len = memory.load_i32(this, iov + (i * 8 + 4));
-            for (int j = 0; j < len; j++) {
-                final char c = (char) memory.load_i32_8u(this, ptr + j);
-                charPrinter.accept(c);
-            }
-            num += len;
-            memory.store_i32(this, pnum, num);
-        }
-
-        return 0;
+    SaveBinaryFile(WasmLanguage language, Path temporaryDirectory) {
+        super(language, null);
+        this.temporaryDirectory = temporaryDirectory;
     }
 
     @Override
     public String builtinNodeName() {
-        return "___wasi_fd_write";
+        return TestutilModule.Names.SAVE_BINARY_FILE;
+    }
+
+    @Override
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        final int filenamePtr = (int) frame.getArguments()[0];
+        final int dataPtr = (int) frame.getArguments()[1];
+        final int size = (int) frame.getArguments()[2];
+        saveFile(filenamePtr, dataPtr, size);
+        return WasmVoidResult.getInstance();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void saveFile(int filenamePtr, int dataPtr, int size) {
+        final WasmContext context = contextReference().get();
+        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.");
+        final WasmMemory memory = context.memories().memory(0);
+
+        // Read the file name.
+        String filename = readFileName(memory, filenamePtr);
+        final Path temporaryFile = temporaryDirectory.resolve(filename);
+        if (!TestutilModule.Options.KEEP_TEMP_FILES.equals("true")) {
+            temporaryFile.toFile().deleteOnExit();
+        }
+
+        // Read the byte array.
+        byte[] bytes = new byte[size];
+        for (int i = 0; i < size; i++) {
+            bytes[i] = (byte) memory.load_i32_8u(this, dataPtr + i);
+        }
+
+        // Store the byte array to a temporary file.
+        try (FileOutputStream stream = new FileOutputStream(temporaryFile.toFile())) {
+            stream.write(bytes);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String readFileName(WasmMemory memory, int filenamePtr) {
+        final StringBuilder sb = new StringBuilder();
+        int currentPtr = filenamePtr;
+        byte current;
+        while ((current = (byte) memory.load_i32_8u(this, currentPtr)) != 0) {
+            sb.append((char) current);
+            currentPtr++;
+        }
+        return sb.toString();
     }
 }

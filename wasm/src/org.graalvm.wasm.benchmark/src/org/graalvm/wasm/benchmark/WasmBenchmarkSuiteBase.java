@@ -45,6 +45,7 @@ import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.MEASURE
 import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_ITERATIONS;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
@@ -69,8 +70,8 @@ import org.graalvm.wasm.utils.WasmInitialization;
 @Fork(FORKS)
 public abstract class WasmBenchmarkSuiteBase {
     public static class Defaults {
-        public static final int MEASUREMENT_ITERATIONS = 10;
-        public static final int WARMUP_ITERATIONS = 10;
+        public static final int MEASUREMENT_ITERATIONS = 6;
+        public static final int WARMUP_ITERATIONS = 8;
         public static final int FORKS = 1;
     }
 
@@ -78,6 +79,8 @@ public abstract class WasmBenchmarkSuiteBase {
         private WasmCase benchmarkCase;
 
         private Value benchmarkSetupOnce;
+        private Value benchmarkSetupEach;
+        private Value benchmarkTeardownEach;
         private Value benchmarkRun;
         private Value resetContext;
         private Value customInitializer;
@@ -113,6 +116,8 @@ public abstract class WasmBenchmarkSuiteBase {
 
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
+            benchmarkSetupEach = wasmBindings.getMember("_benchmarkSetupEach");
+            benchmarkTeardownEach = wasmBindings.getMember("_benchmarkTeardownEach");
             benchmarkRun = wasmBindings.getMember("_benchmarkRun");
             Assert.assertNotNull(String.format("No benchmarkRun method in %s.", wantedBenchmarkName), benchmarkRun);
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
@@ -142,16 +147,22 @@ public abstract class WasmBenchmarkSuiteBase {
         public void teardownIteration() {
             // Validate result.
             WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
+        }
 
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
             // Note: we deliberately not reset the context here.
             // It would be slow, and the invariant we expect from the benchmarks
             // is that they can handle VM-state side-effects.
             // We may support benchmark-specific teardown actions in the future (at the invocation
             // level).
+
+            benchmarkSetupEach.execute();
         }
 
-        @Setup(Level.Invocation)
-        public void setupInvocation() {
+        @TearDown(Level.Invocation)
+        public void teardownInvocation() {
+            benchmarkTeardownEach.execute();
         }
 
         public Value benchmarkRun() {

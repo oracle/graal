@@ -360,11 +360,15 @@ public class BinaryParser extends BinaryStreamParser {
         initCodeEntryLocals(funcIndex);
 
         /* Read (parse) and abstractly interpret the code entry */
-        byte returnTypeId = module.symbolTable().function(funcIndex).returnType();
+        final WasmFunction function = module.symbolTable().function(funcIndex);
+        final byte returnTypeId = function.returnType();
+        final int returnTypeLength = function.returnTypeLength();
         ExecutionState state = new ExecutionState();
         state.pushStackState(0);
         WasmBlockNode bodyBlock = readBlockBody(context, rootNode.codeEntry(), state, returnTypeId, returnTypeId);
         state.popStackState();
+        Assert.assertIntEqual(state.stackSize(), returnTypeLength,
+                        "Stack size must match the return type length at the function end");
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
@@ -402,7 +406,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     @SuppressWarnings("unused")
     private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
-        if (returnTypeId == 0x40) {
+        if (returnTypeId == ValueTypes.VOID_TYPE) {
             Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
         } else {
             Assert.assertIntEqual(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack");
@@ -440,41 +444,62 @@ public class BinaryParser extends BinaryStreamParser {
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.UNREACHABLE:
+                    state.setReachable(false);
                     break;
                 case Instructions.NOP:
                     break;
                 case Instructions.BLOCK: {
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
-                    state.pushStackState(state.stackSize());
+                    int stackSize = state.stackSize();
+                    state.pushStackState(stackSize);
                     WasmBlockNode nestedBlock = readBlock(context, codeEntry, state);
                     nestedControlTable.add(nestedBlock);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.LOOP: {
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     state.pushStackState(state.stackSize());
                     LoopNode loopBlock = readLoop(context, codeEntry, state);
                     nestedControlTable.add(loopBlock);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.IF: {
+                    // Pop the condition.
+                    state.pop();
+                    // Store the reachability of the current block, to restore it later.
+                    boolean reachable = state.isReachable();
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     // For the if block, we save the stack size reduced by 1, because of the
                     // condition value that will be popped before executing the if statement.
-                    state.pushStackState(state.stackSize() - 1);
+                    state.pushStackState(state.stackSize());
                     WasmIfNode ifNode = readIf(context, codeEntry, state);
                     nestedControlTable.add(ifNode);
                     state.popStackState();
+                    state.setReachable(reachable);
                     break;
                 }
                 case Instructions.ELSE:
-                    break;
+                    // We handle the else instruction in the same way as the end instruction.
                 case Instructions.END:
+                    // If the end instruction is not reachable, then the stack size must be adjusted
+                    // to match the stack size at the continuation point.
+                    if (!state.isReachable()) {
+                        state.setStackSize(state.getStackState(0) + state.getContinuationReturnLength(0));
+                    }
+                    // After the end instruction, the semantics of Wasm stack size require
+                    // that we consider the code again reachable.
+                    state.setReachable(true);
                     break;
                 case Instructions.BR: {
                     // TODO: restore check
@@ -489,8 +514,12 @@ public class BinaryParser extends BinaryStreamParser {
                     int unwindLevel = readLabelIndex(bytesConsumed);
                     state.useLongConstant(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
-                    state.useIntConstant(state.getStackState(unwindLevel));
-                    state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
+                    final int targetStackSize = state.getStackState(unwindLevel);
+                    state.useIntConstant(targetStackSize);
+                    final int continuationReturnLength = state.getContinuationReturnLength(unwindLevel);
+                    state.useIntConstant(continuationReturnLength);
+                    // This instruction is stack-polymorphic.
+                    state.setReachable(false);
                     break;
                 }
                 case Instructions.BR_IF: {
@@ -512,22 +541,23 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR_TABLE: {
+                    state.pop();
                     int numLabels = readVectorLength();
                     // We need to save three tables here, to maintain the mapping target -> state
                     // mapping:
+                    // - the length of the return type
                     // - a table containing the branch targets for the instruction
                     // - a table containing the stack state for each corresponding branch target
-                    // - the length of the return type
                     // We encode this in a single array.
                     int[] branchTable = new int[2 * (numLabels + 1) + 1];
                     int returnLength = -1;
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
-                        final int targetLabel = readLabelIndex();
-                        branchTable[1 + 2 * i + 0] = targetLabel;
-                        branchTable[1 + 2 * i + 1] = state.getStackState(targetLabel);
-                        final int blockReturnLength = state.getContinuationReturnLength(targetLabel);
+                        final int unwindLevel = readLabelIndex();
+                        branchTable[1 + 2 * i + 0] = unwindLevel;
+                        branchTable[1 + 2 * i + 1] = state.getStackState(unwindLevel);
+                        final int blockReturnLength = state.getContinuationReturnLength(unwindLevel);
                         if (returnLength == -1) {
                             returnLength = blockReturnLength;
                         } else {
@@ -536,15 +566,21 @@ public class BinaryParser extends BinaryStreamParser {
                         }
                     }
                     branchTable[0] = returnLength;
-                    // TODO: Maybe move this pop up for consistency.
-                    state.pop();
                     // The offset to the branch table.
                     state.saveBranchTable(branchTable);
+                    // This instruction is stack-polymorphic.
+                    state.setReachable(false);
                     break;
                 }
                 case Instructions.RETURN: {
+                    // Pop the stack values used as the return values.
+                    for (int i = 0; i < codeEntry.function().returnTypeLength(); i++) {
+                        state.pop();
+                    }
                     state.useLongConstant(state.stackStateCount());
                     state.useIntConstant(state.getRootBlockReturnLength());
+                    // This instruction is stack-polymorphic.
+                    state.setReachable(false);
                     break;
                 }
                 case Instructions.CALL: {
@@ -943,52 +979,31 @@ public class BinaryParser extends BinaryStreamParser {
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackPointer(returnTypeId != ValueTypes.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
+        state.setStackSize(returnTypeId != ValueTypes.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
 
         return Truffle.getRuntime().createLoopNode(loopBlock);
     }
 
     private WasmIfNode readIf(WasmContext context, WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
-        int initialStackPointer = state.stackSize();
-
-        // Pop the condition value from the stack.
-        state.pop();
+        // Note: the condition value was already popped at this point.
+        int stackSizeAfterCondition = state.stackSize();
 
         // Read true branch.
         int startOffset = offset();
         WasmBlockNode trueBranchBlock = readBlockBody(context, codeEntry, state, blockTypeId, blockTypeId);
 
-        // TODO: Hack to correctly set the stack pointer for abstract interpretation.
         // If a block has branch instructions that target "shallower" blocks which return no value,
         // then it can leave no values in the stack, which is invalid for our abstract
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackPointer(blockTypeId != ValueTypes.VOID_TYPE ? initialStackPointer : initialStackPointer - 1);
+        state.setStackSize(stackSizeAfterCondition);
 
         // Read false branch, if it exists.
         WasmNode falseBranchBlock;
         if (peek1(-1) == Instructions.ELSE) {
-            // If the if instruction has a true and a false branch, and it has non-void type, then
-            // each one of the two
-            // readBlockBody above and below would push once, hence we need to pop once to
-            // compensate for the extra push.
-            if (blockTypeId != ValueTypes.VOID_TYPE) {
-                state.pop();
-            }
-
             falseBranchBlock = readBlockBody(context, codeEntry, state, blockTypeId, blockTypeId);
-
-            if (blockTypeId != ValueTypes.VOID_TYPE) {
-                // TODO: Hack to correctly set the stack pointer for abstract interpretation.
-                // If a block has branch instructions that target "shallower" blocks which return no
-                // value, then it can leave no values in the stack, which is invalid for our
-                // abstract interpretation.
-                // Correct the stack pointer to the value it would have in case there were no branch
-                // instructions.
-                state.setStackPointer(initialStackPointer);
-            }
         } else {
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 Assert.fail("An if statement without an else branch block cannot return values.");
@@ -996,7 +1011,8 @@ public class BinaryParser extends BinaryStreamParser {
             falseBranchBlock = new WasmEmptyNode(module, codeEntry, 0);
         }
 
-        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer);
+        int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
+        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
 
     private void readElementSection(WasmContext context) {
@@ -1222,7 +1238,7 @@ public class BinaryParser extends BinaryStreamParser {
                 memory.validateAddress(null, offsetAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
-                    memory.store_i32_8(offsetAddress + writeOffset, b);
+                    memory.store_i32_8(null, offsetAddress + writeOffset, b);
                 }
             }
         }

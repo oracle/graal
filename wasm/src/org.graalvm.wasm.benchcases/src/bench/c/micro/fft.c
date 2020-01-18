@@ -38,65 +38,77 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include <complex.h>
+#include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include "harness.h"
 
-#define X 1024
-#define Y 1024
-#define IMAGE_SIZE (X * Y)
-#define N 8
-#define ITERATIONS (IMAGE_SIZE * N)
+#define PI 3.14159265358979323846
 
-uint32_t image[X][Y];
+#define PERIOD (1 << 18)
+
+double input_signal[PERIOD];
+double complex output_spectre[PERIOD];
+
+void fft_stage(double* signal, double complex* spectre, uint32_t N, uint32_t step) {
+  if (N == 1) {
+    spectre[0] = signal[0];
+    return;
+  }
+
+  fft_stage(signal, spectre, N / 2, 2 * step);
+  fft_stage(signal + step, spectre + N / 2, N / 2, 2 * step);
+
+  for (uint32_t k = 0; k < N / 2; k++) {
+    double complex a = spectre[k];
+    double complex b = spectre[k + N / 2];
+    double theta = -2 * PI * k / N;
+    double costheta = cos(theta);
+    double sintheta = sin(theta);
+    double br = creal(b);
+    double bi = cimag(b);
+    double mr = costheta * br - sintheta * bi;
+    double mi = costheta * bi + sintheta * br;
+    spectre[k] = a + mr + mi * I;
+    spectre[k + N / 2] = a - mr - mi * I;
+  }
+}
+
+void fft(double* signal, double complex* spectre, uint32_t N) {
+  fft_stage(signal, spectre, N, 1);
+}
+
+int run_ffts() {
+  fft(input_signal, output_spectre, PERIOD);
+  double checksum = 0.0;
+  for (uint32_t k = 0; k < PERIOD; k++) {
+    checksum += creal(output_spectre[k]);
+  }
+  // fprintf(stderr, "checksum = %f\n", checksum);
+  int c64 = (int64_t) checksum;
+  return (int) c64;
+}
 
 int benchmarkWarmupCount() {
   return 10;
 }
 
 void benchmarkSetupOnce() {
-  for (uint32_t i = 0; i != X; ++i) {
-    for (uint32_t j = 0; j != Y; ++j) {
-      uint32_t value = 0;
-      value |= (((i + 1) * 8) % 128) << 24;
-      value |= (((i + 1) * 16) % 128) << 16;
-      value |= (((i + 1) * 24) % 128) << 8;
-      image[i][j] = value;
-    }
+  for (uint32_t i = 0; i < PERIOD; i++) {
+    input_signal[i] = (i * i % 27 + i % 64 - 51) % PERIOD;
   }
 }
 
-int benchmarkRun() {
-  uint32_t res = 0;
-  for (uint32_t a = 0; a != X * N; ++a) {
-    for (uint32_t b = 0; b != Y * N; ++b) {
-      uint32_t r_sum = 0;
-      uint32_t g_sum = 0;
-      uint32_t b_sum = 0;
-
-      uint32_t i = a % N;
-      uint32_t j = b % N;
-
-      uint32_t x_min = i > 0 ? i - 1 : i;
-      uint32_t x_max = i < X - 1 ? i + 1 : i;
-      uint32_t y_min = j > 0 ? j - 1 : j;
-      uint32_t y_max = j < Y - 1 ? j + 1 : j;
-
-      for (uint32_t ii = x_min; ii <= x_max; ++ii) {
-        for (uint32_t jj = y_min; jj <= y_max; ++jj) {
-          r_sum += (image[ii][jj] & 0xFF000000) >> 24;
-          g_sum += (image[ii][jj] & 0x00FF0000) >> 16;
-          b_sum += (image[ii][jj] & 0x0000FF00) >> 8;
-        }
-      }
-
-      uint32_t num_pixels = (x_max - x_min + 1) * (y_max - y_min + 1);
-      res = 0;
-      res |= (r_sum / num_pixels) << 24;
-      res |= (g_sum / num_pixels) << 16;
-      res |= (b_sum / num_pixels) << 8;
-      image[i][j] = res;
-    }
+void benchmarkSetupEach() {
+  for (uint32_t i = 0; i < PERIOD; i++) {
+    output_spectre[i] = 0.0;
   }
-  return res / N;
+}
+
+void benchmarkTeardownEach() {
+}
+
+int benchmarkRun() {
+  return run_ffts();
 }
