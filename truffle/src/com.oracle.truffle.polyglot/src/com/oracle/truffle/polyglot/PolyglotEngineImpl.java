@@ -162,6 +162,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final Assumption singleThreadPerContext = Truffle.getRuntime().createAssumption("Single thread per context of an engine.");
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
     final Assumption noThreadTimingNeeded = Truffle.getRuntime().createAssumption("No enter timing needed.");
+    final Assumption noPriorityChangeNeeded = Truffle.getRuntime().createAssumption("No priority change needed.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
