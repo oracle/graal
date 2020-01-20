@@ -216,8 +216,8 @@ final class Runner {
         static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, LLVMContext context, boolean lazyParsing) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, context, lazyParsing);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, context, lazyParsing);
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, context, lazyParsing, true);
+                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, context, lazyParsing, false);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -225,10 +225,10 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules, LLVMContext context, boolean lazyParsing) throws TypeOverflowException {
+                        InitializeModuleNode[] initModules, LLVMContext context, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), context, lazyParsing);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), context, lazyParsing, isSulongLibrary);
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -330,9 +330,9 @@ final class Runner {
         }
     }
 
-    private static final class AllocLLVMLazyFunctionNode extends AllocFunctionNode {
+    private static final class AllocLLVMEagerFunctionNode extends AllocFunctionNode {
 
-        AllocLLVMLazyFunctionNode(LLVMFunction function) {
+        AllocLLVMEagerFunctionNode(LLVMFunction function) {
             super(function);
         }
 
@@ -488,7 +488,7 @@ final class Runner {
         private final int globalLength;
 
         @SuppressWarnings("unchecked")
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context, boolean lazyParsing) throws TypeOverflowException {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
@@ -519,13 +519,13 @@ final class Runner {
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             for (FunctionSymbol global : res.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(global.getName());
-                if (intrinsicProvider.isIntrinsified(function.getName())) {
+                if (isSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory));
                 } else {
                     if (lazyParsing) {
                         allocFunctionsList.add(new AllocLLVMFunctionNode(function));
                     } else {
-                        allocFunctionsList.add(new AllocLLVMLazyFunctionNode(function));
+                        allocFunctionsList.add(new AllocLLVMEagerFunctionNode(function));
                     }
                 }
             }
