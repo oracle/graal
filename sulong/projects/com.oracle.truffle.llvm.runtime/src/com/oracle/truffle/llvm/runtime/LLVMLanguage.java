@@ -107,7 +107,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    private final AtomicInteger nextID = new AtomicInteger(0);
+
+    // The bitcode file ID. It starts from 1. 0 is saved for special functions, such as the toolchain path.
+    private final AtomicInteger nextID = new AtomicInteger(1);
 
     @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Configuration activeConfiguration = null;

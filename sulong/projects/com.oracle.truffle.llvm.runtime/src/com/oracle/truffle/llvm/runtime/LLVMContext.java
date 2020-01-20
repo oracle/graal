@@ -256,6 +256,7 @@ public final class LLVMContext {
         }
     }
 
+    @SuppressWarnings("unchecked")
     void initialize() {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
@@ -283,9 +284,12 @@ public final class LLVMContext {
         loader.loadDefaults(this, internalLibraryPath);
         if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
             Function function = new UnresolvedFunction();
-            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), -1, -1);
+            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), 0, 0);
             LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
             functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
+            registerSymbolTable(0, new AssumedValue[5]);
+            AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
+            symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
             globalScope.register(functionDetail);
         }
     }
