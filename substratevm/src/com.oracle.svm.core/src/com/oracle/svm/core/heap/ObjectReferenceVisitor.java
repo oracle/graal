@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,13 @@ public interface ObjectReferenceVisitor {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
     default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
+        return visitObjectReferenceInline(objRef, innerOffset, compressed);
+    }
+
+    /** Like above, but keeps track of the number of pieces the reference is split into. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
+    default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed, @SuppressWarnings("unused") Object holderObject,
+                    @SuppressWarnings("unused") int numPieces) {
         return visitObjectReferenceInline(objRef, innerOffset, compressed);
     }
 }

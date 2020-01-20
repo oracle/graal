@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,11 +55,11 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
      * frame. Because {@link BitSet} only supports positive indices, the whole bit set is shifted by
      * {@link #shift} bits when negative offsets are required.
      */
-    private BitSet shiftedOffsets;
-    private int shift;
+    protected BitSet shiftedOffsets;
+    protected int shift;
 
     /* Maps base references with references pointing to the interior of that object */
-    private EconomicMap<Integer, Set<Integer>> derived;
+    protected EconomicMap<Integer, Set<Integer>> derived;
 
     private Map<Integer, Object> debugAllUsedRegisters;
     private Map<Integer, Object> debugAllUsedStackSlots;
@@ -72,7 +72,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         return shiftedOffsets != null && offset + shift >= 0 && shiftedOffsets.get(offset + shift);
     }
 
-    public void markReferenceAtOffset(int offset, boolean compressed) {
+    protected void updateShiftedOffsets(int offset) {
         if (shiftedOffsets == null) {
             shiftedOffsets = new BitSet();
         }
@@ -87,6 +87,10 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             shiftedOffsets = BitSet.valueOf(newData);
             shift = newShift;
         }
+    }
+
+    public void markReferenceAtOffset(int offset, boolean compressed) {
+        updateShiftedOffsets(offset);
 
         assert isValidToMark(offset, compressed) : "already marked or would overlap with predecessor or successor";
         shiftedOffsets.set(offset + shift);
@@ -121,7 +125,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         derivedOffsets.add(offset);
     }
 
-    private boolean isValidToMark(int offset, boolean isCompressed) {
+    protected boolean isValidToMark(int offset, boolean isCompressed) {
         int uncompressedSize = FrameAccess.uncompressedReferenceSize();
         int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
 

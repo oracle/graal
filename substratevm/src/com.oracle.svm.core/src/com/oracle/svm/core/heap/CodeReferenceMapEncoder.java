@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,11 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
         }
     }
 
+    protected int getSize(boolean compressed, int compressedSize, int uncompressedSize, int numPieces) {
+        assert numPieces == 1;
+        return (compressed ? compressedSize : uncompressedSize);
+    }
+
     /**
      * Build a byte array that encodes the passed list of offsets. The encoding is a run-length
      * encoding of runs of compressed or of uncompressed references, with
@@ -69,27 +74,30 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
 
         boolean firstRun = true;
         boolean expectedCompressed = false;
+        int expectedNumPieces = 1;
         int expectedOffset = 0;
         while (offsets.hasNext()) {
             boolean compressed = offsets.isNextCompressed();
             boolean derived = offsets.isNextDerived();
+            int numPieces = offsets.getNumPieces();
             int offset = offsets.nextInt();
-            if (offset == expectedOffset && compressed == expectedCompressed && !derived) {
+            if (offset == expectedOffset && compressed == expectedCompressed && numPieces == expectedNumPieces && !derived) {
                 // An adjacent offset in this run.
                 run += 1;
             } else {
                 assert firstRun || offset >= expectedOffset : "values must be strictly increasing";
                 if (run > 0) {
                     // The end of a run. Encode the *previous* gap and this run of offsets.
-                    encodeRun(firstRun, gap, run, expectedCompressed, false);
+                    encodeRun(firstRun, gap, run, expectedNumPieces, expectedCompressed, false);
                     firstRun = false;
                 }
                 // Beginning of the next gap+run pair.
                 gap = offset - expectedOffset;
                 run = 1;
             }
-            int size = (compressed ? compressedSize : uncompressedSize);
+            int size = getSize(compressed, compressedSize, uncompressedSize, numPieces);
             if (derived) {
+                assert numPieces == 1;
                 encodeDerivedRun(firstRun, gap, offset, offsets.getDerivedOffsets(offset), compressed, size);
                 firstRun = false;
                 run = 0;
@@ -97,15 +105,21 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
             }
             expectedOffset = offset + size;
             expectedCompressed = compressed;
+            expectedNumPieces = numPieces;
         }
         if (run > 0) {
-            encodeRun(firstRun, gap, run, expectedCompressed, false);
+            encodeRun(firstRun, gap, run, expectedNumPieces, expectedCompressed, false);
         }
         encodeEndOfTable();
         return startIndex;
     }
 
-    private void encodeRun(boolean firstRun, int gap, int refsCount, boolean compressed, boolean derived) {
+    protected int encodeGap(int gap, boolean derived, int numPieces) {
+        assert numPieces == 1;
+        return derived ? -gap - 1 : gap;
+    }
+
+    private void encodeRun(boolean firstRun, int gap, int refsCount, int numPieces, boolean compressed, boolean derived) {
         if (firstRun && derived) {
             /*
              * The first run cannot be derived: Derived entries are marked using a negative gap
@@ -113,19 +127,20 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
              * offsets can be represented. The simple solution is to first record a 0-length
              * non-derived run.
              */
-            encodeRun(true, -1, 0, false, false);
-            encodeRun(false, gap + 1, refsCount, compressed, derived);
+            encodeRun(true, -1, 0, 1, false, false);
+            encodeRun(false, gap + 1, refsCount, numPieces, compressed, derived);
             return;
         }
 
         assert firstRun || gap >= 0;
         assert compressed ? refsCount > 0 : refsCount >= 0;
-        writeBuffer.putSV(derived ? -gap - 1 : gap);
+        int encodedGap = encodeGap(gap, derived, numPieces);
+        writeBuffer.putSV(encodedGap);
         writeBuffer.putSV(compressed ? -refsCount : refsCount);
     }
 
     private void encodeDerivedRun(boolean firstRun, int gap, int baseOffset, Set<Integer> derivedOffsets, boolean compressed, int size) {
-        encodeRun(firstRun, gap, derivedOffsets.size(), compressed, true);
+        encodeRun(firstRun, gap, derivedOffsets.size(), 1, compressed, true);
         for (int derivedOffset : derivedOffsets) {
             assert baseOffset % size == 0 && derivedOffset % size == 0 && derivedOffset != baseOffset;
             writeBuffer.putSV((derivedOffset - baseOffset) / size);

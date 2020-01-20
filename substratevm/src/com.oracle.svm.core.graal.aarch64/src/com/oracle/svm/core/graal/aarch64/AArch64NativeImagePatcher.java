@@ -29,6 +29,7 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -200,7 +201,7 @@ class MovSequenceNativeImagePatcher extends CompilationResult.CodeAnnotation imp
      */
     @Override
     public int getOffset() {
-        throw VMError.unsupportedFeature("trying to get offset of move sequence");
+        return annotation.instructionPosition;
     }
 
     /**
@@ -208,6 +209,12 @@ class MovSequenceNativeImagePatcher extends CompilationResult.CodeAnnotation imp
      */
     @Override
     public int getLength() {
-        throw VMError.unsupportedFeature("trying to get length of move sequence");
+        MovAction[] includeSet = annotation.includeSet;
+        for (MovAction action : includeSet) {
+            if (action != MovAction.USED) {
+                throw VMError.unsupportedFeature("querying length of mov sequence with skips or negations");
+            }
+        }
+        return includeSet.length;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ public interface ReferenceAdjuster {
     <T> void setObjectInArray(NonmovableObjectArray<T> array, int index, T object);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void setConstantTargetAt(PointerBase address, int length, SubstrateObjectConstant constant);
+    void setConstantTargetAt(PointerBase address, int length, SubstrateObjectConstant constant, boolean codeInlined);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default <T extends Constant> NonmovableObjectArray<Object> copyOfObjectConstantArray(T[] constants) {

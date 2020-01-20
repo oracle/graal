@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -40,12 +42,12 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
-public final class ReferenceAccessImpl implements ReferenceAccess {
+public class ReferenceAccessImpl implements ReferenceAccess {
     static void initialize() {
         ImageSingletons.add(ReferenceAccess.class, new ReferenceAccessImpl());
     }
 
-    private ReferenceAccessImpl() {
+    protected ReferenceAccessImpl() {
     }
 
     @Override
@@ -110,6 +112,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 }
 
 @AutomaticFeature
+@Platforms(Platform.AMD64.class)
 class ReferenceAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

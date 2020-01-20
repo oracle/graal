@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,14 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -34,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -42,6 +48,25 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
 public class CodeReferenceMapDecoder {
+
+    @Fold
+    public static CodeReferenceMapDecoder singleton() {
+        return ImageSingletons.lookup(CodeReferenceMapDecoder.class);
+    }
+
+    @SuppressWarnings("unused")
+    public int getNumPieces(long gap, boolean derived) {
+        return 1;
+    }
+
+    @SuppressWarnings("unused")
+    public long correctGap(long gap, boolean derived, int numPieces) {
+        return gap;
+    }
+
+    public UnsignedWord getRefSize(boolean compressed, UnsignedWord compressedSize, UnsignedWord uncompressedSize, @SuppressWarnings("unused") int numPieces) {
+        return compressed ? compressedSize : uncompressedSize;
+    }
 
     /**
      * Walk the reference map encoding from a Pointer, applying a visitor to each Object reference.
@@ -110,11 +135,14 @@ public class CodeReferenceMapDecoder {
                 gap = -(gap + 1);
                 derived = true;
             }
+            int numPieces = (firstRun && gap < 0) ? 1 : singleton().getNumPieces(gap, derived);
+            gap = singleton().correctGap(gap, derived, numPieces);
+
             firstRun = false;
 
             objRef = objRef.add(WordFactory.unsigned(gap));
             boolean compressed = (count < 0);
-            UnsignedWord refSize = compressed ? compressedSize : uncompressedSize;
+            UnsignedWord refSize = singleton().getRefSize(compressed, compressedSize, uncompressedSize, numPieces);
             count = (count < 0) ? -count : count;
 
             if (derived) {
@@ -166,7 +194,7 @@ public class CodeReferenceMapDecoder {
                 objRef = objRef.add(refSize);
             } else {
                 for (long c = 0; c < count; c += 1) {
-                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null, numPieces);
                     if (!visitResult) {
                         return false;
                     }
@@ -175,5 +203,15 @@ public class CodeReferenceMapDecoder {
             }
         }
         return true;
+    }
+
+}
+
+@AutomaticFeature
+@Platforms(Platform.AMD64.class)
+class CodeReferenceMapDecoderFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(CodeReferenceMapDecoder.class, new CodeReferenceMapDecoder());
     }
 }

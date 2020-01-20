@@ -55,7 +55,6 @@ import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
-import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
@@ -194,32 +193,35 @@ public class RuntimeCodeInstaller {
         final SubstrateReferenceMap referenceMap;
         final int[] offsets;
         final int[] lengths;
+        final boolean[] codeInlined;
         final SubstrateObjectConstant[] constants;
         int count;
 
-        ObjectConstantsHolder(CompilationResult compilation) {
+        ObjectConstantsHolder(CompilationResult compilation, SubstrateReferenceMap referenceMap) {
             /* Conservative estimate on the maximum number of object constants we might have. */
             int maxDataRefs = compilation.getDataSection().getSectionSize() / ConfigurationValues.getObjectLayout().getReferenceSize();
             int maxCodeRefs = compilation.getDataPatches().size();
             int maxTotalRefs = maxDataRefs + maxCodeRefs;
             offsets = new int[maxTotalRefs];
             lengths = new int[maxTotalRefs];
+            codeInlined = new boolean[maxTotalRefs];
             constants = new SubstrateObjectConstant[maxTotalRefs];
-            referenceMap = new SubstrateReferenceMap();
+            this.referenceMap = referenceMap;
         }
 
-        void add(int offset, int length, SubstrateObjectConstant constant) {
+        void add(int offset, int length, boolean inlined, SubstrateObjectConstant constant) {
             assert constant.isCompressed() == ReferenceAccess.singleton().haveCompressedReferences() : "Object reference constants in code must be compressed";
             offsets[count] = offset;
             lengths[count] = length;
             constants[count] = constant;
-            referenceMap.markReferenceAtOffset(offset, true);
+            codeInlined[count] = inlined;
+            platformHelper().markConstantRef(referenceMap, offset, length, true, inlined);
             count++;
         }
     }
 
     private void doInstall(SubstrateInstalledCode installedCode) {
-        ReferenceAdjuster adjuster = new InstantReferenceAdjuster();
+        ReferenceAdjuster adjuster = platformHelper().createReferenceAdjuster();
 
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
         CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
@@ -234,7 +236,7 @@ public class RuntimeCodeInstaller {
          * Object reference constants are stored in this holder first, then written and made visible
          * in a single step that is atomic regarding to GC.
          */
-        ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
+        ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation, platformHelper().createReferenceMap());
 
         // Build an index of PatchingAnnotations
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
@@ -262,14 +264,14 @@ public class RuntimeCodeInstaller {
         ByteBuffer constantsBuffer = CTypeConversion.asByteBuffer(code.add(constantsOffset), compilation.getDataSection().getSectionSize());
         compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
             objectConstants.add(constantsOffset + position,
-                            ConfigurationValues.getObjectLayout().getReferenceSize(),
+                            ConfigurationValues.getObjectLayout().getReferenceSize(), false,
                             (SubstrateObjectConstant) constant);
         });
 
         NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
         RuntimeCodeInfoAccess.initialize(codeInfo, code, codeSize, tier, observerHandles);
 
-        CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
+        CodeReferenceMapEncoder encoder = platformHelper().createCodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
@@ -314,7 +316,7 @@ public class RuntimeCodeInstaller {
     private void patchDirectObjectConstants(ObjectConstantsHolder objectConstants, CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
         for (int i = 0; i < objectConstants.count; i++) {
             SubstrateObjectConstant constant = objectConstants.constants[i];
-            adjuster.setConstantTargetAt(code.add(objectConstants.offsets[i]), objectConstants.lengths[i], constant);
+            adjuster.setConstantTargetAt(code.add(objectConstants.offsets[i]), objectConstants.lengths[i], constant, objectConstants.codeInlined[i]);
         }
         CodeInfoAccess.setState(runtimeMethodInfo, CodeInfo.STATE_CODE_CONSTANTS_LIVE);
     }
@@ -341,7 +343,7 @@ public class RuntimeCodeInstaller {
             } else if (dataPatch.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
-                objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
+                objectConstants.add(patch.getOffset(), patch.getLength(), true, refConst);
             }
         }
     }
@@ -432,5 +434,13 @@ public class RuntimeCodeInstaller {
          * @param codeInfo the new code to be installed
          */
         void performCodeSynchronization(CodeInfo codeInfo);
+
+        ReferenceAdjuster createReferenceAdjuster();
+
+        SubstrateReferenceMap createReferenceMap();
+
+        CodeReferenceMapEncoder createCodeReferenceMapEncoder();
+
+        void markConstantRef(SubstrateReferenceMap refMap, int offset, int length, boolean compressed, boolean inlined);
     }
 }

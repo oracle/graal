@@ -42,7 +42,13 @@ import com.oracle.svm.core.CodeSynchronizationOperations;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.ReferenceAdjuster;
+import com.oracle.svm.core.code.aarch64.AArch64InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
+import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.core.heap.aarch64.AArch64RuntimeCodeReferenceMapEncoder;
+import com.oracle.svm.core.heap.aarch64.AArch64RuntimeReferenceMap;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
@@ -153,5 +159,30 @@ public class AArch64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeIns
     public void performCodeSynchronization(CodeInfo codeInfo) {
         CodeSynchronizationOperations.clearCache(CodeInfoAccess.getCodeStart(codeInfo).rawValue(), CodeInfoAccess.getCodeSize(codeInfo).rawValue());
         VMThreads.ActionOnTransitionToJavaSupport.requestAllThreadsSynchronizeCode();
+    }
+
+    @Override
+    public ReferenceAdjuster createReferenceAdjuster() {
+        return new AArch64InstantReferenceAdjuster();
+    }
+
+    @Override
+    public SubstrateReferenceMap createReferenceMap() {
+        return new AArch64RuntimeReferenceMap();
+    }
+
+    @Override
+    public CodeReferenceMapEncoder createCodeReferenceMapEncoder() {
+        return new AArch64RuntimeCodeReferenceMapEncoder();
+    }
+
+    @Override
+    public void markConstantRef(SubstrateReferenceMap refMap, int offset, int length, boolean compressed, boolean inlined) {
+        if (!inlined) {
+            refMap.markReferenceAtOffset(offset, true);
+        } else {
+            ((AArch64RuntimeReferenceMap) refMap).markReferenceAtOffset(offset, true, length);
+        }
+
     }
 }

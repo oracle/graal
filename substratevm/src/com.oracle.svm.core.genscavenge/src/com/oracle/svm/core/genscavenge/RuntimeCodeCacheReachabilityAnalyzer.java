@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -53,8 +52,13 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(Pointer ptrPtrToObject, boolean compressed) {
+        return visitObjectReferenceInline(ptrPtrToObject, 0, compressed, null, 1);
+    }
+
+    @Override
+    public boolean visitObjectReferenceInline(Pointer ptrPtrToObject, int innerOffset, boolean compressed, Object holderObject, int numPieces) {
         assert !unreachableObjects;
-        Pointer ptrToObj = ReferenceAccess.singleton().readObjectAsUntrackedPointer(ptrPtrToObject, compressed);
+        Pointer ptrToObj = GCRefAccessor.singleton().readRef(ptrPtrToObject, compressed, numPieces);
         if (ptrToObj.isNonNull() && !isReachable(ptrToObj)) {
             unreachableObjects = true;
             return false;

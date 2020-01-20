@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -59,24 +58,30 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(final Pointer objRef, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed, null);
+        return visitObjectReferenceInline(objRef, 0, compressed, null, 1);
     }
 
     @Override
     public boolean visitObjectReference(final Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject, 1);
     }
 
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(final Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject, 1);
     }
 
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed, null);
+        return visitObjectReferenceInline(objRef, 0, compressed, null, 1);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject, 1);
     }
 
     /**
@@ -85,7 +90,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
      */
     @Override
     @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject) {
+    public boolean visitObjectReferenceInline(final Pointer objRef, final int innerOffset, boolean compressed, Object holderObject, int numPieces) {
         assert innerOffset >= 0;
 
         getCounters().noteObjRef();
@@ -97,7 +102,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             return true;
         }
         // Read the referenced Object, carefully.
-        final Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+        final Pointer offsetP = GCRefAccessor.singleton().readRef(objRef, compressed, numPieces);
         assert offsetP.isNonNull() || innerOffset == 0;
         final Pointer p = offsetP.subtract(innerOffset);
 
@@ -119,7 +124,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             final Object obj = ohi.getForwardedObject(p);
             final Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
             trace.string(" updating objRef: ").hex(objRef).string(" with forwarded obj: ").object(obj);
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
+            GCRefAccessor.singleton().writeRefUpdate(objRef, offsetObj, compressed, numPieces);
             HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, objRef, obj);
             trace.object(obj);
             if (trace.isEnabled()) {
@@ -156,7 +161,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             getCounters().noteCopiedReferent();
             trace.string(" updating objRef: ").hex(objRef).string(" with copy: ").object(copy);
             final Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+            GCRefAccessor.singleton().writeRefUpdate(objRef, offsetCopy, compressed, numPieces);
         } else {
             getCounters().noteUnmodifiedReference();
         }

@@ -37,7 +37,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.InstantReferenceAdjuster;
+import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
+import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 
 @AutomaticFeature
@@ -102,5 +106,25 @@ public class AMD64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInsta
     @Override
     public void performCodeSynchronization(CodeInfo codeInfo) {
 
+    }
+
+    @Override
+    public ReferenceAdjuster createReferenceAdjuster() {
+        return new InstantReferenceAdjuster();
+    }
+
+    @Override
+    public SubstrateReferenceMap createReferenceMap() {
+        return new SubstrateReferenceMap();
+    }
+
+    @Override
+    public CodeReferenceMapEncoder createCodeReferenceMapEncoder() {
+        return new CodeReferenceMapEncoder();
+    }
+
+    @Override
+    public void markConstantRef(SubstrateReferenceMap refMap, int offset, int length, boolean compressed, boolean inlined) {
+        refMap.markReferenceAtOffset(offset, compressed);
     }
 }
