@@ -712,7 +712,7 @@ public class TruffleGraphBuilderPlugins {
 
     @SuppressWarnings("try")
     static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
-        if (PartialEvaluator.PerformanceInformationHandler.isEnabled(PolyglotCompilerOptions.PerformanceWarningKind.STORE)) {
+        if (PartialEvaluator.PerformanceInformationHandler.isEnabled(PolyglotCompilerOptions.PerformanceWarningKind.NON_CONSTANT_LOCATION_STORE)) {
             StructuredGraph graph = location.graph();
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
@@ -721,7 +721,8 @@ public class TruffleGraphBuilderPlugins {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("location", location);
                 properties.put("method", targetMethod.format("%h.%n"));
-                PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.STORE, callTargetName, Collections.singletonList(access),
+                PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.NON_CONSTANT_LOCATION_STORE, callTargetName,
+                                Collections.singletonList(access),
                                 "location argument not PE-constant", properties);
                 debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
             } catch (Throwable t) {
