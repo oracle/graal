@@ -342,7 +342,7 @@ public final class Meta implements ContextAccess {
         SoftReference = knownKlass(java.lang.ref.SoftReference.class);
         PhantomReference = knownKlass(java.lang.ref.PhantomReference.class);
         FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        Cleaner = knownKlass(sun.misc.Cleaner.class);
+        Cleaner = knownKlass(Type.sun_misc_Cleaner);
         HIDDEN_HOST_REFERENCE = Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
@@ -352,7 +352,7 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
-        sun_reflect_Reflection_getCallerClass = knownKlass(sun.reflect.Reflection.class).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+        sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
     }
 
     // Checkstyle: stop field name check

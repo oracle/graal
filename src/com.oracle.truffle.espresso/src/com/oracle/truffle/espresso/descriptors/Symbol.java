@@ -33,8 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-import sun.misc.VM;
-
 /**
  * An immutable byte string (modified-UTF8) for internal use in Espresso. <br>
  * Symbols are unique during it's lifetime and can be reference-compared for equality. Internal
@@ -380,7 +378,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
         public static final Symbol<Type> Runnable = StaticSymbols.putType(Runnable.class);
 
-        public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType(VM.class);
+        public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> ThreadStateEnum = StaticSymbols.putType(Thread.State.class);
 
         public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
@@ -392,6 +390,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Constructor = StaticSymbols.putType(java.lang.reflect.Constructor.class);
         public static final Symbol<Type> Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
         public static final Symbol<Type> Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
+        public static final Symbol<Type> sun_reflect_Reflection = StaticSymbols.putType("Lsun/reflect/Reflection;");
 
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
@@ -402,7 +401,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
         public static final Symbol<Type> ConstructorAccessorImpl = StaticSymbols.putType("Lsun/reflect/ConstructorAccessorImpl;");
 
-        public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType(sun.reflect.ConstantPool.class);
+        public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType("Lsun/reflect/ConstantPool;");
 
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
@@ -422,6 +421,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ref_WeakReference = StaticSymbols.putType(java.lang.ref.WeakReference.class);
         public static final Symbol<Type> java_lang_ref_ReferenceQueue = StaticSymbols.putType(java.lang.ref.ReferenceQueue.class);
         public static final Symbol<Type> java_lang_ref_Reference_Lock = StaticSymbols.putType("Ljava/lang/ref/Reference$Lock;");
+
+        public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
 
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
 
@@ -449,7 +450,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
         public static final Symbol<Type> LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
-        public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType(sun.reflect.CallerSensitive.class);
+        public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
 
         // Special threads
         public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");

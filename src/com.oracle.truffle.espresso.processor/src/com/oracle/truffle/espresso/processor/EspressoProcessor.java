@@ -296,6 +296,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         // Purge leading annotations.
         String[] parts = result.split("::");
         result = parts[parts.length - 1].trim();
+        // Prune additional spaces produced by javac 11.
+        parts = result.split(" ");
+        result = parts[parts.length - 1].trim();
 
         // Get unqualified name.
         int beginIndex = result.lastIndexOf('.');
