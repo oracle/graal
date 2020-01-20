@@ -899,32 +899,21 @@ final class Runner {
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
             for (FunctionSymbol function : parserResult.getExternalFunctions()) {
-                LLVMSymbol globalSymbol = globalScope.get(function.getName());
-                // LLVMFunctionDescriptor functionDescriptor =
-                // globalScope.getFromFunctions(function.getName());
-                if (globalSymbol == null) {
-                    globalSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getbitcodeID(),
+                LLVMSymbol functionSymbol = globalScope.get(function.getName());
+
+                if (functionSymbol == null) {
+                    functionSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getbitcodeID(),
                                     function.getIndex());
-                    globalScope.register(globalSymbol);
-                    /*
-                     * if (functionDescriptor == null) { functionDescriptor =
-                     * context.createFunctionDescriptor(globalSymbol.asFunction());
-                     * globalScope.registerFD(functionDescriptor); }
-                     */
-                } else if (!globalSymbol.isFunction()) {
-                    assert globalSymbol.isGlobalVariable();
+                    globalScope.register(functionSymbol);
+                } else if (!functionSymbol.isFunction()) {
+                    assert functionSymbol.isGlobalVariable();
                     throw new LLVMLinkerException(
-                                    "The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
+                                    "The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
                 if (!fileScope.contains(function.getName())) {
-                    fileScope.register(globalSymbol);
-                    /*
-                     * if (functionDescriptor != null &&
-                     * !fileScope.containsFD(globalSymbol.asFunction().getName())) {
-                     * fileScope.registerFD(functionDescriptor); }
-                     */
+                    fileScope.register(functionSymbol);
                 }
             }
 
@@ -934,7 +923,7 @@ final class Runner {
                     globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getbitcodeID());
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
-                    throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
+                    throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
