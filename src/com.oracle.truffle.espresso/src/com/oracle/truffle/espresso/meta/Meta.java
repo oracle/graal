@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -997,7 +994,6 @@ public final class Meta implements ContextAccess {
 
         private static final java.lang.reflect.Field String_value;
         private static final java.lang.reflect.Field String_hash;
-        private static final Constructor<String> String_init;
 
         static {
             try {
@@ -1005,19 +1001,15 @@ public final class Meta implements ContextAccess {
                 String_value.setAccessible(true);
                 String_hash = String.class.getDeclaredField("hash");
                 String_hash.setAccessible(true);
-                String_init = String.class.getDeclaredConstructor(char[].class, boolean.class);
-                String_init.setAccessible(true);
-            } catch (NoSuchMethodException | NoSuchFieldException e) {
+            } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
 
         private static char[] getStringValue(String s) {
-            try {
-                return (char[]) String_value.get(s);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            char[] chars = new char[s.length()];
+            s.getChars(0, s.length(), chars, 0);
+            return chars;
         }
 
         private static int getStringHash(String s) {
@@ -1029,11 +1021,7 @@ public final class Meta implements ContextAccess {
         }
 
         private static String createString(final char[] value) {
-            try {
-                return HostJava.String_init.newInstance(value, true);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            return new String(value);
         }
     }
 
