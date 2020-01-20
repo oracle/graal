@@ -687,6 +687,8 @@ intf com.oracle.truffle.api.frame.VirtualFrame
 CLSS public abstract interface com.oracle.truffle.api.frame.VirtualFrame
 intf com.oracle.truffle.api.frame.Frame
 
+CLSS abstract interface com.oracle.truffle.api.frame.package-info
+
 CLSS public final com.oracle.truffle.api.io.TruffleProcessBuilder
 meth public !varargs com.oracle.truffle.api.io.TruffleProcessBuilder command(java.lang.String[])
 meth public com.oracle.truffle.api.io.TruffleProcessBuilder clearEnvironment(boolean)
@@ -703,6 +705,8 @@ meth public java.lang.Process start() throws java.io.IOException
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStream(java.io.OutputStream)
 supr java.lang.Object
 hfds clearEnvironment,cmd,cwd,env,errorRedirect,fileSystem,inheritIO,inputRedirect,outputRedirect,polyglotLanguageContext,redirectErrorStream
+
+CLSS abstract interface com.oracle.truffle.api.io.package-info
 
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
@@ -883,8 +887,6 @@ innr public abstract interface static !annotation Child
 innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
-meth protected boolean isTaggedWith(java.lang.Class<?>)
- anno 0 java.lang.Deprecated()
 meth protected final <%0 extends com.oracle.truffle.api.TruffleLanguage> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> lookupLanguageReference(java.lang.Class<{%%0}>)
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
@@ -1128,6 +1130,10 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
+CLSS abstract interface com.oracle.truffle.api.nodes.package-info
+
+CLSS abstract interface com.oracle.truffle.api.package-info
+
 CLSS public final com.oracle.truffle.api.source.MissingMIMETypeException
  anno 0 java.lang.Deprecated()
 supr java.lang.Exception
@@ -1275,6 +1281,8 @@ meth public final com.oracle.truffle.api.source.Source getSource()
 meth public final java.lang.String toString()
 supr java.lang.Object
 hfds source
+
+CLSS abstract interface com.oracle.truffle.api.source.package-info
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable

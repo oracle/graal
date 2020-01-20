@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -129,8 +130,7 @@ public final class EventContext {
         if (node instanceof InstrumentableNode) {
             return ((InstrumentableNode) node).hasTag(tag);
         } else {
-            // legacy support
-            return InstrumentAccessor.nodesAccess().isTaggedWith(node, tag);
+            return false;
         }
     }
 
@@ -191,7 +191,7 @@ public final class EventContext {
      */
     @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
-        com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode wrapper = probeNode.findWrapper();
+        WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
     }
 

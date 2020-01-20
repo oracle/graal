@@ -141,8 +141,6 @@ public abstract class Accessor {
 
         public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
 
-        public abstract boolean isTaggedWith(Node node, Class<?> tag);
-
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);

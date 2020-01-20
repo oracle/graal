@@ -120,24 +120,6 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.Instrumentable
- anno 0 java.lang.Deprecated()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<? extends com.oracle.truffle.api.instrumentation.InstrumentableFactory<? extends com.oracle.truffle.api.nodes.Node>> factory()
-
-CLSS public abstract interface com.oracle.truffle.api.instrumentation.InstrumentableFactory<%0 extends com.oracle.truffle.api.nodes.Node>
- anno 0 java.lang.Deprecated()
-innr public abstract interface static WrapperNode
-meth public abstract com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode createWrapper({com.oracle.truffle.api.instrumentation.InstrumentableFactory%0},com.oracle.truffle.api.instrumentation.ProbeNode)
-
-CLSS public abstract interface static com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode
- outer com.oracle.truffle.api.instrumentation.InstrumentableFactory
- anno 0 java.lang.Deprecated()
-meth public abstract com.oracle.truffle.api.instrumentation.ProbeNode getProbeNode()
-meth public abstract com.oracle.truffle.api.nodes.Node getDelegateNode()
-
 CLSS public abstract interface com.oracle.truffle.api.instrumentation.InstrumentableNode
 innr public abstract interface static WrapperNode
 intf com.oracle.truffle.api.nodes.NodeInterface
@@ -150,7 +132,6 @@ meth public java.lang.Object getNodeObject()
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.InstrumentableNode$WrapperNode
  outer com.oracle.truffle.api.instrumentation.InstrumentableNode
-intf com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode
 intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract com.oracle.truffle.api.instrumentation.ProbeNode getProbeNode()
 meth public abstract com.oracle.truffle.api.nodes.Node getDelegateNode()
@@ -200,8 +181,6 @@ meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()
 meth public java.lang.Object onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable,boolean)
 meth public void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
-meth public void onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 meth public void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
 hfds SEEN_REENTER,SEEN_RETURN,SEEN_UNWIND,SEEN_UNWIND_NEXT,UNWIND_ACTION_IGNORED,chain,context,handler,seen,version
@@ -463,12 +442,6 @@ meth public abstract !hasdefault java.lang.String shortName()
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface java.lang.Cloneable
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Documented()

@@ -131,7 +131,7 @@ public final class SourceSectionFilter {
      * @since 19.0.
      */
     public boolean includes(Node node) {
-        if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
+        if (!InstrumentationHandler.isInstrumentableNode(node)) {
             return false;
         }
         Set<Class<?>> tags = getProvidedTags(node);
@@ -202,7 +202,7 @@ public final class SourceSectionFilter {
     }
 
     boolean isInstrumentedNode(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode, sourceSection);
+        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode);
         for (EventFilterExpression exp : expressions) {
             if (!exp.isIncluded(providedTags, instrumentedNode, sourceSection)) {
                 return false;

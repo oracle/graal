@@ -281,8 +281,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             if (parent == null) {
                 return false;
             }
-            if (TruffleTCKAccessor.nodesAccess().isTaggedWith(parent, RootTag.class) ||
-                            parent instanceof InstrumentableNode && ((InstrumentableNode) parent).hasTag(RootTag.class)) {
+            if (parent instanceof InstrumentableNode && ((InstrumentableNode) parent).hasTag(RootTag.class)) {
                 return true;
             }
             return hasParentRootTag(parent);
