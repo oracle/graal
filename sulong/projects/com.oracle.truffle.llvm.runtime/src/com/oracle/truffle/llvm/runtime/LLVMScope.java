@@ -55,23 +55,16 @@ public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
-    // private final HashMap<String, LLVMFunctionDescriptor> functions;
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
-        // this.functions = new HashMap<>();
     }
 
     @TruffleBoundary
     public LLVMSymbol get(String name) {
         return symbols.get(name);
     }
-
-    /*
-     * @TruffleBoundary public LLVMFunctionDescriptor getFromFunctions(String name) { return
-     * functions.get(name); }
-     */
 
     @TruffleBoundary
     public String getKey(int idx) {
@@ -87,12 +80,6 @@ public final class LLVMScope implements TruffleObject {
         throw new IllegalStateException("Unknown function: " + name);
     }
 
-    /*
-     * @TruffleBoundary public LLVMFunctionDescriptor getFunctionDescriptor(String name) {
-     * LLVMFunctionDescriptor symbol = functions.get(name); if (symbol != null) { return symbol; }
-     * throw new IllegalStateException("Unknown function descriptor: " + name); }
-     */
-
     @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
@@ -101,16 +88,6 @@ public final class LLVMScope implements TruffleObject {
         }
         throw new IllegalStateException("Unknown global: " + name);
     }
-
-    /*
-     * @TruffleBoundary public void registerFD(LLVMFunctionDescriptor function) {
-     * LLVMFunctionDescriptor existing = functions.get(function.getFunctionDetail().getName()); if
-     * (existing == null) { assert !functions.containsKey(function.getFunctionDetail().getName());
-     * functions.put(function.getFunctionDetail().getName(), function); } else { if (existing !=
-     * function) { throw new IllegalStateException("Trying to add function " + function +
-     * " to scope, while existing function " + existing + " with name " +
-     * function.getFunctionDetail().getName() + " is already present."); } } }
-     */
 
     @TruffleBoundary
     public void register(LLVMSymbol symbol) {
@@ -127,11 +104,6 @@ public final class LLVMScope implements TruffleObject {
         return symbols.containsKey(name);
     }
 
-    /*
-     * @TruffleBoundary public boolean containsFD(String name) { return functions.containsKey(name);
-     * }
-     */
-
     @TruffleBoundary
     public boolean exports(LLVMContext context, String name) {
         LLVMSymbol localSymbol = get(name);
@@ -147,10 +119,6 @@ public final class LLVMScope implements TruffleObject {
     public void addMissingEntries(LLVMScope other) {
         for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
             symbols.putIfAbsent(entry.getKey(), entry.getValue());
-            /*
-             * if (entry.getValue().isFunction()) { functions.putIfAbsent(entry.getKey(),
-             * other.functions.get(entry.getKey())); }
-             */
         }
     }
 
@@ -158,11 +126,6 @@ public final class LLVMScope implements TruffleObject {
     public Collection<LLVMSymbol> values() {
         return symbols.values();
     }
-
-    /*
-     * @TruffleBoundary public Collection<LLVMFunctionDescriptor> functionDescriptorsValue() {
-     * return functions.values(); }
-     */
 
     @TruffleBoundary
     public void rename(String oldName, LLVMSymbol symbol) {
@@ -214,13 +177,23 @@ public final class LLVMScope implements TruffleObject {
     Object readMember(String globalName,
                     @Cached BranchProfile exception,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnknownIdentifierException {
+
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
             if (symbol != null && symbol.isFunction()) {
-                int index = symbol.getSymbolIndex(false);
-                AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(symbol.getBitcodeID(false));
-                LLVMPointer pointer = symbolTable[index].get();
-                return LLVMManagedPointer.cast(pointer).getObject();
+                if (symbol.hasValidIndexAndID()) {
+                    int index = symbol.getSymbolIndex(false);
+                    int bitcodeID = symbol.getBitcodeID(false);
+                    if (context.symbolTableExists(bitcodeID)) {
+                        AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(bitcodeID);
+                        if (index < symbolTable.length) {
+                            LLVMPointer pointer = symbolTable[index].get();
+                            return LLVMManagedPointer.cast(pointer).getObject();
+                        }
+                    }
+                }
+                exception.enter();
+                throw UnknownIdentifierException.create(globalName);
             }
             return symbol;
         }

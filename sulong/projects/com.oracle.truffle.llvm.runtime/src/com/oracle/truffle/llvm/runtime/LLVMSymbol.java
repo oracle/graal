@@ -77,6 +77,10 @@ public abstract class LLVMSymbol {
         throw new IllegalStateException("Invalid function ID: " + bitcodeID);
     }
 
+    public boolean hasValidIndexAndID () {
+        return symbolIndex >= 0 && bitcodeID >= 0;
+    }
+
     public abstract boolean isDefined();
 
     public abstract boolean isGlobalVariable();
