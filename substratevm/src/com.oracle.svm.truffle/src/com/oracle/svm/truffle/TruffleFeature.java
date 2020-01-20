@@ -79,6 +79,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -231,6 +232,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) KnownIntrinsics.convertUnknownValue(target, Object.class);
             OptimizedCallTarget callTarget = callNode.getCallTarget();
             return SubstrateObjectConstant.forObject(callTarget);
+        }
+
+        public BackgroundCompileQueue createBackgroundCompileQueue(@SuppressWarnings("unused") SubstrateTruffleRuntime runtime) {
+            return new BackgroundCompileQueue();
         }
     }
 
