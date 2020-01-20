@@ -1742,7 +1742,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region Management
 
-    // Checkstyle: stop
     // jmmLongAttribute;
     public static final int JMM_CLASS_LOADED_COUNT = 1; /* Total number of loaded classes */
     public static final int JMM_CLASS_UNLOADED_COUNT = 2; /* Total number of unloaded classes */
@@ -1834,8 +1833,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int JMM_THREAD_CPU_TIME = 24;
     public static final int JMM_THREAD_ALLOCATED_MEMORY = 25;
 
-    // Checkstyle: resume
-
     @JniImpl
     @VmImpl
     public synchronized long JVM_GetManagement(int version) {
@@ -1850,7 +1847,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return managementPtr;
     }
 
-    final static int JMM_VERSION = 0x20010203;
+    private static final int JMM_VERSION = 0x20010203;
 
     @JniImpl
     @VmImpl
@@ -1867,15 +1864,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             return 0;
         }
         return -1;
-    }
-
-    /*
-     * This is used by JDK 6 and earlier. For JDK 7 and after, use GetInputArgumentArray.
-     */
-    @JniImpl
-    @VmImpl
-    public Object GetInputArguments() {
-        throw EspressoError.unimplemented("GetInputArguments");
     }
 
     private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds) {
@@ -2059,12 +2047,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public void GetThreadAllocatedMemory(@Host(long[].class) StaticObject ids, @Host(long[].class) StaticObject sizeArray) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
     public @Host(Object.class) StaticObject GetMemoryUsage(boolean heap) {
         Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
         StaticObject instance = getMeta().MemoryUsage.allocateInstance();
@@ -2152,31 +2134,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public int GetLongAttributes(@Host(Object.class) StaticObject obj, /* jmmLongAttribute* */ long attsPtr, int count, /* long* */ long resultPtr) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject FindCircularBlockedThreads() {
-        throw EspressoError.unimplemented();
-    }
-
-    // Not used in JDK 6 or JDK 7
-    @JniImpl
-    @VmImpl
-    public long GetThreadCpuTime(long thread_id) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject GetVMGlobalNames() {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
     public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ long globalsPtr, int count) {
         if (globalsPtr == 0L) {
             throw getMeta().throwEx(NullPointerException.class);
@@ -2195,124 +2152,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         return 0;
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetInternalThreadTimes(@Host(Object[].class) StaticObject names, @Host(long[].class) StaticObject times) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public boolean ResetStatistic( /* jvalue */ long obj, /* jmmStatisticType */ long type) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void SetPoolSensor(@Host(Object.class) StaticObject pool, /* jmmThresholdType */ long type, @Host(Object.class) StaticObject sensor) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public long SetPoolThreshold(@Host(Object.class) StaticObject pool, /* jmmThresholdType */ long type, long threshold) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object.class) StaticObject GetPoolCollectionUsage(@Host(Object.class) StaticObject pool) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public int GetGCExtAttributeInfo(@Host(Object.class) StaticObject mgr, /*
-                                                                            * jmmExtAttributeInfo *
-                                                                            */ long ext_infoPtr, int count) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void GetLastGCStat(@Host(Object.class) StaticObject mgr, /* jmmGCStat * */ long gc_statPtr) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public long GetThreadCpuTimeWithKind(long thread_id, boolean user_sys_cpu_time) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void GetThreadCpuTimesWithKind(@Host(long[].class) StaticObject ids, @Host(long[].class) StaticObject timeArray, boolean user_sys_cpu_time) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public int DumpHeap0(@Host(String.class) StaticObject outputfile, boolean live) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject FindDeadlocks(boolean object_monitors_only) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void SetVMGlobal(@Host(String.class) StaticObject flag_name, /* jvalue */ long new_value) {
-        throw EspressoError.unimplemented();
-    }
-
-    // void* reserved6;
-
-    @JniImpl
-    @VmImpl
-    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void SetGCNotificationEnabled(@Host(Object.class) StaticObject mgr, boolean enabled) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(Object[].class) StaticObject GetDiagnosticCommands() {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void GetDiagnosticCommandInfo(@Host(Object[].class) StaticObject cmds, /* dcmdInfo * */ long infoArrayPtr) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void GetDiagnosticCommandArgumentsInfo(@Host(String.class) StaticObject commandName, long /* dcmdArgInfo* */ infoArrayPtr) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public @Host(String.class) StaticObject ExecuteDiagnosticCommand(@Host(String.class) StaticObject command) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    @VmImpl
-    public void SetDiagnosticFrameworkNotificationEnabled(boolean enabled) {
-        throw EspressoError.unimplemented();
     }
 
     // endregion Management
