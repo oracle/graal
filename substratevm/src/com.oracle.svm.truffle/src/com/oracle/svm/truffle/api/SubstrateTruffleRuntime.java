@@ -125,7 +125,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private void initializeAtRuntime(RootNode rootNode) {
         if (SubstateTruffleOptions.isMultiThreaded()) {
-            compileQueue = new BackgroundCompileQueue();
+            compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
         }
         if (getEngineData(rootNode).traceTransferToInterpreter) {
