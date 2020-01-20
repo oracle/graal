@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -78,8 +79,25 @@ public abstract class LLVMAccessSymbolVariableStorageNode extends LLVMExpression
     LLVMPointer doFallback(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
-        int index = descriptor.getSymbolIndex(false);
-        return symbols[index].get();
+
+        if (descriptor.hasValidIndexAndID()) {
+            int bitcodeID = descriptor.getBitcodeID(false);
+            if (context.symbolTableExists(bitcodeID)) {
+                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
+                int index = descriptor.getSymbolIndex(false);
+                AssumedValue<LLVMPointer> symbol = symbols[index];
+                if (symbol != null) {
+                    return symbol.get();
+                }
+            }
+        }
+
+        if (descriptor.isFunction()) {
+            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
+        } else if (descriptor.isGlobalVariable()) {
+            throw new LLVMLinkerException(String.format("External global %s cannot be found.", descriptor.getName()));
+        } else {
+            throw new LLVMLinkerException(String.format("External symbol %s cannot be found.", descriptor.getName()));
+        }
     }
 }
