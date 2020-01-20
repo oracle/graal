@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -74,12 +75,10 @@ public abstract class LLVMAccessSymbolVariableStorageNode extends LLVMExpression
         return symbols[index].get();
     }
 
-    @SuppressWarnings("unused")
     @Specialization
     LLVMPointer doFallback(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-
         if (descriptor.hasValidIndexAndID()) {
             int bitcodeID = descriptor.getBitcodeID(false);
             if (context.symbolTableExists(bitcodeID)) {
@@ -92,6 +91,7 @@ public abstract class LLVMAccessSymbolVariableStorageNode extends LLVMExpression
             }
         }
 
+        CompilerDirectives.transferToInterpreter();
         if (descriptor.isFunction()) {
             throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
         } else if (descriptor.isGlobalVariable()) {
