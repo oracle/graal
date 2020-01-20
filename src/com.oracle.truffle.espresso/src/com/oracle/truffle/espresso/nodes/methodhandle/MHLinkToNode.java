@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.methodhandle;
 
-import static com.oracle.truffle.espresso.nodes.LinkToInterfaceNode.interfaceLinker;
-import static com.oracle.truffle.espresso.nodes.LinkToSpecialNode.specialLinker;
-import static com.oracle.truffle.espresso.nodes.LinkToStaticNode.staticLinker;
-import static com.oracle.truffle.espresso.nodes.LinkToVirtualNode.virtualLinker;
+import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToInterfaceNode.interfaceLinker;
+import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToSpecialNode.specialLinker;
+import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToStaticNode.staticLinker;
+import static com.oracle.truffle.espresso.nodes.methodhandle.LinkToVirtualNode.virtualLinker;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 

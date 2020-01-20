@@ -20,24 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
-
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class LinkToVirtualNode implements Linker {
-    public static final Linker virtualLinker = new LinkToVirtualNode();
+public final class LeafAssumptionGetterNode extends InlinedGetterNode {
+
+    protected final int opCode;
+    protected final int curBCI;
+
+    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
+        super(inlinedMethod, top, curBCI);
+        this.opCode = opCode;
+        this.curBCI = curBCI;
+    }
 
     @Override
-    public Method linkTo(Method target, Object[] args) {
-        Method resolved = target;
-        if ((target.getRefKind() == REF_invokeSpecial) || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
-            return resolved;
+    public int execute(VirtualFrame frame) {
+        BytecodeNode root = getBytecodesNode();
+        if (inlinedMethod.leafAssumption()) {
+            StaticObject receiver = field.isStatic()
+                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+                            : nullCheck(root.peekAndReleaseObject(frame, top - 1));
+            int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
+            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt);
+        } else {
+            return root.reQuickenInvoke(frame, top, curBCI, opCode, inlinedMethod);
         }
-        StaticObject receiver = (StaticObject) args[0];
-        resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
-        return resolved;
     }
+
 }

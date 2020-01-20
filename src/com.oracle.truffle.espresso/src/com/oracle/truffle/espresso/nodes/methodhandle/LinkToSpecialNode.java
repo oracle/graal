@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.methodhandle;
 
 import com.oracle.truffle.espresso.impl.Method;
 

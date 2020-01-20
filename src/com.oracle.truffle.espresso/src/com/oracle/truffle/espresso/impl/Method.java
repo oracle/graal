@@ -82,7 +82,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;

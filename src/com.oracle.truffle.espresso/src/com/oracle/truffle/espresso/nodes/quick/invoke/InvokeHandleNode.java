@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -30,8 +30,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 
-public class InvokeHandleNode extends QuickNode {
+public final class InvokeHandleNode extends QuickNode {
 
     private final Method method;
 

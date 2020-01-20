@@ -20,34 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class LeafAssumptionGetterNode extends InlinedGetterNode {
+public final class LeafAssumptionSetterNode extends InlinedSetterNode {
 
-    protected final int opCode;
-    protected final int curBCI;
+    private final int curBCI;
+    private final int opcode;
 
-    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
-        super(inlinedMethod, top, curBCI);
-        this.opCode = opCode;
+    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
+        super(inlinedMethod, top, opCode, curBCI);
         this.curBCI = curBCI;
+        this.opcode = opCode;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         if (inlinedMethod.leafAssumption()) {
-            StaticObject receiver = field.isStatic()
-                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(root.peekAndReleaseObject(frame, top - 1));
-            int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt);
+            setFieldNode.setField(frame, root, top);
+            return -slotCount + stackEffect;
         } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opCode, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, curBCI, opcode, inlinedMethod);
         }
     }
 

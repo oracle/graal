@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.methodhandle;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ContextAccess;

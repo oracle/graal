@@ -20,13 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class QuickNode extends EspressoInstrumentableQuickNode {
@@ -46,7 +47,7 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     public abstract int execute(VirtualFrame frame);
 
     // TODO(peterssen): Make this a node?
-    protected static StaticObject nullCheck(StaticObject value) {
+    public static StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.

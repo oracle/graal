@@ -56,7 +56,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
-import com.oracle.truffle.espresso.nodes.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -31,9 +31,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-final class InvokeDynamicCallSiteNode extends QuickNode {
+public final class InvokeDynamicCallSiteNode extends QuickNode {
 
     private final StaticObject appendix;
     private final boolean hasAppendix;
@@ -43,7 +45,7 @@ final class InvokeDynamicCallSiteNode extends QuickNode {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Type>[] parsedSignature;
 
-    InvokeDynamicCallSiteNode(StaticObject memberName, StaticObject appendix, Symbol<Type>[] parsedSignature, Meta meta, int top, int curBCI) {
+    public InvokeDynamicCallSiteNode(StaticObject memberName, StaticObject appendix, Symbol<Type>[] parsedSignature, Meta meta, int top, int curBCI) {
         super(top, curBCI);
         Method target = (Method) memberName.getHiddenField(meta.HIDDEN_VMTARGET);
         this.appendix = appendix;

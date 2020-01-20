@@ -20,12 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 

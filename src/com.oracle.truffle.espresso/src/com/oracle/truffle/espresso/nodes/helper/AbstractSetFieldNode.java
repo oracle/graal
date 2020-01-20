@@ -20,15 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.helper;
 
-import static com.oracle.truffle.espresso.nodes.QuickNode.nullCheck;
+import static com.oracle.truffle.espresso.nodes.quick.QuickNode.nullCheck;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class AbstractSetFieldNode extends Node {

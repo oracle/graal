@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -32,23 +32,24 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InvokeInterfaceNode extends QuickNode {
+public abstract class InvokeVirtualNode extends QuickNode {
 
     final Method resolutionSeed;
-    final int itableIndex;
-    final Klass declaringKlass;
+    final int vtableIndex;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
-    protected abstract Object executeInterface(StaticObject receiver, Object[] args);
+    protected abstract Object executeVirtual(StaticObject receiver, Object[] args);
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(receiver, itableIndex, declaringKlass)") Method resolvedMethod,
+                    @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -56,26 +57,31 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
-        // itable Lookup
-        return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getCallTarget(), arguments);
+        // vtable lookup.
+        Method target = methodLookup(receiver, vtableIndex);
+        if (!target.hasCode()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw receiver.getKlass().getMeta().throwEx(AbstractMethodError.class);
+        }
+        return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
-    InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {
+    InvokeVirtualNode(Method resolutionSeed, int top, int curBCI) {
         super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
-        this.itableIndex = resolutionSeed.getITableIndex();
-        this.declaringKlass = resolutionSeed.getDeclaringKlass();
+        this.vtableIndex = resolutionSeed.getVTableIndex();
     }
 
-    static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
-        assert !receiver.getKlass().isArray();
-        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
-        if (!method.isPublic()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw receiver.getKlass().getMeta().throwEx(IllegalAccessError.class);
+    static Method methodLookup(StaticObject receiver, int vtableIndex) {
+        // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
+        // ones.
+        // Good thing is, miranda methods are taken care of at vtable creation !
+        Klass receiverKlass = receiver.getKlass();
+        if (receiverKlass.isArray()) {
+            return receiverKlass.getSuperKlass().vtableLookup(vtableIndex);
         }
-        return method;
+        return ((ObjectKlass) receiverKlass).vtableLookup(vtableIndex);
     }
 
     @Override
@@ -86,12 +92,13 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
-        final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
+        StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
+        nullCheck(receiver);
+        Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
-        final Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
-        Object result = executeInterface(receiver, args);
+        Object result = executeVirtual(receiver, args);
         int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
+        return (resultAt - top) + root.putKind(frame, resultAt, result, resolutionSeed.getReturnKind());
     }
 }

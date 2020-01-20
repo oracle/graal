@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.methodhandle;
+
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class LinkToInterfaceNode implements Linker {
-    public static final Linker interfaceLinker = new LinkToInterfaceNode();
+public final class LinkToVirtualNode implements Linker {
+    public static final Linker virtualLinker = new LinkToVirtualNode();
 
     @Override
-    public final Method linkTo(Method target, Object[] args) {
+    public Method linkTo(Method target, Object[] args) {
+        Method resolved = target;
+        if ((target.getRefKind() == REF_invokeSpecial) || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
+            return resolved;
+        }
         StaticObject receiver = (StaticObject) args[0];
-        assert !receiver.getKlass().isArray();
-        return ((ObjectKlass) receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
+        resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
+        return resolved;
     }
 }

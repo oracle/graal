@@ -20,15 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.methodhandle;
 
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class LinkToStaticNode implements Linker {
-    public static final Linker staticLinker = new LinkToStaticNode();
+public class LinkToInterfaceNode implements Linker {
+    public static final Linker interfaceLinker = new LinkToInterfaceNode();
 
     @Override
     public final Method linkTo(Method target, Object[] args) {
-        return target;
+        StaticObject receiver = (StaticObject) args[0];
+        assert !receiver.getKlass().isArray();
+        return ((ObjectKlass) receiver.getKlass()).itableLookup(target.getDeclaringKlass(), target.getITableIndex());
     }
 }
