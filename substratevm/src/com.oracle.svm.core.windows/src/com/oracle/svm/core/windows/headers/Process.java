@@ -58,6 +58,9 @@ public class Process {
     public static native int GetCurrentProcessId();
 
     @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetProcessId(WinBase.HANDLE pHandle);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int OpenProcessToken(WinBase.HANDLE pHandle, int desiredAccess,
                     WinBase.LPHANDLE tokenHandle);
 
