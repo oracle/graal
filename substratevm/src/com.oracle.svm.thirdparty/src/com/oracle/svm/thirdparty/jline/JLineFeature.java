@@ -29,6 +29,8 @@ package com.oracle.svm.thirdparty.jline;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -50,6 +52,9 @@ final class JLineFeature implements Feature {
                         .filter(m -> Modifier.isStatic(m.getModifiers()) && m.getName().equals("create"))
                         .toArray();
         access.registerReachabilityHandler(JLineFeature::registerTerminalConstructor, createMethods);
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            ImageSingletons.lookup(SystemPropertiesSupport.class).initializeProperty("jline.terminal", "none");
+        }
     }
 
     private static void registerTerminalConstructor(DuringAnalysisAccess access) {

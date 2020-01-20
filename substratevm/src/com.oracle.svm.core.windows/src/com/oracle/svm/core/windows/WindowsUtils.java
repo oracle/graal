@@ -54,6 +54,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Platforms(Platform.WINDOWS.class)
 public class WindowsUtils {
 
+    @TargetClass(className = "java.lang.ProcessImpl")
+    private static final class Target_java_lang_ProcessImpl {
+        @Alias long handle;
+    }
+
+    public static int getpid(java.lang.Process process) {
+        Target_java_lang_ProcessImpl processImpl = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
+        return com.oracle.svm.core.windows.headers.Process.GetProcessId(WordFactory.pointer(processImpl.handle));
+    }
+
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
         /** Invalidates the standard FileDescriptors, which are allowed in the image heap. */

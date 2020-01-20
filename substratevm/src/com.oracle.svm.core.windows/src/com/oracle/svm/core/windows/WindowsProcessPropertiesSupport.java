@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -76,19 +77,31 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
 
     @Override
     public long getProcessID(java.lang.Process process) {
-        throw VMError.unimplemented();
+        return WindowsUtils.getpid(process);
     }
 
     @Override
     public String getObjectFile(String symbol) {
-        throw VMError.unimplemented();
+        try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
+            WinBase.HMODULE builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
+            PointerBase symbolAddress = WinBase.GetProcAddress(builtinHandle, symbolHolder.get());
+            if (symbolAddress.isNonNull()) {
+                return getObjectFile(symbolAddress);
+            }
+        }
+        return null;
     }
 
     @Override
     public String getObjectFile(CEntryPointLiteral<?> symbol) {
+        PointerBase symbolAddress = symbol.getFunctionPointer();
+        return getObjectFile(symbolAddress);
+    }
+
+    private static String getObjectFile(PointerBase symbolAddress) {
         WinBase.HMODULEPointer module = StackValue.get(WinBase.HMODULEPointer.class);
         if (!WinBase.GetModuleHandleExA(WinBase.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | WinBase.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
-                        symbol.getFunctionPointer(), module)) {
+                        symbolAddress, module)) {
             return null;
         }
 
