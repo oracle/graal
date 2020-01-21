@@ -92,7 +92,6 @@ public class LLVMForeignCallNode extends RootNode {
         @Specialization(guards = "arguments.length == toLLVM.length")
         @ExplodeLoop
         Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer) {
-            assert arguments.length >= toLLVM.length;
             final Object[] packedArguments = new Object[1 + arguments.length];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < toLLVM.length; i++) {
