@@ -115,8 +115,13 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramPacketInit,
                         method(a, "java.net.DatagramPacket", "init"));
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
-                        method(a, "java.net.DatagramSocket", "checkOldImpl"));
+        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
+                            method(a, "java.net.DatagramSocket", "checkOldImpl", java.net.DatagramSocketImpl.class));
+        } else {
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
+                            method(a, "java.net.DatagramSocket", "checkOldImpl"));
+        }
 
         String plainDatagramSocketImpl = isWindows() ? "TwoStacksPlainDatagramSocketImpl" : "PlainDatagramSocketImpl";
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplInit,
