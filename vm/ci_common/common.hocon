@@ -357,7 +357,7 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
-    name: deploy-vm-windows-java8-amd64
+    name: deploy-vm-base-java8-windows-amd64
   }
   ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
     run: [
@@ -367,7 +367,27 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
-    name: deploy-vm-windows-java11-amd64
+    name: deploy-vm-base-java11-windows-amd64
+  }
+  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-installable-java8-windows-amd64
+  }
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-installable-java11-windows-amd64
   }
   #
   # Deploy GraalVM Complete (no FastR)
