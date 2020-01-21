@@ -309,7 +309,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.library",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
