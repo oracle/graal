@@ -620,12 +620,12 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         if '--add-options=' in output.data:
             assert '--vendor-version=' in output.data
             if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions')
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions -XX:ThreadPriorityPolicy=1')
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
                 # the JDK itself.
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions')
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions -XX:ThreadPriorityPolicy=1')
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
