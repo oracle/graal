@@ -422,20 +422,23 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         }
         Result r = executeExpected(method, null, args);
         int readCount = 0;
-        if (shouldEscapeRead) {
+        int writeCount = 0;
+        boolean escapeReads = shouldEscapeRead && context.getPlatformConfigurationProvider().canVirtualizeLargeByteArrayAccess();
+        boolean escapeWrites = shouldEscapeWrite && context.getPlatformConfigurationProvider().canVirtualizeLargeByteArrayAccess();
+        if (escapeReads) {
             readCount = graph.getNodes().filter(RawLoadNode.class).count();
         }
-        int writeCount = 0;
-        if (shouldEscapeWrite) {
+        if (escapeWrites) {
             writeCount = graph.getNodes().filter(RawStoreNode.class).count();
         }
         new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
-        if (shouldEscapeRead) {
-            assertTrue(readCount > graph.getNodes().filter(RawLoadNode.class).count(), "PEA did not escape.");
+        if (escapeReads) {
+            int newCount = graph.getNodes().filter(RawLoadNode.class).count();
+            assertTrue(readCount > newCount, "PEA did not escape reads. before: " + readCount + ", after " + newCount);
         }
-        if (shouldEscapeWrite) {
+        if (escapeWrites) {
             int newCount = graph.getNodes().filter(RawStoreNode.class).count();
-            assertTrue(writeCount > newCount, "PEA did not escape, before: " + writeCount + ", after: " + newCount);
+            assertTrue(writeCount > newCount, "PEA did not escape writes, before: " + writeCount + ", after: " + newCount);
         }
         try {
             InstalledCode code = getCode(method, graph);
