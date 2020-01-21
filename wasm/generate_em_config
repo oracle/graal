@@ -21,3 +21,9 @@ echo "Generated Emscripten config file at $CONFIG_PATH:"
 echo "--------"
 cat "$CONFIG_PATH"
 echo "--------"
+
+echo "Triggering cache generation."
+echo "int main() { return 0; }" > test.c
+$EMSCRIPTEN_ROOT/emcc test.c
+echo "Cache generation completed."
+
