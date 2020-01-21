@@ -151,7 +151,7 @@ public abstract class Source {
     private static final CharSequence CONTENT_UNSET = new String();
 
     private static final String UNKNOWN_MIME_TYPE = "content/unknown";
-    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false, true).toSourceNotInterned();
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, true).toSourceNotInterned();
 
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
@@ -1021,6 +1021,7 @@ public abstract class Source {
         URL useUrl = url;
         Object useOrigin = origin;
         Charset useEncoding = encoding;
+        TruffleFile useTruffleFile = null;
 
         if (useOrigin instanceof File) {
             final File file = (File) useOrigin;
@@ -1042,6 +1043,7 @@ public abstract class Source {
                     useUri = file.toUri();
                 }
             }
+            useTruffleFile = file;
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
@@ -1073,19 +1075,20 @@ public abstract class Source {
             useUri = useUri == null ? tmpUri : useUri;
             usePath = usePath == null ? useUrl.getPath() : usePath;
             try {
-                TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
+                useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
+                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
                 if (legacy) {
-                    useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
+                    useMimeType = useMimeType == null ? SourceAccessor.getMimeType(useTruffleFile, getValidMimeTypes(language)) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
-                    useContent = useContent == CONTENT_UNSET ? read(truffleFile, useEncoding) : useContent;
+                    useEncoding = useEncoding == null ? getEncoding(useTruffleFile, useMimeType) : useEncoding;
+                    useContent = useContent == CONTENT_UNSET ? read(useTruffleFile, useEncoding) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
-                            useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
-                            useContent = read(truffleFile, useEncoding);
+                            useEncoding = useEncoding == null ? getEncoding(useTruffleFile, useMimeType) : useEncoding;
+                            useContent = read(useTruffleFile, useEncoding);
                         } else {
-                            useContent = ByteSequence.create(truffleFile.readAllBytes());
+                            useContent = ByteSequence.create(useTruffleFile.readAllBytes());
                         }
                     }
                 }
@@ -1126,7 +1129,12 @@ public abstract class Source {
         }
 
         useContent = enforceInterfaceContracts(useContent);
-        SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
+        SourceImpl.Key key;
+        if (useTruffleFile != null) {
+            key = SourceAccessor.createSourceKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
+        } else {
+            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
+        }
         return SOURCES.intern(key);
     }
 
@@ -1607,7 +1615,7 @@ public abstract class Source {
             internal(source.isInternal());
             mimeType(source.getMimeType());
             name(source.getName());
-            uri(((SourceImpl) source).toKey().uri);
+            uri(((SourceImpl) source).toKey().getURI());
             path = source.getPath();
             url = source.getURL();
             buildThrowsIOException = false;

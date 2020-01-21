@@ -137,6 +137,21 @@ final class FileSystems {
         DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
     }
 
+    static String getRelativePathInLanguageHome(TruffleFile file) {
+        FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
+        Path path = EngineAccessor.LANGUAGE.getPath(file);
+        for (LanguageCache cache : LanguageCache.languages().values()) {
+            final String languageHome = cache.getLanguageHome();
+            if (languageHome != null) {
+                Path languageHomePath = fs.parsePath(languageHome);
+                if (path.startsWith(languageHomePath)) {
+                    return languageHomePath.relativize(path).toString();
+                }
+            }
+        }
+        return null;
+    }
+
     private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
         return new NIOFileSystem(fileSystemProvider);
     }

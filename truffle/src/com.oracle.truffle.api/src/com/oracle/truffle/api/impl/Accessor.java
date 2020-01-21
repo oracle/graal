@@ -191,6 +191,12 @@ public abstract class Accessor {
         public abstract SourceBuilder newBuilder(String language, File origin);
 
         public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);
+
+        public abstract Runnable createReinitializableKey(TruffleFile truffleFile, String pathInLanguageHome, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy);
+
+        public abstract Object createLanguageHomeKey(String pathInLanguageHome, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy);
+
+        public abstract Object createImmutableSourceKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy);
     }
 
     public abstract static class DumpSupport {
@@ -412,6 +418,9 @@ public abstract class Accessor {
         public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
+
+        public abstract Object createSourceKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri,
+            String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy);
     }
 
     public abstract static class LanguageSupport {

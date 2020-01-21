@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.TruffleFile;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
@@ -115,7 +117,7 @@ final class SourceImpl extends Source {
 
     @Override
     public String getPath() {
-        return key.path;
+        return key.getPath();
     }
 
     @Override
@@ -135,12 +137,12 @@ final class SourceImpl extends Source {
 
     @Override
     public URL getURL() {
-        return key.url;
+        return key.getURL();
     }
 
     @Override
     public URI getOriginalURI() {
-        return key.uri;
+        return key.getURI();
     }
 
     @Override
@@ -180,37 +182,48 @@ final class SourceImpl extends Source {
 
     }
 
-    static final class Key {
+    static abstract class Key {
 
         final Object content;
-        final URI uri;
-        final URL url;
         final String name;
         final String mimeType;
         final String language;
-        final String path;
         final boolean internal;
         final boolean interactive;
         final boolean cached;
         // TODO remove legacy field with deprecated Source builders.
         final boolean legacy;
+        volatile Integer cachedHashCode;
 
-        Key(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean legacy, Integer hashCode) {
             this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
             this.name = name;
-            this.path = path;
             this.internal = internal;
             this.interactive = interactive;
             this.cached = cached;
-            this.url = url;
-            this.uri = uri;
             this.legacy = legacy;
+            cachedHashCode = hashCode;
         }
+
+        abstract String getPath();
+
+        abstract URI getURI();
+
+        abstract URL getURL();
 
         @Override
         public int hashCode() {
+            Integer hashCode = cachedHashCode;
+            if (hashCode == null) {
+                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached, legacy);
+                cachedHashCode = hashCode;
+            }
+            return hashCode;
+        }
+
+        static int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
@@ -239,9 +252,9 @@ final class SourceImpl extends Source {
             return Objects.equals(language, other.language) && //
                             Objects.equals(mimeType, other.mimeType) && //
                             Objects.equals(name, other.name) && //
-                            Objects.equals(path, other.path) && //
-                            Objects.equals(uri, other.uri) && //
-                            Objects.equals(url, other.url) && //
+                            Objects.equals(getPath(), other.getPath()) && //
+                            Objects.equals(getURI(), other.getURI()) && //
+                            Objects.equals(getURL(), other.getURL()) && //
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
@@ -288,6 +301,102 @@ final class SourceImpl extends Source {
             return new SourceImpl(this, this);
         }
 
+    }
+
+    static final class ImmutableKey extends Key {
+
+        private final URI uri;
+        private final URL url;
+        private final String path;
+
+        ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, null);
+        }
+
+        ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, int hashCode) {
+            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, (Integer)hashCode);
+        }
+
+        private ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, Integer hashCode) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy, hashCode);
+            this.uri = uri;
+            this.url = url;
+            this.path = path;
+        }
+
+        String getPath() {
+            return path;
+        }
+
+        URI getURI() {
+            return uri;
+        }
+
+        URL getURL() {
+            return url;
+        }
+    }
+
+    static final class ReinitializableKey extends Key implements Runnable {
+
+        private static final Object INVALID = new Object();
+
+        private TruffleFile truffleFile;
+        private Object uri;
+        private Object url;
+        private Object path;
+
+        ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, int hashCode) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy, hashCode);
+            Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
+            this.truffleFile = truffleFile;
+            this.uri = uri;
+            this.url = url;
+            this.path = path;
+        }
+
+        @Override
+        public void run() {
+            if (path != null) {
+                path = INVALID;
+            }
+            if (uri != null) {
+                this.uri = INVALID;
+            }
+            if (url != null) {
+                this.url = INVALID;
+            }
+        }
+
+        @Override
+        String getPath() {
+            if (path == INVALID) {
+                path = truffleFile.getPath();
+            }
+            return (String) path;
+        }
+
+        @Override
+        URI getURI() {
+            if (uri == INVALID) {
+                // Todo: Relative URI
+                uri = truffleFile.toUri();
+            }
+            return (URI) uri;
+        }
+
+        @Override
+        URL getURL() {
+            if (url == INVALID) {
+                try {
+                    url = truffleFile.toUri().toURL();
+                } catch (MalformedURLException e) {
+                    // Never thrown
+                    throw new AssertionError(e);
+                }
+            }
+            return (URL) url;
+        }
     }
 
 }

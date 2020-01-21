@@ -191,6 +191,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
+    List<Runnable> sourceKeysToInvalidate;  // Non null only during content pre-initialization
 
     final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
@@ -1287,6 +1288,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         EnvironmentAccess.INHERIT, null, null, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
+            context.sourceKeysToInvalidate = new ArrayList<>();
             final String oldOption = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
             final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
             final String optionValue;
@@ -1328,6 +1330,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             disposeStaticContext(context);
             return context;
         } finally {
+            for (Runnable sourceKey : context.sourceKeysToInvalidate) {
+                sourceKey.run();
+            }
+            context.sourceKeysToInvalidate = null;
             fs.onPreInitializeContextEnd();
             internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();

@@ -85,6 +85,11 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
     }
 
+    static SourceImpl.Key createSourceKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri,
+            String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+        return (SourceImpl.Key) ACCESSOR.engineSupport().createSourceKey(truffleFile, content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
+    }
+
     static final class SourceSupportImpl extends Accessor.SourceSupport {
 
         @Override
@@ -125,6 +130,23 @@ final class SourceAccessor extends Accessor {
         @Override
         public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
             builder.embedderFileSystemContext(fileSystemContext);
+        }
+
+        @Override
+        public Runnable createReinitializableKey(TruffleFile truffleFile, String pathInLanguageHome, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            int hashCode = SourceImpl.Key.hashCodeImpl(content, mimeType, languageId, null, null, name, pathInLanguageHome, internal, interactive, cached, legacy);
+            return new SourceImpl.ReinitializableKey(truffleFile, content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, hashCode);
+        }
+
+        @Override
+        public Object createLanguageHomeKey(String pathInLanguageHome, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            int hashCode = SourceImpl.Key.hashCodeImpl(content, mimeType, languageId, null, null, name, pathInLanguageHome, internal, interactive, cached, legacy);
+            return new SourceImpl.ImmutableKey(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, hashCode);
+        }
+
+        @Override
+        public Object createImmutableSourceKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            return new SourceImpl.ImmutableKey(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
         }
     }
 }
