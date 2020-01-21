@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
@@ -48,7 +51,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 final class SourceImpl extends Source {
 
-    private final Key key;
+    final Key key;
     private final Object sourceId;
 
     private SourceImpl(Key key) {
@@ -115,7 +118,7 @@ final class SourceImpl extends Source {
 
     @Override
     public String getPath() {
-        return key.path;
+        return key.getPath();
     }
 
     @Override
@@ -135,12 +138,12 @@ final class SourceImpl extends Source {
 
     @Override
     public URL getURL() {
-        return key.url;
+        return key.getURL();
     }
 
     @Override
     public URI getOriginalURI() {
-        return key.uri;
+        return key.getURI();
     }
 
     @Override
@@ -180,37 +183,47 @@ final class SourceImpl extends Source {
 
     }
 
-    static final class Key {
+    abstract static class Key {
 
         final Object content;
-        final URI uri;
-        final URL url;
         final String name;
         final String mimeType;
         final String language;
-        final String path;
         final boolean internal;
         final boolean interactive;
         final boolean cached;
         // TODO remove legacy field with deprecated Source builders.
         final boolean legacy;
+        volatile Integer cachedHashCode;
 
-        Key(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
             this.name = name;
-            this.path = path;
             this.internal = internal;
             this.interactive = interactive;
             this.cached = cached;
-            this.url = url;
-            this.uri = uri;
             this.legacy = legacy;
         }
 
+        abstract String getPath();
+
+        abstract URI getURI();
+
+        abstract URL getURL();
+
         @Override
         public int hashCode() {
+            Integer hashCode = cachedHashCode;
+            if (hashCode == null) {
+                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached, legacy);
+                cachedHashCode = hashCode;
+            }
+            return hashCode;
+        }
+
+        final int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
@@ -239,13 +252,16 @@ final class SourceImpl extends Source {
             return Objects.equals(language, other.language) && //
                             Objects.equals(mimeType, other.mimeType) && //
                             Objects.equals(name, other.name) && //
-                            Objects.equals(path, other.path) && //
-                            Objects.equals(uri, other.uri) && //
-                            Objects.equals(url, other.url) && //
+                            Objects.equals(getPath(), other.getPath()) && //
+                            Objects.equals(getURI(), other.getURI()) && //
+                            Objects.equals(getURL(), other.getURL()) && //
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
                             compareContent(other);
+        }
+
+        void invalidateAfterPreinitialiation() {
         }
 
         private boolean compareContent(Key other) {
@@ -288,6 +304,126 @@ final class SourceImpl extends Source {
             return new SourceImpl(this, this);
         }
 
+    }
+
+    static final class ImmutableKey extends Key {
+
+        private final URI uri;
+        private final URL url;
+        private final String path;
+
+        /**
+         * Creates an {@link ImmutableKey}. The {@code relativePathInLanguageHome} has to be given
+         * for a file under the language home. For the file under the language home the hash code
+         * must be equal to {@link ReinitializableKey}'s hash code, so it's based on the relative
+         * path in the language home and does not include {@code url} nor {@code uri} as they
+         * contain absolute paths.
+         */
+        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy,
+                        String relativePathInLanguageHome) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
+            this.uri = uri;
+            this.url = url;
+            this.path = path;
+            if (relativePathInLanguageHome != null) {
+                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
+            }
+        }
+
+        String getPath() {
+            return path;
+        }
+
+        URI getURI() {
+            return uri;
+        }
+
+        URL getURL() {
+            return url;
+        }
+    }
+
+    /**
+     * A {@link Key} used for files under the language homes in the time of context
+     * pre-initialization. The {@code uri}, {@code url} and {@code path} of the
+     * {@link ReinitializableKey} are reset at the end of the context pre-initialization and
+     * recomputed from the given {@link TruffleFile} in image execution time.
+     */
+    static final class ReinitializableKey extends Key {
+
+        private static final Object INVALID = new Object();
+
+        private TruffleFile truffleFile;
+        private Object uri;
+        private Object url;
+        private Object path;
+
+        /**
+         * Creates an {@link ReinitializableKey} for a file under the language home. The hash code
+         * is based on the relative path in language home and does not include {@code url} nor
+         * {@code uri} as they contain absolute paths.
+         */
+        ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
+                        boolean cached, boolean legacy, String relativePathInLanguageHome) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
+            Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
+            this.truffleFile = truffleFile;
+            this.uri = uri;
+            this.url = url;
+            this.path = path;
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
+        }
+
+        @Override
+        void invalidateAfterPreinitialiation() {
+            if (Objects.equals(path, truffleFile.getPath())) {
+                path = INVALID;
+            }
+            if (Objects.equals(uri, truffleFile.toUri())) {
+                this.uri = INVALID;
+            }
+            try {
+                if (url != null && truffleFile.toUri().toURL().toExternalForm().equals(((URL) url).toExternalForm())) {
+                    this.url = INVALID;
+                }
+            } catch (MalformedURLException mue) {
+                // Should never be thrown as the truffleFile.toUri() returns absolute URI
+                throw new AssertionError(mue);
+            }
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        String getPath() {
+            if (path == INVALID) {
+                path = SourceAccessor.getReinitializedPath(truffleFile);
+            }
+            return (String) path;
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        URI getURI() {
+            if (uri == INVALID) {
+                uri = SourceAccessor.getReinitializedURI(truffleFile);
+            }
+            return (URI) uri;
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        URL getURL() {
+            if (url == INVALID) {
+                try {
+                    URI uri = getURI();
+                    url = new URL(uri.getScheme(), uri.getHost(), uri.getPort(), uri.getRawPath());
+                } catch (MalformedURLException e) {
+                    // Never thrown
+                    throw new AssertionError(e);
+                }
+            }
+            return (URL) url;
+        }
     }
 
 }
