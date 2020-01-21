@@ -284,7 +284,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         List<String> providerClassNames = new ArrayList<>(providerRegistrations.size());
         for (String providerFqn : providerRegistrations.keySet()) {
             TypeElement te = ElementUtils.getTypeElement(env, providerFqn);
-            providerClassNames.add(elements.getBinaryName(te).toString());
+            if (te == null) {
+                providerClassNames.add(providerFqn);
+            } else {
+                providerClassNames.add(elements.getBinaryName(te).toString());
+            }
         }
         Collections.sort(providerClassNames);
         if (!providerClassNames.isEmpty()) {
