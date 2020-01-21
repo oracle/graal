@@ -199,7 +199,7 @@ public class NodeFieldTest {
     @Test
     public void testUncachedNodeIntFieldTest() {
         assertEquals(42, UncachedNodeIntFieldTestNodeGen.create(42).execute());
-        assertEquals(0, UncachedNodeIntFieldTestNodeGen.getUncached().execute());
+        assertFails(() -> UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
     }
 
     @GenerateUncached
@@ -226,7 +226,7 @@ public class NodeFieldTest {
     public void testUncachedNodeObjectFieldTest() {
         Object instance = new Object();
         assertSame(instance, UncachedNodeObjectFieldTestNodeGen.create(instance).execute());
-        assertNull(UncachedNodeObjectFieldTestNodeGen.getUncached().execute());
+        assertFails(() -> UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
     }
 
     @GenerateUncached
@@ -252,7 +252,7 @@ public class NodeFieldTest {
     @Test
     public void testUncachedNodeIntFieldRef() {
         assertEquals(42, UncachedNodeIntFieldRefNodeGen.create(42).execute());
-        assertFails(() -> UncachedNodeIntFieldRefNodeGen.getUncached().execute(), UnsupportedOperationException.class);
+        assertEquals(0, UncachedNodeIntFieldRefNodeGen.getUncached().execute());
     }
 
     @GenerateUncached
