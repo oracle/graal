@@ -146,16 +146,16 @@ final class InteropAccessor extends Accessor {
                     throw new AssertionError("Invalid node object: the returned member must return a string  ");
                 }
                 try {
-                    membersInterop.readMember(members, member);
+                    membersInterop.readMember(obj, member);
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     throw new AssertionError("Invalid node object: the returned member must be readable with identifier " + member);
                 }
 
-                if (membersInterop.isMemberWritable(members, member)) {
+                if (membersInterop.isMemberWritable(obj, member)) {
                     throw new AssertionError("Invalid node object: The member " + member + " is marked as writable but node objects must not be writable.");
                 }
             }
-            if (interop.hasArrayElements(members)) {
+            if (interop.hasArrayElements(obj)) {
                 throw new AssertionError("Invalid node object: the node object must not return true for hasArrayElements.");
             }
 
