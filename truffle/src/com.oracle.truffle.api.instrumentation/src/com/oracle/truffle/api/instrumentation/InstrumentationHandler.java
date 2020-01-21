@@ -1838,6 +1838,7 @@ final class InstrumentationHandler {
         abstract boolean isInstrumentableSource(Source source);
 
         final Set<Class<?>> queryTagsImpl(Node node, LanguageInfo onlyLanguage) {
+            Objects.requireNonNull(node);
             if (!InstrumentationHandler.isInstrumentableNode(node)) {
                 return Collections.emptySet();
             }

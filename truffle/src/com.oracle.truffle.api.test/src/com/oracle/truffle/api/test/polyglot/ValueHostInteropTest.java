@@ -1007,10 +1007,18 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index >= size) {
+            if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return size - index;
+            return (int) (size - index);
+        }
+
+        @ExportMessage
+        void removeArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            size--;
         }
 
         @ExportMessage
@@ -1018,9 +1026,10 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             return size;
         }
 
-        @ExportMessage
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementRemovable")
         boolean isArrayElementReadable(long index) {
-            return false;
+            return index >= 0 && index < size;
         }
 
     }
