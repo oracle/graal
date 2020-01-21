@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.lang.reflect.Modifier;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
