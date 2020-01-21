@@ -89,7 +89,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("static-method")
-    static final class TestFunction implements TruffleObject {
+    static final class ProxyTestFunction implements TruffleObject {
 
         TruffleObject lastFunction;
 
@@ -112,7 +112,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     }
 
     private TruffleObject toInnerProxy(Proxy proxy) {
-        TestFunction f = new TestFunction();
+        ProxyTestFunction f = new ProxyTestFunction();
         context.asValue(f).execute(proxy);
         return f.lastFunction;
     }

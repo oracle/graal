@@ -411,7 +411,7 @@ public class ContextAPITest {
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings({"static-method", "unused"})
-    static final class TestFunction implements TruffleObject {
+    static final class ContextTestFunction implements TruffleObject {
 
         @ExportMessage
         boolean isExecutable() {
@@ -426,7 +426,7 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new TestFunction();
+        ContextAPITestLanguage.runinside = (env) -> new ContextTestFunction();
         Value executable = context.eval(ContextAPITestLanguage.ID, "");
         assertEquals(42, executable.execute().asInt());
         assertEquals(42, executable.execute(42).asInt());
