@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.StreamSupport;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
@@ -1084,6 +1085,16 @@ public abstract class ObjectFile {
 
         // NOTE: subclasses will add their own restrictions here, e.g.
         // flag compatibility
+    }
+
+    /**
+     * API method provided to allow a native image generator to provide details of
+     * types, code and heap data inserted into a native image.
+     * @param debugInfoProvider an implementation of the provider interface that
+     * communicates details of the relevant types, code and heap data.
+     */
+    public void installDebugInfo(@SuppressWarnings("unused") DebugInfoProvider debugInfoProvider) {
+        // do nothing by default
     }
 
     protected static Iterable<LayoutDecision> allDecisions(final Map<Element, LayoutDecisionMap> decisions) {

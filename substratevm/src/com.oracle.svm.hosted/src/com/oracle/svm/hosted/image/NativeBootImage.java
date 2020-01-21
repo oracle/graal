@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -44,18 +46,27 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.hosted.meta.HostedType;
+import jdk.vm.ci.code.site.Mark;
+import jdk.vm.ci.meta.LineNumberTable;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -67,6 +78,10 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
@@ -456,6 +471,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
+            // if we have constructed any debug info then
+            // give the object file a chance to install it
+            if (GraalOptions.TrackNodeSourcePosition.getValue(HostedOptionValues.singleton())) {
+                DebugInfoProvider provider = new NativeImageDebugInfoProvider(codeCache, heap);
+                objectFile.installDebugInfo(provider);
+            }
             // - Write the heap, either to its own section, or to the ro and rw data sections.
             RelocatableBuffer heapSectionBuffer = null;
             ProgbitsSectionImpl heapSectionImpl = null;
@@ -949,5 +970,300 @@ public abstract class NativeBootImage extends AbstractBootImage {
         protected final RelocatableBuffer textBuffer;
         protected final ObjectFile objectFile;
         protected final NativeImageCodeCache codeCache;
+    }
+
+    /**
+     * implementation of the DebugInfoProvider API interface
+     * that allows type, code and heap data info to be passed to
+     * an ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugInfoProvider implements DebugInfoProvider {
+        private final NativeImageCodeCache codeCache;
+        private final NativeImageHeap heap;
+        private final Iterator<Map.Entry<HostedMethod, CompilationResult>> codeCacheIterator;
+        private final Iterator<Map.Entry<Object, ObjectInfo>> heapIterator;
+
+        NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
+            super();
+            this.codeCache = codeCache;
+            this.heap = heap;
+            this.codeCacheIterator = codeCache.compilations.entrySet().iterator();
+            this.heapIterator = heap.objects.entrySet().iterator();
+        }
+
+        @Override
+        public DebugTypeInfoProvider typeInfoProvider() {
+            return () -> new Iterator<DebugTypeInfo>() {
+                @Override
+                public boolean hasNext() {
+                    return false;
+                }
+
+                @Override
+                public DebugTypeInfo next() {
+                    return null;
+                }
+            };
+        }
+
+        @Override
+        public DebugCodeInfoProvider codeInfoProvider() {
+            return () -> new Iterator<DebugCodeInfo>() {
+                @Override
+                public boolean hasNext() {
+                    return codeCacheIterator.hasNext();
+                }
+
+                @Override
+                public DebugCodeInfo next() {
+                    Map.Entry<HostedMethod, CompilationResult> entry = codeCacheIterator.next();
+                    return new NativeImageDebugCodeInfo(entry.getKey(), entry.getValue());
+                }
+            };
+        }
+
+        @Override
+        public DebugDataInfoProvider dataInfoProvider() {
+            return () -> new Iterator<DebugDataInfo>() {
+                @Override
+                public boolean hasNext() {
+                    return false;
+                }
+
+                @Override
+                public DebugDataInfo next() {
+                    return null;
+                }
+            };
+        }
+    }
+
+    /**
+     * implementation of the DebugCodeInfo API interface
+     * that allows code info to be passed to an ObjectFile
+     * when generation of debug info is enabled.
+     */
+    private class NativeImageDebugCodeInfo implements DebugCodeInfo {
+        private final HostedMethod method;
+        private final CompilationResult compilation;
+
+        NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
+            this.method = method;
+            this.compilation = compilation;
+        }
+
+        @Override
+        public String fileName() {
+            HostedType declaringClass = method.getDeclaringClass();
+            String name = declaringClass.getSourceFileName();
+            if (name != null) {
+                // the file name will not include any path
+                // use the package to create a path prefix
+                Package pkg = declaringClass.getJavaClass().getPackage();
+                if (pkg != null) {
+                    String prefix = pkg.getName();
+                    prefix = prefix.replace('.', '/');
+                    name = prefix + "/" + name;
+                }
+            } else {
+                // build file name from the class name which includes the package
+                name = className();
+                // try to map inner classes back to their parent class's file
+                int idx = name.indexOf('$');
+                if (idx == 0) {
+                    // name is $XXX so cannot associate with a file
+                    return "";
+                }
+                if (idx > 0) {
+                    // name is XXX$YYY so use outer class to derive file name
+                    name = name.substring(0, idx);
+                }
+                name = name.replace('.', '/') + ".java";
+            }
+            return name;
+        }
+
+        @Override
+        public String className() {
+            return method.format("%H");
+        }
+
+        @Override
+        public String methodName() {
+            return method.format("%n");
+        }
+
+        @Override
+        public String paramNames() {
+            return method.format("%P");
+        }
+
+        @Override
+        public String returnTypeName() {
+            return method.format("%R");
+        }
+
+        @Override
+        public int addressLo() {
+            return method.getCodeAddressOffset();
+        }
+
+        @Override
+        public int addressHi() {
+            return method.getCodeAddressOffset() + compilation.getTargetCodeSize();
+        }
+
+        @Override
+        public int line() {
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            if (lineNumberTable != null) {
+                return lineNumberTable.getLineNumber(0);
+            }
+            return -1;
+        }
+
+        @Override
+        public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
+            if (fileName().length() == 0) {
+                return () -> new Iterator<DebugLineInfo>() {
+                    @Override
+                    public boolean hasNext() {
+                        return false;
+                    }
+
+                    @Override
+                    public DebugLineInfo next() {
+                        return null;
+                    }
+                };
+            }
+            return () -> new Iterator<DebugLineInfo>() {
+                final Iterator<SourceMapping> sourceIterator = compilation.getSourceMappings().iterator();
+
+                @Override
+                public boolean hasNext() {
+                    return sourceIterator.hasNext();
+                }
+
+                @Override
+                public DebugLineInfo next() {
+                    return new NativeImageDebugLineInfo(sourceIterator.next());
+                }
+            };
+        }
+
+        public int getFrameSize() {
+            return compilation.getTotalFrameSize();
+        }
+
+        public List<DebugFrameSizeChange> getFrameSizeChanges() {
+            List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
+            for (Mark mark : compilation.getMarks()) {
+                // we only need to observe stack increment or decrement points
+                if (mark.id.equals("PROLOGUE_DECD_RSP")) {
+                    NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
+                    frameSizeChanges.add(sizeChange);
+                    // } else if (mark.id.equals("PROLOGUE_END")) {
+                    // can ignore these
+                    // } else if (mark.id.equals("EPILOGUE_START")) {
+                    // can ignore these
+                } else if (mark.id.equals("EPILOGUE_INCD_RSP")) {
+                    NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
+                    frameSizeChanges.add(sizeChange);
+                    // } else if(mark.id.equals("EPILOGUE_END")) {
+                }
+            }
+            return frameSizeChanges;
+        }
+    }
+
+    /**
+     * implementation of the DebugLineInfo API interface
+     * that allows line number info to be passed to an
+     * ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugLineInfo implements DebugLineInfo {
+        private final int bci;
+        private final ResolvedJavaMethod method;
+        private final int lo;
+        private final int hi;
+
+        NativeImageDebugLineInfo(SourceMapping sourceMapping) {
+            NodeSourcePosition position = sourceMapping.getSourcePosition();
+            int bci = position.getBCI();
+            this.bci = (bci >= 0 ? bci : 0);
+            this.method = position.getMethod();
+            this.lo = sourceMapping.getStartOffset();
+            this.hi = sourceMapping.getEndOffset();
+        }
+
+        @Override
+        public String fileName() {
+            String name = className();
+            int idx = name.indexOf('$');
+            if (idx == 0) {
+                // name is $XXX so cannot associate with a file
+                return "";
+            }
+            if (idx > 0) {
+                // name is XXX$YYY so use outer class to derive file name
+                name = name.substring(0, idx);
+            }
+            return name.replace('.', '/') + ".java";
+        }
+
+        @Override
+        public String className() {
+            return method.format("%H");
+        }
+
+        @Override
+        public String methodName() {
+            return method.format("%n");
+        }
+
+        @Override
+        public int addressLo() {
+            return lo;
+        }
+
+        @Override
+        public int addressHi() {
+            return hi;
+        }
+
+        @Override
+        public int line() {
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            if (lineNumberTable != null) {
+                return lineNumberTable.getLineNumber(bci);
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * implementation of the DebugFrameSizeChange API interface
+     * that allows stack frame size change info to be passed to
+     * an ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
+        private int offset;
+        private Type type;
+
+        NativeImageDebugFrameSizeChange(int offset, Type type) {
+            this.offset = offset;
+            this.type = type;
+        }
+
+        @Override
+        public int getOffset() {
+            return offset;
+        }
+
+        @Override
+        public Type getType() {
+            return type;
+        }
     }
 }
