@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -64,7 +63,7 @@ public class SLRootNode extends RootNode {
     /** The name of the function, for printing purposes only. */
     private final String name;
 
-    @CompilationFinal private boolean isCloningAllowed;
+    private boolean isCloningAllowed;
 
     private final SourceSection sourceSection;
 
