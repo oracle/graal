@@ -44,10 +44,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -162,7 +163,6 @@ public class CountedLoopTest extends GraalCompilerTest {
         testRemovableCounted("incrementSnippet", 257, 256, 1);
     }
 
-    @Ignore("GR-20642")
     @Test
     public void increment7() {
         testCounted("incrementSnippet", -10, Integer.MAX_VALUE, 1);
@@ -649,8 +649,8 @@ public class CountedLoopTest extends GraalCompilerTest {
 
     @Override
     protected OptimisticOptimizations getOptimisticOptimizations() {
-        // Don't convert unreached paths into Guard
-        return OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.RemoveNeverExecutedCode);
+        // Disable profile based optimizations
+        return OptimisticOptimizations.NONE;
     }
 
     private Object[] argsToBind;
@@ -675,6 +675,12 @@ public class CountedLoopTest extends GraalCompilerTest {
 
     public void testRemovableCounted(String snippetName, Object start, Object limit, Object step) {
         testCounted(true, snippetName, start, limit, step);
+    }
+
+    @Override
+    protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        installedCodeOwner.reprofile();
+        return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
     }
 
     public void testCounted(boolean removable, String snippetName, Object start, Object limit, Object step) {
