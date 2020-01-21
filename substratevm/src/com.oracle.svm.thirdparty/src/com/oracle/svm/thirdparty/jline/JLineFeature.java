@@ -26,34 +26,90 @@ package com.oracle.svm.thirdparty.jline;
 
 // Checkstyle: allow reflection
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
 final class JLineFeature implements Feature {
 
+    /** List of the classes that access the JNI library. */
+    private static final List<String> JNI_CLASS_NAMES = Arrays.asList(
+                    "org.fusesource.jansi.internal.CLibrary",
+                    "org.fusesource.jansi.internal.CLibrary$WinSize",
+                    "org.fusesource.jansi.internal.CLibrary$Termios",
+                    "org.fusesource.jansi.internal.Kernel32",
+                    "org.fusesource.jansi.internal.Kernel32$SMALL_RECT",
+                    "org.fusesource.jansi.internal.Kernel32$COORD",
+                    "org.fusesource.jansi.internal.Kernel32$CONSOLE_SCREEN_BUFFER_INFO",
+                    "org.fusesource.jansi.internal.Kernel32$CHAR_INFO",
+                    "org.fusesource.jansi.internal.Kernel32$KEY_EVENT_RECORD",
+                    "org.fusesource.jansi.internal.Kernel32$MOUSE_EVENT_RECORD",
+                    "org.fusesource.jansi.internal.Kernel32$WINDOW_BUFFER_SIZE_RECORD",
+                    "org.fusesource.jansi.internal.Kernel32$FOCUS_EVENT_RECORD",
+                    "org.fusesource.jansi.internal.Kernel32$MENU_EVENT_RECORD",
+                    "org.fusesource.jansi.internal.Kernel32$INPUT_RECORD");
+
+    /**
+     * Other classes that need to be initialized at run time because they reference the JNI classes
+     * and/or have static state that depends on run time state.
+     */
+    private static final List<String> RUNTIME_INIT_CLASS_NAMES = Arrays.asList(
+                    "org.fusesource.jansi.AnsiConsole",
+                    "org.fusesource.jansi.WindowsAnsiOutputStream",
+                    "org.fusesource.jansi.WindowsAnsiProcessor");
+
+    Class<?> terminalFactoryClass;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        terminalFactoryClass = access.findClassByName("jline.TerminalFactory");
+        /* Feature is only active when JLine is on the classpath. */
+        return terminalFactoryClass != null;
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            Stream.concat(JNI_CLASS_NAMES.stream(), RUNTIME_INIT_CLASS_NAMES.stream())
+                            .map(access::findClassByName)
+                            .filter(Objects::nonNull)
+                            .forEach(RuntimeClassInitialization::initializeAtRunTime);
+        }
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Class<?> terminalFactoryClass = access.findClassByName("jline.TerminalFactory");
-        if (terminalFactoryClass == null) {
-            /* JLine is not on the classpath. Nothing to do for this feature. */
-            return;
-        }
-
         Object[] createMethods = Arrays.stream(terminalFactoryClass.getDeclaredMethods())
                         .filter(m -> Modifier.isStatic(m.getModifiers()) && m.getName().equals("create"))
                         .toArray();
         access.registerReachabilityHandler(JLineFeature::registerTerminalConstructor, createMethods);
+
         if (Platform.includedIn(Platform.WINDOWS.class)) {
-            ImageSingletons.lookup(SystemPropertiesSupport.class).initializeProperty("jline.terminal", "none");
+            /*
+             * Each listed class has a native method named "init" that initializes all declared
+             * fields of the class using JNI. So when the "init" method gets reachable (which means
+             * the class initializer got reachable), we need to register all fields for JNI access.
+             */
+            JNI_CLASS_NAMES.stream()
+                            .map(access::findClassByName)
+                            .filter(Objects::nonNull)
+                            .map(jniClass -> ReflectionUtil.lookupMethod(jniClass, "init"))
+                            .forEach(initMethod -> access.registerReachabilityHandler(a -> registerJNIFields(initMethod), initMethod));
         }
     }
 
@@ -69,6 +125,19 @@ final class JLineFeature implements Feature {
         if (terminalClass != null) {
             RuntimeReflection.register(terminalClass);
             RuntimeReflection.register(terminalClass.getDeclaredConstructors());
+        }
+    }
+
+    private AtomicBoolean resourceRegistered = new AtomicBoolean();
+
+    private void registerJNIFields(Method initMethod) {
+        Class<?> jniClass = initMethod.getDeclaringClass();
+        JNIRuntimeAccess.register(jniClass.getDeclaredFields());
+
+        if (!resourceRegistered.getAndSet(true)) {
+            /* The native library that is included as a resource in the .jar file. */
+            String resource = "META-INF/native/windows64/jansi.dll";
+            Resources.registerResource(resource, jniClass.getClassLoader().getResourceAsStream(resource));
         }
     }
 }
