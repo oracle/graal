@@ -62,8 +62,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -464,7 +464,7 @@ public final class Safepoint {
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus) {
-        VMError.guarantee(StatusSupport.isStatusSafepoint() || StatusSupport.isStatusNative(), "Must either be at a safepoint or in native mode");
+        VMError.guarantee(StatusSupport.isStatusNativeOrSafepoint(), "Must either be at a safepoint or in native mode");
         VMError.guarantee(!StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()),
                         "When safepoints are disabled, the thread can only be in Native mode, so the fast path transition must succeed and this slow path must not be called");
 
@@ -804,13 +804,19 @@ public final class Safepoint {
                 int notAtSafepoint = 0;
 
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    // Check if the thread is at a safepoint or in native code.
-                    if (StatusSupport.isStatusSafepoint(vmThread)) {
-                        atSafepoint += 1;
-                    } else if (StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                    if (StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
                         ignoreSafepoints += 1;
                     } else {
-                        notAtSafepoint += 1;
+                        // Check if the thread is at a safepoint or in native code.
+                        int status = StatusSupport.getStatusVolatile(vmThread);
+                        switch (status) {
+                            case StatusSupport.STATUS_IN_SAFEPOINT:
+                                atSafepoint += 1;
+                                break;
+                            default:
+                                notAtSafepoint += 1;
+                                break;
+                        }
                     }
                 }
                 trace.string("  atSafepoint: ").signed(atSafepoint)
