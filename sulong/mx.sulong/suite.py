@@ -48,6 +48,84 @@ suite = {
       ],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
+    # Support Libraries.
+    # Projects depending on these will *not be built* if the 'optional' is 'True' for the given OS/architecture.
+    # This is a dummy library for dragonegg support.
+    "DRAGONEGG_SUPPORT" : {
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+    # This is a dummy library for malloc.h support.
+    "MALLOC_H_SUPPORT" : {
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+    # This is a dummy library for alias() support.
+    "ALIAS_SUPPORT" : {
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+    # This is a dummy library for linux amd64 support.
+    "LINUX_AMD64_SYSCALL_SUPPORT" : {
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
   },
 
   "projects" : {
@@ -90,7 +168,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
     },
     "com.oracle.truffle.llvm.tests.types" : {
       "subDir" : "tests",
@@ -350,7 +427,6 @@ suite = {
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
       "jacoco" : "exclude",
     },
 
@@ -376,6 +452,7 @@ suite = {
       "buildEnv" : {
         "LDFLAGS": "-lm",
         "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
       "testProject" : True,
@@ -400,7 +477,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "license" : "BSD-new",
       "testProject" : True,
-      "defaultBuild" : False,
       "jacoco" : "exclude",
     },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
@@ -679,6 +755,9 @@ suite = {
       "dependencies" : [
         "SULONG_TEST_SUITES",
       ],
+      "buildDependencies" : [
+        "LINUX_AMD64_SYSCALL_SUPPORT",
+      ],
       "testProject" : True,
       "defaultBuild" : False,
     },
@@ -762,6 +841,7 @@ suite = {
       ],
       "buildDependencies" : [
         "GCC_SOURCE",
+        "ALIAS_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -783,6 +863,7 @@ suite = {
       ],
       "buildDependencies" : [
         "GCC_SOURCE",
+        "ALIAS_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -807,6 +888,7 @@ suite = {
       ],
       "buildDependencies" : [
         "GCC_SOURCE",
+        "DRAGONEGG_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -830,6 +912,7 @@ suite = {
       ],
       "buildDependencies" : [
         "GCC_SOURCE",
+        "ALIAS_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -868,7 +951,6 @@ suite = {
       "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
         "SUITE_LDFLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
@@ -876,6 +958,7 @@ suite = {
       ],
       "buildDependencies" : [
         "SHOOTOUT_SUITE",
+        "MALLOC_H_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -890,9 +973,6 @@ suite = {
       "vpath" : True,
       "variants" : ["O0"],
       "buildRef" : True,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-      },
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1049,7 +1129,6 @@ suite = {
       ],
       "license" : "BSD-new",
       "testDistribution" : True,
-      "defaultBuild" : False,
     },
 
     "LLIR_TEST_GEN" : {

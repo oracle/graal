@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -35,9 +35,11 @@ default: bin/${LIBSULONG}
 CLANG?=clang
 
 ifeq ($(OS), darwin)
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
 LDFLAGS=-dynamiclib -g
 bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
 else
+CLANG_PREFIX=
 LDFLAGS=-shared -g
 endif
 
@@ -45,8 +47,8 @@ LDFLAGS+= ${EXTRA_LDFLAGS}
 CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
 bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o bin/globals.o
-	$(QUIETLY) $(CLANG) ${LDFLAGS} -lm -o $@ $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) ${LDFLAGS} -lm -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin
-	$(QUIETLY) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@

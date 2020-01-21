@@ -93,6 +93,14 @@ else
 SULONG_MAKE_CLANG_IMPLICIT_ARGS=-Xclang -disable-O0-optnone
 endif
 
+ifeq ($(OS), darwin)
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG:=$(CLANG_PREFIX) $(CLANG)
+CLANGXX:=$(CLANG_PREFIX) $(CLANGXX)
+else
+CLANG_PREFIX=
+endif
+
 tool-info.txt:
 	@echo "Tools:" > $@
 	@echo "  CLANG: $(CLANG)" >> $@
