@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.TestContainerFactory
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeIntFieldRefNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeIntFieldTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeSettableIntFieldRefNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -115,7 +117,6 @@ public class NodeFieldTest {
         int intField() {
             return getField0() + getField1();
         }
-
     }
 
     @Test
@@ -251,7 +252,7 @@ public class NodeFieldTest {
     @Test
     public void testUncachedNodeIntFieldRef() {
         assertEquals(42, UncachedNodeIntFieldRefNodeGen.create(42).execute());
-        assertEquals(0, UncachedNodeIntFieldRefNodeGen.getUncached().execute());
+        assertFails(() -> UncachedNodeIntFieldRefNodeGen.getUncached().execute(), UnsupportedOperationException.class);
     }
 
     @GenerateUncached
@@ -263,6 +264,35 @@ public class NodeFieldTest {
         @Specialization
         static Object s0(int foo) {
             return foo;
+        }
+    }
+
+    @Test
+    public void testUncachedNodeSettableIntFieldRef() {
+        UncachedNodeSettableIntFieldRef cached = UncachedNodeSettableIntFieldRefNodeGen.create();
+        assertEquals(0, cached.execute());
+        assertEquals(0, cached.getFoo());
+        cached.setFoo(42);
+        assertEquals(42, cached.execute());
+        assertEquals(42, cached.getFoo());
+        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().execute(), UnsupportedOperationException.class);
+        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().getFoo(), UnsupportedOperationException.class);
+        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().setFoo(42), UnsupportedOperationException.class);
+    }
+
+    @GenerateUncached
+    @NodeField(name = "foo", type = int.class)
+    public abstract static class UncachedNodeSettableIntFieldRef extends Node {
+
+        abstract Object execute();
+
+        abstract int getFoo();
+
+        abstract void setFoo(int foo);
+
+        @Specialization
+        Object s0() {
+            return getFoo();
         }
     }
 

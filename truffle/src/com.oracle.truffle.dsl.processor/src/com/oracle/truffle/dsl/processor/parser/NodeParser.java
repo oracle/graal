@@ -1028,6 +1028,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         for (NodeFieldData nodeFieldData : fields) {
             nodeFieldData.setGetter(findGetter(elements, nodeFieldData.getName(), nodeFieldData.getType()));
+            nodeFieldData.setSetter(findSetter(elements, nodeFieldData.getName(), nodeFieldData.getType()));
         }
 
         return fields;
@@ -2686,6 +2687,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (field.getGetter() != null) {
                 unusedElements.remove(field.getGetter());
             }
+            if (field.getSetter() != null) {
+                unusedElements.remove(field.getSetter());
+            }
         }
 
         for (NodeChildData child : nodeData.getChildren()) {
@@ -2848,6 +2852,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && isAssignable(type, method.getReturnType())) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    private static ExecutableElement findSetter(List<? extends Element> elements, String variableName, TypeMirror type) {
+        if (type == null) {
+            return null;
+        }
+        String methodName = "set" + firstLetterUpperCase(variableName);
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 1 && typeEquals(type, method.getParameters().get(0).asType())) {
                 return method;
             }
         }

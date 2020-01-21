@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.lang.reflect.Modifier;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -52,6 +54,7 @@ public class NodeFieldData extends MessageContainer {
     private final AnnotationMirror messageAnnotation;
     private final boolean generated;
     private ExecutableElement getter;
+    private ExecutableElement setter;
     private final VariableElement variable;
 
     public NodeFieldData(Element messageElement, AnnotationMirror messageAnnotation, VariableElement variableElement, boolean generated) {
@@ -63,6 +66,18 @@ public class NodeFieldData extends MessageContainer {
 
     public VariableElement getVariable() {
         return variable;
+    }
+
+    public ExecutableElement getSetter() {
+        return setter;
+    }
+
+    public boolean isSettable() {
+        return isGenerated() && getSetter() != null && getGetter().getModifiers().contains(javax.lang.model.element.Modifier.ABSTRACT);
+    }
+
+    public void setSetter(ExecutableElement setter) {
+        this.setter = setter;
     }
 
     public void setGetter(ExecutableElement getter) {

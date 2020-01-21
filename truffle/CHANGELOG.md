@@ -5,7 +5,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
 * Added ability to load external default exports for libraries using a service provider. See `GenerateLibrary(defaultExportLookupEnabled = true)`.
-* The use of `@NodeField` is now permitted in combination with `@GenerateUncached`.
+* The use of `@NodeField` is now permitted in combination with `@GenerateUncached`, but it throws UnsupportedOperationException when it is used.
+* It is now possible to specify a setter with `@NodeField`. The generated field then will be mutable.
 
 ## Version 20.0.0
 * Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
