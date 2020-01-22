@@ -113,7 +113,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException outOfMemory;
     @CompilationFinal private ArrayList<Method> frames;
 
-    // Set on calling guest Therad.stop0(), or when closing context.
+    // Set on calling guest Thread.stop0(), or when closing context.
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
@@ -292,7 +292,8 @@ public final class EspressoContext {
                             assert head != null;
                         } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
 
-                        synchronized (lock) {
+                        lock.getLock().lock();
+                        try {
                             assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
 
@@ -312,6 +313,8 @@ public final class EspressoContext {
                             meta.Reference_discovered.set(prev.getGuestReference(), obj);
 
                             getVM().JVM_MonitorNotify(lock);
+                        } finally {
+                            lock.getLock().unlock();
                         }
                     } catch (InterruptedException e) {
                         // ignore

@@ -179,11 +179,16 @@ public final class Target_java_lang_Thread {
             Meta meta = context.getMeta();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
-                synchronized (self) {
+
+                self.getLock().lock();
+                try {
                     self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                     // Notify waiting threads you were terminated
-                    self.notifyAll();
+                    self.getLock().signalAll();
+                } finally {
+                    self.getLock().unlock();
                 }
+
                 return;
             }
             setThreadStop(self, KillStatus.NORMAL);
@@ -204,11 +209,16 @@ public final class Target_java_lang_Thread {
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
-                        synchronized (self) {
+
+                        self.getLock().lock();
+                        try {
                             self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                             // Notify waiting threads you are done working
-                            self.notifyAll();
+                            self.getLock().signalAll();
+                        } finally {
+                            self.getLock().unlock();
                         }
+
                         // Cleanup.
                         context.unregisterThread(self);
                         if (context.isClosing()) {
@@ -274,7 +284,7 @@ public final class Target_java_lang_Thread {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw meta.throwEx(meta.NullPointerException);
         }
-        return Thread.holdsLock(object);
+        return object.getLock().isHeldByCurrentThread();
     }
 
     @TruffleBoundary

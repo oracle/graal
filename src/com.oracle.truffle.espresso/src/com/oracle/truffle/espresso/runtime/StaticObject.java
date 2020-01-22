@@ -88,6 +88,24 @@ public final class StaticObject implements TruffleObject {
     public static final StaticObject VOID = new StaticObject();
     public static final StaticObject NULL = new StaticObject();
 
+    private volatile EspressoLock lock;
+
+    /**
+     * Returns a lock for this instance.
+     */
+    public EspressoLock getLock() {
+        EspressoLock l = lock;
+        if (lock == null) {
+            synchronized (this) {
+                l = lock;
+                if (l == null) {
+                    lock = l = EspressoLock.create();
+                }
+            }
+        }
+        return l;
+    }
+
     // Only non-primitive fields are stored in this
     private final Object fields;
 
