@@ -1197,7 +1197,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 if image_config.is_sdk_launcher:
                     build_args += [
                         '-H:-ParseRuntimeOptions',
-                        '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
+                        '-Dorg.graalvm.launcher.classpath=' + graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home),
                     ]
 
                 build_args += [

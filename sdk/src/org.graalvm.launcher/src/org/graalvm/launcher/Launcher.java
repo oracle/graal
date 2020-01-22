@@ -503,6 +503,8 @@ public abstract class Launcher {
             case Darwin:
             case Solaris:
                 return basename;
+            case Windows:
+                return basename + ".exe";
             default:
                 throw abort("executableName: OS not supported: " + OS.current);
         }
