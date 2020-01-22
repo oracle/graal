@@ -978,7 +978,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         private final Iterator<Map.Entry<HostedMethod, CompilationResult>> codeCacheIterator;
         private final Iterator<Map.Entry<Object, ObjectInfo>> heapIterator;
 
-        public NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
+        NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
             super();
             this.codeCache = codeCache;
             this.heap = heap;
@@ -986,8 +986,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             this.heapIterator = heap.objects.entrySet().iterator();
         }
         @Override
-        public  DebugTypeInfoProvider typeInfoProvider()
-        {
+        public  DebugTypeInfoProvider typeInfoProvider() {
             return () -> new Iterator<DebugTypeInfo>() {
                 @Override
                 public boolean hasNext() {
@@ -1014,8 +1013,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             };
         }
         @Override
-        public  DebugDataInfoProvider dataInfoProvider()
-        {
+        public  DebugDataInfoProvider dataInfoProvider() {
             return () -> new Iterator<DebugDataInfo>() {
                 @Override
                 public boolean hasNext() {
@@ -1029,11 +1027,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    private class NativeImageDebugCodeInfo implements DebugCodeInfo
-    {
+    private class NativeImageDebugCodeInfo implements DebugCodeInfo {
         private final HostedMethod method;
         private final CompilationResult compilation;
-        public NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
+        NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             this.method = method;
             this.compilation = compilation;
         }
@@ -1063,13 +1060,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     // name is XXX$YYY so use outer class to derive file name
                     name = name.substring(0, idx);
                 }
-                name = name.replace('.','/') + ".java";
+                name = name.replace('.', '/') + ".java";
             }
             return name;
         }
         @Override
-        public String className()
-        {
+        public String className() {
             return method.format("%H");
         }
         @Override
@@ -1103,16 +1099,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
         @Override
         public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
             if (fileName().length() == 0) {
-                return () -> new Iterator<DebugLineInfo>()
-                {
+                return () -> new Iterator<DebugLineInfo>() {
                     @Override
-                    public boolean hasNext()
-                    {
+                    public boolean hasNext() {
                         return false;
                     }
                     @Override
-                    public DebugLineInfo next()
-                    {
+                    public DebugLineInfo next() {
                         return null;
                     }
                 };
@@ -1120,13 +1113,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return () -> new Iterator<DebugLineInfo>() {
                 final Iterator<SourceMapping> sourceIterator = compilation.getSourceMappings().iterator();
                 @Override
-                public boolean hasNext()
-                {
+                public boolean hasNext() {
                     return sourceIterator.hasNext();
                 }
                 @Override
-                public DebugLineInfo next()
-                {
+                public DebugLineInfo next() {
                     return new NativeImageDebugLineInfo(sourceIterator.next());
                 }
             };
@@ -1138,14 +1129,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
             for (Mark mark : compilation.getMarks()) {
                 // we only need to observe stack increment or decrement points
-                if(mark.id.equals("PROLOGUE_DECD_RSP")) {
+                if (mark.id.equals("PROLOGUE_DECD_RSP")) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
                     frameSizeChanges.add(sizeChange);
                 // } else if (mark.id.equals("PROLOGUE_END")) {
                     // can ignore these
                 // } else if (mark.id.equals("EPILOGUE_START")) {
                     // can ignore these
-                } else if(mark.id.equals("EPILOGUE_INCD_RSP")) {
+                } else if (mark.id.equals("EPILOGUE_INCD_RSP")) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
                     frameSizeChanges.add(sizeChange);
                 // } else if(mark.id.equals("EPILOGUE_END")) {
@@ -1159,7 +1150,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         private final ResolvedJavaMethod method;
         private final int lo;
         private final int hi;
-        public NativeImageDebugLineInfo(SourceMapping sourceMapping) {
+        NativeImageDebugLineInfo(SourceMapping sourceMapping) {
             NodeSourcePosition position = sourceMapping.getSourcePosition();
             int bci = position.getBCI();
             this.bci = (bci >= 0 ? bci : 0);
@@ -1179,31 +1170,26 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 // name is XXX$YYY so use outer class to derive file name
                 name = name.substring(0, idx);
             }
-            return name.replace('.','/') + ".java";
+            return name.replace('.', '/') + ".java";
         }
         @Override
-        public String className()
-        {
+        public String className() {
             return method.format("%H");
         }
         @Override
-        public String methodName()
-        {
+        public String methodName() {
             return method.format("%n");
         }
         @Override
-        public int addressLo()
-        {
+        public int addressLo() {
             return lo;
         }
         @Override
-        public int addressHi()
-        {
+        public int addressHi() {
             return hi;
         }
         @Override
-        public int line()
-        {
+        public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
             if (lineNumberTable != null) {
                 return lineNumberTable.getLineNumber(bci);
@@ -1211,11 +1197,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return -1;
         }
     }
-    private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange
-    {
+    private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
         private int offset;
         private Type type;
-        public NativeImageDebugFrameSizeChange(int offset, Type type) {
+        NativeImageDebugFrameSizeChange(int offset, Type type) {
             this.offset = offset;
             this.type = type;
         }
