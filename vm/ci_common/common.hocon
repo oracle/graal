@@ -317,6 +317,7 @@ builds += [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
       ${notify-nexus-deploy}
+      ${notify-releaser}
     ]
     timelimit: "1:45:00"
     name: deploy-vm-base-java8-darwin-amd64
