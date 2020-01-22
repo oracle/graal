@@ -235,7 +235,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
     }
 
-    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.\n" +
+    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.%n" +
                     "Note that dynamic dispatch is disabled for the exported library 'TestDisabledDispatchLibrary'.%")
     @ExportLibrary(value = TestDisabledDispatchLibrary.class, receiverType = DynamicDispatch.class)
     abstract static class DisabledDynamicDispatchError1 {
