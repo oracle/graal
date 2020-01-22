@@ -112,6 +112,9 @@ public class Unistd {
     @CFunction
     public static native int getdtablesize();
 
+    @CFunction
+    public static native int sleep(int seconds);
+
     public static class NoTransitions {
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int close(int fd);

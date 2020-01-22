@@ -273,7 +273,7 @@ public final class VMOperationControl {
     @Uninterruptible(reason = "Called from a non-Java thread.")
     public void enqueueFromNonJavaThread(NativeVMOperation operation, NativeVMOperationData data) {
         assert UseDedicatedVMOperationThread.getValue() && MultiThreaded.getValue();
-        assert CurrentIsolate.getCurrentThread().isNull() || StatusSupport.isStatusNative() || StatusSupport.isStatusSafepoint() : StatusSupport.getStatusString(CurrentIsolate.getCurrentThread());
+        assert CurrentIsolate.getCurrentThread().isNull() || StatusSupport.isStatusNativeOrSafepoint() : StatusSupport.getStatusString(CurrentIsolate.getCurrentThread());
         assert dedicatedVMOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
 
         mainQueues.enqueueUninterruptibly(operation, data);
@@ -340,7 +340,7 @@ public final class VMOperationControl {
      */
     public static class VMOperationThread implements Runnable {
         private volatile IsolateThread isolateThread;
-        private boolean running;
+        private boolean stopped;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOperationThread() {
@@ -349,14 +349,13 @@ public final class VMOperationControl {
         @Override
         public void run() {
             this.isolateThread = CurrentIsolate.getCurrentThread();
-            this.running = true;
 
             VMOperationControl control = VMOperationControl.get();
             WorkQueues queues = control.mainQueues;
 
             queues.mutex.lock();
             try {
-                while (running) {
+                while (!stopped) {
                     try {
                         queues.waitForWorkAndExecute();
                     } catch (Throwable e) {
@@ -366,9 +365,8 @@ public final class VMOperationControl {
                 }
             } finally {
                 queues.mutex.unlock();
+                stopped = true;
             }
-
-            running = false;
 
             /*
              * When this method returns, some more code is executed before the execution really
@@ -390,12 +388,12 @@ public final class VMOperationControl {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isRunning() {
-            return running;
+            return isolateThread.isNonNull() && !stopped;
         }
 
         void shutdown() {
             VMOperation.guaranteeInProgress("must only be called from a VM operation");
-            this.running = false;
+            this.stopped = true;
         }
     }
 
