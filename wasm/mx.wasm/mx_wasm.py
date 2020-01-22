@@ -39,6 +39,7 @@
 # SOFTWARE.
 #
 import mx
+import mx_benchmark
 import mx_sdk_vm
 import mx_truffle
 import mx_wasm_benchmark  # pylint: disable=unused-import
@@ -61,16 +62,28 @@ wabt_dir = mx.get_env("WABT_DIR", None)
 NODE_BENCH_DIR = "node"
 NATIVE_BENCH_DIR = "native"
 
+microbenchmarks = [
+    "cdf",
+    "digitron",
+    "event-sim",
+    "fft",
+    "hash-join",
+    "merge-join",
+    "phong",
+    "qsort",
+    "strings",
+]
+
 
 #
 # Gate runners.
 #
 
-
 class GraalWasmDefaultTags:
     buildall = "buildall"
     wasmtest = "wasmtest"
     wasmextratest = "wasmextratest"
+    wasmbenchtest = "wasmbenchtest"
 
 
 def graal_wasm_gate_runner(args, tasks):
@@ -84,6 +97,16 @@ def graal_wasm_gate_runner(args, tasks):
         if t:
             unittest(["CSuite"])
             unittest(["WatSuite"])
+    with Task("BenchTest", tasks, tags=[GraalWasmDefaultTags.wasmbenchtest]) as t:
+        if t:
+            for b in microbenchmarks:
+                exitcode = mx_benchmark.benchmark([
+                        "wasm:WASM_BENCHMARKCASES", "--",
+                        "--jvm", "server", "--jvm-config", "graal-core",
+                        "-Dwasmbench.benchmarkName=" + b, "-Dwasmtest.keepTempFiles=true", "--",
+                        "CMicroBenchmarkSuite", "-wi", "1", "-i", "1"])
+                if exitcode != 0:
+                    mx.abort("Errors during benchmark tests, aborting.")
 
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
@@ -92,7 +115,6 @@ add_gate_runner(_suite, graal_wasm_gate_runner)
 #
 # Project types.
 #
-
 
 benchmark_methods = [
     "_benchmarkWarmupCount",
