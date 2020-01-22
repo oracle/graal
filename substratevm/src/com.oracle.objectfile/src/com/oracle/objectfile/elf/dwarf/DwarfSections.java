@@ -65,7 +65,7 @@ public class DwarfSections {
     private static final short DW_VERSION_2 = 2;
 
     // define all the abbrev section codes we need for our DIEs
-    private static final int DW_ABBREV_CODE_null = 0;
+    // private static final int DW_ABBREV_CODE_null = 0;
     private static final int DW_ABBREV_CODE_compile_unit = 1;
     private static final int DW_ABBREV_CODE_subprogram = 2;
 
@@ -75,7 +75,7 @@ public class DwarfSections {
     // define all the Dwarf attributes we need for our DIEs
     private static final int DW_AT_null = 0x0;
     private static final int DW_AT_name = 0x3;
-    private static final int DW_AT_comp_dir = 0x1b;
+    // private static final int DW_AT_comp_dir = 0x1b;
     private static final int DW_AT_stmt_list = 0x10;
     private static final int DW_AT_low_pc = 0x11;
     private static final int DW_AT_hi_pc = 0x12;
@@ -85,13 +85,13 @@ public class DwarfSections {
     private static final int DW_AT_frame_base = 0x40;
     // define all the Dwarf attribute forms we need for our DIEs
     private static final int DW_FORM_null = 0x0;
-    private static final int DW_FORM_string = 0x8;
+    // private static final int DW_FORM_string = 0x8;
     private static final int DW_FORM_strp = 0xe; // not currently used
     private static final int DW_FORM_addr = 0x1;
     private static final int DW_FORM_data1 = 0x0b; // use flag instead
     private static final int DW_FORM_data4 = 0x6;
-    private static final int DW_FORM_data8 = 0x7;
-    private static final int DW_FORM_block1 = 0x0a;
+    // private static final int DW_FORM_data8 = 0x7;
+    // private static final int DW_FORM_block1 = 0x0a;
     private static final int DW_FORM_flag = 0xc;
 
     // define specific attribute values for given attribute or form types
@@ -115,30 +115,30 @@ public class DwarfSections {
 
     // CIE and FDE entries
 
-    public static final int DW_CFA_CIE_id = -1;
-    public static final int DW_CFA_FDE_id = 0;
+    private static final int DW_CFA_CIE_id = -1;
+    // private static final int DW_CFA_FDE_id = 0;
 
-    public static final byte DW_CFA_CIE_version = 1;
+    private static final byte DW_CFA_CIE_version = 1;
 
     // values for high 2 bits
-    public static final byte DW_CFA_advance_loc = 0x1;
-    public static final byte DW_CFA_offset = 0x2;
-    public static final byte DW_CFA_restore = 0x3;
+    private static final byte DW_CFA_advance_loc = 0x1;
+    private static final byte DW_CFA_offset = 0x2;
+    // private static final byte DW_CFA_restore = 0x3;
 
     // values for low 6 bits
-    public static final byte DW_CFA_nop = 0x0;
-    public static final byte DW_CFA_set_loc1 = 0x1;
-    public static final byte DW_CFA_advance_loc1 = 0x2;
-    public static final byte DW_CFA_advance_loc2 = 0x3;
-    public static final byte DW_CFA_advance_loc4 = 0x4;
-    public static final byte DW_CFA_offset_extended = 0x5;
-    public static final byte DW_CFA_restore_extended = 0x6;
-    public static final byte DW_CFA_undefined = 0x7;
-    public static final byte DW_CFA_same_value = 0x8;
-    public static final byte DW_CFA_register = 0x9;
-    public static final byte DW_CFA_def_cfa = 0xc;
-    public static final byte DW_CFA_def_cfa_register = 0xd;
-    public static final byte DW_CFA_def_cfa_offset = 0xe;
+    private static final byte DW_CFA_nop = 0x0;
+    // private static final byte DW_CFA_set_loc1 = 0x1;
+    private static final byte DW_CFA_advance_loc1 = 0x2;
+    private static final byte DW_CFA_advance_loc2 = 0x3;
+    private static final byte DW_CFA_advance_loc4 = 0x4;
+    // private static final byte DW_CFA_offset_extended = 0x5;
+    // private static final byte DW_CFA_restore_extended = 0x6;
+    // private static final byte DW_CFA_undefined = 0x7;
+    // private static final byte DW_CFA_same_value = 0x8;
+    private static final byte DW_CFA_register = 0x9;
+    private static final byte DW_CFA_def_cfa = 0xc;
+    // private static final byte DW_CFA_def_cfa_register = 0xd;
+    private static final byte DW_CFA_def_cfa_offset = 0xe;
 
     private ELFMachine elfMachine;
     private DwarfStrSectionImpl dwarfStrSection;
@@ -405,18 +405,21 @@ public class DwarfSections {
         }
 
         // base level put methods that assume a non-null buffer
-        public int putByte(byte b, byte[] buffer, int pos) {
+        public int putByte(byte b, byte[] buffer, int p) {
+            int pos = p;
             buffer[pos++] = b;
             return pos;
         }
 
-        public int putShort(short s, byte[] buffer, int pos) {
+        public int putShort(short s, byte[] buffer, int p) {
+            int pos = p;
             buffer[pos++] = (byte) (s & 0xff);
             buffer[pos++] = (byte) ((s >> 8) & 0xff);
             return pos;
         }
 
-        public int putInt(int i, byte[] buffer, int pos) {
+        public int putInt(int i, byte[] buffer, int p) {
+            int pos = p;
             buffer[pos++] = (byte) (i & 0xff);
             buffer[pos++] = (byte) ((i >> 8) & 0xff);
             buffer[pos++] = (byte) ((i >> 16) & 0xff);
@@ -424,7 +427,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int putLong(long l, byte[] buffer, int pos) {
+        public int putLong(long l, byte[] buffer, int p) {
+            int pos = p;
             buffer[pos++] = (byte) (l & 0xff);
             buffer[pos++] = (byte) ((l >> 8) & 0xff);
             buffer[pos++] = (byte) ((l >> 16) & 0xff);
@@ -443,7 +447,9 @@ public class DwarfSections {
             return pos;
         }
 
-        public int putULEB(long l, byte[] buffer, int pos) {
+        public int putULEB(long val, byte[] buffer, int p) {
+            long l = val;
+            int pos = p;
             for (int i = 0; i < 9; i++) {
                 byte b = (byte) (l & 0x7f);
                 l = l >>> 7;
@@ -459,7 +465,9 @@ public class DwarfSections {
             return pos;
         }
 
-        public int putSLEB(long l, byte[] buffer, int pos) {
+        public int putSLEB(long val, byte[] buffer, int p) {
+            long l = val;
+            int pos = p;
             boolean negative = l < 0;
             for (int i = 0; i < 9; i++) {
                 byte b = (byte) (l & 0x7f);
@@ -481,7 +489,8 @@ public class DwarfSections {
             return putAsciiStringBytes(s, 0, buffer, pos);
         }
 
-        public int putAsciiStringBytes(String s, int startChar, byte[] buffer, int pos) {
+        public int putAsciiStringBytes(String s, int startChar, byte[] buffer, int p) {
+            int pos = p;
             for (int l = startChar; l < s.length(); l++) {
                 char c = s.charAt(l);
                 if (c > 127) {
@@ -759,7 +768,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeAbbrev1(byte[] buffer, int pos) {
+        public int writeAbbrev1(byte[] buffer, int p) {
+            int pos = p;
             // abbrev 1 compile unit
             pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
             pos = writeTag(DW_TAG_compile_unit, buffer, pos);
@@ -780,7 +790,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int writeAbbrev2(byte[] buffer, int pos) {
+        public int writeAbbrev2(byte[] buffer, int p) {
+            int pos = p;
             // abbrev 2 compile unit
             pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
             pos = writeTag(DW_TAG_subprogram, buffer, pos);
@@ -865,7 +876,7 @@ public class DwarfSections {
             assert pos == size;
         }
 
-        public int writeCIE(byte[] buffer, int pos) {
+        public int writeCIE(byte[] buffer, int p) {
             // we only need a vanilla CIE with default fields
             // because we have to have at least one
             // the layout is
@@ -878,6 +889,7 @@ public class DwarfSections {
             // ULEB : data_alignment_factor ... == -8
             // byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32
             // byte[] : initial_instructions .. includes pad to 8-byte boundary
+            int pos = p;
             if (buffer == null) {
                 pos += putInt(0, scratch, 0); // don't care about length
                 pos += putInt(DW_CFA_CIE_id, scratch, 0);
@@ -910,7 +922,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeMethodFrames(byte[] buffer, int pos) {
+        public int writeMethodFrames(byte[] buffer, int p) {
+            int pos = p;
             for (ClassEntry classEntry : primaryClasses) {
                 for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
                     long lo = primaryEntry.getPrimary().getLo();
@@ -938,7 +951,7 @@ public class DwarfSections {
             return pos;
         }
 
-        public int writeFDEHeader(int lo, int hi, byte[] buffer, int pos) {
+        public int writeFDEHeader(int lo, int hi, byte[] buffer, int p) {
             // we only need a vanilla FDE header with default fields
             // the layout is
             //
@@ -948,7 +961,7 @@ public class DwarfSections {
             // uint64 : address_range ..... i.e. method hi - lo
             // byte[] : instructions ...... includes pad to 8-byte boundary
 
-            int lengthPos = pos;
+            int pos = p;
             if (buffer == null) {
                 pos += putInt(0, scratch, 0); // dummy length
                 pos += putInt(0, scratch, 0); // CIE_offset
@@ -962,7 +975,8 @@ public class DwarfSections {
             }
         }
 
-        public int writePaddingNops(int alignment, byte[] buffer, int pos) {
+        public int writePaddingNops(int alignment, byte[] buffer, int p) {
+            int pos = p;
             assert (alignment & (alignment - 1)) == 0;
             while ((pos & (alignment - 1)) != 0) {
                 if (buffer == null) {
@@ -974,7 +988,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int writeDefCFA(int register, int offset, byte[] buffer, int pos) {
+        public int writeDefCFA(int register, int offset, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(DW_CFA_def_cfa, scratch, 0);
                 pos += putSLEB(register, scratch, 0);
@@ -986,7 +1001,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeDefCFAOffset(int offset, byte[] buffer, int pos) {
+        public int writeDefCFAOffset(int offset, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(DW_CFA_def_cfa_offset, scratch, 0);
                 return pos + putULEB(offset, scratch, 0);
@@ -1017,7 +1033,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeAdvanceLoc1(byte offset, byte[] buffer, int pos) {
+        public int writeAdvanceLoc1(byte offset, byte[] buffer, int p) {
+            int pos = p;
             byte op = DW_CFA_advance_loc1;
             if (buffer == null) {
                 pos += putByte(op, scratch, 0);
@@ -1028,8 +1045,9 @@ public class DwarfSections {
             }
         }
 
-        public int writeAdvanceLoc2(short offset, byte[] buffer, int pos) {
+        public int writeAdvanceLoc2(short offset, byte[] buffer, int p) {
             byte op = DW_CFA_advance_loc2;
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(op, scratch, 0);
                 return pos + putShort(offset, scratch, 0);
@@ -1039,8 +1057,9 @@ public class DwarfSections {
             }
         }
 
-        public int writeAdvanceLoc4(int offset, byte[] buffer, int pos) {
+        public int writeAdvanceLoc4(int offset, byte[] buffer, int p) {
             byte op = DW_CFA_advance_loc4;
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(op, scratch, 0);
                 return pos + putInt(offset, scratch, 0);
@@ -1050,8 +1069,9 @@ public class DwarfSections {
             }
         }
 
-        public int writeOffset(int register, int offset, byte[] buffer, int pos) {
+        public int writeOffset(int register, int offset, byte[] buffer, int p) {
             byte op = offsetOp(register);
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(op, scratch, 0);
                 return pos + putULEB(offset, scratch, 0);
@@ -1061,7 +1081,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeRegister(int savedReg, int savedToReg, byte[] buffer, int pos) {
+        public int writeRegister(int savedReg, int savedToReg, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 pos += putByte(DW_CFA_register, scratch, 0);
                 pos += putULEB(savedReg, scratch, 0);
@@ -1132,7 +1153,8 @@ public class DwarfSections {
         }
 
         @Override
-        public int writeInitialInstructions(byte[] buffer, int pos) {
+        public int writeInitialInstructions(byte[] buffer, int p) {
+            int pos = p;
             // rsp points at the word containing the saved rip
             // so the frame base (cfa) is at rsp + 8 (why not - ???)
             // def_cfa r7 (sp) offset 8
@@ -1166,7 +1188,8 @@ public class DwarfSections {
         }
 
         @Override
-        public int writeInitialInstructions(byte[] buffer, int pos) {
+        public int writeInitialInstructions(byte[] buffer, int p) {
+            int pos = p;
             // rsp has not been updated
             // caller pc is in lr
             // register r32 (rpc), r30 (lr)
@@ -1255,7 +1278,8 @@ public class DwarfSections {
             assert pos == size;
         }
 
-        public int writeCUHeader(byte[] buffer, int pos) {
+        public int writeCUHeader(byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 pos += putInt(0, scratch, 0);            // CU length
                 pos += putShort(DW_VERSION_2, scratch, 0);  // dwarf version
@@ -1269,7 +1293,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeCU(ClassEntry classEntry, byte[] buffer, int pos) {
+        public int writeCU(ClassEntry classEntry, byte[] buffer, int p) {
+            int pos = p;
             LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
             pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
@@ -1291,7 +1316,8 @@ public class DwarfSections {
 
         }
 
-        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int pos) {
+        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int p) {
+            int pos = p;
             Range primary = primaryEntry.getPrimary();
             debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
             pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
@@ -1306,7 +1332,8 @@ public class DwarfSections {
             return writeFlag(DW_FLAG_true, buffer, pos);
         }
 
-        public int writeAttrStrp(String value, byte[] buffer, int pos) {
+        public int writeAttrStrp(String value, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 return pos + putInt(0, scratch, 0);
             } else {
@@ -1315,7 +1342,8 @@ public class DwarfSections {
             }
         }
 
-        public int writeAttrString(String value, byte[] buffer, int pos) {
+        public int writeAttrString(String value, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 return pos + value.length() + 1;
             } else {
@@ -1659,7 +1687,8 @@ public class DwarfSections {
             assert pos == buffer.length;
         }
 
-        public int writeHeader(ClassEntry classEntry, byte[] buffer, int pos) {
+        public int writeHeader(ClassEntry classEntry, byte[] buffer, int p) {
+            int pos = p;
             // 4 ubyte length field
             pos = putInt(classEntry.getTotalSize() - 4, buffer, pos);
             // 2 ubyte version is always 2
@@ -1694,7 +1723,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int writeDirTable(ClassEntry classEntry, byte[] buffer, int pos) {
+        public int writeDirTable(ClassEntry classEntry, byte[] buffer, int p) {
+            int pos = p;
             debug("  [0x%08x] Dir  Name\n", pos);
             // write out the list of dirs referenced form this file entry
             int dirIdx = 1;
@@ -1709,7 +1739,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int writeFileTable(ClassEntry classEntry, byte[] buffer, int pos) {
+        public int writeFileTable(ClassEntry classEntry, byte[] buffer, int p) {
+            int pos = p;
             int fileIdx = 1;
             debug("  [0x%08x] Entry Dir  Name\n", pos);
             for (FileEntry localEntry : classEntry.getLocalFiles()) {
@@ -1732,7 +1763,8 @@ public class DwarfSections {
         public int debugLine = 1;
         public int debugCopyCount = 0;
 
-        public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int pos) {
+        public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int p) {
+            int pos = p;
             // the primary file entry should always be first in the local files list
             assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
             String primaryClassName = classEntry.getClassName();
@@ -1911,8 +1943,9 @@ public class DwarfSections {
             }
         }
 
-        public int putCopy(byte[] buffer, int pos) {
+        public int putCopy(byte[] buffer, int p) {
             byte opcode = DW_LNS_copy;
+            int pos = p;
             if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
@@ -1922,8 +1955,9 @@ public class DwarfSections {
             }
         }
 
-        public int putAdvancePC(long uleb, byte[] buffer, int pos) {
+        public int putAdvancePC(long uleb, byte[] buffer, int p) {
             byte opcode = DW_LNS_advance_pc;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
@@ -1935,8 +1969,9 @@ public class DwarfSections {
             }
         }
 
-        public int putAdvanceLine(long sleb, byte[] buffer, int pos) {
+        public int putAdvanceLine(long sleb, byte[] buffer, int p) {
             byte opcode = DW_LNS_advance_line;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putSLEB(sleb, scratch, 0);
@@ -1948,8 +1983,9 @@ public class DwarfSections {
             }
         }
 
-        public int putSetFile(String file, long uleb, byte[] buffer, int pos) {
+        public int putSetFile(String file, long uleb, byte[] buffer, int p) {
             byte opcode = DW_LNS_set_file;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
@@ -1960,8 +1996,9 @@ public class DwarfSections {
             }
         }
 
-        public int putSetColumn(long uleb, byte[] buffer, int pos) {
+        public int putSetColumn(long uleb, byte[] buffer, int p) {
             byte opcode = DW_LNS_set_column;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
@@ -1971,8 +2008,9 @@ public class DwarfSections {
             }
         }
 
-        public int putNegateStmt(byte[] buffer, int pos) {
+        public int putNegateStmt(byte[] buffer, int p) {
             byte opcode = DW_LNS_negate_stmt;
+            int pos = p;
             if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
@@ -1980,8 +2018,9 @@ public class DwarfSections {
             }
         }
 
-        public int putSetBasicBlock(byte[] buffer, int pos) {
+        public int putSetBasicBlock(byte[] buffer, int p) {
             byte opcode = DW_LNS_set_basic_block;
+            int pos = p;
             if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
@@ -1990,8 +2029,9 @@ public class DwarfSections {
             }
         }
 
-        public int putConstAddPC(byte[] buffer, int pos) {
+        public int putConstAddPC(byte[] buffer, int p) {
             byte opcode = DW_LNS_const_add_pc;
+            int pos = p;
             if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
@@ -2002,8 +2042,9 @@ public class DwarfSections {
             }
         }
 
-        public int putFixedAdvancePC(short arg, byte[] buffer, int pos) {
+        public int putFixedAdvancePC(short arg, byte[] buffer, int p) {
             byte opcode = DW_LNS_fixed_advance_pc;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putShort(arg, scratch, 0);
@@ -2015,8 +2056,9 @@ public class DwarfSections {
             }
         }
 
-        public int putEndSequence(byte[] buffer, int pos) {
+        public int putEndSequence(byte[] buffer, int p) {
             byte opcode = DW_LNE_end_sequence;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
                 // insert extended insn byte count as ULEB
@@ -2034,8 +2076,9 @@ public class DwarfSections {
             }
         }
 
-        public int putSetAddress(long arg, byte[] buffer, int pos) {
+        public int putSetAddress(long arg, byte[] buffer, int p) {
             byte opcode = DW_LNE_set_address;
+            int pos = p;
             if (buffer == null) {
                 pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
                 // insert extended insn byte count as ULEB
@@ -2053,8 +2096,9 @@ public class DwarfSections {
             }
         }
 
-        public int putDefineFile(String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int pos) {
+        public int putDefineFile(String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int p) {
             byte opcode = DW_LNE_define_file;
+            int pos = p;
             // calculate bytes needed for opcode + args
             int fileBytes = file.length() + 1;
             long insnBytes = 1;
@@ -2096,7 +2140,8 @@ public class DwarfSections {
             return ((iopcode - DW_LN_OPCODE_BASE) % DW_LN_LINE_RANGE) + DW_LN_LINE_BASE;
         }
 
-        public int putSpecialOpcode(byte opcode, byte[] buffer, int pos) {
+        public int putSpecialOpcode(byte opcode, byte[] buffer, int p) {
+            int pos = p;
             if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
