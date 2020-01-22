@@ -57,6 +57,13 @@
 				"path": "./snippets/polyglot-snippets.json"
 			}
 		],
+		"commands": [
+			{
+				"command": "extension.graalvm-r.installRLanguageServer",
+				"title": "Install R Language Server",
+				"category": "GraalVM"
+			}
+		],
 		"debuggers": [
 			{
 				"type": "graalvm-r",
