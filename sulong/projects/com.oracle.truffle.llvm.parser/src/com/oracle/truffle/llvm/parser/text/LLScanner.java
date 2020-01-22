@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -105,14 +105,13 @@ final class LLScanner {
             final LLScanner scanner = new LLScanner(sourceMap);
             for (String line = llReader.readLine(); line != null; line = llReader.readLine()) {
                 if (!scanner.continueAfter(line)) {
-                    return sourceMap;
+                    break;
                 }
             }
+            return sourceMap;
         } catch (IOException e) {
             throw new LLVMParserException("Error while reading from file: " + llFile.getPath());
         }
-
-        return NOT_FOUND;
     }
 
     private final LLSourceMap map;
