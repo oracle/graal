@@ -8,9 +8,13 @@
     },
   },
 
-  gate: {targets+: ['gate']},
+  gate: {
+    targets+: ['gate'],
+  },
 
-  bench: {targets+: ['bench', 'post-merge']},
+  bench: {
+    targets+: ['bench', 'post-merge'],
+  },
 
   common: {
     packages+: {
@@ -131,6 +135,7 @@
       '${BENCH_VM_CONFIG}',
       'bench-uploader.py',
     ],
+    capabilities: ${linux.capabilities} [x52, no_frequency_scaling],
   },
 
   jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
