@@ -85,7 +85,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
 
         @ExportMessage
-        Class<?> dispatch() {
+        protected final Class<?> dispatch() {
             return dispatch;
         }
     }
