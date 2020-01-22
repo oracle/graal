@@ -42,17 +42,17 @@ for more details about instrumenting branches and boundaries.
 
 #### Observing what is being compiled
 
-`--vm.Dgraal.TraceTruffleCompilation=true` prints a line each time a method is compiled.
+`--engine.TraceCompilation` prints a line each time a method is compiled.
 
-`--vm.Dgraal.TraceTruffleCompilationDetails=true` also prints a line when compilation is queued, starts or completes.
+`--engine.TraceCompilationDetail` also prints a line when compilation is queued, starts or completes.
 
-`--vm.Dgraal.TraceTruffleCompilationAST=true` prints the Truffle AST for each compilation.
+`--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
 
-`--vm.Dgraal.TraceTruffleCompilationCallTree=true` prints a guest-language call graph for each compilation.
+`--engine.TraceCompilationCallTree` prints a guest-language call graph for each compilation.
 
-`--vm.Dgraal.TraceTruffleInlining=true` prints guest-language inlining decisions for each compilation.
+`--engine.TraceInlining` prints guest-language inlining decisions for each compilation.
 
-`--vm.Dgraal.TraceTruffleSplitting=true` prints guest-language splitting decisions for each compilation.
+`--engine.TraceSplitting` prints guest-language splitting decisions for each compilation.
 
 `--vm.Dgraal.TraceTruffleTransferToInterpreter=true` prints on transfer to interpreter.
 
@@ -74,17 +74,17 @@ for more details about instrumenting branches and boundaries.
 
 To make best use of the former options, limit what is compiled to the methods that you are interested in.
 
-`--vm.Dgraal.TruffleCompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+`--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
 
-`--vm.Dgraal.TruffleCompileImmediately=true` compiles methods as soon as they are run.
+`--engine.CompileImmediately` compiles methods as soon as they are run.
 
-`--vm.Dgraal.TruffleBackgroundCompilation=false` compiles synchronously, which can simplify things.
+`--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
 
-`--vm.Dgraal.TruffleFunctionInlining=false` disables inlining which can make code easier to understand.
+`--engine.Inlining=false` disables inlining which can make code easier to understand.
 
-`--vm.Dgraal.TruffleOSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
+`--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
 
-`--vm.Dgraal.TruffleCompilation=false` turns off Truffle compilation all together.
+`--engine.Compilation=false` turns off Truffle compilation all together.
 
 ## HotSpot options
 
