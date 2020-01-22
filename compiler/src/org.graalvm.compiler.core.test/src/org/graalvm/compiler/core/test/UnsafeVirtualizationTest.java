@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Ignore;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -394,8 +394,8 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore("Graal on Sparc does not support unaligned Unsafe writes.")
     public void testUnsafePEA18() {
+        Assume.assumeTrue(getBackend().getTarget().arch.supportsUnalignedMemoryAccess());
         performTest("unsafeSnippet18", false, false, 0x01020304);
     }
 
