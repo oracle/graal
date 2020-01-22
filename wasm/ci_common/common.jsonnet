@@ -137,6 +137,7 @@
         'bench-uploader.py',
       ]
     ],
+    logs: ['bench-results.json'],
     capabilities+: ['x52'],
   },
 
