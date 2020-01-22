@@ -385,7 +385,7 @@ public abstract class TruffleInstrument {
 
         /**
          * Returns option values for the options described in
-         * {@link TruffleLanguage#getOptionDescriptors()}. The returned options are never
+         * {@link TruffleInstrument#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
          * @since 0.27
