@@ -37,7 +37,7 @@ public class StringTable implements Iterable<StringEntry> {
     private final HashMap<String, StringEntry> table;
 
     public StringTable() {
-        this.table = new HashMap<String, StringEntry>();
+        this.table = new HashMap<>();
     }
 
     public String uniqueString(String string) {
@@ -68,6 +68,7 @@ public class StringTable implements Iterable<StringEntry> {
         }
         return stringEntry.getOffset();
     }
+    @Override
     public Iterator<StringEntry> iterator() {
         return table.values().iterator();
     }

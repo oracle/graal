@@ -58,39 +58,11 @@ public class Range {
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);
         this.returnTypeName = stringTable.uniqueString(returnTypeName);
-        this.fullMethodName = stringTable.uniqueDebugString(getClassAndMethodNameWithParams());
+        this.fullMethodName = stringTable.uniqueDebugString(constructClassAndMethodNameWithParams());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
         this.primary = primary;
-    }
-
-
-    public boolean sameClassName(Range other) {
-          return className.equals(other.className);
-    }
-
-    public boolean sameMethodName(Range other) {
-          return methodName.equals(other.methodName);
-    }
-
-    public boolean sameParamNames(Range other) {
-          return paramNames.equals(other.paramNames);
-    }
-
-    public boolean sameReturnTypeName(Range other) {
-          return returnTypeName.equals(other.returnTypeName);
-    }
-
-    public boolean sameFileName(Range other) {
-          return fileName.equals(other.fileName);
-    }
-
-    public boolean sameMethod(Range other) {
-          return sameClassName(other) &&
-                  sameMethodName(other) &&
-                  sameParamNames(other) &&
-                  sameReturnTypeName(other);
     }
 
     public boolean contains(Range other) {
@@ -114,12 +86,6 @@ public class Range {
     public String getMethodName() {
         return methodName;
     }
-    public String getParamNames() {
-        return paramNames;
-    }
-    public String getReturnTypeName() {
-        return returnTypeName;
-    }
     public int getHi() {
         return hi;
     }
@@ -129,17 +95,10 @@ public class Range {
     public int getLine() {
         return line;
     }
-    public String getClassAndMethodName() {
-        return getExtendedMethodName(false, false);
-    }
-    public String getClassAndMethodNameWithParams() {
-        return getExtendedMethodName(true, false);
-    }
-
     public String getFullMethodName() {
-        return  getExtendedMethodName(true, true);
+        return fullMethodName;
     }
-
+    
     public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
@@ -157,5 +116,9 @@ public class Range {
             builder.append(')');
         }
         return builder.toString();
+    }
+
+    private String constructClassAndMethodNameWithParams() {
+        return getExtendedMethodName(true, false);
     }
 }

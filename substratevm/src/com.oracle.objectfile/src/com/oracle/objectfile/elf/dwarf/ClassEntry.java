@@ -117,7 +117,7 @@ public class ClassEntry  {
         }
     }
 
-    public int localFilesIdx(FileEntry fileEntry) {
+    public int localFilesIdx(@SuppressWarnings("hiding") FileEntry fileEntry) {
         return localFilesIndex.get(fileEntry);
     }
 
