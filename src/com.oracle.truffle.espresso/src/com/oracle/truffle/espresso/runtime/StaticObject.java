@@ -104,6 +104,10 @@ public final class StaticObject implements TruffleObject {
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
      */
     public EspressoLock getLock() {
+        if (isNull(this)) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
+        }
         EspressoLock l = lock;
         if (lock == null) {
             synchronized (this) {
