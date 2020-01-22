@@ -185,7 +185,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
     _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_unittest('SulongLL', 'SULONG_LL_TEST_SUITES', tasks, args, testClasses='SulongLLSuite', tags=['sulongLL', 'sulongCoverage'])
+    _sulong_gate_unittest('SulongLL', 'SULONG_LL_TEST_SUITES', tasks, args, testClasses='com.oracle.truffle.llvm.tests.bitcode.', tags=['sulongLL', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
