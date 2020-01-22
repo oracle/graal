@@ -82,7 +82,7 @@ public class DwarfSections {
     private static final int DW_AT_language = 0x13;
     private static final int DW_AT_external = 0x3f;
     // private static final int DW_AT_return_addr = 0x2a;
-    private static final int DW_AT_frame_base = 0x40;
+    // private static final int DW_AT_frame_base = 0x40;
     // define all the Dwarf attribute forms we need for our DIEs
     private static final int DW_FORM_null = 0x0;
     // private static final int DW_FORM_string = 0x8;
@@ -99,7 +99,7 @@ public class DwarfSections {
     private static final byte DW_CHILDREN_no = 0;
     private static final byte DW_CHILDREN_yes = 1;
     // DW_FORM_flag attribute values
-    private static final byte DW_FLAG_false = 0;
+    // private static final byte DW_FLAG_false = 0;
     private static final byte DW_FLAG_true = 1;
     // value for DW_AT_language attribute with form DATA1
     private static final byte DW_LANG_Java = 0xb;
@@ -440,7 +440,8 @@ public class DwarfSections {
             return pos;
         }
 
-        public int putRelocatableCodeOffset(long l, byte[] buffer, int pos) {
+        public int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
+            int pos = p;
             // mark address so it is relocated relative to the start of the text segment
             markRelocationSite(pos, 8, ObjectFile.RelocationKind.DIRECT, TEXT_SECTION_NAME, false, Long.valueOf(l));
             pos = putLong(0, buffer, pos);
@@ -1541,7 +1542,7 @@ public class DwarfSections {
         /*
          * extended opcodes defined by Dwarf 2
          */
-        private static final byte DW_LNE_undefined = 0;        // there is no extended opcode 0
+        // private static final byte DW_LNE_undefined = 0;        // there is no extended opcode 0
         private static final byte DW_LNE_end_sequence = 1;     // end sequence of addresses
         private static final byte DW_LNE_set_address = 2;      // there is no extended opcode 0
         private static final byte DW_LNE_define_file = 3;      // there is no extended opcode 0
@@ -1864,7 +1865,7 @@ public class DwarfSections {
                     // if we have to update to a new file then do so
                     if (subFileIdx != fileIdx) {
                         // update the current file
-                        pos = putSetFile(subfile, (long) subFileIdx, buffer, pos);
+                        pos = putSetFile(subfile, subFileIdx, buffer, pos);
                         file = subfile;
                         fileIdx = subFileIdx;
                     }
