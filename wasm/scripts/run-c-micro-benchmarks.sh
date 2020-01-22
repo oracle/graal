@@ -9,7 +9,7 @@ VM=$2
 VM_CONFIG=$3
 UPLOAD_CMD=$4
 
-for benchmark in cdf digitron event-sim fft
+for benchmark in cdf digitron event-sim fft hash-join merge-join phong qsort strings
 do
   mx --dy /compiler --kill-with-sigquit benchmark \
     "--machine-name=${MACHINE_NAME}" \
