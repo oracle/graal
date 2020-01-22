@@ -63,10 +63,14 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
 
         try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
-            if (Process._execv(pathHolder.get(), argvHolder.get()) != 0) {
-                String msg = WindowsUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
-                throw new RuntimeException(msg);
-            }
+            /*
+             * On Windows we are not able to replace the current process image with a new process
+             * image and have the new process image take over the STD_{INPUT,OUTPUT,ERROR}_HANDLE
+             * from the current process. Therefore we approximate the Linux behaviour with blocking
+             * _spawnv + immediate exit after return.
+             */
+            int status = Process._spawnv(Process._P_WAIT(), pathHolder.get(), argvHolder.get());
+            System.exit(status);
         }
     }
 
