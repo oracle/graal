@@ -13,7 +13,7 @@ for benchmark in cdf digitron event-sim fft hash-join merge-join phong qsort str
 do
   mx --dy /compiler --kill-with-sigquit benchmark \
     "--machine-name=${MACHINE_NAME}" \
-    "--results-file=${RESULTS_FILE}" \
+    "--results-file=${RESULTS_FILE_PATH}" \
     wasm:WASM_BENCHMARKCASES -- \
     --jvm ${VM} --jvm-config ${VM_CONFIG} \
     -Dwasmbench.benchmarkName=$benchmark -Dwasmtest.keepTempFiles=true -- \
