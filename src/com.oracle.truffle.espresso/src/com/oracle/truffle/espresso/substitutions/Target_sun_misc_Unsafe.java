@@ -1012,7 +1012,7 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(object)) {
             throw self.getKlass().getMeta().throwEx(NullPointerException.class);
         }
-        U.monitorEnter(object);
+        UNSAFE.monitorEnter(object);
     }
 
     @SuppressWarnings("deprecation")
@@ -1021,7 +1021,7 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(object)) {
             throw self.getKlass().getMeta().throwEx(NullPointerException.class);
         }
-        U.monitorExit(object);
+        UNSAFE.monitorExit(object);
     }
 
     @Substitution(hasReceiver = true)
@@ -1185,6 +1185,6 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(object)) {
             throw self.getKlass().getMeta().throwEx(NullPointerException.class);
         }
-        return U.tryMonitorEnter(object);
+        return UNSAFE.tryMonitorEnter(object);
     }
 }

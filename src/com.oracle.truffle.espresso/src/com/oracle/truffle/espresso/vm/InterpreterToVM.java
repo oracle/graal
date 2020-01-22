@@ -64,17 +64,7 @@ public final class InterpreterToVM implements ContextAccess {
         return context;
     }
 
-    private static final Unsafe hostUnsafe;
-
-    static {
-        try {
-            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            hostUnsafe = (Unsafe) f.get(null);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
 
     // region Get (array) operations
 
@@ -203,11 +193,11 @@ public final class InterpreterToVM implements ContextAccess {
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj) {
-        if (!hostUnsafe.tryMonitorEnter(obj)) {
+        if (!UNSAFE.tryMonitorEnter(obj)) {
             Meta meta = obj.getKlass().getMeta();
             StaticObject thread = meta.getContext().getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
-            hostUnsafe.monitorEnter(obj);
+            UNSAFE.monitorEnter(obj);
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
     }
@@ -220,7 +210,7 @@ public final class InterpreterToVM implements ContextAccess {
             // Espresso has its own monitor handling.
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalMonitorStateException.class);
         }
-        hostUnsafe.monitorExit(obj);
+        UNSAFE.monitorExit(obj);
     }
     // endregion
 
