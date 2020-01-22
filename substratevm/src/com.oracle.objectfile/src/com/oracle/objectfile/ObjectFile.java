@@ -1089,7 +1089,7 @@ public abstract class ObjectFile {
 
     // support for consuming debug info
 
-    public void installDebugInfo( @SuppressWarnings("unused") DebugInfoProvider debugInfoProvider) {
+    public void installDebugInfo(@SuppressWarnings("unused") DebugInfoProvider debugInfoProvider) {
         // do nothing by default
     }
 

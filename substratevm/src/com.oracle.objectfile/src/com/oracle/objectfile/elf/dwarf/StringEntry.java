@@ -38,25 +38,31 @@ public class StringEntry {
         this.string = string;
         this.offset = -1;
     }
+
     public String getString() {
         return string;
     }
+
     public int getOffset() {
         // offset must be set before this can be fetched
         assert offset >= 0;
         return offset;
     }
+
     public void setOffset(int offset) {
         assert this.offset < 0;
         assert offset >= 0;
         this.offset = offset;
     }
+
     public boolean isAddToStrSection() {
         return addToStrSection;
     }
+
     public void setAddToStrSection() {
         this.addToStrSection = true;
     }
+
     @Override
     public boolean equals(Object object) {
         if (object == null || !(object instanceof StringEntry)) {
@@ -66,14 +72,17 @@ public class StringEntry {
             return this == other || string.equals(other.string);
         }
     }
+
     @Override
     public int hashCode() {
         return string.hashCode() + 37;
     }
+
     @Override
     public String toString() {
         return string;
     }
+
     public boolean isEmpty() {
         return string.length() == 0;
     }

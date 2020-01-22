@@ -31,6 +31,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+
 public class PrimaryEntry {
     // the primary range detailed by this object
     Range primary;
@@ -64,6 +65,7 @@ public class PrimaryEntry {
         this.cuIndex = -1;
         this.lineIndex = -1;
     }
+
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
         // we should not see a subrange more than once
         assert !subranges.contains(subrange);
@@ -73,58 +75,73 @@ public class PrimaryEntry {
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);
     }
+
     public Range getPrimary() {
         return primary;
     }
+
     public ClassEntry getClassEntry() {
         return classEntry;
     }
+
     public FileEntry getFileEntry() {
         return classEntry.getFileEntry();
     }
+
     public List<Range> getSubranges() {
         return subranges;
     }
+
     public FileEntry getSubrangeFileEntry(Range subrange) {
         return subrangeIndex.get(subrange);
     }
+
     List<DebugFrameSizeChange> getFrameSizeInfos() {
         return frameSizeInfos;
     }
+
     int getFrameSize() {
         return frameSize;
     }
+
     void setCUIndex(int cuIndex) {
         // should only get set once to a non-negative value
         assert cuIndex >= 0;
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
+
     int getCUIndex() {
         // should have been set before being read
         assert cuIndex >= 0;
         return cuIndex;
     }
+
     int getLineIndex() {
         // should have been set before being read
         assert lineIndex >= 0;
         return lineIndex;
     }
+
     void setLineIndex(int lineIndex) {
         // should only get set once to a non-negative value
         assert lineIndex >= 0;
         assert this.lineIndex == -1;
         this.lineIndex = lineIndex;
     }
+
     public int getLinePrologueSize() {
         return linePrologueSize;
     }
+
     public void setLinePrologueSize(int linePrologueSize) {
         this.linePrologueSize = linePrologueSize;
     }
+
     public int getTotalSize() {
         return totalSize;
     }
+
     public void setTotalSize(int totalSize) {
         this.totalSize = totalSize;
     }
