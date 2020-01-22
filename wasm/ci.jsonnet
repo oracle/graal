@@ -13,7 +13,7 @@ local common = import 'ci_common/common.jsonnet';
       name: 'bench-graalwasm-c-micro-benchmarks-linux-amd64',
       environment+: {
         SUITE: 'wasm',
-        BENCH_RUNNER: 'run-c-micro-benchmarks.sh',
+        BENCH_RUNNER: 'run-c-micro-benchmarks',
         BENCH_VM: 'server',
         BENCH_VM_CONFIG: 'graal-core',
       },
