@@ -68,6 +68,7 @@ public class StringTable implements Iterable<StringEntry> {
         }
         return stringEntry.getOffset();
     }
+
     @Override
     public Iterator<StringEntry> iterator() {
         return table.values().iterator();

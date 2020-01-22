@@ -25,6 +25,7 @@
  */
 
 package com.oracle.objectfile.debuginfo;
+
 import java.util.List;
 
 // class defining interfaces used to allow a native image
@@ -39,15 +40,25 @@ public interface DebugInfoProvider {
     // access details of a specific compiled method
     interface DebugCodeInfo {
         String fileName();
+
         String className();
+
         String methodName();
+
         int addressLo();
+
         int addressHi();
+
         int line();
+
         DebugLineInfoProvider lineInfoProvider();
+
         String paramNames();
+
         String returnTypeName();
+
         int getFrameSize();
+
         List<DebugFrameSizeChange> getFrameSizeChanges();
     }
 
@@ -58,16 +69,26 @@ public interface DebugInfoProvider {
     // access details of a specific outer or inlined method at a given line number
     interface DebugLineInfo {
         String fileName();
+
         String className();
+
         String methodName();
+
         int addressLo();
+
         int addressHi();
+
         int line();
     }
 
     interface DebugFrameSizeChange {
-        enum  Type {EXTEND, CONTRACT}
+        enum Type {
+            EXTEND,
+            CONTRACT
+        }
+
         int getOffset();
+
         DebugFrameSizeChange.Type getType();
     }
 
@@ -80,7 +101,7 @@ public interface DebugInfoProvider {
     }
 
     // convenience interface defining iterator type
-    interface DebugLineInfoProvider extends Iterable<DebugLineInfo>{
+    interface DebugLineInfoProvider extends Iterable<DebugLineInfo> {
     }
 
     // convenience interface defining iterator type
@@ -88,6 +109,8 @@ public interface DebugInfoProvider {
     }
 
     DebugTypeInfoProvider typeInfoProvider();
+
     DebugCodeInfoProvider codeInfoProvider();
+
     DebugDataInfoProvider dataInfoProvider();
 }

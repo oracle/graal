@@ -25,6 +25,7 @@
  */
 
 package com.oracle.objectfile.elf.dwarf;
+
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -108,9 +109,8 @@ public class DwarfSections {
     // private static final byte DW_ACCESS_protected = 2;
     // private static final byte DW_ACCESS_private = 3;
 
-
     // not yet needed
-    // private static final int DW_AT_type = 0;   // only present for non-void functions
+    // private static final int DW_AT_type = 0; // only present for non-void functions
     // private static final int DW_AT_accessibility = 0;
 
     // CIE and FDE entries
@@ -156,8 +156,8 @@ public class DwarfSections {
         dwarfARangesSection = new DwarfARangesSectionImpl();
         dwarfLineSection = new DwarfLineSectionImpl();
         dwarfFameSection = (elfMachine == ELFMachine.AArch64
-                ? new DwarfFrameSectionImplAArch64()
-                : new DwarfFrameSectionImplX86_64());
+                        ? new DwarfFrameSectionImplAArch64()
+                        : new DwarfFrameSectionImplX86_64());
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
@@ -205,7 +205,7 @@ public class DwarfSections {
     // 2) by inlined method (sub range) within top level method ordered by ascending address
     // this ensures that all debug records are generated in increasing address order
 
-    // a list recording details of  all primary ranges included in
+    // a list recording details of all primary ranges included in
     // this file sorted by ascending address range
     private LinkedList<PrimaryEntry> primaryEntries = new LinkedList<>();
 
@@ -271,7 +271,8 @@ public class DwarfSections {
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
             Range primaryRange = new Range(fileName, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine);
-            // System.out.format("arange: [0x%08x,0x%08x) %s %s::%s(%s) %s\n", lo, hi, returnTypeName, className, methodName, paramNames, fileName);
+            // System.out.format("arange: [0x%08x,0x%08x) %s %s::%s(%s) %s\n", lo, hi,
+            // returnTypeName, className, methodName, paramNames, fileName);
             // create an infoSection entry for the method
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             for (DebugLineInfo debugLineInfo : debugCodeInfo.lineInfoProvider()) {
@@ -280,8 +281,9 @@ public class DwarfSections {
                 String methodNameAtLine = debugLineInfo.methodName();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
-                int  line = debugLineInfo.line();
-                // record all subranges even if they have no line or file so we at least get a symbol for them
+                int line = debugLineInfo.line();
+                // record all subranges even if they have no line or file so we at least get a
+                // symbol for them
                 Range subRange = new Range(fileNameAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
                 addSubRange(primaryRange, subRange);
             }
@@ -299,7 +301,7 @@ public class DwarfSections {
         ClassEntry classEntry = primaryClassesIndex.get(className);
         if (classEntry == null) {
             // create and index the entry associating it with the right file
-            FileEntry fileEntry =  ensureFileEntry(range);
+            FileEntry fileEntry = ensureFileEntry(range);
             classEntry = new ClassEntry(className, fileEntry);
             primaryClasses.add(classEntry);
             primaryClassesIndex.put(className, classEntry);
@@ -316,8 +318,8 @@ public class DwarfSections {
             DirEntry dirEntry = ensureDirEntry(fileName);
             String baseName = (dirEntry == null ? fileName : fileName.substring(dirEntry.getPath().length() + 1));
             fileEntry = new FileEntry(stringTable.uniqueDebugString(fileName),
-                                      stringTable.uniqueString(baseName),
-                                      dirEntry);
+                            stringTable.uniqueString(baseName),
+                            dirEntry);
             files.add(fileEntry);
             filesIndex.put(fileName, fileEntry);
             // if this is a primary entry then add it to the primary list
@@ -381,12 +383,14 @@ public class DwarfSections {
         }
 
         public abstract void createContent();
+
         public abstract void writeContent();
+
         public void checkDebug(int pos) {
             // if the env var relevant to this element
             // type is set then switch on debugging
             String name = getSectionName();
-            String envVarName =  "DWARF_" + getSectionName().substring(1).toUpperCase();
+            String envVarName = "DWARF_" + getSectionName().substring(1).toUpperCase();
             if (System.getenv(envVarName) != null) {
                 debug = true;
                 debugBase = pos;
@@ -394,7 +398,7 @@ public class DwarfSections {
             }
         }
 
-        protected void debug(String format, Object ... args) {
+        protected void debug(String format, Object... args) {
             if (debug) {
                 System.out.format(format, args);
             }
@@ -405,11 +409,13 @@ public class DwarfSections {
             buffer[pos++] = b;
             return pos;
         }
+
         public int putShort(short s, byte[] buffer, int pos) {
             buffer[pos++] = (byte) (s & 0xff);
             buffer[pos++] = (byte) ((s >> 8) & 0xff);
             return pos;
         }
+
         public int putInt(int i, byte[] buffer, int pos) {
             buffer[pos++] = (byte) (i & 0xff);
             buffer[pos++] = (byte) ((i >> 8) & 0xff);
@@ -417,6 +423,7 @@ public class DwarfSections {
             buffer[pos++] = (byte) ((i >> 24) & 0xff);
             return pos;
         }
+
         public int putLong(long l, byte[] buffer, int pos) {
             buffer[pos++] = (byte) (l & 0xff);
             buffer[pos++] = (byte) ((l >> 8) & 0xff);
@@ -428,12 +435,14 @@ public class DwarfSections {
             buffer[pos++] = (byte) ((l >> 56) & 0xff);
             return pos;
         }
+
         public int putRelocatableCodeOffset(long l, byte[] buffer, int pos) {
             // mark address so it is relocated relative to the start of the text segment
             markRelocationSite(pos, 8, ObjectFile.RelocationKind.DIRECT, TEXT_SECTION_NAME, false, Long.valueOf(l));
             pos = putLong(0, buffer, pos);
             return pos;
         }
+
         public int putULEB(long l, byte[] buffer, int pos) {
             for (int i = 0; i < 9; i++) {
                 byte b = (byte) (l & 0x7f);
@@ -449,6 +458,7 @@ public class DwarfSections {
             }
             return pos;
         }
+
         public int putSLEB(long l, byte[] buffer, int pos) {
             boolean negative = l < 0;
             for (int i = 0; i < 9; i++) {
@@ -466,9 +476,11 @@ public class DwarfSections {
             }
             return pos;
         }
+
         public int putAsciiStringBytes(String s, byte[] buffer, int pos) {
             return putAsciiStringBytes(s, 0, buffer, pos);
         }
+
         public int putAsciiStringBytes(String s, int startChar, byte[] buffer, int pos) {
             for (int l = startChar; l < s.length(); l++) {
                 char c = s.charAt(l);
@@ -505,6 +517,7 @@ public class DwarfSections {
                 return putSLEB(code, buffer, pos);
             }
         }
+
         public int writeFlag(byte flag, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putByte(flag, scratch, 0);
@@ -554,16 +567,11 @@ public class DwarfSections {
         }
 
         public abstract String targetSectionName();
+
         public abstract LayoutDecision.Kind[] targetSectionKinds();
 
         public abstract String getSectionName();
 
-        /*
-        @Override
-        public int getOrDecideSize(Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
-            return super.getOrDecideSize(alreadyDecided, sizeHint);
-        }
-        */
         @Override
         public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
             // ensure content byte[] has been created before calling super method
@@ -580,12 +588,12 @@ public class DwarfSections {
             Set<BuildDependency> deps = super.getDependencies(decisions);
             String targetName = targetSectionName();
             ELFSection targetSection = (ELFSection) getElement().getOwner().elementForName(targetName);
-            LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
-            LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
+            LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
+            LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
             LayoutDecision.Kind[] targetKinds = targetSectionKinds();
             // make our content depend on the size and content of the target
             for (LayoutDecision.Kind targetKind : targetKinds) {
-                 LayoutDecision targetDecision =  decisions.get(targetSection).getDecision(targetKind);
+                LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
                 deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
             }
             // make our size depend on our content
@@ -608,7 +616,7 @@ public class DwarfSections {
         @Override
         public void createContent() {
             int pos = 0;
-            for (StringEntry  stringEntry : stringTable) {
+            for (StringEntry stringEntry : stringTable) {
                 if (stringEntry.isAddToStrSection()) {
                     stringEntry.setOffset(pos);
                     String string = stringEntry.getString();
@@ -627,7 +635,7 @@ public class DwarfSections {
 
             checkDebug(pos);
 
-            for (StringEntry  stringEntry : stringTable) {
+            for (StringEntry stringEntry : stringTable) {
                 if (stringEntry.isAddToStrSection()) {
                     assert stringEntry.getOffset() == pos;
                     String string = stringEntry.getString();
@@ -644,14 +652,17 @@ public class DwarfSections {
 
         // .debug_str section content depends on text section content and offset
         public static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;
@@ -679,18 +690,18 @@ public class DwarfSections {
             // terminated by a null entry
             //
             // a null entry has consists of just a 0 abbrev code
-            //  LEB128 abbrev_code; // == 0
+            // LEB128 abbrev_code; ...... == 0
             //
             // non-null entries have the following format
-            // LEB128 abbrev_code;   // unique noncode for this layout != 0
-            // LEB128 tag;           // defines the type of the DIE (class, subprogram, var etc)
-            // uint8 has_chldren;    // is the DIE followed by child DIEs or a sibling DIE
-            // <attribute_spec>*     // zero or more attributes
-            // <null_attribute_spec> // terminator
+            // LEB128 abbrev_code; ...... unique noncode for this layout != 0
+            // LEB128 tag; .............. defines the type of the DIE (class, subprogram, var etc)
+            // uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling DIE
+            // <attribute_spec>* ........ zero or more attributes
+            // <null_attribute_spec> .... terminator
             //
             // An attribute_spec consists of an attribute name and form
-            // LEB128 attr_name;   // 0 for the null attribute name
-            // LEB128 attr_form;   // 0 for the null attribute form
+            // LEB128 attr_name; ........ 0 for the null attribute name
+            // LEB128 attr_form; ........ 0 for the null attribute form
             //
             // For the moment we only use one abbrev table for all CUs.
             // It contains two DIEs, the first to describe the compilation
@@ -700,17 +711,17 @@ public class DwarfSections {
             // The DIE layouts are as follows:
             //
             // abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children
-            // DW_AT_language  : DW_FORM_data1
-            // DW_AT_name      : DW_FORM_strp
-            // DW_AT_low_pc    : DW_FORM_address
-            // DW_AT_hi_pc     : DW_FORM_address
-            // DW_AT_stmt_list : DW_FORM_data4
+            // DW_AT_language : ... DW_FORM_data1
+            // DW_AT_name : ....... DW_FORM_strp
+            // DW_AT_low_pc : ..... DW_FORM_address
+            // DW_AT_hi_pc : ...... DW_FORM_address
+            // DW_AT_stmt_list : .. DW_FORM_data4
             //
             // abbrev_code == 2, tag == DW_TAG_subprogram, no_children
-            // DW_AT_name       : DW_FORM_strp
-            // DW_AT_low_pc     : DW_FORM_addr
-            // DW_AT_hi_pc      : DW_FORM_addr
-            // DW_AT_external   : DW_FORM_flag
+            // DW_AT_name : ....... DW_FORM_strp
+            // DW_AT_low_pc : ..... DW_FORM_addr
+            // DW_AT_hi_pc : ...... DW_FORM_addr
+            // DW_AT_external : ... DW_FORM_flag
 
             pos = writeAbbrev1(null, pos);
             pos = writeAbbrev2(null, pos);
@@ -727,7 +738,7 @@ public class DwarfSections {
 
             checkDebug(pos);
 
-            pos =  writeAbbrev1(buffer, pos);
+            pos = writeAbbrev1(buffer, pos);
             pos = writeAbbrev2(buffer, pos);
             assert pos == size;
         }
@@ -795,14 +806,17 @@ public class DwarfSections {
 
         // .debug_abbrev section content depends on .debug_frame section content and offset
         public static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;
@@ -856,14 +870,14 @@ public class DwarfSections {
             // because we have to have at least one
             // the layout is
             //
-            // uint32  : length                // length of remaining fields in this CIE
-            // uint32  : CIE_id                // unique id for CIE == 0xffffff
-            // uint8   : version               // == 1
-            // uint8[] : augmentation          // == "" so always 1 byte
-            // ULEB    : code_alignment_factor // 1 (could use 4 for Aarch64)
-            // ULEB    : data_alignment_factor // -8
-            // byte    : ret_addr reg id       // x86_64 => 16 AArch64 => 32
-            // byte[]  : initial_instructions  // includes pad to 8-byte boundary
+            // uint32 : length ............... length of remaining fields in this CIE
+            // uint32 : CIE_id ................ unique id for CIE == 0xffffff
+            // uint8 : version ................ == 1
+            // uint8[] : augmentation ......... == "" so always 1 byte
+            // ULEB : code_alignment_factor ... == 1 (could use 4 for Aarch64)
+            // ULEB : data_alignment_factor ... == -8
+            // byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32
+            // byte[] : initial_instructions .. includes pad to 8-byte boundary
             if (buffer == null) {
                 pos += putInt(0, scratch, 0); // don't care about length
                 pos += putInt(DW_CFA_CIE_id, scratch, 0);
@@ -928,22 +942,22 @@ public class DwarfSections {
             // we only need a vanilla FDE header with default fields
             // the layout is
             //
-            // uint32  : length           // length of remaining fields in this FDE
-            // uint32  : CIE_offset       // alwasy 0 i.e. identifies our only CIE header
-            // uint64  : initial_location // i.e. method lo address
-            // uint64  : address_range    // i.e. method hi - lo
-            // byte[]  : instructions     // includes pad to 8-byte boundary
+            // uint32 : length ........... length of remaining fields in this FDE
+            // uint32 : CIE_offset ........ always 0 i.e. identifies our only CIE header
+            // uint64 : initial_location .. i.e. method lo address
+            // uint64 : address_range ..... i.e. method hi - lo
+            // byte[] : instructions ...... includes pad to 8-byte boundary
 
             int lengthPos = pos;
             if (buffer == null) {
                 pos += putInt(0, scratch, 0); // dummy length
                 pos += putInt(0, scratch, 0); // CIE_offset
-                pos += putLong(lo, scratch, 0);  // initial address
+                pos += putLong(lo, scratch, 0); // initial address
                 return pos + putLong(hi - lo, scratch, 0); // address range
             } else {
                 pos = putInt(0, buffer, pos); // dummy length
                 pos = putInt(0, buffer, pos); // CIE_offset
-                pos = putRelocatableCodeOffset(lo, buffer, pos);  // initial address
+                pos = putRelocatableCodeOffset(lo, buffer, pos); // initial address
                 return putLong(hi - lo, buffer, pos); // address range
             }
         }
@@ -971,6 +985,7 @@ public class DwarfSections {
                 return putULEB(offset, buffer, pos);
             }
         }
+
         public int writeDefCFAOffset(int offset, byte[] buffer, int pos) {
             if (buffer == null) {
                 pos += putByte(DW_CFA_def_cfa_offset, scratch, 0);
@@ -980,6 +995,7 @@ public class DwarfSections {
                 return putULEB(offset, buffer, pos);
             }
         }
+
         public int writeAdvanceLoc(int offset, byte[] buffer, int pos) {
             if (offset <= 0x3f) {
                 return writeAdvanceLoc0((byte) offset, buffer, pos);
@@ -991,6 +1007,7 @@ public class DwarfSections {
                 return writeAdvanceLoc4(offset, buffer, pos);
             }
         }
+
         public int writeAdvanceLoc0(byte offset, byte[] buffer, int pos) {
             byte op = advanceLoc0Op(offset);
             if (buffer == null) {
@@ -999,6 +1016,7 @@ public class DwarfSections {
                 return putByte(op, buffer, pos);
             }
         }
+
         public int writeAdvanceLoc1(byte offset, byte[] buffer, int pos) {
             byte op = DW_CFA_advance_loc1;
             if (buffer == null) {
@@ -1009,6 +1027,7 @@ public class DwarfSections {
                 return putByte(offset, buffer, pos);
             }
         }
+
         public int writeAdvanceLoc2(short offset, byte[] buffer, int pos) {
             byte op = DW_CFA_advance_loc2;
             if (buffer == null) {
@@ -1019,6 +1038,7 @@ public class DwarfSections {
                 return putShort(offset, buffer, pos);
             }
         }
+
         public int writeAdvanceLoc4(int offset, byte[] buffer, int pos) {
             byte op = DW_CFA_advance_loc4;
             if (buffer == null) {
@@ -1029,6 +1049,7 @@ public class DwarfSections {
                 return putInt(offset, buffer, pos);
             }
         }
+
         public int writeOffset(int register, int offset, byte[] buffer, int pos) {
             byte op = offsetOp(register);
             if (buffer == null) {
@@ -1039,6 +1060,7 @@ public class DwarfSections {
                 return putULEB(offset, buffer, pos);
             }
         }
+
         public int writeRegister(int savedReg, int savedToReg, byte[] buffer, int pos) {
             if (buffer == null) {
                 pos += putByte(DW_CFA_register, scratch, 0);
@@ -1052,31 +1074,39 @@ public class DwarfSections {
         }
 
         public abstract int getPCIdx();
+
         public abstract int getSPIdx();
+
         public abstract int writeInitialInstructions(byte[] buffer, int pos);
 
         @Override
         protected void debug(String format, Object... args) {
             super.debug(format, args);
         }
+
         // .debug_frame section content depends on .debug_line section content and offset
         public static final String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;
         }
+
         private byte offsetOp(int register) {
             assert (register >> 6) == 0;
             return (byte) ((DW_CFA_offset << 6) | register);
         }
+
         private byte advanceLoc0Op(int offset) {
             assert (offset >= 0 && offset <= 0x3f);
             return (byte) ((DW_CFA_advance_loc << 6) | offset);
@@ -1090,21 +1120,25 @@ public class DwarfSections {
         public DwarfFrameSectionImplX86_64() {
             super();
         }
+
         @Override
         public int getPCIdx() {
             return DW_CFA_RIP_IDX;
         }
+
         @Override
         public int getSPIdx() {
             return DW_CFA_RSP_IDX;
         }
+
         @Override
         public int writeInitialInstructions(byte[] buffer, int pos) {
             // rsp points at the word containing the saved rip
             // so the frame base (cfa) is at rsp + 8 (why not - ???)
             // def_cfa r7 (sp) offset 8
             pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
-            // and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa (why not -1 ???)
+            // and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
+            // (why not -1 ???)
             // offset r16 (rip) cfa - 8
             pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
             return pos;
@@ -1120,14 +1154,17 @@ public class DwarfSections {
         public DwarfFrameSectionImplAArch64() {
             super();
         }
+
         @Override
         public int getPCIdx() {
             return DW_CFA_PC_IDX;
         }
+
         @Override
         public int getSPIdx() {
             return DW_CFA_SP_IDX;
         }
+
         @Override
         public int writeInitialInstructions(byte[] buffer, int pos) {
             // rsp has not been updated
@@ -1156,12 +1193,12 @@ public class DwarfSections {
             // we need a single level 0 DIE for each compilation unit (CU)
             // Each CU's Level 0 DIE is preceded by a fixed header:
             // and terminated by a null DIE
-            // uint32 length         // excluding this length field
-            // uint16 dwarf_version  // always 2 ??
-            // uint32 abbrev offset  // always 0 ??
-            // uint8 address_size    // always 8
-            // <DIE>*                // sequence of top-level and nested child entries
-            // <null_DIE>          // == 0
+            // uint32 length ......... excluding this length field
+            // uint16 dwarf_version .. always 2 ??
+            // uint32 abbrev offset .. always 0 ??
+            // uint8 address_size .... always 8
+            // <DIE>* ................ sequence of top-level and nested child entries
+            // <null_DIE> ............ == 0
             //
             // a DIE is a recursively defined structure
             // it starts with a code for the associated
@@ -1170,13 +1207,13 @@ public class DwarfSections {
             // a null value and followed by zero or more child
             // DIEs (zero iff has_children == no_children)
             //
-            // LEB128 abbrev_code != 0 // non-zero value indexes tag + attr layout of DIE
-            // <attribute_value>*      // value sequence as determined by abbrev entry
-            //    <DIE>*               // sequence of child DIEs (if appropriate)
-            // <null_value>            // == 0
+            // LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE
+            // <attribute_value>* ....... value sequence as determined by abbrev entry
+            // <DIE>* ................... sequence of child DIEs (if appropriate)
+            // <null_value> ............. == 0
             //
             // note that a null_DIE looks like
-            // LEB128 abbrev_code == 0
+            // LEB128 abbrev_code ....... == 0
             // i.e. it also looks like a null_value
 
             byte[] buffer = null;
@@ -1231,6 +1268,7 @@ public class DwarfSections {
                 return putByte((byte) 8, buffer, pos);           // address size
             }
         }
+
         public int writeCU(ClassEntry classEntry, byte[] buffer, int pos) {
             LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
@@ -1252,7 +1290,8 @@ public class DwarfSections {
             return writeAttrNull(buffer, pos);
 
         }
-        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int pos)        {
+
+        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int pos) {
             Range primary = primaryEntry.getPrimary();
             debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
             pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
@@ -1266,6 +1305,7 @@ public class DwarfSections {
             debug("  [0x%08x]     external  true\n", pos);
             return writeFlag(DW_FLAG_true, buffer, pos);
         }
+
         public int writeAttrStrp(String value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putInt(0, scratch, 0);
@@ -1274,6 +1314,7 @@ public class DwarfSections {
                 return putInt(idx, buffer, pos);
             }
         }
+
         public int writeAttrString(String value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + value.length() + 1;
@@ -1293,14 +1334,17 @@ public class DwarfSections {
 
         // .debug_info section content depends on abbrev section content and offset
         public static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;
@@ -1325,21 +1369,21 @@ public class DwarfSections {
             int pos = 0;
             // we need an entry for each compilation unit
             //
-            // uint32  length         // in bytes (not counting these 4 bytes)
-            // uint16  dwarf_version  // always 2
-            // uint32  info_offset    // offset of compilation unit on debug_info
-            // uint8   address_size   // always 8
-            // uint8   segment_desc_size // ???
+            // uint32 length ............ in bytes (not counting these 4 bytes)
+            // uint16 dwarf_version ..... always 2
+            // uint32 info_offset ....... offset of compilation unit on debug_info
+            // uint8 address_size ....... always 8
+            // uint8 segment_desc_size .. ???
             //
             // i.e. 12 bytes followed by padding
             // aligning up to 2 * address size
             //
-            // uint8  pad[4]
+            // uint8 pad[4]
             //
             // followed by N + 1 times
             //
-            // uint64  lo            // lo address of range
-            // uint64  length        // number of bytes in range
+            // uint64 lo ................ lo address of range
+            // uint64 length ............ number of bytes in range
             //
             // where N is the number of ranges belonging to the compilation unit
             // and the last range contains two zeroes
@@ -1420,19 +1464,22 @@ public class DwarfSections {
 
         // .debug_aranges section content depends on .debug_info section content and offset
         public static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;
         }
-   }
+    }
 
     public class DwarfLineSectionImpl extends DwarfSectionImpl {
         // header section always contains fixed number of bytes
@@ -1447,23 +1494,27 @@ public class DwarfSections {
         /*
          * standard opcodes defined by Dwarf 2
          */
-        private static final byte DW_LNS_undefined = 0;        // 0 can be returned to indicate an invalid opcode
-        private static final byte DW_LNS_extended_prefix = 0;  // 0 can be inserted as a prefix for extended opcodes
-        private static final byte DW_LNS_copy = 1;             // append current state as matrix row 0 args
+        private static final byte DW_LNS_undefined = 0;        // 0 can be returned to indicate an
+                                                               // invalid opcode
+        private static final byte DW_LNS_extended_prefix = 0;  // 0 can be inserted as a prefix for
+                                                               // extended opcodes
+        private static final byte DW_LNS_copy = 1;             // append current state as matrix row
+                                                               // 0 args
         private static final byte DW_LNS_advance_pc = 2;       // increment address 1 uleb arg
         private static final byte DW_LNS_advance_line = 3;     // increment line 1 sleb arg
         private static final byte DW_LNS_set_file = 4;         // set file 1 uleb arg
         private static final byte DW_LNS_set_column = 5;       // set column 1 uleb arg
         private static final byte DW_LNS_negate_stmt = 6;      // flip is_stmt 0 args
         private static final byte DW_LNS_set_basic_block = 7;  // set end sequence and copy row
-        private static final byte DW_LNS_const_add_pc = 8;     // increment address as per opcode 255 0 args
+        private static final byte DW_LNS_const_add_pc = 8;     // increment address as per opcode
+                                                               // 255 0 args
         private static final byte DW_LNS_fixed_advance_pc = 9; // increment address 1 ushort arg
 
         /*
          * extended opcodes defined by Dwarf 2
          */
         private static final byte DW_LNE_undefined = 0;        // there is no extended opcode 0
-        private static final byte DW_LNE_end_sequence = 1;     // end sequence of addresses 
+        private static final byte DW_LNE_end_sequence = 1;     // end sequence of addresses
         private static final byte DW_LNE_set_address = 2;      // there is no extended opcode 0
         private static final byte DW_LNE_define_file = 3;      // there is no extended opcode 0
 
@@ -1489,7 +1540,7 @@ public class DwarfSections {
                 int headerSize = headerSize();
                 int dirTableSize = computeDirTableSize(classEntry);
                 int fileTableSize = computeFileTableSize(classEntry);
-                int prologueSize =  headerSize + dirTableSize + fileTableSize;
+                int prologueSize = headerSize + dirTableSize + fileTableSize;
                 classEntry.setLinePrologueSize(prologueSize);
                 int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
                 int totalSize = prologueSize + lineNumberTableSize;
@@ -1502,16 +1553,16 @@ public class DwarfSections {
 
         public int headerSize() {
             // header size is standard 31 bytes
-            //   uint32  total_length
-            //   uint16 version
-            //   uint32  prologue_length
-            //   uint8  min_insn_length
-            //   uint8  default_is_stmt
-            //   int8   line_base
-            //   uint8  line_range
-            //   uint8  opcode_base
-            //   uint8  li_opcode_base
-            //   uint8[opcode_base-1] standard_opcode_lengths
+            // uint32 total_length
+            // uint16 version
+            // uint32 prologue_length
+            // uint8 min_insn_length
+            // uint8 default_is_stmt
+            // int8 line_base
+            // uint8 line_range
+            // uint8 opcode_base
+            // uint8 li_opcode_base
+            // uint8[opcode_base-1] standard_opcode_lengths
 
             return DW_LN_HEADER_SIZE;
         }
@@ -1681,7 +1732,6 @@ public class DwarfSections {
         public int debugLine = 1;
         public int debugCopyCount = 0;
 
-
         public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int pos) {
             // the primary file entry should always be first in the local files list
             assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
@@ -1713,7 +1763,8 @@ public class DwarfSections {
                 // boolean end_sequence = false;
                 // set state for primary
 
-                debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(), primaryRange.getLine());
+                debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(),
+                                primaryRange.getLine());
 
                 // initialize and write a row for the start of the primary method
                 pos = putSetFile(file, fileIdx, buffer, pos);
@@ -1746,7 +1797,6 @@ public class DwarfSections {
                         subFileIdx = fileIdx;
                         debug("  [0x%08x] missing line info - staying put at %s:%d\n", pos, file, line);
                     }
-                    /*
                     // there is a temptation to append end sequence at here
                     // when the hiAddress lies strictly between the current
                     // address and the start of the next subrange because,
@@ -1757,27 +1807,28 @@ public class DwarfSections {
                     // so the code below is not actually needed. it is left in
                     // to clarify i) that this is a deliberate choice and ii) what
                     // that deliberate choice is avoiding.
-                    if (address < hiAddress && hiAddress < subAddressLo) {
-                        long addressDelta = hiAddress - address;
-                        // increment address to hi address, write an
-                        // end sequence and update state to new range
-                        pos = putAdvancePC(addressDelta, buffer, pos);
-                        pos = putEndSequence(buffer, pos);
-                        file = subfile;
-                        fileIdx = subFileIdx;
-                        pos = putSetFile(file, fileIdx, buffer, pos);
-                        line = subLine;
-                        // state machine value of line is currently 1
-                        // increment to desired line
-                        if (line != 1) {
-                            pos = putAdvanceLine(line - 1, buffer, pos);
+                    if (false) {
+                        if (address < hiAddress && hiAddress < subAddressLo) {
+                            long addressDelta = hiAddress - address;
+                            // increment address to hi address, write an
+                            // end sequence and update state to new rang
+                            pos = putAdvancePC(addressDelta, buffer, pos);
+                            pos = putEndSequence(buffer, pos);
+                            file = subfile;
+                            fileIdx = subFileIdx;
+                            pos = putSetFile(file, fileIdx, buffer, pos);
+                            line = subLine;
+                            // state machine value of line is currently 1
+                            // increment to desired line
+                            if (line != 1) {
+                                pos = putAdvanceLine(line - 1, buffer, pos);
+                            }
+                            pos = putSetBasicBlock(buffer, pos);
+                            // use a reloc to ensure address is relative to text base
+                            address = hiAddress;
+                            pos = putSetAddress(hiAddress, buffer, pos);
                         }
-                        pos = putSetBasicBlock(buffer, pos);
-                        // use a reloc to ensure address is relative to text base
-                        address = hiAddress;
-                        pos = putSetAddress(hiAddress, buffer, pos);
                     }
-                    */
                     // if we have to update to a new file then do so
                     if (subFileIdx != fileIdx) {
                         // update the current file
@@ -2055,7 +2106,7 @@ public class DwarfSections {
                 debugAddress += opcodeAddress(opcode);
                 debugLine += opcodeLine(opcode);
                 debug("  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d\n",
-                      pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
+                                pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
                 return putByte(opcode, buffer, pos);
             }
         }
@@ -2102,15 +2153,18 @@ public class DwarfSections {
 
         // .debug_line section content depends on .debug_str section content and offset
         public static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
+
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
+
         public final LayoutDecision.Kind[] targetSectionKinds = {
-                LayoutDecision.Kind.CONTENT,
-                LayoutDecision.Kind.OFFSET,
-                LayoutDecision.Kind.VADDR, // add this so we can use the base address
+                        LayoutDecision.Kind.CONTENT,
+                        LayoutDecision.Kind.OFFSET,
+                        LayoutDecision.Kind.VADDR, // add this so we can use the base address
         };
+
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
             return targetSectionKinds;

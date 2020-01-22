@@ -987,19 +987,22 @@ public abstract class NativeBootImage extends AbstractBootImage {
             this.codeCacheIterator = codeCache.compilations.entrySet().iterator();
             this.heapIterator = heap.objects.entrySet().iterator();
         }
+
         @Override
-        public  DebugTypeInfoProvider typeInfoProvider() {
+        public DebugTypeInfoProvider typeInfoProvider() {
             return () -> new Iterator<DebugTypeInfo>() {
                 @Override
                 public boolean hasNext() {
                     return false;
                 }
+
                 @Override
                 public DebugTypeInfo next() {
                     return null;
                 }
             };
         }
+
         @Override
         public DebugCodeInfoProvider codeInfoProvider() {
             return () -> new Iterator<DebugCodeInfo>() {
@@ -1007,6 +1010,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 public boolean hasNext() {
                     return codeCacheIterator.hasNext();
                 }
+
                 @Override
                 public DebugCodeInfo next() {
                     Map.Entry<HostedMethod, CompilationResult> entry = codeCacheIterator.next();
@@ -1014,13 +1018,15 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 }
             };
         }
+
         @Override
-        public  DebugDataInfoProvider dataInfoProvider() {
+        public DebugDataInfoProvider dataInfoProvider() {
             return () -> new Iterator<DebugDataInfo>() {
                 @Override
                 public boolean hasNext() {
                     return false;
                 }
+
                 @Override
                 public DebugDataInfo next() {
                     return null;
@@ -1032,13 +1038,15 @@ public abstract class NativeBootImage extends AbstractBootImage {
     private class NativeImageDebugCodeInfo implements DebugCodeInfo {
         private final HostedMethod method;
         private final CompilationResult compilation;
+
         NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             this.method = method;
             this.compilation = compilation;
         }
+
         @Override
         public String fileName() {
-            HostedType declaringClass =  method.getDeclaringClass();
+            HostedType declaringClass = method.getDeclaringClass();
             String name = declaringClass.getSourceFileName();
             if (name != null) {
                 // the file name will not include any path
@@ -1066,30 +1074,37 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return name;
         }
+
         @Override
         public String className() {
             return method.format("%H");
         }
+
         @Override
         public String methodName() {
             return method.format("%n");
         }
+
         @Override
         public String paramNames() {
             return method.format("%P");
         }
+
         @Override
         public String returnTypeName() {
             return method.format("%R");
         }
+
         @Override
         public int addressLo() {
             return method.getCodeAddressOffset();
         }
+
         @Override
         public int addressHi() {
             return method.getCodeAddressOffset() + compilation.getTargetCodeSize();
         }
+
         @Override
         public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
@@ -1098,6 +1113,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return -1;
         }
+
         @Override
         public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
             if (fileName().length() == 0) {
@@ -1106,6 +1122,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     public boolean hasNext() {
                         return false;
                     }
+
                     @Override
                     public DebugLineInfo next() {
                         return null;
@@ -1114,19 +1131,23 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return () -> new Iterator<DebugLineInfo>() {
                 final Iterator<SourceMapping> sourceIterator = compilation.getSourceMappings().iterator();
+
                 @Override
                 public boolean hasNext() {
                     return sourceIterator.hasNext();
                 }
+
                 @Override
                 public DebugLineInfo next() {
                     return new NativeImageDebugLineInfo(sourceIterator.next());
                 }
             };
         }
+
         public int getFrameSize() {
             return compilation.getTotalFrameSize();
         }
+
         public List<DebugFrameSizeChange> getFrameSizeChanges() {
             List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
             for (Mark mark : compilation.getMarks()) {
@@ -1134,24 +1155,26 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 if (mark.id.equals("PROLOGUE_DECD_RSP")) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
                     frameSizeChanges.add(sizeChange);
-                // } else if (mark.id.equals("PROLOGUE_END")) {
+                    // } else if (mark.id.equals("PROLOGUE_END")) {
                     // can ignore these
-                // } else if (mark.id.equals("EPILOGUE_START")) {
+                    // } else if (mark.id.equals("EPILOGUE_START")) {
                     // can ignore these
                 } else if (mark.id.equals("EPILOGUE_INCD_RSP")) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
                     frameSizeChanges.add(sizeChange);
-                // } else if(mark.id.equals("EPILOGUE_END")) {
+                    // } else if(mark.id.equals("EPILOGUE_END")) {
                 }
             }
             return frameSizeChanges;
         }
     }
+
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
         private final ResolvedJavaMethod method;
         private final int lo;
         private final int hi;
+
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
             NodeSourcePosition position = sourceMapping.getSourcePosition();
             int bci = position.getBCI();
@@ -1160,6 +1183,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             this.lo = sourceMapping.getStartOffset();
             this.hi = sourceMapping.getEndOffset();
         }
+
         @Override
         public String fileName() {
             String name = className();
@@ -1174,22 +1198,27 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return name.replace('.', '/') + ".java";
         }
+
         @Override
         public String className() {
             return method.format("%H");
         }
+
         @Override
         public String methodName() {
             return method.format("%n");
         }
+
         @Override
         public int addressLo() {
             return lo;
         }
+
         @Override
         public int addressHi() {
             return hi;
         }
+
         @Override
         public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
@@ -1199,17 +1228,21 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return -1;
         }
     }
+
     private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
         private int offset;
         private Type type;
+
         NativeImageDebugFrameSizeChange(int offset, Type type) {
             this.offset = offset;
             this.type = type;
         }
+
         @Override
         public int getOffset() {
             return offset;
         }
+
         @Override
         public Type getType() {
             return type;

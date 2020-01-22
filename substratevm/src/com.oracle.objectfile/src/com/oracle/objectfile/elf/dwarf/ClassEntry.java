@@ -25,6 +25,7 @@
  */
 
 package com.oracle.objectfile.elf.dwarf;
+
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
 import java.util.HashMap;
@@ -32,12 +33,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class ClassEntry  {
+public class ClassEntry {
     // the name of the associated class
     private String className;
     // the associated file
     FileEntry fileEntry;
-    // a list recording details of  all primary ranges included in
+    // a list recording details of all primary ranges included in
     // this class sorted by ascending address range
     private LinkedList<PrimaryEntry> primaryEntries;
     // an index identifying primary ranges which have already been encountered
@@ -60,7 +61,7 @@ public class ClassEntry  {
     private int totalSize;
 
     public ClassEntry(String className, FileEntry fileEntry) {
-        this.className  = className;
+        this.className = className;
         this.fileEntry = fileEntry;
         this.primaryEntries = new LinkedList<>();
         this.primaryIndex = new HashMap<>();
@@ -90,6 +91,7 @@ public class ClassEntry  {
         }
         return null;
     }
+
     void addSubRange(Range subrange, FileEntry subFileEntry) {
         Range primary = subrange.getPrimary();
         // the subrange should belong to a primary range
@@ -109,6 +111,7 @@ public class ClassEntry  {
             localDirsIndex.put(dirEntry, localDirs.size());
         }
     }
+
     public int localDirsIdx(DirEntry dirEntry) {
         if (dirEntry != null) {
             return localDirsIndex.get(dirEntry);
@@ -135,44 +138,57 @@ public class ClassEntry  {
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
+
     int getCUIndex() {
         // should have been set before being read
         assert cuIndex >= 0;
         return cuIndex;
     }
+
     int getLineIndex() {
         return lineIndex;
     }
+
     void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
     }
+
     public void setLinePrologueSize(int linePrologueSize) {
         this.linePrologueSize = linePrologueSize;
     }
+
     public int getLinePrologueSize() {
         return linePrologueSize;
     }
+
     public int getTotalSize() {
         return totalSize;
     }
+
     public void setTotalSize(int totalSize) {
         this.totalSize = totalSize;
     }
+
     public FileEntry getFileEntry() {
         return fileEntry;
     }
+
     public String getClassName() {
         return className;
     }
+
     public LinkedList<PrimaryEntry> getPrimaryEntries() {
         return primaryEntries;
     }
+
     public Object primaryIndexFor(Range primaryRange) {
         return primaryIndex.get(primaryRange);
     }
+
     public LinkedList<DirEntry> getLocalDirs() {
         return localDirs;
     }
+
     public LinkedList<FileEntry> getLocalFiles() {
         return localFiles;
     }

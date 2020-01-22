@@ -43,9 +43,11 @@ public class FileEntry {
     public String getFileName() {
         return fileName;
     }
+
     public String getBaseName() {
         return baseName;
     }
+
     String getDirName() {
         return (dirEntry != null ? dirEntry.getPath() : "");
     }

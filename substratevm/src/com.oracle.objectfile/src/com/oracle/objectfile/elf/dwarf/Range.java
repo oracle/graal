@@ -80,25 +80,31 @@ public class Range {
     public String getFileName() {
         return fileName;
     }
+
     public String getClassName() {
         return className;
     }
+
     public String getMethodName() {
         return methodName;
     }
+
     public int getHi() {
         return hi;
     }
+
     public int getLo() {
         return lo;
     }
+
     public int getLine() {
         return line;
     }
+
     public String getFullMethodName() {
         return fullMethodName;
     }
-    
+
     public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
