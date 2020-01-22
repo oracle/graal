@@ -147,15 +147,26 @@ suite = {
 
         "com.oracle.truffle.espresso.test": {
             "subDir": "src",
-            "jniHeaders": True,
             "sourceDirs": ["src"],
+            "testProject": True,
+            "jniHeaders": True,
             "dependencies": [
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.test",
+        },
+
+        "com.oracle.truffle.espresso.test.jdk8": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "testProject": True,
+            "dependencies": [
+                "com.oracle.truffle.espresso.test"
+            ],
+            "overlayTarget" : "com.oracle.truffle.espresso.test",
+            "javaCompliance": "8",
         },
 
         # Native library for tests
