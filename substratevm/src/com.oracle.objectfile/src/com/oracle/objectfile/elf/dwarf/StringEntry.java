@@ -57,6 +57,7 @@ public class StringEntry {
     public void setAddToStrSection() {
         this.addToStrSection = true;
     }
+    @Override
     public boolean equals(Object object) {
         if (object == null || !(object instanceof StringEntry)) {
             return false;
@@ -65,9 +66,11 @@ public class StringEntry {
             return this == other || string.equals(other.string);
         }
     }
+    @Override
     public int hashCode() {
         return string.hashCode() + 37;
     }
+    @Override
     public String toString() {
         return string;
     }

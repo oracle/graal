@@ -66,7 +66,7 @@ public interface DebugInfoProvider {
     }
 
     interface DebugFrameSizeChange {
-        enum  Type {EXTEND, CONTRACT};
+        enum  Type {EXTEND, CONTRACT}
         int getOffset();
         DebugFrameSizeChange.Type getType();
     }

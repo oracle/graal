@@ -196,7 +196,7 @@ public class DwarfSections {
 
     // list detailing all dirs in which files are found to reside
     // either as part of substrate/compiler or user code
-    private LinkedList<DirEntry> dirs = new LinkedList<DirEntry>();
+    private LinkedList<DirEntry> dirs = new LinkedList<>();
     // index of already seen dirs
     private Map<String, DirEntry> dirsIndex = new HashMap<>();
 
@@ -207,7 +207,7 @@ public class DwarfSections {
 
     // a list recording details of  all primary ranges included in
     // this file sorted by ascending address range
-    private LinkedList<PrimaryEntry> primaryEntries = new LinkedList<PrimaryEntry>();
+    private LinkedList<PrimaryEntry> primaryEntries = new LinkedList<>();
 
     // An alternative traversal option is
     // 1) by top level class (String id)
@@ -227,14 +227,14 @@ public class DwarfSections {
     // of the file and dir tables.
 
     // list of class entries detailing class info for primary ranges
-    private LinkedList<ClassEntry> primaryClasses = new LinkedList<ClassEntry>();
+    private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
     // index of already seen classes
     private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
 
     // List of files which contain primary ranges
-    private LinkedList<FileEntry> primaryFiles = new LinkedList<FileEntry>();
+    private LinkedList<FileEntry> primaryFiles = new LinkedList<>();
     // List of files which contain primary or secondary ranges
-    private LinkedList<FileEntry> files = new LinkedList<FileEntry>();
+    private LinkedList<FileEntry> files = new LinkedList<>();
     // index of already seen files
     private Map<String, FileEntry> filesIndex = new HashMap<>();
 
@@ -637,6 +637,7 @@ public class DwarfSections {
             assert pos == size;
         }
 
+        @Override
         protected void debug(String format, Object... args) {
             super.debug(format, args);
         }
@@ -787,6 +788,7 @@ public class DwarfSections {
             return pos;
         }
 
+        @Override
         protected void debug(String format, Object... args) {
             super.debug(format, args);
         }
@@ -1053,6 +1055,7 @@ public class DwarfSections {
         public abstract int getSPIdx();
         public abstract int writeInitialInstructions(byte[] buffer, int pos);
 
+        @Override
         protected void debug(String format, Object... args) {
             super.debug(format, args);
         }
@@ -1229,21 +1232,21 @@ public class DwarfSections {
             }
         }
         public int writeCU(ClassEntry classEntry, byte[] buffer, int pos) {
-            LinkedList<PrimaryEntry> primaryEntries = classEntry.getPrimaryEntries();
+            LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
             pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
             debug("  [0x%08x]     language  %s\n", pos, "DW_LANG_Java");
             pos = writeAttrData1(DW_LANG_Java, buffer, pos);
             debug("  [0x%08x]     name  0x%x (%s)\n", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
             pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
-            debug("  [0x%08x]     low_pc  0x%08x\n", pos, primaryEntries.getFirst().getPrimary().getLo());
-            pos = writeAttrAddress(primaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
-            debug("  [0x%08x]     hi_pc  0x%08x\n", pos, primaryEntries.getLast().getPrimary().getHi());
-            pos = writeAttrAddress(primaryEntries.getLast().getPrimary().getHi(), buffer, pos);
+            debug("  [0x%08x]     low_pc  0x%08x\n", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
+            pos = writeAttrAddress(classPrimaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
+            debug("  [0x%08x]     hi_pc  0x%08x\n", pos, classPrimaryEntries.getLast().getPrimary().getHi());
+            pos = writeAttrAddress(classPrimaryEntries.getLast().getPrimary().getHi(), buffer, pos);
             debug("  [0x%08x]     stmt_list  0x%08x\n", pos, classEntry.getLineIndex());
             pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
-            for (PrimaryEntry primary : primaryEntries) {
-                pos = writePrimary(primary, buffer, pos);
+            for (PrimaryEntry primaryEntry : classPrimaryEntries) {
+                pos = writePrimary(primaryEntry, buffer, pos);
             }
             // write a terminating null attribute for the the level 2 primaries
             return writeAttrNull(buffer, pos);
@@ -1253,8 +1256,8 @@ public class DwarfSections {
             Range primary = primaryEntry.getPrimary();
             debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
             pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
-            debug("  [0x%08x]     name  0x%X (%s)\n", pos, debugStringIndex(primary.getClassAndMethodNameWithParams()), primary.getClassAndMethodNameWithParams());
-            pos = writeAttrStrp(primary.getClassAndMethodNameWithParams(), buffer, pos);
+            debug("  [0x%08x]     name  0x%X (%s)\n", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
+            pos = writeAttrStrp(primary.getFullMethodName(), buffer, pos);
             debug("  [0x%08x]     low_pc  0x%08x\n", pos, primary.getLo());
             pos = writeAttrAddress(primary.getLo(), buffer, pos);
             debug("  [0x%08x]     high_pc  0x%08x\n", pos, primary.getHi());
@@ -1278,6 +1281,8 @@ public class DwarfSections {
                 return putAsciiStringBytes(value, buffer, pos);
             }
         }
+
+        @Override
         protected void debug(String format, Object... args) {
             if (((int) args[0] - debugBase) < 0x100000) {
                 super.debug(format, args);
@@ -1315,6 +1320,7 @@ public class DwarfSections {
             return DW_ARANGES_SECTION_NAME;
         }
 
+        @Override
         public void createContent() {
             int pos = 0;
             // we need an entry for each compilation unit
@@ -1365,6 +1371,7 @@ public class DwarfSections {
             return super.getOrDecideContent(alreadyDecided, contentHint);
         }
 
+        @Override
         public void writeContent() {
             byte[] buffer = getContent();
             int size = buffer.length;
@@ -1377,9 +1384,9 @@ public class DwarfSections {
                 int lastpos = pos;
                 int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
                 int cuIndex = classEntry.getCUIndex();
-                LinkedList<PrimaryEntry> primaryEntries = classEntry.getPrimaryEntries();
+                LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
                 // add room for each entry into length count
-                length += primaryEntries.size() * 2 * 8;
+                length += classPrimaryEntries.size() * 2 * 8;
                 length += 2 * 8;
                 debug("  [0x%08x] %s CU %d length 0x%x\n", pos, classEntry.getFileName(), cuIndex, length);
                 pos = putInt(length, buffer, pos);
@@ -1393,9 +1400,9 @@ public class DwarfSections {
                     pos = putByte((byte) 0, buffer, pos);
                 }
                 debug("  [0x%08x] Address          Length           Name\n", pos);
-                for (PrimaryEntry primaryEntry : primaryEntries) {
-                    Range primary = primaryEntry.getPrimary();
-                    debug("  [0x%08x] %016x %016x %s\n", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getClassAndMethodName());
+                for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
+                    Range primary = classPrimaryEntry.getPrimary();
+                    debug("  [0x%08x] %016x %016x %s\n", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodName());
                     pos = putRelocatableCodeOffset(primary.getLo(), buffer, pos);
                     pos = putLong(primary.getHi() - primary.getLo(), buffer, pos);
                 }
@@ -1406,6 +1413,7 @@ public class DwarfSections {
             assert pos == size;
         }
 
+        @Override
         protected void debug(String format, Object... args) {
             super.debug(format, args);
         }
@@ -1468,6 +1476,7 @@ public class DwarfSections {
             return DW_LINE_SECTION_NAME;
         }
 
+        @Override
         public void createContent() {
             // we need to create a header, dir table, file table and line
             // number table encoding for each CU
@@ -1571,6 +1580,7 @@ public class DwarfSections {
             return super.getOrDecideContent(alreadyDecided, contentHint);
         }
 
+        @Override
         public void writeContent() {
             byte[] buffer = getContent();
 
@@ -1728,7 +1738,7 @@ public class DwarfSections {
                     long subLine = subrange.getLine();
                     long subAddressLo = subrange.getLo();
                     long subAddressHi = subrange.getHi();
-                    debug("  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getClassAndMethodName(), subLine);
+                    debug("  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodName(), subLine);
                     if (subLine < 0) {
                         // no line info so stay at previous file:line
                         subLine = line;
@@ -1841,6 +1851,7 @@ public class DwarfSections {
             return pos;
         }
 
+        @Override
         protected void debug(String format, Object... args) {
             if (((int) args[0] - debugBase) < 0x100000) {
                 super.debug(format, args);
