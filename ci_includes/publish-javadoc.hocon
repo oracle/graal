@@ -36,7 +36,7 @@ builds += [
         ["git", "diff", "--staged", "--quiet", "||", "git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ] ],
         ["git", "push", "origin", "gh-pages"],
     ],
-    targets : [post-merge],
+    targets : [ondemand],
     name: "graal-publish-javadoc"
   }
 ]
