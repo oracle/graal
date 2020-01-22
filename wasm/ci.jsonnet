@@ -10,9 +10,10 @@ local common = import 'ci_common/common.jsonnet';
 
     # Benchmark jobs.
     common.jdk8_bench_linux_wabt_emsdk + common.bench_graalwasm_emsdk_jvmci + {
-      name: 'gate-graalwasm-benchtest-linux-amd64',
+      name: 'bench-graalwasm-c-micro-benchmarks-linux-amd64',
       environment+: {
-        BENCH_RUNNER: 'run_micro_benchmarks.sh',
+        SUITE: 'wasm',
+        BENCH_RUNNER: 'run_c_micro_benchmarks.sh',
         BENCH_VM: 'server',
         BENCH_VM_CONFIG: 'graal-core',
       },

@@ -129,13 +129,15 @@
       ['mx', '--dy', '/compiler', 'build', '--all'],
     ],
     run+: [
-      'scripts/${BENCH_RUNNER}',
-      '${BENCH_RESULTS_FILE_PATH}',
-      '${BENCH_VM}',
-      '${BENCH_VM_CONFIG}',
-      'bench-uploader.py',
+      [
+        'scripts/${BENCH_RUNNER}',
+        '${BENCH_RESULTS_FILE_PATH}',
+        '${BENCH_VM}',
+        '${BENCH_VM_CONFIG}',
+        'bench-uploader.py',
+      ]
     ],
-    capabilities: self.linux.capabilities + [x52, no_frequency_scaling],
+    capabilities+: ['x52'],
   },
 
   jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
