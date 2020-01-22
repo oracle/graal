@@ -1,3 +1,29 @@
+/*
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
@@ -23,8 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class DwarfSections
-{
+public class DwarfSections {
     // names of the different sections we create or reference
     // in reverse dependency order
     public static final String TEXT_SECTION_NAME = ".text";
@@ -76,7 +101,7 @@ public class DwarfSections
     private static final byte DW_FLAG_false = 0;
     private static final byte DW_FLAG_true = 1;
     // value for DW_AT_language attribute with form DATA1
-    private final static byte DW_LANG_Java = 0xb;
+    private static final byte DW_LANG_Java = 0xb;
     // access not needed until we make functions members
     // DW_AT_Accessibility attribute values
     // private static final byte DW_ACCESS_public = 1;
@@ -90,30 +115,30 @@ public class DwarfSections
 
     // CIE and FDE entries
 
-    public final static int DW_CFA_CIE_id = -1;
-    public final static int DW_CFA_FDE_id = 0;
+    public static final int DW_CFA_CIE_id = -1;
+    public static final int DW_CFA_FDE_id = 0;
 
-    public final static byte DW_CFA_CIE_version = 1;
+    public static final byte DW_CFA_CIE_version = 1;
 
     // values for high 2 bits
-    public final static byte DW_CFA_advance_loc = 0x1;
-    public final static byte DW_CFA_offset = 0x2;
-    public final static byte DW_CFA_restore = 0x3;
+    public static final byte DW_CFA_advance_loc = 0x1;
+    public static final byte DW_CFA_offset = 0x2;
+    public static final byte DW_CFA_restore = 0x3;
 
     // values for low 6 bits
-    public final static byte DW_CFA_nop = 0x0;
-    public final static byte DW_CFA_set_loc1 = 0x1;
-    public final static byte DW_CFA_advance_loc1 = 0x2;
-    public final static byte DW_CFA_advance_loc2 = 0x3;
-    public final static byte DW_CFA_advance_loc4 = 0x4;
-    public final static byte DW_CFA_offset_extended = 0x5;
-    public final static byte DW_CFA_restore_extended = 0x6;
-    public final static byte DW_CFA_undefined = 0x7;
-    public final static byte DW_CFA_same_value = 0x8;
-    public final static byte DW_CFA_register = 0x9;
-    public final static byte DW_CFA_def_cfa = 0xc;
-    public final static byte DW_CFA_def_cfa_register = 0xd;
-    public final static byte DW_CFA_def_cfa_offset = 0xe;
+    public static final byte DW_CFA_nop = 0x0;
+    public static final byte DW_CFA_set_loc1 = 0x1;
+    public static final byte DW_CFA_advance_loc1 = 0x2;
+    public static final byte DW_CFA_advance_loc2 = 0x3;
+    public static final byte DW_CFA_advance_loc4 = 0x4;
+    public static final byte DW_CFA_offset_extended = 0x5;
+    public static final byte DW_CFA_restore_extended = 0x6;
+    public static final byte DW_CFA_undefined = 0x7;
+    public static final byte DW_CFA_same_value = 0x8;
+    public static final byte DW_CFA_register = 0x9;
+    public static final byte DW_CFA_def_cfa = 0xc;
+    public static final byte DW_CFA_def_cfa_register = 0xd;
+    public static final byte DW_CFA_def_cfa_offset = 0xe;
 
     private ELFMachine elfMachine;
     private DwarfStrSectionImpl dwarfStrSection;
@@ -164,7 +189,7 @@ public class DwarfSections
     }
 
     // a scratch buffer used during computation of a section's size
-    protected final static byte[] scratch = new byte[10];
+    protected static final byte[] scratch = new byte[10];
 
     // table listing all known strings
     private StringTable stringTable = new StringTable();
@@ -213,142 +238,6 @@ public class DwarfSections
     // index of already seen files
     private Map<String, FileEntry> filesIndex = new HashMap<>();
 
-    private static String[] root_pkgs = {
-            // substrate root packages
-            "com.oracle.graal.pointsto",
-            "com.oracle.objectfile",
-            "com.oracle.svm.agent",
-            "com.oracle.svm.configure",
-            "com.oracle.svm.core",
-            "com.oracle.svm.core.genscavenge",
-            "com.oracle.svm.core.graal",
-            "com.oracle.svm.core.graal.aarch64",
-            "com.oracle.svm.core.graal.amd64",
-            "com.oracle.svm.core.graal.llvm",
-            "com.oracle.svm.core.jdk11",
-            "com.oracle.svm.core.jdk8",
-            "com.oracle.svm.core.posix",
-            "com.oracle.svm.core.posix.jdk11",
-            "com.oracle.svm.core.windows",
-            "com.oracle.svm.driver",
-            "com.oracle.svm.graal",
-            "com.oracle.svm.graal.hotspot.libgraal",
-            "com.oracle.svm.hosted",
-            "com.oracle.svm.jline",
-            "com.oracle.svm.jni",
-            "com.oracle.svm.junit",
-            "com.oracle.svm.libffi",
-            "com.oracle.svm.native.jvm.posix",
-            "com.oracle.svm.native.jvm.windows",
-            "com.oracle.svm.native.libchelper",
-            "com.oracle.svm.native.strictmath",
-            "com.oracle.svm.polyglot",
-            "com.oracle.svm.reflect",
-            "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk11",
-            "com.oracle.svm.thirdparty",
-            "com.oracle.svm.truffle",
-            "com.oracle.svm.truffle.nfi",
-            "com.oracle.svm.truffle.nfi.posix",
-            "com.oracle.svm.truffle.nfi.windows",
-            "com.oracle.svm.tutorial",
-            "com.oracle.svm.util",
-            "com.oracle.svm.util.jdk11",
-            "org.graalvm.polyglot.nativeapi",
-            // compiler root packages
-            "jdk.tools.jaotc",
-            "jdk.tools.jaotc.binformat",
-            "jdk.tools.jaotc",
-            "org.graalvm.compiler.api.directives",
-            "org.graalvm.compiler.api.replacements",
-            "org.graalvm.compiler.api.runtime",
-            "org.graalvm.compiler.asm",
-            "org.graalvm.compiler.asm.aarch64",
-            "org.graalvm.compiler.asm.amd64",
-            "org.graalvm.compiler.asm.sparc",
-            "org.graalvm.compiler.bytecode",
-            "org.graalvm.compiler.code",
-            "org.graalvm.compiler.core",
-            "org.graalvm.compiler.core.aarch64",
-            "org.graalvm.compiler.core.amd64",
-            "org.graalvm.compiler.core.common",
-            "org.graalvm.compiler.core.llvm",
-            "org.graalvm.compiler.core.match.processor",
-            "org.graalvm.compiler.core.sparc",
-            "org.graalvm.compiler.debug",
-            "org.graalvm.compiler.graph",
-            "org.graalvm.compiler.hotspot",
-            "org.graalvm.compiler.hotspot.aarch64",
-            "org.graalvm.compiler.hotspot.amd64",
-            "org.graalvm.compiler.hotspot.jdk8",
-            "org.graalvm.compiler.hotspot.management",
-            "org.graalvm.compiler.hotspot.sparc",
-            "org.graalvm.compiler.java",
-            "org.graalvm.compiler.jtt",
-            "org.graalvm.compiler.lir",
-            "org.graalvm.compiler.lir.aarch64",
-            "org.graalvm.compiler.lir.amd64",
-            "org.graalvm.compiler.lir.jtt",
-            "org.graalvm.compiler.lir.sparc",
-            "org.graalvm.compiler.loop",
-            "org.graalvm.compiler.loop.phases",
-            "org.graalvm.compiler.microbenchmarks",
-            "org.graalvm.compiler.nodeinfo",
-            "org.graalvm.compiler.nodeinfo.processor",
-            "org.graalvm.compiler.nodes",
-            "org.graalvm.compiler.options",
-            "org.graalvm.compiler.options.processor",
-            "org.graalvm.compiler.phases",
-            "org.graalvm.compiler.phases.common",
-            "org.graalvm.compiler.printer",
-            "org.graalvm.compiler.processor",
-            "org.graalvm.compiler.replacements",
-            "org.graalvm.compiler.replacements.aarch64",
-            "org.graalvm.compiler.replacements.amd64",
-            "org.graalvm.compiler.replacements.processor",
-            "org.graalvm.compiler.replacements.sparc",
-            "org.graalvm.compiler.runtime",
-            "org.graalvm.compiler.serviceprovider",
-            "org.graalvm.compiler.serviceprovider.jdk8",
-            "org.graalvm.compiler.serviceprovider.processor",
-            "org.graalvm.compiler.truffle.common",
-            "org.graalvm.compiler.truffle.common.hotspot",
-            "org.graalvm.compiler.truffle.common.hotspot.libgraal",
-            "org.graalvm.compiler.truffle.common.processor",
-            "org.graalvm.compiler.truffle.compiler",
-            "org.graalvm.compiler.truffle.compiler.amd64",
-            "org.graalvm.compiler.truffle.compiler.hotspot",
-            "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
-            "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
-            "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
-            "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor",
-            "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
-            "org.graalvm.compiler.truffle.runtime",
-            "org.graalvm.compiler.truffle.runtime.hotspot",
-            "org.graalvm.compiler.truffle.runtime.hotspot.java",
-            "org.graalvm.compiler.truffle.runtime.hotspot.jdk8+13",
-            "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",
-            "org.graalvm.compiler.truffle.runtime.serviceprovider",
-            "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",
-            "org.graalvm.compiler.virtual",
-            "org.graalvm.compiler.virtual.bench",
-            "org.graalvm.compiler.word",
-            "org.graalvm.graphio",
-            "org.graalvm.libgraal",
-            "org.graalvm.libgraal.jdk8",
-            "org.graalvm.micro.benchmarks",
-            "org.graalvm.util",
-            // sdk root packages
-            "org.graalvm.collections",
-            "org.graalvm.launcher",
-            "org.graalvm.options",
-            "org.graalvm.polyglot",
-            "org.graalvm.home",
-            "org.graalvm.nativeimage",
-            "org.graalvm.polyglot.tck",
-            "org.graalvm.word",
-    };
-
     public String uniqueString(String string) {
         return stringTable.uniqueString(string);
     }
@@ -361,8 +250,7 @@ public class DwarfSections
         return stringTable.debugStringIndex(string);
     }
 
-    public void installDebugInfo(DebugInfoProvider debugInfoProvider)
-    {
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         DebugTypeInfoProvider typeInfoProvider = debugInfoProvider.typeInfoProvider();
         for (DebugTypeInfo debugTypeInfo : typeInfoProvider) {
             // install types
@@ -370,11 +258,10 @@ public class DwarfSections
 
         // ensure we have a null string in the string section
         uniqueDebugString("");
-        
+
         DebugCodeInfoProvider codeInfoProvider = debugInfoProvider.codeInfoProvider();
         for (DebugCodeInfo debugCodeInfo : codeInfoProvider) {
             // primary file name and full method name need to be written to the debug_str section
-            //
             String fileName = debugCodeInfo.fileName();
             String className = debugCodeInfo.className();
             String methodName = debugCodeInfo.methodName();
@@ -425,7 +312,7 @@ public class DwarfSections
         String fileName = range.getFileName();
         // ensure we have an entry
         FileEntry fileEntry = filesIndex.get(fileName);
-        if(fileEntry == null) {
+        if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(fileName);
             String baseName = (dirEntry == null ? fileName : fileName.substring(dirEntry.getPath().length() + 1));
             fileEntry = new FileEntry(stringTable.uniqueDebugString(fileName),
@@ -434,7 +321,7 @@ public class DwarfSections
             files.add(fileEntry);
             filesIndex.put(fileName, fileEntry);
             // if this is a primary entry then add it to the primary list
-            if(range.isPrimary()) {
+            if (range.isPrimary()) {
                 primaryFiles.add(fileEntry);
             } else {
                 Range primaryRange = range.getPrimary();
@@ -445,8 +332,7 @@ public class DwarfSections
         return fileEntry;
     }
 
-    public void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize)
-    {
+    public void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
         PrimaryEntry entry = classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
@@ -456,8 +342,7 @@ public class DwarfSections
         }
     }
 
-    public void addSubRange(Range primaryRange, Range subrange)
-    {
+    public void addSubRange(Range primaryRange, Range subrange) {
         assert primaryRange.isPrimary();
         assert !subrange.isPrimary();
         String className = primaryRange.getClassName();
@@ -469,10 +354,9 @@ public class DwarfSections
         classEntry.addSubRange(subrange, subrangeEntry);
     }
 
-    private DirEntry ensureDirEntry(String file)
-    {
+    private DirEntry ensureDirEntry(String file) {
         int pathLength = file.lastIndexOf('/');
-        if(pathLength < 0) {
+        if (pathLength < 0) {
             // no path/package means use dir entry 0
             return null;
         }
@@ -489,9 +373,9 @@ public class DwarfSections
     // shared implementation methods to manage content creation
     public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         public boolean debug = false;
-        public long debug_text_base = 0;
-        public long debug_address = 0;
-        public int debug_base = 0;
+        public long debugTextBase = 0;
+        public long debugAddress = 0;
+        public int debugBase = 0;
 
         public DwarfSectionImpl() {
         }
@@ -505,14 +389,13 @@ public class DwarfSections
             String envVarName =  "DWARF_" + getSectionName().substring(1).toUpperCase();
             if (System.getenv(envVarName) != null) {
                 debug = true;
-                debug_base = pos;
-                debug_address = debug_text_base;
+                debugBase = pos;
+                debugAddress = debugTextBase;
             }
         }
 
-        protected void debug(String format, Object ... args)
-        {
-            if(debug) {
+        protected void debug(String format, Object ... args) {
+            if (debug) {
                 System.out.format(format, args);
             }
         }
@@ -556,11 +439,11 @@ public class DwarfSections
                 byte b = (byte) (l & 0x7f);
                 l = l >>> 7;
                 boolean done = (l == 0);
-                if(!done) {
+                if (!done) {
                     b = (byte) (b | 0x80);
                 }
                 pos = putByte(b, buffer, pos);
-                if(done) {
+                if (done) {
                     break;
                 }
             }
@@ -573,11 +456,11 @@ public class DwarfSections
                 l = l >> 7;
                 boolean bIsSigned = (b & 0x40) != 0;
                 boolean done = ((bIsSigned && l == -1) || (!bIsSigned && l == 0));
-                if(!done) {
+                if (!done) {
                     b = (byte) (b | 0x80);
                 }
                 pos = putByte(b, buffer, pos);
-                if(done) {
+                if (done) {
                     break;
                 }
             }
@@ -589,7 +472,7 @@ public class DwarfSections
         public int putAsciiStringBytes(String s, int startChar, byte[] buffer, int pos) {
             for (int l = startChar; l < s.length(); l++) {
                 char c = s.charAt(l);
-                if(c > 127) {
+                if (c > 127) {
                     throw new RuntimeException("oops : expected ASCII string! " + s);
                 }
                 buffer[pos++] = (byte) c;
@@ -630,7 +513,7 @@ public class DwarfSections
             }
         }
 
-        public int writeAttr_addr(long address, byte[] buffer, int pos) {
+        public int writeAttrAddress(long address, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + 8;
             } else {
@@ -638,7 +521,7 @@ public class DwarfSections
             }
         }
 
-        public int writeAttr_data8(long value, byte[] buffer, int pos) {
+        public int writeAttrData8(long value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putLong(value, scratch, 0);
             } else {
@@ -646,7 +529,7 @@ public class DwarfSections
             }
         }
 
-        public int writeAttr_data4(int value, byte[] buffer, int pos) {
+        public int writeAttrData4(int value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putInt(value, scratch, 0);
             } else {
@@ -654,7 +537,7 @@ public class DwarfSections
             }
         }
 
-        public int writeAttr_data1(byte value, byte[] buffer, int pos) {
+        public int writeAttrData1(byte value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putByte(value, scratch, 0);
             } else {
@@ -662,7 +545,7 @@ public class DwarfSections
             }
         }
 
-        public int writeAttr_null(byte[] buffer, int pos) {
+        public int writeAttrNull(byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putSLEB(0, scratch, 0);
             } else {
@@ -693,11 +576,10 @@ public class DwarfSections
         }
 
         @Override
-        public Set<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions)
-        {
+        public Set<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
             Set<BuildDependency> deps = super.getDependencies(decisions);
             String targetName = targetSectionName();
-            ELFSection targetSection = (ELFSection)getElement().getOwner().elementForName(targetName);
+            ELFSection targetSection = (ELFSection) getElement().getOwner().elementForName(targetName);
             LayoutDecision ourContent =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourSize =  decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
             LayoutDecision.Kind[] targetKinds = targetSectionKinds();
@@ -727,7 +609,7 @@ public class DwarfSections
         public void createContent() {
             int pos = 0;
             for (StringEntry  stringEntry : stringTable) {
-                if (stringEntry.isAddToStrSection()){
+                if (stringEntry.isAddToStrSection()) {
                     stringEntry.setOffset(pos);
                     String string = stringEntry.getString();
                     pos += string.length() + 1;
@@ -746,7 +628,7 @@ public class DwarfSections
             checkDebug(pos);
 
             for (StringEntry  stringEntry : stringTable) {
-                if (stringEntry.isAddToStrSection()){
+                if (stringEntry.isAddToStrSection()) {
                     assert stringEntry.getOffset() == pos;
                     String string = stringEntry.getString();
                     pos = putAsciiStringBytes(string, buffer, pos);
@@ -760,18 +642,18 @@ public class DwarfSections
         }
 
         // .debug_str section content depends on text section content and offset
-        public final static String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
     }
 
@@ -787,8 +669,7 @@ public class DwarfSections
         }
 
         @Override
-        public void createContent()
-        {
+        public void createContent() {
             int pos = 0;
             // an abbrev table contains abbrev entries for one or
             // more CUs. the table includes a sequence of abbrev
@@ -838,8 +719,7 @@ public class DwarfSections
         }
 
         @Override
-        public void writeContent()
-        {
+        public void writeContent() {
             byte[] buffer = getContent();
             int size = buffer.length;
             int pos = 0;
@@ -912,18 +792,18 @@ public class DwarfSections
         }
 
         // .debug_abbrev section content depends on .debug_frame section content and offset
-        public final static String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
     }
 
@@ -939,8 +819,7 @@ public class DwarfSections
         }
 
         @Override
-        public void createContent()
-        {
+        public void createContent() {
             int pos = 0;
 
             // the frame section contains one CIE at offset 0
@@ -953,8 +832,7 @@ public class DwarfSections
         }
 
         @Override
-        public void writeContent()
-        {
+        public void writeContent() {
             byte[] buffer = getContent();
             int size = buffer.length;
             int pos = 0;
@@ -991,7 +869,7 @@ public class DwarfSections
                 pos += putAsciiStringBytes("", scratch, 0);
                 pos += putULEB(1, scratch, 0);
                 pos += putULEB(-8, scratch, 0);
-                pos += putByte((byte)getPCIdx(), scratch, 0);
+                pos += putByte((byte) getPCIdx(), scratch, 0);
                 // write insns to set up empty frame
                 pos = writeInitialInstructions(buffer, pos);
                 // pad to word alignment
@@ -1006,7 +884,7 @@ public class DwarfSections
                 pos = putAsciiStringBytes("", buffer, pos);
                 pos = putULEB(1, buffer, pos);
                 pos = putSLEB(-8, buffer, pos);
-                pos = putByte((byte)getPCIdx(), buffer, pos);
+                pos = putByte((byte) getPCIdx(), buffer, pos);
                 // write insns to set up empty frame
                 pos = writeInitialInstructions(buffer, pos);
                 // pad to word alignment
@@ -1024,7 +902,7 @@ public class DwarfSections
                     int frameSize = primaryEntry.getFrameSize();
                     int currentOffset = 0;
                     int lengthPos = pos;
-                    pos = writeFDEHeader((int)lo, (int)hi, buffer, pos);
+                    pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
                     for (DebugFrameSizeChange debugFrameSizeInfo : primaryEntry.getFrameSizeInfos()) {
                         int advance = debugFrameSizeInfo.getOffset() - currentOffset;
                         currentOffset += advance;
@@ -1103,9 +981,9 @@ public class DwarfSections
         public int writeAdvanceLoc(int offset, byte[] buffer, int pos) {
             if (offset <= 0x3f) {
                 return writeAdvanceLoc0((byte) offset, buffer, pos);
-            } else if(offset <= 0xff) {
+            } else if (offset <= 0xff) {
                 return writeAdvanceLoc1((byte) offset, buffer, pos);
-            } else if(offset <= 0xffff) {
+            } else if (offset <= 0xffff) {
                 return writeAdvanceLoc2((short) offset, buffer, pos);
             } else {
                 return writeAdvanceLoc4(offset, buffer, pos);
@@ -1179,32 +1057,32 @@ public class DwarfSections
             super.debug(format, args);
         }
         // .debug_frame section content depends on .debug_line section content and offset
-        public final static String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
         private byte offsetOp(int register) {
             assert (register >> 6) == 0;
-            return (byte)((DW_CFA_offset << 6) | register);
+            return (byte) ((DW_CFA_offset << 6) | register);
         }
         private byte advanceLoc0Op(int offset) {
             assert (offset >= 0 && offset <= 0x3f);
-            return (byte)((DW_CFA_advance_loc << 6) | offset);
+            return (byte) ((DW_CFA_advance_loc << 6) | offset);
         }
     }
-    public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl
-    {
-        public final static int DW_CFA_RSP_IDX = 7;
-        public final static int DW_CFA_RIP_IDX = 16;
+
+    public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
+        public static final int DW_CFA_RSP_IDX = 7;
+        public static final int DW_CFA_RIP_IDX = 16;
 
         public DwarfFrameSectionImplX86_64() {
             super();
@@ -1218,8 +1096,7 @@ public class DwarfSections
             return DW_CFA_RSP_IDX;
         }
         @Override
-        public int writeInitialInstructions(byte[] buffer, int pos)
-        {
+        public int writeInitialInstructions(byte[] buffer, int pos) {
             // rsp points at the word containing the saved rip
             // so the frame base (cfa) is at rsp + 8 (why not - ???)
             // def_cfa r7 (sp) offset 8
@@ -1230,27 +1107,26 @@ public class DwarfSections
             return pos;
         }
     }
-    public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl
-    {
-        public final static int DW_CFA_FP_IDX = 29;
-        public final static int DW_CFA_LR_IDX = 30;
-        public final static int DW_CFA_SP_IDX = 31;
-        public final static int DW_CFA_PC_IDX = 32;
+
+    public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
+        public static final int DW_CFA_FP_IDX = 29;
+        public static final int DW_CFA_LR_IDX = 30;
+        public static final int DW_CFA_SP_IDX = 31;
+        public static final int DW_CFA_PC_IDX = 32;
 
         public DwarfFrameSectionImplAArch64() {
             super();
         }
         @Override
-        public int getPCIdx(){
+        public int getPCIdx() {
             return DW_CFA_PC_IDX;
         }
         @Override
-        public int getSPIdx(){
+        public int getSPIdx() {
             return DW_CFA_SP_IDX;
         }
         @Override
-        public int writeInitialInstructions(byte[] buffer, int pos)
-        {
+        public int writeInitialInstructions(byte[] buffer, int pos) {
             // rsp has not been updated
             // caller pc is in lr
             // register r32 (rpc), r30 (lr)
@@ -1259,25 +1135,21 @@ public class DwarfSections
         }
     }
 
-    public class DwarfInfoSectionImpl extends DwarfSectionImpl
-    {
+    public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         // header section always contains fixed number of bytes
         private static final int DW_DIE_HEADER_SIZE = 11;
 
-        public DwarfInfoSectionImpl()
-        {
+        public DwarfInfoSectionImpl() {
             super();
         }
 
         @Override
-        public String getSectionName()
-        {
+        public String getSectionName() {
             return DW_INFO_SECTION_NAME;
         }
 
         @Override
-        public void createContent()
-        {
+        public void createContent() {
             // we need a single level 0 DIE for each compilation unit (CU)
             // Each CU's Level 0 DIE is preceded by a fixed header:
             // and terminated by a null DIE
@@ -1319,8 +1191,7 @@ public class DwarfSections
         }
 
         @Override
-        public void writeContent()
-        {
+        public void writeContent() {
             byte[] buffer = getContent();
             int size = buffer.length;
             int pos = 0;
@@ -1346,55 +1217,53 @@ public class DwarfSections
 
         public int writeCUHeader(byte[] buffer, int pos) {
             if (buffer == null) {
-                pos += putInt(0, scratch, 0);           // CU length
-                pos += putShort(DW_VERSION_2, scratch, 0);        // dwarf version
-                pos += putInt(0, scratch, 0);           // abbrev offset
-                return pos + putByte((byte)8, scratch, 0); // address size
+                pos += putInt(0, scratch, 0);            // CU length
+                pos += putShort(DW_VERSION_2, scratch, 0);  // dwarf version
+                pos += putInt(0, scratch, 0);            // abbrev offset
+                return pos + putByte((byte) 8, scratch, 0); // address size
             } else {
-                pos = putInt(0, buffer, pos);                // CU length
-                pos = putShort(DW_VERSION_2, buffer, pos);            // dwarf version
-                pos = putInt(0, buffer, pos);               // abbrev offset
-                return putByte((byte)8, buffer, pos);           // address size
+                pos = putInt(0, buffer, pos);                 // CU length
+                pos = putShort(DW_VERSION_2, buffer, pos);       // dwarf version
+                pos = putInt(0, buffer, pos);                 // abbrev offset
+                return putByte((byte) 8, buffer, pos);           // address size
             }
         }
-        public int writeCU(ClassEntry classEntry, byte[] buffer, int pos)
-        {
+        public int writeCU(ClassEntry classEntry, byte[] buffer, int pos) {
             LinkedList<PrimaryEntry> primaryEntries = classEntry.getPrimaryEntries();
             debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
             pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
             debug("  [0x%08x]     language  %s\n", pos, "DW_LANG_Java");
-            pos = writeAttr_data1(DW_LANG_Java, buffer, pos);
+            pos = writeAttrData1(DW_LANG_Java, buffer, pos);
             debug("  [0x%08x]     name  0x%x (%s)\n", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
-            pos = writeAttr_strp(classEntry.getFileName(), buffer, pos);
+            pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
             debug("  [0x%08x]     low_pc  0x%08x\n", pos, primaryEntries.getFirst().getPrimary().getLo());
-            pos = writeAttr_addr(primaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
+            pos = writeAttrAddress(primaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
             debug("  [0x%08x]     hi_pc  0x%08x\n", pos, primaryEntries.getLast().getPrimary().getHi());
-            pos = writeAttr_addr(primaryEntries.getLast().getPrimary().getHi(), buffer, pos);
+            pos = writeAttrAddress(primaryEntries.getLast().getPrimary().getHi(), buffer, pos);
             debug("  [0x%08x]     stmt_list  0x%08x\n", pos, classEntry.getLineIndex());
-            pos = writeAttr_data4(classEntry.getLineIndex(), buffer, pos);
+            pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
             for (PrimaryEntry primary : primaryEntries) {
                 pos = writePrimary(primary, buffer, pos);
             }
             // write a terminating null attribute for the the level 2 primaries
-            return writeAttr_null(buffer, pos);
+            return writeAttrNull(buffer, pos);
 
         }
-        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int pos)
-        {
+        public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int pos)        {
             Range primary = primaryEntry.getPrimary();
             debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
             pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
             debug("  [0x%08x]     name  0x%X (%s)\n", pos, debugStringIndex(primary.getClassAndMethodNameWithParams()), primary.getClassAndMethodNameWithParams());
-            pos = writeAttr_strp(primary.getClassAndMethodNameWithParams(), buffer, pos);
+            pos = writeAttrStrp(primary.getClassAndMethodNameWithParams(), buffer, pos);
             debug("  [0x%08x]     low_pc  0x%08x\n", pos, primary.getLo());
-            pos = writeAttr_addr(primary.getLo(), buffer, pos);
+            pos = writeAttrAddress(primary.getLo(), buffer, pos);
             debug("  [0x%08x]     high_pc  0x%08x\n", pos, primary.getHi());
-            pos = writeAttr_addr(primary.getHi(), buffer, pos);
+            pos = writeAttrAddress(primary.getHi(), buffer, pos);
             // need to pass true only if method is public
             debug("  [0x%08x]     external  true\n", pos);
             return writeFlag(DW_FLAG_true, buffer, pos);
         }
-        public int writeAttr_strp(String value, byte[] buffer, int pos) {
+        public int writeAttrStrp(String value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + putInt(0, scratch, 0);
             } else {
@@ -1402,7 +1271,7 @@ public class DwarfSections
                 return putInt(idx, buffer, pos);
             }
         }
-        public int writeAttr_string(String value, byte[] buffer, int pos) {
+        public int writeAttrString(String value, byte[] buffer, int pos) {
             if (buffer == null) {
                 return pos + value.length() + 1;
             } else {
@@ -1410,7 +1279,7 @@ public class DwarfSections
             }
         }
         protected void debug(String format, Object... args) {
-            if (((int) args[0] - debug_base) < 0x100000) {
+            if (((int) args[0] - debugBase) < 0x100000) {
                 super.debug(format, args);
             } else if (format.startsWith("  [0x%08x] primary file")) {
                 super.debug(format, args);
@@ -1418,18 +1287,18 @@ public class DwarfSections
         }
 
         // .debug_info section content depends on abbrev section content and offset
-        public final static String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
     }
 
@@ -1446,8 +1315,7 @@ public class DwarfSections
             return DW_ARANGES_SECTION_NAME;
         }
 
-        public void createContent()
-        {
+        public void createContent() {
             int pos = 0;
             // we need an entry for each compilation unit
             //
@@ -1470,7 +1338,7 @@ public class DwarfSections
             // where N is the number of ranges belonging to the compilation unit
             // and the last range contains two zeroes
 
-            for(ClassEntry classEntry : primaryClasses) {
+            for (ClassEntry classEntry : primaryClasses) {
                 pos += DW_AR_HEADER_SIZE;
                 // align to 2 * address size
                 pos += DW_AR_HEADER_PAD_SIZE;
@@ -1482,8 +1350,7 @@ public class DwarfSections
         }
 
         @Override
-        public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint)
-        {
+        public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
             Element textElement = getElement().getOwner().elementForName(".text");
             LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
             if (decisionMap != null) {
@@ -1492,14 +1359,13 @@ public class DwarfSections
                     // this may not be the final vaddr for the text segment
                     // but it will be close enough to make debug easier
                     // i.e. to within a 4k page or two
-                    debug_text_base = ((Number)valueObj).longValue();
+                    debugTextBase = ((Number) valueObj).longValue();
                 }
             }
             return super.getOrDecideContent(alreadyDecided, contentHint);
         }
 
-        public void writeContent()
-        {
+        public void writeContent() {
             byte[] buffer = getContent();
             int size = buffer.length;
             int pos = 0;
@@ -1507,7 +1373,7 @@ public class DwarfSections
             checkDebug(pos);
 
             debug("  [0x%08x] DEBUG_ARANGES\n", pos);
-            for(ClassEntry classEntry : primaryClasses) {
+            for (ClassEntry classEntry : primaryClasses) {
                 int lastpos = pos;
                 int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
                 int cuIndex = classEntry.getCUIndex();
@@ -1517,19 +1383,19 @@ public class DwarfSections
                 length += 2 * 8;
                 debug("  [0x%08x] %s CU %d length 0x%x\n", pos, classEntry.getFileName(), cuIndex, length);
                 pos = putInt(length, buffer, pos);
-                pos = putShort(DW_VERSION_2,buffer, pos); // dwarf version is always 2
+                pos = putShort(DW_VERSION_2, buffer, pos); // dwarf version is always 2
                 pos = putInt(cuIndex, buffer, pos);
-                pos = putByte((byte)8, buffer, pos); // address size is always 8
-                pos = putByte((byte)0, buffer, pos); // segment size is always 0
+                pos = putByte((byte) 8, buffer, pos); // address size is always 8
+                pos = putByte((byte) 0, buffer, pos); // segment size is always 0
                 assert (pos - lastpos) == DW_AR_HEADER_SIZE;
                 // align to 2 * address size
                 for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
-                    pos = putByte((byte)0, buffer, pos);
+                    pos = putByte((byte) 0, buffer, pos);
                 }
                 debug("  [0x%08x] Address          Length           Name\n", pos);
                 for (PrimaryEntry primaryEntry : primaryEntries) {
                     Range primary = primaryEntry.getPrimary();
-                    debug("  [0x%08x] %016x %016x %s\n", pos, debug_text_base + primary.getLo(), primary.getHi() - primary.getLo(), primary.getClassAndMethodName());
+                    debug("  [0x%08x] %016x %016x %s\n", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getClassAndMethodName());
                     pos = putRelocatableCodeOffset(primary.getLo(), buffer, pos);
                     pos = putLong(primary.getHi() - primary.getLo(), buffer, pos);
                 }
@@ -1545,18 +1411,18 @@ public class DwarfSections
         }
 
         // .debug_aranges section content depends on .debug_info section content and offset
-        public final static String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
    }
 
@@ -1686,12 +1552,11 @@ public class DwarfSections
         public int computeLineNUmberTableSize(ClassEntry classEntry) {
             // sigh -- we have to do this by generating the
             // content even though we cannot write it into a byte[]
-            return writeLineNumberTable(classEntry,null, 0);
+            return writeLineNumberTable(classEntry, null, 0);
         }
 
         @Override
-        public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint)
-        {
+        public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
             Element textElement = getElement().getOwner().elementForName(".text");
             LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
             if (decisionMap != null) {
@@ -1700,7 +1565,7 @@ public class DwarfSections
                     // this may not be the final vaddr for the text segment
                     // but it will be close enough to make debug easier
                     // i.e. to within a 4k page or two
-                    debug_text_base = ((Number)valueObj).longValue();
+                    debugTextBase = ((Number) valueObj).longValue();
                 }
             }
             return super.getOrDecideContent(alreadyDecided, contentHint);
@@ -1733,8 +1598,7 @@ public class DwarfSections
             assert pos == buffer.length;
         }
 
-        public int writeHeader(ClassEntry classEntry, byte[] buffer, int pos)
-        {
+        public int writeHeader(ClassEntry classEntry, byte[] buffer, int pos) {
             // 4 ubyte length field
             pos = putInt(classEntry.getTotalSize() - 4, buffer, pos);
             // 2 ubyte version is always 2
@@ -1769,8 +1633,7 @@ public class DwarfSections
             return pos;
         }
 
-        public int writeDirTable(ClassEntry classEntry, byte[] buffer, int pos)
-        {
+        public int writeDirTable(ClassEntry classEntry, byte[] buffer, int pos) {
             debug("  [0x%08x] Dir  Name\n", pos);
             // write out the list of dirs referenced form this file entry
             int dirIdx = 1;
@@ -1785,8 +1648,7 @@ public class DwarfSections
             return pos;
         }
 
-        public int writeFileTable(ClassEntry classEntry, byte[] buffer, int pos)
-        {
+        public int writeFileTable(ClassEntry classEntry, byte[] buffer, int pos) {
             int fileIdx = 1;
             debug("  [0x%08x] Entry Dir  Name\n", pos);
             for (FileEntry localEntry : classEntry.getLocalFiles()) {
@@ -1806,12 +1668,11 @@ public class DwarfSections
             return pos;
         }
 
-        public int debug_line = 1;
-        public int debug_copy_count = 0;
+        public int debugLine = 1;
+        public int debugCopyCount = 0;
 
 
-        public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int pos)
-        {
+        public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int pos) {
             // the primary file entry should always be first in the local files list
             assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
             String primaryClassName = classEntry.getClassName();
@@ -1828,10 +1689,10 @@ public class DwarfSections
                 // at the start of each sequence because we always post an
                 // end_sequence when we finish all the subranges in the method
                 long line = primaryRange.getLine();
-                if(line < 0 && primaryEntry.getSubranges().size() > 0) {
+                if (line < 0 && primaryEntry.getSubranges().size() > 0) {
                     line = primaryEntry.getSubranges().get(0).getLine();
                 }
-                if(line < 0) {
+                if (line < 0) {
                     line = 0;
                 }
                 long address = primaryRange.getLo();
@@ -1842,7 +1703,7 @@ public class DwarfSections
                 // boolean end_sequence = false;
                 // set state for primary
 
-                debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debug_text_base + primaryRange.getLo(), debug_text_base + primaryRange.getHi(), primaryRange.getFullMethodName(), primaryRange.getLine());
+                debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(), primaryRange.getLine());
 
                 // initialize and write a row for the start of the primary method
                 pos = putSetFile(file, fileIdx, buffer, pos);
@@ -1851,7 +1712,7 @@ public class DwarfSections
                 pos = putSetAddress(address, buffer, pos);
                 // state machine value of line is currently 1
                 // increment to desired line
-                if(line != 1) {
+                if (line != 1) {
                     pos = putAdvanceLine(line - 1, buffer, pos);
                 }
                 pos = putCopy(buffer, pos);
@@ -1867,8 +1728,8 @@ public class DwarfSections
                     long subLine = subrange.getLine();
                     long subAddressLo = subrange.getLo();
                     long subAddressHi = subrange.getHi();
-                    debug("  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d\n", pos, debug_text_base + subAddressLo, debug_text_base + subAddressHi, subrange.getClassAndMethodName(), subLine);
-                    if(subLine < 0) {
+                    debug("  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getClassAndMethodName(), subLine);
+                    if (subLine < 0) {
                         // no line info so stay at previous file:line
                         subLine = line;
                         subfile = file;
@@ -1886,7 +1747,7 @@ public class DwarfSections
                     // so the code below is not actually needed. it is left in
                     // to clarify i) that this is a deliberate choice and ii) what
                     // that deliberate choice is avoiding.
-                    if(address < hiAddress && hiAddress < subAddressLo) {
+                    if (address < hiAddress && hiAddress < subAddressLo) {
                         long addressDelta = hiAddress - address;
                         // increment address to hi address, write an
                         // end sequence and update state to new range
@@ -1908,7 +1769,7 @@ public class DwarfSections
                     }
                     */
                     // if we have to update to a new file then do so
-                    if(subFileIdx != fileIdx) {
+                    if (subFileIdx != fileIdx) {
                         // update the current file
                         pos = putSetFile(subfile, (long) subFileIdx, buffer, pos);
                         file = subfile;
@@ -1919,21 +1780,21 @@ public class DwarfSections
                     long lineDelta = subLine - line;
                     long addressDelta = subAddressLo - address;
                     byte opcode = isSpecialOpcode(addressDelta, lineDelta);
-                    if(opcode != DW_LNS_undefined) {
+                    if (opcode != DW_LNS_undefined) {
                         // ignore pointless write when addressDelta == lineDelta == 0
-                        if(addressDelta != 0 || lineDelta != 0) {
+                        if (addressDelta != 0 || lineDelta != 0) {
                             pos = putSpecialOpcode(opcode, buffer, pos);
                         }
                     } else {
                         // does it help to divide and conquer using
                         // a fixed address increment
                         int remainder = isConstAddPC(addressDelta);
-                        if(remainder > 0) {
+                        if (remainder > 0) {
                             pos = putConstAddPC(buffer, pos);
                             // the remaining address can be handled with a
                             // special opcode but what about the line delta
                             opcode = isSpecialOpcode(remainder, lineDelta);
-                            if(opcode != DW_LNS_undefined) {
+                            if (opcode != DW_LNS_undefined) {
                                 // address remainder and line now fit
                                 pos = putSpecialOpcode(opcode, buffer, pos);
                             } else {
@@ -1946,14 +1807,14 @@ public class DwarfSections
                             }
                         } else {
                             // increment line and pc separately
-                            if(lineDelta != 0) {
+                            if (lineDelta != 0) {
                                 pos = putAdvanceLine(lineDelta, buffer, pos);
                             }
                             // n.b. we might just have had an out of range line increment
                             // with a zero address increment
-                            if(addressDelta > 0) {
+                            if (addressDelta > 0) {
                                 // see if we can use a ushort for the increment
-                                if(isFixedAdvancePC(addressDelta)) {
+                                if (isFixedAdvancePC(addressDelta)) {
                                     pos = putFixedAdvancePC((short) addressDelta, buffer, pos);
                                 } else {
                                     pos = putAdvancePC(addressDelta, buffer, pos);
@@ -1968,7 +1829,7 @@ public class DwarfSections
                     hiAddress = subAddressHi;
                 }
                 // append a final end sequence just below the next primary range
-                if(address < primaryRange.getHi()) {
+                if (address < primaryRange.getHi()) {
                     long addressDelta = primaryRange.getHi() - address;
                     // increment address before we write the end sequence
                     pos = putAdvancePC(addressDelta, buffer, pos);
@@ -1980,59 +1841,54 @@ public class DwarfSections
             return pos;
         }
 
-        protected void debug(String format, Object... args)
-        {
-            if (((int) args[0] - debug_base) < 0x100000) {
+        protected void debug(String format, Object... args) {
+            if (((int) args[0] - debugBase) < 0x100000) {
                 super.debug(format, args);
             } else if (format.startsWith("  [0x%08x] primary file")) {
                 super.debug(format, args);
             }
         }
 
-        public int putCopy(byte[] buffer, int pos)
-        {
+        public int putCopy(byte[] buffer, int pos) {
             byte opcode = DW_LNS_copy;
-            if(buffer == null) {
+            if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
-                debug_copy_count++;
-                debug("  [0x%08x] Copy %d\n", pos, debug_copy_count);
+                debugCopyCount++;
+                debug("  [0x%08x] Copy %d\n", pos, debugCopyCount);
                 return putByte(opcode, buffer, pos);
             }
         }
 
-        public int putAdvancePC(long uleb, byte[] buffer, int pos)
-        {
+        public int putAdvancePC(long uleb, byte[] buffer, int pos) {
             byte opcode = DW_LNS_advance_pc;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
             } else {
-                debug_address += uleb;
-                debug("  [0x%08x] Advance PC by %d to 0x%08x\n", pos, uleb, debug_address);
+                debugAddress += uleb;
+                debug("  [0x%08x] Advance PC by %d to 0x%08x\n", pos, uleb, debugAddress);
                 pos = putByte(opcode, buffer, pos);
                 return putULEB(uleb, buffer, pos);
             }
         }
 
-        public int putAdvanceLine(long sleb, byte[] buffer, int pos)
-        {
+        public int putAdvanceLine(long sleb, byte[] buffer, int pos) {
             byte opcode = DW_LNS_advance_line;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putSLEB(sleb, scratch, 0);
             } else {
-                debug_line += sleb;
-                debug("  [0x%08x] Advance Line by %d to %d\n", pos, sleb, debug_line);
+                debugLine += sleb;
+                debug("  [0x%08x] Advance Line by %d to %d\n", pos, sleb, debugLine);
                 pos = putByte(opcode, buffer, pos);
                 return putSLEB(sleb, buffer, pos);
             }
         }
 
-        public int putSetFile(String file, long uleb, byte[] buffer, int pos)
-        {
+        public int putSetFile(String file, long uleb, byte[] buffer, int pos) {
             byte opcode = DW_LNS_set_file;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
             } else {
@@ -2042,10 +1898,9 @@ public class DwarfSections
             }
         }
 
-        public int putSetColumn(long uleb, byte[] buffer, int pos)
-        {
+        public int putSetColumn(long uleb, byte[] buffer, int pos) {
             byte opcode = DW_LNS_set_column;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putULEB(uleb, scratch, 0);
             } else {
@@ -2054,20 +1909,18 @@ public class DwarfSections
             }
         }
 
-        public int putNegateStmt(byte[] buffer, int pos)
-        {
+        public int putNegateStmt(byte[] buffer, int pos) {
             byte opcode = DW_LNS_negate_stmt;
-            if(buffer == null) {
+            if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
                 return putByte(opcode, buffer, pos);
             }
         }
 
-        public int putSetBasicBlock(byte[] buffer, int pos)
-        {
+        public int putSetBasicBlock(byte[] buffer, int pos) {
             byte opcode = DW_LNS_set_basic_block;
-            if(buffer == null) {
+            if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
                 debug("  [0x%08x] Set basic block\n", pos);
@@ -2075,46 +1928,43 @@ public class DwarfSections
             }
         }
 
-        public int putConstAddPC(byte[] buffer, int pos)
-        {
+        public int putConstAddPC(byte[] buffer, int pos) {
             byte opcode = DW_LNS_const_add_pc;
-            if(buffer == null) {
+            if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
                 int advance = opcodeAddress((byte) 255);
-                debug_address += advance;
-                debug("  [0x%08x] Advance PC by constant %d to 0x%08x\n", pos, advance, debug_address);
+                debugAddress += advance;
+                debug("  [0x%08x] Advance PC by constant %d to 0x%08x\n", pos, advance, debugAddress);
                 return putByte(opcode, buffer, pos);
             }
         }
 
-        public int putFixedAdvancePC(short arg, byte[] buffer, int pos)
-        {
+        public int putFixedAdvancePC(short arg, byte[] buffer, int pos) {
             byte opcode = DW_LNS_fixed_advance_pc;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putShort(arg, scratch, 0);
             } else {
-                debug_address += arg;
-                debug("  [0x%08x] Fixed advance Address by %d to 0x%08x\n", pos, arg, debug_address);
+                debugAddress += arg;
+                debug("  [0x%08x] Fixed advance Address by %d to 0x%08x\n", pos, arg, debugAddress);
                 pos = putByte(opcode, buffer, pos);
                 return putShort(arg, buffer, pos);
             }
         }
 
-        public int putEndSequence(byte[] buffer, int pos)
-        {
+        public int putEndSequence(byte[] buffer, int pos) {
             byte opcode = DW_LNE_end_sequence;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
                 // insert extended insn byte count as ULEB
                 pos = pos + putULEB(1, scratch, 0);
                 return pos + putByte(opcode, scratch, 0);
             } else {
                 debug("  [0x%08x] Extended opcode 1: End sequence\n", pos);
-                debug_address = debug_text_base;
-                debug_line = 1;
-                debug_copy_count = 0;
+                debugAddress = debugTextBase;
+                debugLine = 1;
+                debugCopyCount = 0;
                 pos = putByte(DW_LNS_extended_prefix, buffer, pos);
                 // insert extended insn byte count as ULEB
                 pos = putULEB(1, buffer, pos);
@@ -2122,18 +1972,17 @@ public class DwarfSections
             }
         }
 
-        public int putSetAddress(long arg, byte[] buffer, int pos)
-        {
+        public int putSetAddress(long arg, byte[] buffer, int pos) {
             byte opcode = DW_LNE_set_address;
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
                 // insert extended insn byte count as ULEB
                 pos = pos + putULEB(9, scratch, 0);
                 pos = pos + putByte(opcode, scratch, 0);
                 return pos + putLong(arg, scratch, 0);
             } else {
-                debug_address = debug_text_base + (int) arg;
-                debug("  [0x%08x] Extended opcode 2: Set Address to 0x%08x\n", pos, debug_address);
+                debugAddress = debugTextBase + (int) arg;
+                debug("  [0x%08x] Extended opcode 2: Set Address to 0x%08x\n", pos, debugAddress);
                 pos = putByte(DW_LNS_extended_prefix, buffer, pos);
                 // insert extended insn byte count as ULEB
                 pos = putULEB(9, buffer, pos);
@@ -2142,8 +1991,7 @@ public class DwarfSections
             }
         }
 
-        public int putDefineFile(String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int pos)
-        {
+        public int putDefineFile(String file, long uleb1, long uleb2, long uleb3, byte[] buffer, int pos) {
             byte opcode = DW_LNE_define_file;
             // calculate bytes needed for opcode + args
             int fileBytes = file.length() + 1;
@@ -2152,7 +2000,7 @@ public class DwarfSections
             insnBytes += putULEB(uleb1, scratch, 0);
             insnBytes += putULEB(uleb2, scratch, 0);
             insnBytes += putULEB(uleb3, scratch, 0);
-            if(buffer == null) {
+            if (buffer == null) {
                 pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
                 // write insnBytes as a ULEB
                 pos += putULEB(insnBytes, scratch, 0);
@@ -2171,56 +2019,51 @@ public class DwarfSections
             }
         }
 
-        public int opcodeId(byte opcode)
-        {
+        public int opcodeId(byte opcode) {
             int iopcode = opcode & 0xff;
             return iopcode - DW_LN_OPCODE_BASE;
         }
 
-        public int opcodeAddress(byte opcode)
-        {
+        public int opcodeAddress(byte opcode) {
             int iopcode = opcode & 0xff;
             return (iopcode - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;
         }
 
-        public int opcodeLine(byte opcode)
-        {
+        public int opcodeLine(byte opcode) {
             int iopcode = opcode & 0xff;
             return ((iopcode - DW_LN_OPCODE_BASE) % DW_LN_LINE_RANGE) + DW_LN_LINE_BASE;
         }
 
-        public int putSpecialOpcode(byte opcode, byte[] buffer, int pos)
-        {
-            if(buffer == null) {
+        public int putSpecialOpcode(byte opcode, byte[] buffer, int pos) {
+            if (buffer == null) {
                 return pos + putByte(opcode, scratch, 0);
             } else {
-                if (debug && opcode== 0) {
-                    debug("  [0x%08x] ERROR Special Opcode %d: Address 0x%08x Line %d\n", debug_address, debug_line);
+                if (debug && opcode == 0) {
+                    debug("  [0x%08x] ERROR Special Opcode %d: Address 0x%08x Line %d\n", debugAddress, debugLine);
                 }
-                debug_address += opcodeAddress(opcode);
-                debug_line += opcodeLine(opcode);
+                debugAddress += opcodeAddress(opcode);
+                debugLine += opcodeLine(opcode);
                 debug("  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d\n",
-                      pos, opcodeId(opcode), opcodeAddress(opcode), debug_address, opcodeLine(opcode), debug_line);
+                      pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
                 return putByte(opcode, buffer, pos);
             }
         }
 
-        private final static int MAX_ADDRESS_ONLY_DELTA = (0xff - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;
-        private final static int MAX_ADDPC_DELTA= MAX_ADDRESS_ONLY_DELTA + (MAX_ADDRESS_ONLY_DELTA - 1);
+        private static final int MAX_ADDRESS_ONLY_DELTA = (0xff - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;
+        private static final int MAX_ADDPC_DELTA = MAX_ADDRESS_ONLY_DELTA + (MAX_ADDRESS_ONLY_DELTA - 1);
 
-        public byte isSpecialOpcode(long addressDelta, long lineDelta)
-        {
-            if(addressDelta < 0) {
+        public byte isSpecialOpcode(long addressDelta, long lineDelta) {
+            if (addressDelta < 0) {
                 return DW_LNS_undefined;
             }
-            if(lineDelta >= DW_LN_LINE_BASE) {
+            if (lineDelta >= DW_LN_LINE_BASE) {
                 long offsetLineDelta = lineDelta - DW_LN_LINE_BASE;
-                if(offsetLineDelta < DW_LN_LINE_RANGE) {
+                if (offsetLineDelta < DW_LN_LINE_RANGE) {
                     // line_delta can be encoded
                     // check if address is ok
-                    if(addressDelta <= MAX_ADDRESS_ONLY_DELTA) {
+                    if (addressDelta <= MAX_ADDRESS_ONLY_DELTA) {
                         long opcode = DW_LN_OPCODE_BASE + (addressDelta * DW_LN_LINE_RANGE) + offsetLineDelta;
-                        if(opcode <= 255) {
+                        if (opcode <= 255) {
                             return (byte) opcode;
                         }
                     }
@@ -2231,37 +2074,35 @@ public class DwarfSections
             return DW_LNS_undefined;
         }
 
-        public int isConstAddPC(long addressDelta)
-        {
-            if(addressDelta < MAX_ADDRESS_ONLY_DELTA) {
+        public int isConstAddPC(long addressDelta) {
+            if (addressDelta < MAX_ADDRESS_ONLY_DELTA) {
                 return 0;
             }
-            if(addressDelta <= MAX_ADDPC_DELTA) {
+            if (addressDelta <= MAX_ADDPC_DELTA) {
                 return (int) (addressDelta - MAX_ADDRESS_ONLY_DELTA);
             } else {
                 return 0;
             }
         }
 
-        public boolean isFixedAdvancePC(long addressDiff)
-        {
+        public boolean isFixedAdvancePC(long addressDiff) {
             return addressDiff >= 0 && addressDiff < 0xffff;
         }
 
         // .debug_line section content depends on .debug_str section content and offset
-        public final static String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
+        public static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
         @Override
         public String targetSectionName() {
             return TARGET_SECTION_NAME;
         }
-        public final LayoutDecision.Kind[] TARGET_SECTION_KINDS = {
+        public final LayoutDecision.Kind[] targetSectionKinds = {
                 LayoutDecision.Kind.CONTENT,
                 LayoutDecision.Kind.OFFSET,
                 LayoutDecision.Kind.VADDR, // add this so we can use the base address
         };
         @Override
         public LayoutDecision.Kind[] targetSectionKinds() {
-            return TARGET_SECTION_KINDS;
+            return targetSectionKinds;
         }
     }
 }
