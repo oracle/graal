@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -342,7 +339,7 @@ public final class Meta implements ContextAccess {
         SoftReference = knownKlass(java.lang.ref.SoftReference.class);
         PhantomReference = knownKlass(java.lang.ref.PhantomReference.class);
         FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        Cleaner = knownKlass(sun.misc.Cleaner.class);
+        Cleaner = knownKlass(Type.sun_misc_Cleaner);
         HIDDEN_HOST_REFERENCE = Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
@@ -352,7 +349,7 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
-        sun_reflect_Reflection_getCallerClass = knownKlass(sun.reflect.Reflection.class).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+        sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
     }
 
     // Checkstyle: stop field name check
@@ -997,7 +994,6 @@ public final class Meta implements ContextAccess {
 
         private static final java.lang.reflect.Field String_value;
         private static final java.lang.reflect.Field String_hash;
-        private static final Constructor<String> String_init;
 
         static {
             try {
@@ -1005,19 +1001,15 @@ public final class Meta implements ContextAccess {
                 String_value.setAccessible(true);
                 String_hash = String.class.getDeclaredField("hash");
                 String_hash.setAccessible(true);
-                String_init = String.class.getDeclaredConstructor(char[].class, boolean.class);
-                String_init.setAccessible(true);
-            } catch (NoSuchMethodException | NoSuchFieldException e) {
+            } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
 
         private static char[] getStringValue(String s) {
-            try {
-                return (char[]) String_value.get(s);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            char[] chars = new char[s.length()];
+            s.getChars(0, s.length(), chars, 0);
+            return chars;
         }
 
         private static int getStringHash(String s) {
@@ -1029,11 +1021,7 @@ public final class Meta implements ContextAccess {
         }
 
         private static String createString(final char[] value) {
-            try {
-                return HostJava.String_init.newInstance(value, true);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            return new String(value);
         }
     }
 

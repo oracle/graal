@@ -28,8 +28,6 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import sun.misc.Perf;
-
 /**
  * These (incomplete) substitutions are just a band-aid to run critical internal code (e.g.
  * ClassLoader). The Perf API is currently unsupported.
@@ -65,7 +63,7 @@ public final class Target_sun_misc_Perf {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(ByteBuffer.class) StaticObject createLong(@Host(Perf.class) StaticObject self,
+    public static @Host(ByteBuffer.class) StaticObject createLong(@Host(typeName = "Lsun/misc/Perf;") StaticObject self,
                     @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value) {
         Meta meta = self.getKlass().getMeta();
 

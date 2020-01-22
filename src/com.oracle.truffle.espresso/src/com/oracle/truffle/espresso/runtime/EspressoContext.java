@@ -36,6 +36,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -207,6 +208,8 @@ public final class EspressoContext {
     public void initializeContext() {
         assert !this.initialized;
         eventListener = new EmptyListener();
+        // Inject PublicFinalReference in the host VM.
+        Target_java_lang_ref_Reference.init();
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);

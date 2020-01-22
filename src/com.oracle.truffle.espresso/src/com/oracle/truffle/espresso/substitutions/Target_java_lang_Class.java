@@ -677,7 +677,7 @@ public final class Target_java_lang_Class {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static @Host(sun.reflect.ConstantPool.class) StaticObject getConstantPool(@Host(Class.class) StaticObject self) {
+    public static @Host(typeName = "Lsun/reflect/ConstantPool;") StaticObject getConstantPool(@Host(Class.class) StaticObject self) {
         Klass klass = self.getMirrorKlass();
         if (klass.isArray() || klass.isPrimitive()) {
             // No constant pool for arrays and primitives.
