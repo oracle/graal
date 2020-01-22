@@ -1129,13 +1129,24 @@ public abstract class Source {
         }
 
         useContent = enforceInterfaceContracts(useContent);
-        SourceImpl.Key key;
+        SourceImpl.Key key = null;
         if (useTruffleFile != null) {
-            key = SourceAccessor.createSourceKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
-        } else {
+            String relativePathInLanguageHome = SourceAccessor.getRelativePathInLanguageHome(useTruffleFile);
+            if (relativePathInLanguageHome != null) {
+                if (SourceAccessor.isPreInitialization()) {
+                    key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy,
+                                    relativePathInLanguageHome);
+                } else {
+                    key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy, relativePathInLanguageHome);
+                }
+            }
+        }
+        if (key == null) {
             key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
         }
-        return SOURCES.intern(key);
+        Source source = SOURCES.intern(key);
+        SourceAccessor.onSourceCreated(source);
+        return source;
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {

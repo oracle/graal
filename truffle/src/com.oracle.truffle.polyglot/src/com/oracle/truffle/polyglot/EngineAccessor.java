@@ -91,7 +91,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.net.URL;
 import org.graalvm.options.OptionKey;
 
 final class EngineAccessor extends Accessor {
@@ -483,9 +482,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean inContextPreInitialization(Object polyglotLanguageContext) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
-            return context.context.inContextPreInitialization;
+        public boolean inContextPreInitialization(Object polyglotObject) {
+            PolyglotContextImpl polyglotContext;
+            if (polyglotObject instanceof PolyglotContextImpl) {
+                polyglotContext = (PolyglotContextImpl) polyglotObject;
+            } else if (polyglotObject instanceof PolyglotLanguageContext) {
+                polyglotContext = ((PolyglotLanguageContext) polyglotObject).context;
+            } else {
+                throw new AssertionError();
+            }
+            return polyglotContext.inContextPreInitialization;
         }
 
         @Override
@@ -988,20 +994,17 @@ final class EngineAccessor extends Accessor {
             return ((OptionValuesImpl) optionValues).getUnparsedOptionValue(optionKey);
         }
 
-        public Object createSourceKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri,
-            String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
-            String reltivePathInLanguageHome = FileSystems.getRelativePathInLanguageHome(truffleFile);  // TODO: Cache the Language Homes in PolyglotEngineImpl?
-            if (reltivePathInLanguageHome != null) {
-                PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
-                if (currentContext != null && currentContext.sourceKeysToInvalidate != null) {
-                    Runnable key = EngineAccessor.SOURCE.createReinitializableKey(truffleFile, reltivePathInLanguageHome, content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
-                    currentContext.sourceKeysToInvalidate.add(key);
-                    return key;
-                } else {
-                    return EngineAccessor.SOURCE.createLanguageHomeKey(reltivePathInLanguageHome, content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
-                }
+        @Override
+        public String getRelativePathInLanguageHome(TruffleFile truffleFile) {
+            return FileSystems.getRelativePathInLanguageHome(truffleFile);
+        }
+
+        @Override
+        public void onSourceCreated(Source source) {
+            PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+            if (currentContext != null && currentContext.sourcesToInvalidate != null) {
+                currentContext.sourcesToInvalidate.add(source);
             }
-            return EngineAccessor.SOURCE.createImmutableSourceKey(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
         }
     }
 

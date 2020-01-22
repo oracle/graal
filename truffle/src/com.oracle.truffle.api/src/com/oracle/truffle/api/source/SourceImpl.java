@@ -50,7 +50,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 final class SourceImpl extends Source {
 
-    private final Key key;
+    final Key key;
     private final Object sourceId;
 
     private SourceImpl(Key key) {
@@ -182,7 +182,7 @@ final class SourceImpl extends Source {
 
     }
 
-    static abstract class Key {
+    abstract static class Key {
 
         final Object content;
         final String name;
@@ -195,7 +195,7 @@ final class SourceImpl extends Source {
         final boolean legacy;
         volatile Integer cachedHashCode;
 
-        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean legacy, Integer hashCode) {
+        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
@@ -204,7 +204,6 @@ final class SourceImpl extends Source {
             this.interactive = interactive;
             this.cached = cached;
             this.legacy = legacy;
-            cachedHashCode = hashCode;
         }
 
         abstract String getPath();
@@ -223,7 +222,7 @@ final class SourceImpl extends Source {
             return hashCode;
         }
 
-        static int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+        final int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
@@ -259,6 +258,9 @@ final class SourceImpl extends Source {
                             internal == other.internal &&
                             cached == other.cached &&
                             compareContent(other);
+        }
+
+        void invalidateAfterPreinitialiation() {
         }
 
         private boolean compareContent(Key other) {
@@ -309,16 +311,14 @@ final class SourceImpl extends Source {
         private final URL url;
         private final String path;
 
-        ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
-            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, null);
+        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy,
+                        String relativePahtInLanguageHome) {
+            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePahtInLanguageHome, internal, interactive, cached, legacy);
         }
 
-        ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, int hashCode) {
-            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy, (Integer)hashCode);
-        }
-
-        private ImmutableKey (Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, Integer hashCode) {
-            super(content, mimeType, languageId, name, internal, interactive, cached, legacy, hashCode);
+        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
             this.uri = uri;
             this.url = url;
             this.path = path;
@@ -337,7 +337,7 @@ final class SourceImpl extends Source {
         }
     }
 
-    static final class ReinitializableKey extends Key implements Runnable {
+    static final class ReinitializableKey extends Key {
 
         private static final Object INVALID = new Object();
 
@@ -346,25 +346,32 @@ final class SourceImpl extends Source {
         private Object url;
         private Object path;
 
-        ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy, int hashCode) {
-            super(content, mimeType, languageId, name, internal, interactive, cached, legacy, hashCode);
+        ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
+                        boolean cached, boolean legacy, String relativePahtInLanguageHome) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
             Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
             this.truffleFile = truffleFile;
             this.uri = uri;
             this.url = url;
             this.path = path;
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePahtInLanguageHome, internal, interactive, cached, legacy);
         }
 
         @Override
-        public void run() {
-            if (path != null) {
+        void invalidateAfterPreinitialiation() {
+            if (Objects.equals(path, truffleFile.getPath())) {
                 path = INVALID;
             }
-            if (uri != null) {
+            if (Objects.equals(uri, truffleFile.toUri())) {
                 this.uri = INVALID;
             }
-            if (url != null) {
-                this.url = INVALID;
+            try {
+                if (url != null && truffleFile.toUri().toURL().toExternalForm().equals(((URL) url).toExternalForm())) {
+                    this.url = INVALID;
+                }
+            } catch (MalformedURLException mue) {
+                // Should never be thrown as the truffleFile.toUri() returns absolute URI
+                throw new AssertionError(mue);
             }
         }
 
@@ -379,7 +386,6 @@ final class SourceImpl extends Source {
         @Override
         URI getURI() {
             if (uri == INVALID) {
-                // Todo: Relative URI
                 uri = truffleFile.toUri();
             }
             return (URI) uri;
