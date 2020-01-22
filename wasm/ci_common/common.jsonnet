@@ -135,7 +135,7 @@
       '${BENCH_VM_CONFIG}',
       'bench-uploader.py',
     ],
-    capabilities: ${linux.capabilities} [x52, no_frequency_scaling],
+    capabilities: self.linux.capabilities + [x52, no_frequency_scaling],
   },
 
   jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
