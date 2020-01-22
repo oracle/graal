@@ -204,10 +204,10 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         return "wasm"
 
     def group(self):
-        return "wasm"
+        return "Graal"
 
     def subgroup(self):
-        return "truffle"
+        return "wasm"
 
     def successPatterns(self):
         return []
