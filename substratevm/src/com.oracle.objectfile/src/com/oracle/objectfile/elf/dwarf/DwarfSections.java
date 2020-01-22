@@ -252,9 +252,9 @@ public class DwarfSections {
 
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         DebugTypeInfoProvider typeInfoProvider = debugInfoProvider.typeInfoProvider();
-        for (DebugTypeInfo debugTypeInfo : typeInfoProvider) {
-            // install types
-        }
+        // for (DebugTypeInfo debugTypeInfo : typeInfoProvider) {
+        // install types
+        // }
 
         // ensure we have a null string in the string section
         uniqueDebugString("");
@@ -289,10 +289,10 @@ public class DwarfSections {
             }
         }
         DebugDataInfoProvider dataInfoProvider = debugInfoProvider.dataInfoProvider();
-        for (DebugDataInfo debugDataInfo : dataInfoProvider) {
-            // install details of heap elements
-            String name = debugDataInfo.toString();
-        }
+        // for (DebugDataInfo debugDataInfo : dataInfoProvider) {
+        // install details of heap elements
+        // String name = debugDataInfo.toString();
+        // }
     }
 
     public ClassEntry ensureClassEntry(Range range) {
@@ -390,7 +390,7 @@ public class DwarfSections {
             // if the env var relevant to this element
             // type is set then switch on debugging
             String name = getSectionName();
-            String envVarName = "DWARF_" + getSectionName().substring(1).toUpperCase();
+            String envVarName = "DWARF_" + name.substring(1).toUpperCase();
             if (System.getenv(envVarName) != null) {
                 debug = true;
                 debugBase = pos;
@@ -469,7 +469,6 @@ public class DwarfSections {
         public int putSLEB(long val, byte[] buffer, int p) {
             long l = val;
             int pos = p;
-            boolean negative = l < 0;
             for (int i = 0; i < 9; i++) {
                 byte b = (byte) (l & 0x7f);
                 l = l >> 7;
@@ -1837,31 +1836,7 @@ public class DwarfSections {
                     // the current subrange and the start of the next one.
                     // however, debug works better if we treat all the insns up
                     // to the next range start as belonging to the current line
-                    // so the code below is not actually needed. it is left in
-                    // to clarify i) that this is a deliberate choice and ii) what
-                    // that deliberate choice is avoiding.
-                    if (false) {
-                        if (address < hiAddress && hiAddress < subAddressLo) {
-                            long addressDelta = hiAddress - address;
-                            // increment address to hi address, write an
-                            // end sequence and update state to new rang
-                            pos = putAdvancePC(addressDelta, buffer, pos);
-                            pos = putEndSequence(buffer, pos);
-                            file = subfile;
-                            fileIdx = subFileIdx;
-                            pos = putSetFile(file, fileIdx, buffer, pos);
-                            line = subLine;
-                            // state machine value of line is currently 1
-                            // increment to desired line
-                            if (line != 1) {
-                                pos = putAdvanceLine(line - 1, buffer, pos);
-                            }
-                            pos = putSetBasicBlock(buffer, pos);
-                            // use a reloc to ensure address is relative to text base
-                            address = hiAddress;
-                            pos = putSetAddress(hiAddress, buffer, pos);
-                        }
-                    }
+                    //
                     // if we have to update to a new file then do so
                     if (subFileIdx != fileIdx) {
                         // update the current file
@@ -1920,7 +1895,6 @@ public class DwarfSections {
                     // move line and address range on
                     line += lineDelta;
                     address += addressDelta;
-                    hiAddress = subAddressHi;
                 }
                 // append a final end sequence just below the next primary range
                 if (address < primaryRange.getHi()) {
