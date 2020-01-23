@@ -47,7 +47,7 @@ public class WindowsJVMWrapper {
     private final Feedback fb;
     private final FileOperations fileOps;
     private final Path installPath;
-    
+
     private String mainClass;
     private String jvmBinary;
     private List<String> args = Collections.emptyList();
