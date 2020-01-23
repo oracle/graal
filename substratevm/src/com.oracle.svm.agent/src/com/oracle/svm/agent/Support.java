@@ -146,6 +146,7 @@ public final class Support {
         public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
         public final JNIMethodId javaUtilEnumerationHasMoreElements;
         public final JNIMethodId javaUtilMissingResourceExceptionCtor3;
+        public final JNIObjectHandle javaLangClassLoader;
         public final JNIObjectHandle javaLangSecurityException;
         public final JNIObjectHandle javaLangNoClassDefFoundError;
         public final JNIObjectHandle javaLangNoSuchMethodError;
@@ -182,6 +183,7 @@ public final class Support {
             JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
             javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
 
+            javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
             javaLangSecurityException = newClassGlobalRef(env, "java/lang/SecurityException");
             javaLangNoClassDefFoundError = newClassGlobalRef(env, "java/lang/NoClassDefFoundError");
             javaLangNoSuchMethodError = newClassGlobalRef(env, "java/lang/NoSuchMethodError");
@@ -203,7 +205,7 @@ public final class Support {
         }
 
         private JNIObjectHandle newClassGlobalRef(JNIEnvironment env, String className) {
-            return newGlobalRef(env, findClass(env, className));
+            return newTrackedGlobalRef(env, findClass(env, className));
         }
 
         private static JNIMethodId getMethodId(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
@@ -222,7 +224,7 @@ public final class Support {
             }
         }
 
-        private JNIObjectHandle newGlobalRef(JNIEnvironment env, JNIObjectHandle ref) {
+        public JNIObjectHandle newTrackedGlobalRef(JNIEnvironment env, JNIObjectHandle ref) {
             JNIObjectHandle global = jniFunctions.getNewGlobalRef().invoke(env, ref);
             guarantee(global.notEqual(nullHandle()));
             globalRefsLock.lock();
