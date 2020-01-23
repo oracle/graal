@@ -40,7 +40,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.compiler.truffle.runtime.debug.disassembler.Disassembler;
 import org.graalvm.compiler.truffle.runtime.debug.disassembler.MachineCode;
 
 /**
