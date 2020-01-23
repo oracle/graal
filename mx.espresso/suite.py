@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.launcher",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.jdwp": {
@@ -156,6 +156,7 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.test.jdk8": {
