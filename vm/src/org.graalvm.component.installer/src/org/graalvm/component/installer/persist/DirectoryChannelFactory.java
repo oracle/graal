@@ -50,8 +50,7 @@ public class DirectoryChannelFactory implements SoftwareChannel.Factory {
         Feedback out2 = output.withBundle(DirectoryChannelFactory.class);
         try {
             Path p = new File(new URI(u)).toPath();
-            if (!Files.isDirectory(p) || !Files.isReadable(p)) {
-                out2.error("ERR_DirectoryURLNotDirectory", null, u, null);
+            if (!Files.isDirectory(p)) {
                 return null;
             }
             DirectoryCatalogProvider dp = new DirectoryCatalogProvider(p, out2);
