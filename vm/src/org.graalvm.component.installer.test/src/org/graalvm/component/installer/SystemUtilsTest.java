@@ -48,7 +48,7 @@ public class SystemUtilsTest {
         for (Path p : resolved) {
             assertFalse(p.toString().isEmpty());
         }
-        assertEquals("jre/lib/svm/macros/graalpython-launcher/native-image.properties", resolved.toString());
+        assertEquals("jre/lib/svm/macros/graalpython-launcher/native-image.properties", SystemUtils.toCommonPath(resolved));
     }
 
     @Test
