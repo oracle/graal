@@ -74,9 +74,6 @@ public final class ResourcesFeature implements Feature {
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
-
-        @Option(help = "Print included resources.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> PrintIncludedResources = new HostedOptionKey<>(false);
     }
 
     private boolean sealed = false;
@@ -174,11 +171,6 @@ public final class ResourcesFeature implements Feature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
-        if (Options.PrintIncludedResources.getValue()) {
-            for (String registeredResource : Resources.registeredResources()) {
-                System.out.println(registeredResource);
-            }
-        }
     }
 
     @Override

@@ -35,12 +35,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -57,10 +56,6 @@ public final class Resources {
 
     static class ResourcesSupport {
         final Map<String, List<byte[]>> resources = new HashMap<>();
-
-        public Set<String> registeredResources() {
-            return resources.keySet();
-        }
     }
 
     @AutomaticFeature
@@ -100,15 +95,16 @@ public final class Resources {
         byte[] res = new byte[pos];
         System.arraycopy(arr, 0, res, 0, pos);
 
-        support.resources.computeIfAbsent(name, k -> new ArrayList<>()).add(res);
+        List<byte[]> list = support.resources.get(name);
+        if (list == null) {
+            list = new ArrayList<>();
+            support.resources.put(name, list);
+        }
+        list.add(res);
     }
 
     public static List<byte[]> get(String name) {
         return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
-    }
-
-    public static Set<String> registeredResources() {
-        return ImageSingletons.lookup(ResourcesSupport.class).registeredResources();
     }
 
     public static URL createURL(String name, byte[] resourceBytes) {
