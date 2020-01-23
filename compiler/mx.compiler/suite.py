@@ -487,7 +487,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "org.graalvm.compiler.debug",
+        "GRAAL",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
@@ -2178,6 +2178,13 @@ suite = {
 
     # ------------- Distributions -------------
 
+    "GRAAL_GRAPHIO" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.graphio"],
+      "distDependencies" : [],
+      "maven": False,
+    },
+
     "GRAAL_TEST" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2289,7 +2296,7 @@ suite = {
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR"],
+      "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL"],
       "maven": False,
     },    
 
@@ -2359,8 +2366,7 @@ suite = {
         }
       },
       "subDir" : "src",
-      "overlaps" : [
-      ],
+      "overlaps" : ["GRAAL_GRAPHIO"],
       "dependencies" : [
         "org.graalvm.libgraal",
         "org.graalvm.compiler.options",
@@ -2440,6 +2446,7 @@ suite = {
 
       "distDependencies" : [
         "GRAAL_MANAGEMENT",
+        "GRAAL_LIBGRAAL_JNI",
         "GRAAL",
       ],
       "maven": False,
