@@ -28,7 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 /**
  * track the directory associated with one or
- * more source files
+ * more source files.
  */
 public class DirEntry {
     private String path;

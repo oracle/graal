@@ -1089,7 +1089,7 @@ public abstract class ObjectFile {
 
     /**
      * API method provided to allow a native image generator to provide details of
-     * types, code and heap data inserted into a native image
+     * types, code and heap data inserted into a native image.
      * @param debugInfoProvider an implementation of the provider interface that
      * communicates details of the relevant types, code and heap data.
      */

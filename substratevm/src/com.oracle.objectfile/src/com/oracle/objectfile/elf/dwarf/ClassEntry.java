@@ -34,64 +34,64 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * track debug info associated with a Java class
+ * track debug info associated with a Java class.
  */
 public class ClassEntry {
    /**
-     * the name of the associated class
+     * the name of the associated class.
     */
     private String className;
     /**
-     * details of the associated file
+     * details of the associated file.
      */
     FileEntry fileEntry;
     /**
      * a list recording details of all primary
      * ranges included in this class sorted by
-     * ascending address range
+     * ascending address range.
      */
     private LinkedList<PrimaryEntry> primaryEntries;
     /**
      * an index identifying primary ranges which
-     * have already been encountered
+     * have already been encountered.
      */
     private Map<Range, PrimaryEntry> primaryIndex;
     /**
      * an index of all primary and secondary files
-     * referenced from this class's compilation unit
+     * referenced from this class's compilation unit.
      */
     private Map<FileEntry, Integer> localFilesIndex;
     /**
-     * a list of the same files
+     * a list of the same files.
      */
     private LinkedList<FileEntry> localFiles;
     /**
      * an index of all primary and secondary dirs
-     * referenced from this class's compilation unit
+     * referenced from this class's compilation unit.
      */
     private HashMap<DirEntry, Integer> localDirsIndex;
     /**
-     * a list of the same dirs
+     * a list of the same dirs.
      */
     private LinkedList<DirEntry> localDirs;
     /**
      * index of debug_info section compilation unit
-     * for this class
+     * for this class.
      */
     private int cuIndex;
     /**
      * index into debug_line section for associated
-     * compilation unit
+     * compilation unit.
      */
     private int lineIndex;
     /**
      * size of line number info prologue region for
-     * associated compilation unit
+     * associated compilation unit.
      */
     private int linePrologueSize;
     /**
      * total size of line number info region for
-     * associated compilation unit
+     * associated compilation unit.
      */
     private int totalSize;
 
