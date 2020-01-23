@@ -30,7 +30,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
+ * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
+ * monitor locks.
  */
 public interface EspressoLock extends Lock {
 
