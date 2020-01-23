@@ -32,12 +32,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Disassembles machine code by running it through objdump, which needs to be available on the path. Standard versions
  * included in at least recent Linux distributions and macOS can be used.
  */
 public class ObjdumpDisassembler implements Disassembler {
+
+    private static final Pattern relativeCodeAddressPattern = Pattern.compile("<\\.text\\+0x([0-9a-f]+)>");
 
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final Process process = new ProcessBuilder()
@@ -74,12 +79,22 @@ public class ObjdumpDisassembler implements Disassembler {
             final StringBuilder builder = new StringBuilder();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(objdumpOutput.toByteArray())));
             while (true) {
-                final String line = reader.readLine();
+                String line = reader.readLine();
                 if (line == null) {
                     break;
                 }
+                // Ignore noisy lines
                 if (line.isEmpty() || line.startsWith("/dev/stdin:") || line.startsWith("Disassembly of section .text:") || line.startsWith(".text:")) {
                     continue;
+                }
+                // Some objdumps print relative addresses as for example <.text+0x341e>, when we'd prefer an absolute address for our purposes
+                final Matcher matcher = relativeCodeAddressPattern.matcher(line);
+                while (matcher.find()) {
+                    final MatchResult matchResult = matcher.toMatchResult();
+                    final long offset = Long.parseLong(matchResult.group(1), 16);
+                    final String replacement = String.format("<%x>", machineCode.getAddress() + offset);
+                    line = line.substring(0, matchResult.start()) + replacement + line.substring(matchResult.end());
+                    matcher.reset(line);
                 }
                 builder.append(line);
                 builder.append(System.lineSeparator());
