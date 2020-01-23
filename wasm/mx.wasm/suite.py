@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.249.5",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "20.1.0",
