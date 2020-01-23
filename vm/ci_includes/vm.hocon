@@ -140,3 +140,5 @@ builds += [
     name: deploy-vm-java11-linux-aarch64
   }
 ]
+
+notify-releaser: [test, [git, rev-parse, --abbrev-ref, HEAD], "!=", "release/graal-vm/20.0", "||"] ${notify-releaser-service}
