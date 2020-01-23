@@ -32,26 +32,50 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * track debug info associated with a primary method
+ * i.e. a top level compiled method
+ */
 public class PrimaryEntry {
-    // the primary range detailed by this object
+    /**
+     * the primary range detailed by this object
+     */
     Range primary;
-    // details of the class owning this range
+    /**
+     * details of the class owning this range
+     */
     ClassEntry classEntry;
-    // a list of subranges associated with the primary range
+    /**
+     * a list of subranges associated with the primary range
+     */
     List<Range> subranges;
-    // a mapping from subranges to their associated file entry
+    /**
+     * a mapping from subranges to their associated file entry
+     */
     HashMap<Range, FileEntry> subrangeIndex;
-    // details of of compiled method frame size changes
+    /**
+     * details of of compiled method frame size changes
+     */
     private List<DebugFrameSizeChange> frameSizeInfos;
-    // size of compiled method frame
+    /**
+     * size of compiled method frame
+     */
     private int frameSize;
-    // index of debug_info section compilation unit for this file
+    /**
+     * index of debug_info section compilation unit for this file
+     */
     private int cuIndex;
-    // index into debug_line section for associated compilation unit
+    /**
+     * index into debug_line section for associated compilation unit
+     */
     private int lineIndex;
-    // size of line number info prologue region for associated compilation unit
+    /**
+     * size of line number info prologue region for associated compilation unit
+     */
     private int linePrologueSize;
-    // total size of line number info region for associated compilation unit
+    /**
+     * total size of line number info region for associated compilation unit
+     */
     private int totalSize;
 
     public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {

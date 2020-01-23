@@ -26,9 +26,12 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-// class used to ensure we keep only one copy of a String
-// amd track it's locations in the string section should
-// it need to be entered
+/**
+ * class used to retain a unique (up to equals) copy of
+ * a String and also to flag whether the String needs to be
+ * located in the .debug_string section and track the offset
+ * where it gets written.
+ */
 public class StringEntry {
     private String string;
     private int offset;

@@ -972,6 +972,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         protected final NativeImageCodeCache codeCache;
     }
 
+    /**
+     * implementation of the DebugInfoProvider API interface
+     * that allows type, code and heap data info to be passed to
+     * an ObjectFile when generation of debug info is enabled
+     */
     private class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final NativeImageCodeCache codeCache;
         private final NativeImageHeap heap;
@@ -1033,6 +1038,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
+    /**
+     * implementation of the DebugCodeInfo API interface
+     * that allows code info to be passed to an ObjectFile
+     * when generation of debug info is enabled
+     */
     private class NativeImageDebugCodeInfo implements DebugCodeInfo {
         private final HostedMethod method;
         private final CompilationResult compilation;
@@ -1167,6 +1177,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
+    /**
+     * implementation of the DebugLineInfo API interface
+     * that allows line number info to be passed to an
+     * ObjectFile when generation of debug info is enabled
+     */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
         private final ResolvedJavaMethod method;
@@ -1227,6 +1242,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
+    /**
+     * implementation of the DebugFrameSizeChange API interface
+     * that allows stack frame size change info to be passed to
+     * an ObjectFile when generation of debug info is enabled
+     */
     private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
         private int offset;
         private Type type;

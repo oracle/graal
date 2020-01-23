@@ -29,9 +29,12 @@ package com.oracle.objectfile.elf.dwarf;
 import java.util.HashMap;
 import java.util.Iterator;
 
-// class which reduces incoming strings to unique
-// instances and also marks strings which need
-// to be written to the debug_str section
+/**
+ * a class which allows incoming strings to be reduced
+ * to unique (up to equaals) instances and allows marking
+ * of strings which need to be written to the debug_str
+ * section and retrieval of the lcoation offset after writing.
+ */
 public class StringTable implements Iterable<StringEntry> {
 
     private final HashMap<String, StringEntry> table;
@@ -40,10 +43,28 @@ public class StringTable implements Iterable<StringEntry> {
         this.table = new HashMap<>();
     }
 
+    /**
+     * ensures a unique instance of a string exists in the
+     * table, inserting the supplied String if no equivalent
+     * String is already present. this should only be called
+     * before the string section has been written.
+     * @param string the string to be included in the table
+     * @return the unique instance of the String
+     */
     public String uniqueString(String string) {
         return ensureString(string, false);
     }
 
+    /**
+     * ensures a unique instance of a string exists in the
+     * table and is marked for inclusion in the debug_str
+     * section, inserting the supplied String if no equivalent
+     * String is already present. this should only be called
+     * before the string section has been written.
+     * @param string the string to be included in the table
+     * and marked for  inclusion in the debug_str section
+     * @return the unique instance of the String
+     */
     public String uniqueDebugString(String string) {
         return ensureString(string, true);
     }
@@ -60,6 +81,13 @@ public class StringTable implements Iterable<StringEntry> {
         return stringEntry.getString();
     }
 
+    /**
+     * retrieves the offset at which a given string was written
+     * into the debug_str section. this should only be called
+     * after the string section has been written.
+     * @param string
+     * @return
+     */
     public int debugStringIndex(String string) {
         StringEntry stringEntry = table.get(string);
         assert stringEntry != null;
