@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -104,7 +105,12 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                 if (entryIndex != -1) {
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
                     JavaKind entryKind = virtual.entryKind(entryIndex);
-                    if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
+
+                    if (virtual.isVirtualByteArrayAccess(accessKind())) {
+                        if (virtual.canVirtualizeLargeByteArrayUnsafeRead(entry, entryIndex, accessKind(), tool)) {
+                            tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, accessKind(), stamp));
+                        }
+                    } else if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
 
                         if (!(entry.stamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT)))) {
                             if (entry.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && stamp instanceof PrimitiveStamp) {

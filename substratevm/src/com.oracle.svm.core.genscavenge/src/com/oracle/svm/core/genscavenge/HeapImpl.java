@@ -40,7 +40,7 @@ import javax.management.ObjectName;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -90,7 +90,7 @@ public class HeapImpl extends Heap {
     final HeapChunkProvider chunkProvider;
 
     // Singleton instances, created during image generation.
-    private final GenScavengeGCProvider gcProvider;
+    private final GenScavengePlatformConfigurationProvider platformConfigurationProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
 
@@ -120,7 +120,7 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.gcProvider = new GenScavengeGCProvider();
+        this.platformConfigurationProvider = new GenScavengePlatformConfigurationProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
         this.readOnlyPrimitiveWalker = new ReadOnlyPrimitiveMemoryWalkerAccess();
@@ -134,6 +134,24 @@ public class HeapImpl extends Heap {
             report(Log.log(), true).newline();
             Log.log().newline();
         });
+    }
+
+    private static class GenScavengePlatformConfigurationProvider implements PlatformConfigurationProvider {
+        private final BarrierSet barrierSet;
+
+        GenScavengePlatformConfigurationProvider() {
+            this.barrierSet = new CardTableBarrierSet();
+        }
+
+        @Override
+        public BarrierSet getBarrierSet() {
+            return barrierSet;
+        }
+
+        @Override
+        public boolean canVirtualizeLargeByteArrayAccess() {
+            return true;
+        }
     }
 
     @Fold
@@ -364,6 +382,7 @@ public class HeapImpl extends Heap {
         final Space.Accounting to = getOldGeneration().getToSpace().getAccounting();
         final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
         final UnsignedWord result = fromBytes.add(toBytes);
+        // @formatter:off
         if (trace.isEnabled()) {
             trace
                             .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
@@ -372,6 +391,7 @@ public class HeapImpl extends Heap {
                             .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
                             .string("  returns: ").unsigned(result).string(" ]").newline();
         }
+        // @formatter:on
         return result;
     }
 
@@ -418,6 +438,7 @@ public class HeapImpl extends Heap {
         if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
+            // @formatter:off
             if (HeapPolicy.getZapProducedHeapChunks()) {
                 log.string("  producedHeapChunkZapInt: ")
                                 .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
@@ -442,6 +463,7 @@ public class HeapImpl extends Heap {
                                 .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
             }
             log.redent(false).string("]");
+            // @formatter:on
         }
         return log;
     }
@@ -613,11 +635,6 @@ public class HeapImpl extends Heap {
     }
 
     @Override
-    public GCProvider getGCProvider() {
-        return gcProvider;
-    }
-
-    @Override
     public void prepareForSafepoint() {
         // nothing to do
     }
@@ -685,17 +702,9 @@ public class HeapImpl extends Heap {
         return true;
     }
 
-    private static class GenScavengeGCProvider implements GCProvider {
-        private final BarrierSet barrierSet;
-
-        GenScavengeGCProvider() {
-            this.barrierSet = new CardTableBarrierSet();
-        }
-
-        @Override
-        public BarrierSet getBarrierSet() {
-            return barrierSet;
-        }
+    @Override
+    public PlatformConfigurationProvider getPlatformConfigurationProvider() {
+        return platformConfigurationProvider;
     }
 }
 

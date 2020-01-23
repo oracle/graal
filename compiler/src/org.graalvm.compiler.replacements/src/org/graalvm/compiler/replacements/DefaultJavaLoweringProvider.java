@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -134,10 +135,10 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
@@ -674,7 +675,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * @param tool utility for performing the lowering
      */
     protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
-        GCProvider gc = tool.getProviders().getGC();
+        PlatformConfigurationProvider gc = tool.getProviders().getPlatformConfigurationProvider();
         StructuredGraph graph = load.graph();
         if (load instanceof GuardedUnsafeLoadNode) {
             GuardedUnsafeLoadNode guardedLoad = (GuardedUnsafeLoadNode) load;
@@ -705,7 +706,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    protected ReadNode createUnsafeRead(GCProvider gc, StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
+    protected ReadNode createUnsafeRead(PlatformConfigurationProvider gc, StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
         boolean compressible = load.accessKind() == JavaKind.Object;
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, compressible);
@@ -836,7 +837,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
                             // Truffle requires some leniency in terms of what can be put where:
                             assert valueKind.getStackKind() == entryKind.getStackKind() ||
-                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode));
+                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
+                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode));
                             AddressNode address = null;
                             BarrierType barrierType = null;
                             if (virtual instanceof VirtualInstanceNode) {
@@ -851,7 +853,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, entryKind, value), barrierType, false);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos), barrierType, false);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -1113,6 +1115,36 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return new ZeroExtendNode(value, 32);
         }
         return value;
+    }
+
+    public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
+                    JavaKind entryKind,
+                    ValueNode value,
+                    CommitAllocationNode commit,
+                    VirtualObjectNode virtual,
+                    int valuePos) {
+        if (!virtual.isVirtualByteArray()) {
+            return implicitStoreConvert(graph, entryKind, value);
+        }
+        // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit
+        // in its declared size.
+        int entryIndex = valuePos + 1;
+        int bytes = 1;
+        while (entryIndex < commit.getValues().size() && commit.getValues().get(entryIndex).isIllegalConstant()) {
+            bytes++;
+            entryIndex++;
+        }
+        assert bytes <= value.getStackKind().getByteCount();
+        ValueNode entry = value;
+        if (value.getStackKind() == JavaKind.Float) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Int, entry, NodeView.DEFAULT));
+        } else if (value.getStackKind() == JavaKind.Double) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Long, entry, NodeView.DEFAULT));
+        }
+        if (bytes < value.getStackKind().getByteCount()) {
+            entry = graph.unique(new NarrowNode(entry, bytes << 3));
+        }
+        return entry;
     }
 
     public final ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {

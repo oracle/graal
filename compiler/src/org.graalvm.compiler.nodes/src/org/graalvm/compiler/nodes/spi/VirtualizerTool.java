@@ -169,6 +169,15 @@ public interface VirtualizerTool {
      */
     boolean ensureMaterialized(VirtualObjectNode virtualObject);
 
+    /**
+     *
+     * Returns whether deoptimization can recover from virtualizing large unsafe accesses to a byte
+     * array.
+     *
+     * @return true if deoptimization can recover, false if not.
+     */
+    boolean canVirtualizeLargeByteArrayUnsafeAccess();
+
     OptionValues getOptions();
 
     DebugContext getDebug();

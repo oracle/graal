@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.nodes.StructuredGraph;
+package com.oracle.svm.core.graal.code;
+
 import org.graalvm.compiler.nodes.gc.BarrierSet;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
-public class WriteBarrierAdditionPhase extends BasePhase<MidTierContext> {
-    @SuppressWarnings("try")
-    @Override
-    protected void run(StructuredGraph graph, MidTierContext context) {
-        BarrierSet barrierSet = context.getPlatformConfigurationProvider().getBarrierSet();
-        for (FixedAccessNode n : graph.getNodes().filter(FixedAccessNode.class)) {
-            try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
-                barrierSet.addBarriers(n);
-            }
-        }
+public class SubstratePlatformConfigurationProvider implements PlatformConfigurationProvider {
+    private final BarrierSet barrierSet;
+
+    public SubstratePlatformConfigurationProvider(BarrierSet barrierSet) {
+        this.barrierSet = barrierSet;
     }
 
     @Override
-    public boolean checkContract() {
-        return false;
+    public BarrierSet getBarrierSet() {
+        return barrierSet;
     }
+
+    @Override
+    public boolean canVirtualizeLargeByteArrayAccess() {
+        return true;
+    }
+
 }
