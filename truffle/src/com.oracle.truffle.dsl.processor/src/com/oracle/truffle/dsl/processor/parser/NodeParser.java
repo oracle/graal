@@ -668,15 +668,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        if (!node.getFields().isEmpty()) {
-            uncachable = false;
-            if (requireUncachable) {
-                node.addError(generateUncached, null, "Failed to generate code for @%s: The node must not declare any @%s annotations. Remove these annotations to resolve this.",
-                                types.GenerateUncached.asElement().getSimpleName().toString(),
-                                types.NodeField.asElement().getSimpleName().toString());
-            }
-        }
-
         node.setUncachable(uncachable);
     }
 
@@ -1074,6 +1065,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         for (NodeFieldData nodeFieldData : fields) {
             nodeFieldData.setGetter(findGetter(elements, nodeFieldData.getName(), nodeFieldData.getType()));
+            nodeFieldData.setSetter(findSetter(elements, nodeFieldData.getName(), nodeFieldData.getType()));
         }
 
         return fields;
@@ -1999,9 +1991,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 parseCached(cache, specialization, resolver, parameter);
             } else if (cache.isCachedLibrary()) {
                 AnnotationMirror cachedLibrary = cache.getMessageAnnotation();
-                String specializedExpression = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
+                String expression = getCachedLibraryExpressions(cachedLibrary);
+
                 String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
-                if (specializedExpression == null) {
+                if (expression == null) {
                     // its cached dispatch version treat it as normal cached
                     if (limit == null) {
                         cache.addError("A specialized value expression or limit must be specified for @%s. " +
@@ -2167,6 +2160,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return uncachedSpecialization;
     }
 
+    private static String getCachedLibraryExpressions(AnnotationMirror cachedLibrary) {
+        return ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
+    }
+
     private static TypeMirror getFirstTypeArgument(TypeMirror languageType) {
         for (TypeMirror currentTypeArgument : ((DeclaredType) languageType).getTypeArguments()) {
             return currentTypeArgument;
@@ -2227,8 +2224,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
-            String value = ElementUtils.getAnnotationValue(String.class, cachedLibrary.getMessageAnnotation(), "value", false);
-            DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), value);
+            String expression = getCachedLibraryExpressions(cachedLibrary.getMessageAnnotation());
+            DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
                 continue;
             }
@@ -2282,7 +2279,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
                 DSLExpression acceptGuard = new DSLExpression.Call(new DSLExpression.Variable(null, receiverName), "accepts",
                                 Arrays.asList(receiverExpression));
-                acceptGuard = resolveCachedExpression(resolver, cachedLibrary, context.getType(boolean.class), acceptGuard, value);
+                acceptGuard = resolveCachedExpression(resolver, cachedLibrary, context.getType(boolean.class), acceptGuard, expression);
                 if (acceptGuard != null) {
                     GuardExpression guard = new GuardExpression(specialization, acceptGuard);
                     guard.setLibraryAcceptsGuard(true);
@@ -2296,14 +2293,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                 DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "create",
                                 Arrays.asList(receiverExpression));
-                defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, value);
+                defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, expression);
                 cachedLibrary.setDefaultExpression(defaultExpression);
 
                 DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
                                 Arrays.asList(receiverExpression));
                 cachedLibrary.setUncachedExpression(uncachedExpression);
 
-                uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, value);
+                uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, expression);
                 uncachedLibrary.setDefaultExpression(uncachedExpression);
                 uncachedLibrary.setUncachedExpression(uncachedExpression);
 
@@ -2727,6 +2724,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (field.getGetter() != null) {
                 unusedElements.remove(field.getGetter());
             }
+            if (field.getSetter() != null) {
+                unusedElements.remove(field.getSetter());
+            }
         }
 
         for (NodeChildData child : nodeData.getChildren()) {
@@ -2889,6 +2889,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && isAssignable(type, method.getReturnType())) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    private static ExecutableElement findSetter(List<? extends Element> elements, String variableName, TypeMirror type) {
+        if (type == null) {
+            return null;
+        }
+        String methodName = "set" + firstLetterUpperCase(variableName);
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 1 && typeEquals(type, method.getParameters().get(0).asType())) {
                 return method;
             }
         }

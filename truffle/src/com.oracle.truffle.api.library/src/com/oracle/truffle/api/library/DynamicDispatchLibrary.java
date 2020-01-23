@@ -119,7 +119,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  *
  * @since 19.0
  */
-@GenerateLibrary
+@GenerateLibrary(dynamicDispatchEnabled = false)
 public abstract class DynamicDispatchLibrary extends Library {
 
     /**

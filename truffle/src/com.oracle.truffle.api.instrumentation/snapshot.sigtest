@@ -410,6 +410,8 @@ meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 
+CLSS abstract interface com.oracle.truffle.api.instrumentation.package-info
+
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
 innr public abstract interface static !annotation Child

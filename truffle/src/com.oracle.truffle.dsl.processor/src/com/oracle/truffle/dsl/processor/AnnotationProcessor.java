@@ -40,30 +40,35 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-
 /**
  * THIS IS NOT PUBLIC API.
  */
-class AnnotationProcessor<M extends Template> {
+public final class AnnotationProcessor<M extends Template> {
 
     private final AbstractParser<M> parser;
     private final CodeTypeElementFactory<M> factory;
 
     private final Set<String> processedElements = new HashSet<>();
+    private final Map<String, Map<String, Element>> serviceRegistrations = new LinkedHashMap<>();
 
     AnnotationProcessor(AbstractParser<M> parser, CodeTypeElementFactory<M> factory) {
         this.parser = parser;
@@ -72,6 +77,22 @@ class AnnotationProcessor<M extends Template> {
 
     public AbstractParser<M> getParser() {
         return parser;
+    }
+
+    public Map<String, Map<String, Element>> getServiceRegistrations() {
+        return serviceRegistrations;
+    }
+
+    public void registerService(String serviceBinaryName, String implBinaryName, Element sourceElement) {
+        if (sourceElement instanceof GeneratedElement) {
+            throw new IllegalArgumentException("Service source element must not be generated.");
+        }
+        Map<String, Element> services = serviceRegistrations.get(serviceBinaryName);
+        if (services == null) {
+            services = new LinkedHashMap<>();
+            serviceRegistrations.put(serviceBinaryName, services);
+        }
+        services.put(implBinaryName, sourceElement);
     }
 
     public void process(Element element, boolean callback) {
@@ -104,9 +125,9 @@ class AnnotationProcessor<M extends Template> {
             if (model != null) {
                 List<CodeTypeElement> units;
                 try {
-                    units = factory.create(ProcessorContext.getInstance(), model);
+                    units = factory.create(ProcessorContext.getInstance(), this, model);
                 } catch (Throwable e) {
-                    RuntimeException ex = new RuntimeException(String.format("Failed to write code for %s. Parserdump:%s.", ElementUtils.getQualifiedName(type), ""));
+                    RuntimeException ex = new RuntimeException(String.format("Failed to write code for %s.", ElementUtils.getQualifiedName(type)));
                     e.addSuppressed(ex);
                     throw e;
                 }

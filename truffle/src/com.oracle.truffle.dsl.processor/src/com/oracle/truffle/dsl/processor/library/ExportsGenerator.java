@@ -44,6 +44,7 @@ import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createCl
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
@@ -69,6 +70,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -168,8 +170,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     @Override
-    public List<CodeTypeElement> create(ProcessorContext context1, ExportsData exports) {
+    public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, ExportsData exports) {
         libraryConstants.clear();
+
         String className = exports.getTemplateType().getSimpleName().toString() + "Gen";
         CodeTypeElement genClass = createClass(exports, null, modifiers(Modifier.FINAL), className, null);
 
@@ -183,6 +186,17 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         for (ExportsLibrary libraryExports : exports.getExportedLibraries().values()) {
             if (libraryExports.hasErrors()) {
                 continue;
+            }
+
+            if (libraryExports.needsDefaultExportProvider()) {
+                // we need to make some classes publicly accessible so we need to make the outer
+                // class public too.
+                ElementUtils.setVisibility(genClass.getModifiers(), Modifier.PUBLIC);
+                TypeElement provider = createDefaultExportProvider(libraryExports);
+                genClass.add(provider);
+                String serviceBinaryName = context.getEnvironment().getElementUtils().getBinaryName(ElementUtils.castTypeElement(context.getTypes().DefaultExportProvider)).toString();
+                String serviceImplName = ElementUtils.getBinaryName(provider);
+                processor.registerService(serviceBinaryName, serviceImplName, libraryExports.getTemplateType());
             }
 
             final TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
@@ -235,7 +249,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeExecutableElement constructor = new CodeExecutableElement(modifiers(PRIVATE), null, exportsClass.getSimpleName().toString());
         builder = constructor.createBuilder();
-        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(library.getReceiverType()).string(Boolean.valueOf(library.isDefaultExport()).toString()).end().end();
+        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(library.getReceiverType()).string(Boolean.valueOf(library.isBuiltinDefaultExport()).toString()).end().end();
         exportsClass.add(constructor);
 
         if (library.hasExportDelegation()) {
@@ -364,6 +378,42 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             parameters.put(variable, builder.build());
         }
         return DSLExpressionGenerator.write(expression, null, parameters);
+    }
+
+    CodeTypeElement createDefaultExportProvider(ExportsLibrary libraryExports) {
+        String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
+        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), libraryName + "Provider", null);
+        providerClass.getImplements().add(context.getTypes().DefaultExportProvider);
+
+        for (ExecutableElement method : ElementFilter.methodsIn(context.getTypes().DefaultExportProvider.asElement().getEnclosedElements())) {
+            CodeExecutableElement m = null;
+            switch (method.getSimpleName().toString()) {
+                case "getLibraryClassName":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().doubleQuote(context.getEnvironment().getElementUtils().getBinaryName(libraryExports.getLibrary().getTemplateType()).toString()).end();
+                    break;
+                case "getDefaultExport":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().typeLiteral(libraryExports.getTemplateType().asType()).end();
+                    break;
+                case "getReceiverClass":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().typeLiteral(libraryExports.getReceiverType()).end();
+                    break;
+                case "getPriority":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().string(String.valueOf(libraryExports.getDefaultExportPriority())).end();
+                    break;
+            }
+            if (m != null) {
+                m.getModifiers().remove(Modifier.ABSTRACT);
+                providerClass.add(m);
+            }
+        }
+        if (providerClass.getEnclosedElements().size() != 4) {
+            throw new AssertionError();
+        }
+        return providerClass;
     }
 
     CodeTypeElement createCached(ExportsLibrary libraryExports) {
@@ -696,6 +746,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     private CodeTree createDynamicDispatchAssertions(ExportsLibrary libraryExports) {
         if (libraryExports.needsDynamicDispatch() || libraryExports.getLibrary().isDynamicDispatch()) {
             // no assertions for dynamic dispatch itself.
+            return null;
+        }
+        if (!libraryExports.getLibrary().isDynamicDispatchEnabled()) {
             return null;
         }
         CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();

@@ -85,7 +85,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
 
         @ExportMessage
-        Class<?> dispatch() {
+        protected final Class<?> dispatch() {
             return dispatch;
         }
     }
@@ -226,6 +226,43 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         assertAssertionError(() -> lib.m0(finalDispatch));
         assertAssertionError(() -> lib.m0(nonFinalDispatch));
         assertEquals("m0_dynamic_dispatch_target1", lib.m0(dynamicDispatch));
+    }
+
+    @GenerateLibrary(dynamicDispatchEnabled = false)
+    abstract static class TestDisabledDispatchLibrary extends Library {
+        public String m0(Object receiver) {
+            return "m0";
+        }
+    }
+
+    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.%n" +
+                    "Note that dynamic dispatch is disabled for the exported library 'TestDisabledDispatchLibrary'.%")
+    @ExportLibrary(value = TestDisabledDispatchLibrary.class, receiverType = DynamicDispatch.class)
+    abstract static class DisabledDynamicDispatchError1 {
+        @ExportMessage
+        static String m0(DynamicDispatch receiver) {
+            throw new AssertionError();
+        }
+    }
+
+    @ExportLibrary(value = TestDisabledDispatchLibrary.class)
+    static class DisabledDynamicDispatch extends DynamicDispatch {
+
+        DisabledDynamicDispatch(Class<?> dispatch) {
+            super(dispatch);
+        }
+
+        @ExportMessage
+        String m0() {
+            return "m0_export";
+        }
+    }
+
+    @Test
+    public void testDisabledDispatch() {
+        DisabledDynamicDispatch dynamicDispatch = new DisabledDynamicDispatch(DisabledDynamicDispatch.class);
+        TestDisabledDispatchLibrary lib = createLibrary(TestDisabledDispatchLibrary.class, dynamicDispatch);
+        assertEquals("m0_export", lib.m0(dynamicDispatch));
     }
 
     @ExportLibrary(value = TestDispatchLibrary.class)

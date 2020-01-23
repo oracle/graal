@@ -11,6 +11,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.library.Export
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int priority()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 meth public abstract !hasdefault java.lang.String delegateTo()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.library.Library> value()
@@ -313,6 +314,8 @@ meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicO
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.IncompatibleLocationException
+
+CLSS abstract interface com.oracle.truffle.api.object.package-info
 
 CLSS public abstract interface java.io.Serializable
 

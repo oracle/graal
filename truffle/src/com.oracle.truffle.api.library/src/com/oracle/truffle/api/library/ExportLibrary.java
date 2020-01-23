@@ -323,6 +323,16 @@ public @interface ExportLibrary {
      */
     String delegateTo() default "";
 
+    /**
+     * Specifies the priority for service provider lookup based default exports. Needs to be
+     * specified for exports with explicit receiver type, that are not declared as default exports.
+     * Positive values indicate a priority higher than library builtin {@link DefaultExport default
+     * exports}, negative values lower than default exports. A priority equal to 0 is invalid.
+     *
+     * @since 20.1
+     */
+    int priority() default 0;
+
     /***
      * Repeat annotation for {@link ExportLibrary}.
      *

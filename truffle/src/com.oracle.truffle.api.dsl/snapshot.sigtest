@@ -206,6 +206,8 @@ meth public java.lang.String getMessage()
 supr java.lang.RuntimeException
 hfds node,serialVersionUID,suppliedNodes,suppliedValues
 
+CLSS abstract interface com.oracle.truffle.api.dsl.package-info
+
 CLSS public abstract interface java.io.Serializable
 
 CLSS public java.lang.Exception

@@ -569,6 +569,8 @@ supr java.lang.Object
 hfds stream,type
 hcls Type
 
+CLSS abstract interface org.graalvm.polyglot.io.package-info
+
 CLSS public final org.graalvm.polyglot.management.ExecutionEvent
 meth public boolean isExpression()
 meth public boolean isRoot()
@@ -605,6 +607,10 @@ meth public org.graalvm.polyglot.management.ExecutionListener$Builder sourceFilt
 meth public org.graalvm.polyglot.management.ExecutionListener$Builder statements(boolean)
 supr java.lang.Object
 hfds collectExceptions,collectInputValues,collectReturnValues,expressions,onEnter,onReturn,rootNameFilter,roots,sourceFilter,statements
+
+CLSS abstract interface org.graalvm.polyglot.management.package-info
+
+CLSS abstract interface org.graalvm.polyglot.package-info
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.Proxy
 
@@ -669,4 +675,6 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyTimeZone
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract java.time.ZoneId asTimeZone()
 meth public static org.graalvm.polyglot.proxy.ProxyTimeZone from(java.time.ZoneId)
+
+CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 

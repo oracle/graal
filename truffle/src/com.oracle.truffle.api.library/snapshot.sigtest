@@ -8,6 +8,12 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String limit()
 meth public abstract !hasdefault java.lang.String value()
 
+CLSS public abstract interface com.oracle.truffle.api.library.DefaultExportProvider
+meth public abstract int getPriority()
+meth public abstract java.lang.Class<?> getDefaultExport()
+meth public abstract java.lang.Class<?> getReceiverClass()
+meth public abstract java.lang.String getLibraryClassName()
+
 CLSS public abstract com.oracle.truffle.api.library.DynamicDispatchLibrary
 cons protected init()
 meth public abstract java.lang.Object cast(java.lang.Object)
@@ -22,6 +28,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.library.Export
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int priority()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 meth public abstract !hasdefault java.lang.String delegateTo()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.library.Library> value()
@@ -58,11 +65,13 @@ intf java.lang.annotation.Annotation
 meth public abstract com.oracle.truffle.api.library.ExportMessage[] value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.GenerateLibrary
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Abstract
 innr public abstract interface static !annotation DefaultExport
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean defaultExportLookupEnabled()
+meth public abstract !hasdefault boolean dynamicDispatchEnabled()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 
@@ -133,7 +142,7 @@ meth public final {com.oracle.truffle.api.library.LibraryFactory%0} getUncached(
 meth public java.lang.String toString()
 meth public static <%0 extends com.oracle.truffle.api.library.Library> com.oracle.truffle.api.library.LibraryFactory<{%%0}> resolve(java.lang.Class<{%%0}>)
 supr java.lang.Object
-hfds LIBRARIES,cachedCache,dispatchLibrary,exportCache,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
+hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,afterBuiltinDefaultExports,beforeBuiltinDefaultExports,cachedCache,dispatchLibrary,exportCache,externalDefaultProviders,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
 hcls ProxyExports,ResolvedDispatch
 
 CLSS public abstract com.oracle.truffle.api.library.Message
@@ -162,6 +171,8 @@ meth public abstract !varargs java.lang.Object send(java.lang.Object,com.oracle.
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.library.ReflectionLibrary> getFactory()
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY
+
+CLSS abstract interface com.oracle.truffle.api.library.package-info
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()

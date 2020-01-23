@@ -68,6 +68,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -103,7 +104,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     }
 
     @Override
-    public List<CodeTypeElement> create(ProcessorContext context1, LibraryData model1) {
+    public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, LibraryData model1) {
         libraryConstants.clear();
         this.context = context1;
         this.model = model1;

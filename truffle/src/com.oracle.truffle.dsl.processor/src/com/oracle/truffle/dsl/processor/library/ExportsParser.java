@@ -444,6 +444,37 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
             model.getExportedLibraries().put(libraryId, lib);
 
+            Integer priority = getAnnotationValue(Integer.class, exportAnnotationMirror, "priority", false);
+            if (priority == null && lib.needsDefaultExportProvider()) {
+                lib.addError("The priority property must be set for default exports based on service providers. "//
+                                + "See @%s(priority=...) for details.",
+                                getSimpleName(types.ExportLibrary));
+                continue;
+            } else if (priority != null) {
+                int prio = priority;
+                AnnotationValue annotationValue = getAnnotationValue(exportAnnotationMirror, "priority");
+                if (prio < 0) {
+                    LibraryDefaultExportData builtinDefaultExport = libraryData.getBuiltinDefaultExport(receiverClass);
+                    if (builtinDefaultExport != null) {
+                        lib.addError(annotationValue, "The provided export receiver type '%s' is not reachable with the given priority. "//
+                                        + "The '%s' library specifies @%s(%s) which has receiver type '%s' and that shadows this export. "//
+                                        + "Increase the priority to a positive integer to resolve this.",
+                                        getSimpleName(receiverClass),
+                                        getSimpleName(libraryData.getTemplateType()),
+                                        getSimpleName(types.GenerateLibrary_DefaultExport),
+                                        getSimpleName(builtinDefaultExport.getImplType()),
+                                        getSimpleName(builtinDefaultExport.getReceiverType()));
+                        continue;
+                    }
+                }
+                if (prio == 0) {
+                    lib.addError(annotationValue, "The set priority must be either positive or negative, but must not be 0.");
+                    continue;
+                }
+
+                lib.setDefaultExportPriority(priority);
+            }
+
             if (ElementUtils.isPrimitive(receiverClass)) {
                 lib.addError(exportAnnotationMirror, receiverClassValue, "Primitive receiver types are not supported yet.");
                 continue;
@@ -565,28 +596,46 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             boolean explicitReceiver = exportedLibrary.isExplicitReceiver();
-            if (exportedLibrary.getLibrary().isDynamicDispatch() && model.getExportedLibraries().size() > 1) {
+            int dynamicDispatchEnabledCount = 0;
+            for (ExportsLibrary library : model.getExportedLibraries().values()) {
+                if (library.getLibrary().isDynamicDispatchEnabled()) {
+                    dynamicDispatchEnabledCount++;
+                }
+            }
+
+            if (exportedLibrary.getLibrary().isDynamicDispatch() && dynamicDispatchEnabledCount > 0) {
                 exportedLibrary.addError(
                                 "@%s cannot be used for other libraries if the %s library is exported. " +
                                                 "Using dynamic dispatch and other libraries is mutually exclusive. " +
                                                 "To resolve this use the dynamic dispatch mechanism of the receiver type instead to export libraries.",
                                 types.ExportLibrary.asElement().getSimpleName().toString(),
                                 types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
-            } else if (explicitReceiver && !exportedLibrary.isDynamicDispatchTarget() && !exportedLibrary.isDefaultExport()) {
+            } else if (explicitReceiver && !exportedLibrary.getLibrary().isDefaultExportLookupEnabled() && !exportedLibrary.isDynamicDispatchTarget() && !exportedLibrary.isBuiltinDefaultExport()) {
+
+                String dynamicDispatchDisabled = "";
+                if (!exportedLibrary.getLibrary().isDynamicDispatchEnabled()) {
+                    dynamicDispatchDisabled = String.format("Note that dynamic dispatch is disabled for the exported library '%s'.%n",
+                                    ElementUtils.getSimpleName(exportedLibrary.getLibrary().getTemplateType()));
+                }
+
                 exportedLibrary.addError(exportedLibrary.getTemplateTypeAnnotation(), //
                                 getAnnotationValue(exportedLibrary.getTemplateTypeAnnotation(), "receiverType"),
                                 "Using explicit receiver types is only supported for default exports or types that export %s.%n" +
+                                                "%s" + // dynamic dispatch disabled
                                                 "To resolve this use one of the following strategies:%n" +
                                                 "  - Make the receiver type implicit by applying '@%s(%s.class)' to the receiver type '%s' instead.%n" +
                                                 "  - Declare a default export on the '%s' library with '@%s(%s.class)'%n" +
+                                                "  - Enable default exports with service providers using @%s(defaultExportLookupEnabled=true) on the library and specify an export priority%n" +
                                                 "  - Enable dynamic dispatch by annotating the receiver type with '@%s(%s.class)'.",
                                 types.DynamicDispatchLibrary.asElement().getSimpleName().toString(),
+                                dynamicDispatchDisabled,
                                 types.ExportLibrary.asElement().getSimpleName().toString(),
                                 exportedLibrary.getLibrary().getTemplateType().getSimpleName().toString(),
                                 ElementUtils.getSimpleName(exportedLibrary.getExplicitReceiver()),
                                 exportedLibrary.getLibrary().getTemplateType().getSimpleName().toString(),
                                 types.GenerateLibrary_DefaultExport.asElement().getSimpleName().toString(),
                                 ElementUtils.getSimpleName(exportedLibrary.getTemplateType().asType()),
+                                ElementUtils.getSimpleName(types.GenerateLibrary),
                                 types.ExportLibrary.asElement().getSimpleName().toString(),
                                 types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
             }

@@ -155,3 +155,5 @@ supr java.lang.Object
 hfds NOTYPE,PREDEFINED_TYPES,impl
 hcls ArrayImpl,ExecutableImpl,InstantiableImpl,IntersectionImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
 
+CLSS abstract interface org.graalvm.polyglot.tck.package-info
+

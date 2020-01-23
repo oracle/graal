@@ -42,13 +42,14 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 
 public abstract class CodeTypeElementFactory<M> {
 
-    public abstract List<CodeTypeElement> create(ProcessorContext context, M m);
+    public abstract List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, M m);
 
     protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 

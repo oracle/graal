@@ -70,6 +70,7 @@ public final class ExportsLibrary extends Template {
     private final LibraryData library;
     private final TypeMirror receiverType;
     private final boolean explicitReceiver;
+    private int defaultExportPriority;
     private Map<CacheExpression, String> sharedExpressions;
     private VariableElement delegationVariable;
 
@@ -82,12 +83,22 @@ public final class ExportsLibrary extends Template {
         this.explicitReceiver = explicitReceiver;
     }
 
+    public void setDefaultExportPriority(int defaultExportPriority) {
+        this.defaultExportPriority = defaultExportPriority;
+    }
+
     public void setSharedExpressions(Map<CacheExpression, String> sharedExpressions) {
         this.sharedExpressions = sharedExpressions;
     }
 
     public Map<CacheExpression, String> getSharedExpressions() {
         return sharedExpressions;
+    }
+
+    public boolean needsDefaultExportProvider() {
+        return isExplicitReceiver()//
+                        && getLibrary().isDefaultExportLookupEnabled()//
+                        && !isBuiltinDefaultExport();
     }
 
     public boolean isFinalReceiver() {
@@ -99,10 +110,13 @@ public final class ExportsLibrary extends Template {
     }
 
     public boolean isDynamicDispatchTarget() {
-        return isExplicitReceiver() && !isDefaultExport() && isReceiverDynamicDispatched();
+        return getLibrary().isDynamicDispatchEnabled() && isExplicitReceiver() && !isBuiltinDefaultExport() && isReceiverDynamicDispatched();
     }
 
     public boolean needsDynamicDispatch() {
+        if (!getLibrary().isDynamicDispatchEnabled()) {
+            return false;
+        }
         TypeElement type = ElementUtils.castTypeElement(receiverType);
         if (type == null) {
             return false;
@@ -127,7 +141,7 @@ public final class ExportsLibrary extends Template {
         return false;
     }
 
-    public boolean isDefaultExport() {
+    public boolean isBuiltinDefaultExport() {
         for (LibraryDefaultExportData defaultExport : getLibrary().getDefaultExports()) {
             if (typeEquals(defaultExport.getImplType(), getTemplateType().asType())) {
                 return true;
@@ -202,6 +216,10 @@ public final class ExportsLibrary extends Template {
 
     public VariableElement getDelegationVariable() {
         return delegationVariable;
+    }
+
+    public int getDefaultExportPriority() {
+        return defaultExportPriority;
     }
 
 }

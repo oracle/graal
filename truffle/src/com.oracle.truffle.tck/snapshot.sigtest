@@ -169,6 +169,8 @@ meth public java.util.Collection<java.lang.String> getServicesClassNames()
 meth public java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 supr java.lang.Object
 
+CLSS abstract interface com.oracle.truffle.tck.package-info
+
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
 

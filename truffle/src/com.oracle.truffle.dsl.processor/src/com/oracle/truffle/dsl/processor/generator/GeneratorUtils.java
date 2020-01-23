@@ -46,6 +46,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -132,13 +133,18 @@ public class GeneratorUtils {
         }
     }
 
-    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement constructor) {
+    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor) {
+        return createConstructorUsingFields(modifiers, clazz, superConstructor, Collections.emptySet());
+    }
+
+    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor,
+                    Set<String> ignoreFields) {
         CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
         CodeTreeBuilder builder = method.createBuilder();
-        if (constructor != null && constructor.getParameters().size() > 0) {
+        if (superConstructor != null && superConstructor.getParameters().size() > 0) {
             builder.startStatement();
             builder.startSuperCall();
-            for (VariableElement parameter : constructor.getParameters()) {
+            for (VariableElement parameter : superConstructor.getParameters()) {
                 method.addParameter(new CodeVariableElement(parameter.asType(), parameter.getSimpleName().toString()));
                 builder.string(parameter.getSimpleName().toString());
             }
@@ -148,6 +154,9 @@ public class GeneratorUtils {
 
         for (VariableElement field : clazz.getFields()) {
             if (field.getModifiers().contains(STATIC)) {
+                continue;
+            }
+            if (ignoreFields.contains(field.getSimpleName().toString())) {
                 continue;
             }
             String fieldName = field.getSimpleName().toString();
