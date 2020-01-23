@@ -1358,6 +1358,34 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    @SuppressWarnings("try")
+    public void testSourceNotPatchedContext() throws Exception {
+        setPatchable(FIRST);
+        Path testFolder = Files.createTempDirectory("testSources").toRealPath();
+        try {
+            Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
+            Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
+            System.setProperty(String.format("%s.home", FIRST), buildtimeHome.toString());
+            AtomicReference<com.oracle.truffle.api.source.Source> buildtimeSource = new AtomicReference<>();
+            ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
+                buildtimeSource.set(createSource(env, buildtimeResource, true));
+            };
+            doContextPreinitialize(FIRST);
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertNotNull(buildtimeSource.get());
+            System.setProperty(String.format("%s.home", FIRST), runtimeHome.toString());
+            Source.newBuilder(FIRST, runtimeResource.toFile()).build();
+        } finally {
+            delete(testFolder);
+        }
+    }
+
     private static com.oracle.truffle.api.source.Source createSource(TruffleLanguage.Env env, Path resource, boolean cached) {
         try {
             TruffleFile file = env.getInternalTruffleFile(resource.toString());
