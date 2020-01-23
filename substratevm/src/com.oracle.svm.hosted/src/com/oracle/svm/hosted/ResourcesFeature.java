@@ -29,9 +29,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.module.ModuleReader;
-import java.lang.module.ModuleReference;
-import java.lang.module.ResolvedModule;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -39,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
@@ -47,7 +43,7 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -66,7 +62,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-
 
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
@@ -124,7 +119,13 @@ public final class ResourcesFeature implements Feature {
                         .toArray(new Pattern[]{});
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            findResourcesInModules(debugContext, patterns);
+            try {
+                ModuleSupport.findResourcesInModules(name -> matches(patterns, name),
+                                (resName, content) -> registerResource(debugContext, resName, content));
+            } catch (IOException ex) {
+                throw UserError.abort("Can not read resources from modules. This is possible due to incorrect module " +
+                                "path or missing module visibility directives", ex);
+            }
         }
 
         for (Pattern pattern : patterns) {
@@ -184,7 +185,6 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
             File[] files = f.listFiles();
@@ -204,7 +204,6 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    @SuppressWarnings("try")
     private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
@@ -221,23 +220,6 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    private static void findResourcesInModules(DebugContext debugContext, Pattern[] patterns) {
-        for (ResolvedModule resolvedModule : ModuleLayer.boot().configuration().modules()) {
-            ModuleReference modRef = resolvedModule.reference();
-            try (ModuleReader moduleReader = modRef.open()) {
-                final List<String> resources = moduleReader.list()
-                                .filter(s -> matches(patterns, s))
-                                .collect(Collectors.toList());
-                for (String resName : resources) {
-                    moduleReader.open(resName)
-                                    .ifPresent(is -> registerResource(debugContext, resName, is));
-                }
-            } catch (IOException ex) {
-                VMError.shouldNotReachHere("Can not read the resources of module", ex);
-            }
-        }
-    }
-
     private static boolean matches(Pattern[] patterns, String relativePath) {
         for (Pattern p : patterns) {
             if (p.matcher(relativePath).matches()) {
@@ -247,9 +229,11 @@ public final class ResourcesFeature implements Feature {
         return false;
     }
 
+    @SuppressWarnings("try")
     private static void registerResource(DebugContext debugContext, String resourceName, InputStream resourceStream) {
-        debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
-        Resources.registerResource(resourceName, resourceStream);
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
+            Resources.registerResource(resourceName, resourceStream);
+        }
     }
-
 }
