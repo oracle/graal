@@ -199,15 +199,28 @@ add_java_vm(NodeWasmBenchmarkVm(), suite=_suite, priority=1)
 add_java_vm(NativeWasmBenchmarkVm(), suite=_suite, priority=1)
 
 
+class WasmJMHJsonRule(mx_benchmark.JMHJsonRule):
+    def __init__(self, filename, suiteName):
+        super(WasmJMHJsonRule, self).__init__(filename, suiteName)
+
+    def getBenchmarkNameFromResult(self, result):
+        name_flag = "-Dwasmbench.benchmarkName="
+        name_arg = next(arg for arg in result["jvmArgs"] if arg.startswith(name_flag))
+        return name_arg[len(name_flag):]
+
+
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
         return "wasm"
 
     def group(self):
-        return "wasm"
+        return "Graal"
+
+    def benchSuiteName(self, bmSuiteArgs):
+        return next(arg for arg in bmSuiteArgs if arg.endswith("BenchmarkSuite"))
 
     def subgroup(self):
-        return "truffle"
+        return "wasm"
 
     def successPatterns(self):
         return []
@@ -219,7 +232,7 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
             return []
-        return super(WasmBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+        return [WasmJMHJsonRule(mx_benchmark.JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName(bmSuiteArgs))]
 
 
 add_bm_suite(WasmBenchmarkSuite())
