@@ -311,10 +311,16 @@ final class SourceImpl extends Source {
         private final URL url;
         private final String path;
 
+        /**
+         * Creates an {@link ImmutableKey} for a file under the language home. The hash code must be
+         * equal to {@link ReinitializableKey}'s hash code. The hash code is based on the relative
+         * path in language home and does not include {@code url} nor {@code uri} as they contain
+         * absolute paths.
+         */
         ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy,
-                        String relativePahtInLanguageHome) {
+                        String relativePathInLanguageHome) {
             this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
-            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePahtInLanguageHome, internal, interactive, cached, legacy);
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
         }
 
         ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
@@ -337,6 +343,12 @@ final class SourceImpl extends Source {
         }
     }
 
+    /**
+     * A {@link Key} used for files under the language homes in the time of context
+     * pre-initialization. The {@code uri}, {@code url} and {@code path} of the
+     * {@link ReinitializableKey} are reset at the end of the context pre-initialization and
+     * recomputed from the given {@link TruffleFile} in image execution time.
+     */
     static final class ReinitializableKey extends Key {
 
         private static final Object INVALID = new Object();
@@ -346,15 +358,20 @@ final class SourceImpl extends Source {
         private Object url;
         private Object path;
 
+        /**
+         * Creates an {@link ReinitializableKey} for a file under the language home. The hash code
+         * is based on the relative path in language home and does not include {@code url} nor
+         * {@code uri} as they contain absolute paths.
+         */
         ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached, boolean legacy, String relativePahtInLanguageHome) {
+                        boolean cached, boolean legacy, String relativePathInLanguageHome) {
             super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
             Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
             this.truffleFile = truffleFile;
             this.uri = uri;
             this.url = url;
             this.path = path;
-            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePahtInLanguageHome, internal, interactive, cached, legacy);
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
         }
 
         @Override
