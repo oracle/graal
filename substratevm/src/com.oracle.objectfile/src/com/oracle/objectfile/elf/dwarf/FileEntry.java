@@ -26,6 +26,9 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+/**
+ * track debug info associated with a Java source file.
+ */
 public class FileEntry {
     // the name of the associated file including path
     private String fileName;

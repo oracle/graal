@@ -26,10 +26,12 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-// details of a specific address range in a compiled method
-// either a primary range identifying a whole method
-// or a sub-range identifying a sequence of
-// instructions that belong to an inlined method
+/**
+ * details of a specific address range in a compiled method
+ * either a primary range identifying a whole method
+ * or a sub-range identifying a sequence of
+ * instructions that belong to an inlined method
+ */
 
 public class Range {
     private String fileName;

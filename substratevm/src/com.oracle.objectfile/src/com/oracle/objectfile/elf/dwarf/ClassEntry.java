@@ -33,31 +33,66 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * track debug info associated with a Java class
+ */
 public class ClassEntry {
-    // the name of the associated class
+   /**
+     * the name of the associated class
+    */
     private String className;
-    // the associated file
+    /**
+     * details of the associated file
+     */
     FileEntry fileEntry;
-    // a list recording details of all primary ranges included in
-    // this class sorted by ascending address range
+    /**
+     * a list recording details of all primary
+     * ranges included in this class sorted by
+     * ascending address range
+     */
     private LinkedList<PrimaryEntry> primaryEntries;
-    // an index identifying primary ranges which have already been encountered
+    /**
+     * an index identifying primary ranges which
+     * have already been encountered
+     */
     private Map<Range, PrimaryEntry> primaryIndex;
-    // an index of all primary and secondary files referenced from this class's CU
+    /**
+     * an index of all primary and secondary files
+     * referenced from this class's compilation unit
+     */
     private Map<FileEntry, Integer> localFilesIndex;
-    // a list of the same files
+    /**
+     * a list of the same files
+     */
     private LinkedList<FileEntry> localFiles;
-    // an index of all primary and secondary dirs referenced from this class's CU
+    /**
+     * an index of all primary and secondary dirs
+     * referenced from this class's compilation unit
+     */
     private HashMap<DirEntry, Integer> localDirsIndex;
-    // a list of the same dirs
+    /**
+     * a list of the same dirs
+     */
     private LinkedList<DirEntry> localDirs;
-    // index of debug_info section compilation unit for this class
+    /**
+     * index of debug_info section compilation unit
+     * for this class
+     */
     private int cuIndex;
-    // index into debug_line section for associated CU
+    /**
+     * index into debug_line section for associated
+     * compilation unit
+     */
     private int lineIndex;
-    // size of line number info prologue region for associated CU
+    /**
+     * size of line number info prologue region for
+     * associated compilation unit
+     */
     private int linePrologueSize;
-    // total size of line number info region for associated CU
+    /**
+     * total size of line number info region for
+     * associated compilation unit
+     */
     private int totalSize;
 
     public ClassEntry(String className, FileEntry fileEntry) {
