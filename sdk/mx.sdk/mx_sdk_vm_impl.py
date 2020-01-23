@@ -2424,42 +2424,42 @@ def standalone_home(comp_dir_name):
     return join(_standalone_dist.output, _standalone_dist.base_dir_name)
 
 
-def log_graalvm_components(args):
+def print_graalvm_components(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-components', description='Print the list of GraalVM components')
     parser.add_argument('--stage1', action='store_true', help='print the list of components for the stage1 distribution')
     args = parser.parse_args(args)
     components, _, _ = _components_set(args.stage1)
-    mx.log(sorted(components))
+    print(sorted(components))
 
 
-def log_graalvm_dist_name(args):
+def print_graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
     _ = parser.parse_args(args)
-    mx.log(graalvm_dist_name())
+    print(graalvm_dist_name())
 
 
-def log_graalvm_version(args):
+def print_graalvm_version(args):
     """print the GraalVM version"""
     parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
     _ = parser.parse_args(args)
-    mx.log(graalvm_version())
+    print(graalvm_version())
 
 
-def log_graalvm_home(args):
+def print_graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
     _ = parser.parse_args(args)
-    mx.log(graalvm_home())
+    print(graalvm_home())
 
 
-def log_standalone_home(args):
+def print_standalone_home(args):
     """print the GraalVM standalone home dir"""
     parser = ArgumentParser(prog='mx standalone-home', description='Print the standalone home directory')
     parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
     args = parser.parse_args(args)
-    mx.log(standalone_home(args.comp_dir_name))
+    print(standalone_home(args.comp_dir_name))
 
 
 def graalvm_show(args):
@@ -2469,28 +2469,28 @@ def graalvm_show(args):
     args = parser.parse_args(args)
 
     graalvm_dist = get_final_graalvm_distribution()
-    mx.log("GraalVM distribution: {}".format(graalvm_dist))
-    mx.log("Version: {}".format(_suite.release_version()))
-    mx.log("Config name: {}".format(graalvm_dist.vm_config_name))
-    mx.log("Components:")
+    print("GraalVM distribution: {}".format(graalvm_dist))
+    print("Version: {}".format(_suite.release_version()))
+    print("Config name: {}".format(graalvm_dist.vm_config_name))
+    print("Components:")
     for component in registered_graalvm_components(stage1=args.stage1):
-        mx.log(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
+        print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
     launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
     if launchers:
-        mx.log("Launchers:")
+        print("Launchers:")
         for launcher in launchers:
             suffix = ''
             profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
             if profile_cnt > 0:
                 suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
-            mx.log(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
+            print(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
     else:
-        mx.log("No launcher")
+        print("No launcher")
 
     libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
     if libraries:
-        mx.log("Libraries:")
+        print("Libraries:")
         for library in libraries:
             suffix = ''
             if library.is_skipped():
@@ -2498,25 +2498,25 @@ def graalvm_show(args):
             profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
             if profile_cnt > 0:
                 suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
-            mx.log(" - {}{}".format(library.native_image_name, suffix))
+            print(" - {}{}".format(library.native_image_name, suffix))
     else:
-        mx.log("No library")
+        print("No library")
 
     installables = _get_dists(GraalVmInstallableComponent)
     if installables:
-        mx.log("Installables:")
+        print("Installables:")
         for i in installables:
-            mx.log(" - {}".format(i))
+            print(" - {}".format(i))
     else:
-        mx.log("No installable")
+        print("No installable")
 
     standalones = _get_dists(GraalVmStandaloneComponent)
     if standalones:
-        mx.log("Standalones:")
+        print("Standalones:")
         for s in standalones:
-            mx.log(" - {}".format(s))
+            print(" - {}".format(s))
     else:
-        mx.log("No standalone")
+        print("No standalone")
 
 
 def _get_dists(dist_class):
@@ -2581,11 +2581,11 @@ def check_versions(jdk, graalvm_version_regex, expect_graalvm, check_jvmci):
         mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk.home, check_env))
 
 
-def log_graalvm_vm_name(args):
+def print_graalvm_vm_name(args):
     """Print the VM name of GraalVM"""
     parser = ArgumentParser(prog='mx graalvm-vm-name', description='Print the VM name of GraalVM')
     _ = parser.parse_args(args)
-    mx.log(graalvm_vm_name(get_final_graalvm_distribution(), _src_jdk))
+    print(graalvm_vm_name(get_final_graalvm_distribution(), _src_jdk))
 
 def graalvm_vm_name(graalvm_dist, jdk):
     """
@@ -2756,11 +2756,11 @@ def mx_post_parse_cmd_line(args):
 
 
 mx.update_commands(_suite, {
-    'graalvm-components': [log_graalvm_components, ''],
-    'graalvm-dist-name': [log_graalvm_dist_name, ''],
-    'graalvm-version': [log_graalvm_version, ''],
-    'graalvm-home': [log_graalvm_home, ''],
+    'graalvm-components': [print_graalvm_components, ''],
+    'graalvm-dist-name': [print_graalvm_dist_name, ''],
+    'graalvm-version': [print_graalvm_version, ''],
+    'graalvm-home': [print_graalvm_home, ''],
     'graalvm-show': [graalvm_show, ''],
-    'graalvm-vm-name': [log_graalvm_vm_name, ''],
-    'standalone-home': [log_standalone_home, 'comp-dir-name'],
+    'graalvm-vm-name': [print_graalvm_vm_name, ''],
+    'standalone-home': [print_standalone_home, 'comp-dir-name'],
 })
