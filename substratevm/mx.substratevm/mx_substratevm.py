@@ -1214,6 +1214,7 @@ if mx.is_linux() and mx.get_arch() == "amd64":
             dir_name=False,
             license_files=[],
             third_party_license_files=[],
+            dependencies=['svm'],
             support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT']
         ))
 
