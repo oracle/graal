@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.espresso.impl.Stable;
+import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -93,6 +94,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     @Stable private volatile Condition waitCondition;
 
+    @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Espresso runtime method.")
     private Condition getWaitCondition() {
         Condition cond = waitCondition;
         if (cond == null) {
@@ -106,6 +108,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         return cond;
     }
 
+    @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso runtime method.")
     @Override
     public void await(long timeout) throws InterruptedException {
         if (timeout == 0) {
