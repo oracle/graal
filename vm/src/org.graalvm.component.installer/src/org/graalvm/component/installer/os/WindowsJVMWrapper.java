@@ -46,16 +46,18 @@ import org.graalvm.component.installer.SystemUtils;
 public class WindowsJVMWrapper {
     private final Feedback fb;
     private final FileOperations fileOps;
-
+    private final Path installPath;
+    
     private String mainClass;
     private String jvmBinary;
     private List<String> args = Collections.emptyList();
     private List<String> jvmArgs = Collections.emptyList();
     private String classpath = "."; // NOI18N
 
-    public WindowsJVMWrapper(Feedback fb, FileOperations fops) {
+    public WindowsJVMWrapper(Feedback fb, FileOperations fops, Path installPath) {
         this.fb = fb.withBundle(WindowsJVMWrapper.class);
         this.fileOps = fops;
+        this.installPath = installPath;
     }
 
     public WindowsJVMWrapper vm(String path, List<String> vmArgs) {
@@ -165,6 +167,9 @@ public class WindowsJVMWrapper {
     void deleteFileRecursively(Path rootPath) throws IOException {
         try (Stream<Path> paths = Files.walk(rootPath)) {
             paths.sorted(Comparator.reverseOrder()).forEach((p) -> {
+                if (!p.toAbsolutePath().startsWith(installPath)) {
+                    return;
+                }
                 try {
                     fileOps.deleteFile(p);
                 } catch (IOException ex) {

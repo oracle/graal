@@ -684,7 +684,7 @@ public class InstallerTest extends TestBase {
         Path target = Files.readSymbolicLink(check);
 
         Path resolved = targetPath.relativize(check.resolveSibling(target).normalize());
-        assertEquals("jre/bin/ruby", resolved.toString());
+        assertEquals("jre/bin/ruby", SystemUtils.toCommonPath(resolved));
 
         installer.revertInstall();
 
