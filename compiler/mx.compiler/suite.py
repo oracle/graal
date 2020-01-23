@@ -2260,6 +2260,56 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_TRUFFLE_JFR_IMPL" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "jdk.internal.vm.compiler.truffle.jfr",
+      },
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.jfr.impl",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+      ],
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "JVMCI_HOTSPOT",
+      ],
+      "maven": False,
+    },
+
+    "GRAAL_LIBGRAAL_JNI": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.libgraal.jni",
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+        "GRAAL",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
+    },
+
+    "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
+        "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
+      ],
+
+      "distDependencies" : [
+        "GRAAL",
+        "GRAAL_LIBGRAAL_JNI",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
+    },
+
     "GRAAL_PROCESSOR_COMMON" : {
       "subDir": "src",
       "dependencies" : ["org.graalvm.compiler.processor"],
@@ -2381,7 +2431,8 @@ suite = {
         }
       },
       "subDir" : "src",
-      "overlaps" : [],
+      "overlaps" : [
+      ],
       "dependencies" : [
         "org.graalvm.libgraal",
         "org.graalvm.compiler.options",
@@ -2453,57 +2504,6 @@ suite = {
       "maven": False,
     },
 
-    "GRAAL_MANAGEMENT" : {
-      # This distribution defines a module.
-      "moduleInfo" : {
-        "name" : "jdk.internal.vm.compiler.management",
-      },
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.management",
-        "org.graalvm.compiler.hotspot.management",
-      ],
-      "distDependencies" : [
-        "GRAAL",
-      ],
-      "exclude" : [
-        "JVMCI_SERVICES",
-        "JVMCI_API",
-        "JVMCI_HOTSPOT",
-      ],
-      "maven": False,
-    },
-
-    "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
-        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
-        "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
-        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
-      ],
-
-      "distDependencies" : [
-        "GRAAL",
-        "GRAAL_LIBGRAAL_JNI",
-      ],
-      "maven": False,
-      "javaCompliance" : "8+",
-    },
-    
-    "GRAAL_LIBGRAAL_JNI": {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.libgraal.jni",
-      ],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK",
-        "GRAAL",
-      ],
-      "maven": False,
-      "javaCompliance" : "8+",
-    },
-
     "GRAAL_MANAGEMENT_LIBGRAAL": {
       "subDir" : "src",
       "dependencies" : [
@@ -2512,7 +2512,6 @@ suite = {
 
       "distDependencies" : [
         "GRAAL_MANAGEMENT",
-        "GRAAL_LIBGRAAL_JNI",
         "GRAAL",
       ],
       "maven": False,
