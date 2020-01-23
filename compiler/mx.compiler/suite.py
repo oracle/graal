@@ -2298,7 +2298,7 @@ suite = {
       "dependencies" : ["org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor"],
       "distDependencies" : ["GRAAL_PROCESSOR", "GRAAL"],
       "maven": False,
-    },    
+    },
 
     "GRAAL" : {
       # This distribution defines a module.
