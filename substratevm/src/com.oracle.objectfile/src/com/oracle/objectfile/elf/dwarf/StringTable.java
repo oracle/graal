@@ -86,7 +86,9 @@ public class StringTable implements Iterable<StringEntry> {
      * into the debug_str section. this should only be called
      * after the string section has been written.
      * @param string
-     * @return
+     * @return the offset or -1 if the string does not
+     * define an entry or the entry has nto been written
+     * to the debug_str section
      */
     public int debugStringIndex(String string) {
         StringEntry stringEntry = table.get(string);
