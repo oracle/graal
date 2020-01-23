@@ -26,6 +26,8 @@ images or shared objects.
 
 * [Sulong](sulong/README.md) is an engine for running LLVM bitcode on GraalVM.
 
+* [GraalWasm](wasm/README.md) is an engine for running WebAssembly programs on GraalVM.
+
 * [TRegex](regex/README.md) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
