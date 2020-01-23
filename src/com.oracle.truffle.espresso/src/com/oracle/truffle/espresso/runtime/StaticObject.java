@@ -44,15 +44,16 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
+
 import sun.misc.Unsafe;
 
 /**
- * Jumbo class that does everything for any type of object, while maintaining same performance,
- * whether they be arrays, classes or regular objects. This allows for leaf type-checks.
+ * Implementation of the Espresso object model.
  *
- * This does not come for free, however, as the implementation is pretty ugly.
+ * <p>
+ * For performance reasons, all guest objects, including arrays, classes and <b>null</b>, are
+ * instances of {@link StaticObject}.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class StaticObject implements TruffleObject {
@@ -79,7 +80,7 @@ public final class StaticObject implements TruffleObject {
         return Meta.toHostString(this);
     }
 
-    // endregion
+    // endregion Interop
 
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
@@ -87,6 +88,37 @@ public final class StaticObject implements TruffleObject {
 
     public static final StaticObject VOID = new StaticObject();
     public static final StaticObject NULL = new StaticObject();
+
+    private volatile EspressoLock lock;
+
+    /**
+     * Returns an {@link EspressoLock} instance for use with this {@link StaticObject} instance.
+     *
+     * <p>
+     * The {@link EspressoLock} instance will be unique and cached. Calling this method on
+     * {@link StaticObject#NULL} is an invalid operation.
+     *
+     * <p>
+     * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
+     * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
+     * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
+     */
+    public EspressoLock getLock() {
+        if (isNull(this)) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
+        }
+        EspressoLock l = lock;
+        if (l == null) {
+            synchronized (this) {
+                l = lock;
+                if (l == null) {
+                    lock = l = EspressoLock.create();
+                }
+            }
+        }
+        return l;
+    }
 
     // Only non-primitive fields are stored in this
     private final Object fields;
