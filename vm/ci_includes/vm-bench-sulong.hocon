@@ -11,6 +11,7 @@ bench-llvm-common: {
     CPPFLAGS: "-I$LIBGMP/include"
     LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
     LIBRARY_PATH: "$LIBGMP/lib:$LIBRARY_PATH"
+    TRUFFLE_STRICT_OPTION_DEPRECATION: "true"
   }
 }
 
