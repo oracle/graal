@@ -765,7 +765,7 @@ public class SubstrateUtil {
             String[] neverInline = SubstrateOptions.NeverInline.getValue();
 
             return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.matches(MethodFilter.parse(re), method)));
+                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.parse(re).matches(method)));
         }
     }
 }

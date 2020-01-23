@@ -50,7 +50,7 @@ final class DebugConfigImpl implements DebugConfig {
     private final DebugFilter timerFilter;
     private final DebugFilter dumpFilter;
     private final DebugFilter verifyFilter;
-    private final MethodFilter[] methodFilter;
+    private final MethodFilter methodFilter;
     private final List<DebugDumpHandler> dumpHandlers;
     private final List<DebugVerifyHandler> verifyHandlers;
     private final PrintStream output;
@@ -193,7 +193,7 @@ final class DebugConfigImpl implements DebugConfig {
                     JavaMethod method = DebugConfig.asJavaMethod(o);
                     if (method != null) {
                         if (!DebugOptions.MethodFilterRootOnly.getValue(options)) {
-                            if (org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, method)) {
+                            if (methodFilter.matches(method)) {
                                 return true;
                             }
                         } else {
@@ -207,7 +207,7 @@ final class DebugConfigImpl implements DebugConfig {
                     }
                 }
             }
-            if (lastMethod != null && org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, lastMethod)) {
+            if (lastMethod != null && methodFilter.matches(lastMethod)) {
                 return true;
             }
             return false;
