@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
@@ -51,10 +52,10 @@ public class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
-    private final PureNFA[] lookAheads;
-    private final PureNFA[] lookBehinds;
+    private final SimpleStateIndex<PureNFA> lookAheads;
+    private final SimpleStateIndex<PureNFA> lookBehinds;
 
-    public PureNFAMap(RegexAST ast, PureNFA root, PureNFA[] lookAheads, PureNFA[] lookBehinds) {
+    public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookAheads, SimpleStateIndex<PureNFA> lookBehinds) {
         this.ast = ast;
         this.root = root;
         this.lookAheads = lookAheads;
@@ -69,11 +70,19 @@ public class PureNFAMap {
         return root;
     }
 
-    public PureNFA[] getLookAheads() {
+    public SimpleStateIndex<PureNFA> getLookAheads() {
         return lookAheads;
     }
 
-    public PureNFA[] getLookBehinds() {
+    public SimpleStateIndex<PureNFA> getLookBehinds() {
         return lookBehinds;
+    }
+
+    /**
+     * Mark a potential look-behind entry starting {@code offset} characters before the root
+     * expression.
+     */
+    public void addPrefixLookBehindEntry(PureNFA lookBehind, int offset) {
+// System.out.println("Offset " + offset + ast.getLookBehinds().get(lookBehind.getSubTreeId()));
     }
 }

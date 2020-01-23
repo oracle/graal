@@ -562,8 +562,11 @@ public final class RegexParser {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(root, Arrays.asList(ast.getSource().getSource().createSection(0, 1), ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1)));
         }
+        Token token = null;
+        Token.Kind prevKind;
         while (lexer.hasNext()) {
-            Token token = lexer.next();
+            prevKind = token == null ? null : token.kind;
+            token = lexer.next();
             switch (token.kind) {
                 case caret:
                     if (flags.isMultiline()) {
@@ -586,6 +589,13 @@ public final class RegexParser {
                     }
                     break;
                 case wordBoundary:
+                    if (prevKind == Token.Kind.wordBoundary) {
+                        // ignore
+                        break;
+                    } else if (prevKind == Token.Kind.nonWordBoundary) {
+                        replaceCurTermWithDeadNode();
+                        break;
+                    }
                     if (flags.isUnicode() && flags.isIgnoreCase()) {
                         substitute(token, UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION);
                     } else {
@@ -594,6 +604,13 @@ public final class RegexParser {
                     properties.setAlternations();
                     break;
                 case nonWordBoundary:
+                    if (prevKind == Token.Kind.nonWordBoundary) {
+                        // ignore
+                        break;
+                    } else if (prevKind == Token.Kind.wordBoundary) {
+                        replaceCurTermWithDeadNode();
+                        break;
+                    }
                     if (flags.isUnicode() && flags.isIgnoreCase()) {
                         substitute(token, UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION);
                     } else {

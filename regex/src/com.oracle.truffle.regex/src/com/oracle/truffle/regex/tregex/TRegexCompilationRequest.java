@@ -66,6 +66,9 @@ import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAMarkLookBehindEntries;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
@@ -277,6 +280,11 @@ public final class TRegexCompilationRequest {
             phaseEnd("NFA");
         }
         debugNFA();
+        PureNFAMap map = PureNFAGenerator.mapToNFA(ast);
+        new PureNFAMarkLookBehindEntries(map).markEntries();
+        if (map == null) {
+            throw new IllegalStateException();
+        }
     }
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
@@ -318,7 +326,7 @@ public final class TRegexCompilationRequest {
             file = env.getPublicTruffleFile("./nfa_reverse.gv");
             NFAExport.exportDotReverse(nfa, file, true, false);
             file = env.getPublicTruffleFile("nfa.json");
-            nfa.toJson().dump(file);
+            Json.obj(Json.prop("dfa", Json.obj(Json.prop("pattern", source.toString()), Json.prop("nfa", nfa.toJson(true))))).dump(file);
         }
     }
 

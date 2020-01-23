@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,69 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.automaton;
+package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
+public class PureNFAIndex extends SimpleStateIndex<PureNFA> {
 
-    private final ArrayList<T> states;
-    private StateSet<T> emptySet;
+    private static final PureNFAIndex EMPTY_INSTANCE = new PureNFAIndex(0);
 
-    protected SimpleStateIndex() {
-        states = new ArrayList<>();
+    public static PureNFAIndex getEmptyInstance() {
+        return EMPTY_INSTANCE;
     }
 
-    protected SimpleStateIndex(int size) {
-        states = new ArrayList<>(size);
-    }
-
-    public void add(T state) {
-        assert !states.contains(state);
-        setStateId(state, (short) states.size());
-        states.add(state);
-        assert states.get(getStateId(state)) == state;
-    }
-
-    protected abstract short getStateId(T state);
-
-    protected abstract void setStateId(T state, short id);
-
-    @Override
-    public int getNumberOfStates() {
-        return states.size();
+    public PureNFAIndex(int size) {
+        super(size);
     }
 
     @Override
-    public short getId(T state) {
-        short id = getStateId(state);
-        assert states.get(id) == state;
-        return id;
+    protected short getStateId(PureNFA state) {
+        return state.getSubTreeId();
     }
 
     @Override
-    public T getState(int id) {
-        return states.get(id);
-    }
-
-    public StateSet<T> getEmptySet() {
-        if (emptySet == null) {
-            emptySet = StateSet.create(this);
-        }
-        return emptySet;
-    }
-
-    public int size() {
-        return states.size();
-    }
-
-    public T get(int i) {
-        return states.get(i);
-    }
-
-    @Override
-    public Iterator<T> iterator() {
-        return states.iterator();
+    protected void setStateId(PureNFA state, short id) {
     }
 }

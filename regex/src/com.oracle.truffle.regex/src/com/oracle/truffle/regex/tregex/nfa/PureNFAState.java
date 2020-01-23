@@ -40,8 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Collections;
+import java.util.Set;
+
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
@@ -59,6 +64,7 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
 
     private final short astNodeId;
     private final CharSet charSet;
+    private Set<PureNFA> lookBehindEntries;
 
     public PureNFAState(short id, short astNodeId, CharSet charSet) {
         super(id, EMPTY_TRANSITIONS);
@@ -77,5 +83,19 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
     @Override
     protected PureNFATransition[] createTransitionsArray(int length) {
         return new PureNFATransition[length];
+    }
+
+    public Set<PureNFA> getLookBehindEntries() {
+        if (lookBehindEntries == null) {
+            return Collections.emptySet();
+        }
+        return lookBehindEntries;
+    }
+
+    public void addLookBehindEntry(SimpleStateIndex<PureNFA> lookBehinds, PureNFA lb) {
+        if (lookBehindEntries == null) {
+            lookBehindEntries = StateSet.create(lookBehinds);
+        }
+        lookBehindEntries.add(lb);
     }
 }

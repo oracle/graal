@@ -47,4 +47,8 @@ public interface StateIndex<S> {
     short getId(S state);
 
     S getState(int id);
+
+    default boolean isEmpty() {
+        return getNumberOfStates() == 0;
+    }
 }

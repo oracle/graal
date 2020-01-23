@@ -43,38 +43,62 @@ package com.oracle.truffle.regex.tregex.nfa;
 import java.util.Collection;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
 /**
  * A NFA that corresponds to the subtree of one {@link RegexASTSubtreeRootNode}.
  */
-public class PureNFA {
+public class PureNFA implements StateIndex<PureNFAState> {
 
+    private final short subTreeId;
+    private final boolean hasLookBehinds;
     @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
     @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
 
-    public PureNFA(Collection<PureNFAState> states,
+    public PureNFA(short subTreeId,
+                    Collection<PureNFAState> states,
                     Counter.ThresholdCounter stateIDCounter,
                     Counter.ThresholdCounter transitionIDCounter) {
+        this.subTreeId = subTreeId;
         this.states = new PureNFAState[stateIDCounter.getCount()];
         this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
+        boolean lookBehinds = false;
         for (PureNFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
-            if (s.getSuccessors() == null) {
-                continue;
-            }
             for (PureNFATransition t : s.getSuccessors()) {
-                assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
-                if (this.transitions[t.getId()] == null) {
+                if (s.getId() != 0) {
+                    // don't link the dummy initial state as predecessor of initial states.
                     t.getTarget().addPredecessor(t);
                 }
+                lookBehinds |= !t.getTraversedLookBehinds().isEmpty();
+                assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
         }
+        this.hasLookBehinds = lookBehinds;
     }
 
+    /**
+     * {@link RegexASTSubtreeRootNode#getSubTreeId() Subtree ID} of the
+     * {@link RegexASTSubtreeRootNode} this NFA was generated from.
+     */
+    public short getSubTreeId() {
+        return subTreeId;
+    }
+
+    /**
+     * Get this NFA's "dummy initial state". Since {@link DFAGenerator} works on sets of NFA
+     * transitions, we need pseudo-transitions to the NFA's initial states as entry points for the
+     * DFA generator. The dummy initial state provides these transitions, in a fixed layout: The
+     * first half of its {@link PureNFAState#getSuccessors() successors} lead to the NFA's anchored
+     * initial states, and the second half leads to the unanchored initial states. The dummy initial
+     * state's {@link PureNFAState#getPredecessors() predecessors} are the NFA's anchored and
+     * unanchored final state, in that order. They serve as entry points for reverse DFAs.
+     */
     public PureNFAState getDummyInitialState() {
         return states[0];
     }
@@ -91,11 +115,39 @@ public class PureNFA {
         return getDummyInitialState().getSuccessors()[getNumberOfEntryPoints() + i];
     }
 
+    public PureNFATransition getReverseAnchoredEntry() {
+        return getDummyInitialState().getPredecessors()[0];
+    }
+
+    public PureNFATransition getReverseUnAnchoredEntry() {
+        return getDummyInitialState().getPredecessors()[1];
+    }
+
     public PureNFAState[] getStates() {
         return states;
     }
 
     public PureNFATransition[] getTransitions() {
         return transitions;
+    }
+
+    public boolean hasLookBehinds() {
+        return hasLookBehinds;
+    }
+
+    @Override
+    public int getNumberOfStates() {
+        return states.length;
+    }
+
+    @Override
+    public short getId(PureNFAState state) {
+        assert states[state.getId()] == state;
+        return state.getId();
+    }
+
+    @Override
+    public PureNFAState getState(int id) {
+        return states[id];
     }
 }

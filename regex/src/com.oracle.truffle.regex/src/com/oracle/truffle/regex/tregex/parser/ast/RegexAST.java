@@ -55,7 +55,6 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
@@ -89,8 +88,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     private Group wrappedRoot;
     private Group[] captureGroups;
-    private final SimpleStateIndex<LookAheadAssertion> lookAheads = new SimpleStateIndex<>(RegexASTSubtreeRootNode::getSubTreeId, RegexASTSubtreeRootNode::setSubTreeId);
-    private final SimpleStateIndex<LookBehindAssertion> lookBehinds = new SimpleStateIndex<>(RegexASTSubtreeRootNode::getSubTreeId, RegexASTSubtreeRootNode::setSubTreeId);
+    private final LookAroundIndex<LookAheadAssertion> lookAheads = new LookAroundIndex<>();
+    private final LookAroundIndex<LookBehindAssertion> lookBehinds = new LookAroundIndex<>();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<PositionAssertion> nfaAnchoredInitialStates;
@@ -226,7 +225,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return !lookAheads.isEmpty();
     }
 
-    public SimpleStateIndex<LookAheadAssertion> getLookAheads() {
+    public LookAroundIndex<LookAheadAssertion> getLookAheads() {
         return lookAheads;
     }
 
@@ -234,7 +233,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return !lookBehinds.isEmpty();
     }
 
-    public SimpleStateIndex<LookBehindAssertion> getLookBehinds() {
+    public LookAroundIndex<LookBehindAssertion> getLookBehinds() {
         return lookBehinds;
     }
 

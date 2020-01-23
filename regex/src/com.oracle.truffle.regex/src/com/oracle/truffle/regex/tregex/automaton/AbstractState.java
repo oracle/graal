@@ -51,6 +51,10 @@ public abstract class AbstractState<S extends AbstractState<S, T>, T extends Abs
     protected static final byte FLAG_UN_ANCHORED_FINAL_STATE = 1 << 3;
     protected static final byte FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
     protected static final byte FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
+    /**
+     * Number of flag bits occupied by this class. Child classes may add their own flags with
+     * {@code byte NEW_FLAG = 1 << N_FLAGS; byte NEW_FLAG2 = 1 << (N_FLAGS + 1)} etc.
+     */
     protected static final int N_FLAGS = 4;
 
     private final short id;
