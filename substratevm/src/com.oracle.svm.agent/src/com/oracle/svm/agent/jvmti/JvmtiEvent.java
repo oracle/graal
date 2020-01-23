@@ -36,7 +36,8 @@ public enum JvmtiEvent {
     JVMTI_EVENT_VM_DEATH,
     JVMTI_EVENT_BREAKPOINT,
     JVMTI_EVENT_THREAD_END,
-    JVMTI_EVENT_NATIVE_METHOD_BIND;
+    JVMTI_EVENT_NATIVE_METHOD_BIND,
+    JVMTI_EVENT_CLASS_PREPARE;
 
     @CEnumValue
     public native int getCValue();
