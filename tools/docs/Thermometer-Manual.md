@@ -143,6 +143,9 @@ lock addl $0x0,(%rsp)
 There is a single flag, so the thermometer works best with applications with a
 single thread running most of the time.
 
+The flag is not restored when a call leaves - we found that this added quite a
+a bit of overhead.
+
 The sample flag is set for each guest-language method root, so a compilation
 unit may set it multiple times increasing overhead.
 
