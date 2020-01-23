@@ -68,7 +68,7 @@ public class DwarfSections {
     public static final String DW_ARANGES_SECTION_NAME = ".debug_aranges";
 
     /**
-     * currently generated debug info relies on DWARF spec vesion 2
+     * currently generated debug info relies on DWARF spec vesion 2.
      */
     private static final short DW_VERSION_2 = 2;
 
@@ -197,24 +197,24 @@ public class DwarfSections {
     }
 
     /**
-     * a scratch buffer used during computation of a section's size
+     * a scratch buffer used during computation of a section's size.
      */
     protected static final byte[] scratch = new byte[10];
 
     /**
      * a table listing all known strings, some of
      * which may be marked for insertion into the
-     * .debug_str section
+     * debug_str section.
      */
     private StringTable stringTable = new StringTable();
 
     /**
      * list detailing all dirs in which files are found to reside
-     * either as part of substrate/compiler or user code
+     * either as part of substrate/compiler or user code.
      */
     private LinkedList<DirEntry> dirs = new LinkedList<>();
     /**
-     * index of already seen dirs
+     * index of already seen dirs.
      */
     private Map<String, DirEntry> dirsIndex = new HashMap<>();
 
@@ -227,7 +227,7 @@ public class DwarfSections {
 
     /**
      * a list recording details of all primary ranges included in
-     * this file sorted by ascending address range
+     * this file sorted by ascending address range.
      */
     private LinkedList<PrimaryEntry> primaryEntries = new LinkedList<>();
 
@@ -249,29 +249,29 @@ public class DwarfSections {
     // of the file and dir tables.
 
     /**
-     * list of class entries detailing class info for primary ranges
+     * list of class entries detailing class info for primary ranges.
      */
     private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
     /**
-     *  index of already seen classes
+     *  index of already seen classes.
      */
     private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
 
     /**
-     * list of files which contain primary ranges
+     * list of files which contain primary ranges.
      */
     private LinkedList<FileEntry> primaryFiles = new LinkedList<>();
     /**
-     * List of files which contain primary or secondary ranges
+     * List of files which contain primary or secondary ranges.
      */
     private LinkedList<FileEntry> files = new LinkedList<>();
     /**
-     * index of already seen files
+     * index of already seen files.
      */
     private Map<String, FileEntry> filesIndex = new HashMap<>();
 
     /**
-     * indirects this call to the string table
+     * indirects this call to the string table.
      * @param string the string to be inserted
      * @return a unique equivalent String
      */
@@ -282,9 +282,9 @@ public class DwarfSections {
     /**
      * indirects this call to the string table, ensuring
      * the table entry is marked for inclusion in the
-     * .debug_str section
+     * debug_str section.
      * @param string the string to be inserted and
-     * marked for inclusion in the .debug_str section
+     * marked for inclusion in the debug_str section
      * @return a unique equivalent String
      */
     public String uniqueDebugString(String string) {
@@ -292,7 +292,7 @@ public class DwarfSections {
     }
 
     /**
-     * indirects this call to the string table
+     * indirects this call to the string table.
      * @param string the string whose index is required
      * @return the offset of the string in the .debug_str
      * section
@@ -303,7 +303,7 @@ public class DwarfSections {
 
     /**
      * entry point allowing ELFObjectFile to pass on information
-     * about types, code and heap data
+     * about types, code and heap data.
      * @param debugInfoProvider provider instance passed by
      * ObjectFile client
      */
@@ -431,7 +431,7 @@ public class DwarfSections {
 
     /**
      * class from which all DWARF debug section
-     * inherit providing common behaviours
+     * inherit providing common behaviours.
      */
     // shared implementation methods to manage content creation
     public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
@@ -445,7 +445,7 @@ public class DwarfSections {
 
         /**
          * creates the target byte[] array used to define the section
-         * contents
+         * contents.
          *
          * the main task of this method is to precompute the
          * size of the debug section. given the complexity of the
@@ -459,7 +459,7 @@ public class DwarfSections {
 
         /**
          * populates the byte[] array used to contain the section
-         * contents
+         * contents.
          *
          * in most cases this task reruns the operations performed
          * under createContent but this time actually writing data
@@ -659,7 +659,7 @@ public class DwarfSections {
 
         /**
          * identify the section after which this debug section
-         * needs to be ordered when sizing and creating content
+         * needs to be ordered when sizing and creating content.
          * @return the name of the preceding section
          */
         public abstract String targetSectionName();
@@ -673,7 +673,7 @@ public class DwarfSections {
         public abstract LayoutDecision.Kind[] targetSectionKinds();
 
         /**
-         * identify this debug section by name
+         * identify this debug section by name.
          * @return the name of the debug section
          */
         public abstract String getSectionName();
@@ -710,7 +710,7 @@ public class DwarfSections {
     }
 
     /**
-     * generator for .debug_str section
+     * generator for debug_str section.
      */
     public class DwarfStrSectionImpl extends DwarfSectionImpl {
         public DwarfStrSectionImpl() {
@@ -760,7 +760,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_str section content depends on text section content and offset
+         * debug_str section content depends on text section content and offset.
          */
         public static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
 
@@ -770,7 +770,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_str section content depends on text section content and offset
+         * debug_str section content depends on text section content and offset.
          */
         public final LayoutDecision.Kind[] targetSectionKinds = {
                         LayoutDecision.Kind.CONTENT,
@@ -784,7 +784,7 @@ public class DwarfSections {
     }
 
     /**
-     * generator for .debug_abbrev section
+     * generator for debug_abbrev section.
      */
     public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
@@ -924,7 +924,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_abbrev section content depends on .debug_frame section content and offset
+         * debug_abbrev section content depends on debug_frame section content and offset.
          */
         public static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
 
@@ -945,7 +945,7 @@ public class DwarfSections {
     }
 
     /**
-     * generic generator for .debug_frame section
+     * generic generator for debug_frame section.
      */
     public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
@@ -1219,7 +1219,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_frame section content depends on .debug_line section content and offset
+         * debug_frame section content depends on debug_line section content and offset.
          */
         public static final String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
 
@@ -1250,8 +1250,8 @@ public class DwarfSections {
     }
 
     /**
-     * x86_64-specific generator for .debug_frame section
-     * that knows details of x86_64 registers and frame layout
+     * x86_64-specific generator for debug_frame section
+     * that knows details of x86_64 registers and frame layout.
      */
     public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
         public static final int DW_CFA_RSP_IDX = 7;
@@ -1287,8 +1287,8 @@ public class DwarfSections {
     }
 
     /**
-     * AArch64-specific generator for .debug_frame section
-     * that knows details of AArch64 registers and frame layout
+     * AArch64-specific generator for debug_frame section
+     * that knows details of AArch64 registers and frame layout.
      */
     public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
         public static final int DW_CFA_FP_IDX = 29;
@@ -1322,11 +1322,11 @@ public class DwarfSections {
     }
 
     /**
-     * generator for .debug_info section
+     * generator for debug_info section.
      */
     public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /**
-         * an info header section always contains a fixed number of bytes
+         * an info header section always contains a fixed number of bytes.
          */
         private static final int DW_DIE_HEADER_SIZE = 11;
 
@@ -1489,7 +1489,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_info section content depends on abbrev section content and offset
+         * debug_info section content depends on abbrev section content and offset.
          */
         public static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
 
@@ -1510,7 +1510,7 @@ public class DwarfSections {
     }
 
     /**
-     * generator for .debug_aranges section
+     * generator for debug_aranges section.
      */
     public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         private static final int DW_AR_HEADER_SIZE = 12;
@@ -1643,25 +1643,25 @@ public class DwarfSections {
     }
 
     /**
-     * generator for .debug_line section
+     * generator for debug_line section.
      */
     public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /**
-         * line header section always contains fixed number of bytes
+         * line header section always contains fixed number of bytes.
          */
         private static final int DW_LN_HEADER_SIZE = 27;
         /**
-         * current generator follows C++ with line base -5
+         * current generator follows C++ with line base -5.
          */
         private static final int DW_LN_LINE_BASE = -5;
         /**
          * current generator follows C++ with line range 14
-         * giving full range -5 to 8
+         * giving full range -5 to 8.
          */
         private static final int DW_LN_LINE_RANGE = 14;
         /**
          *  current generator uses opcode base of 13
-         *  which equal DW_LNS_define_file + 1
+         *  which must equal DW_LNS_define_file + 1.
          */
         private static final int DW_LN_OPCODE_BASE = 13;
 
@@ -1934,13 +1934,8 @@ public class DwarfSections {
                     line = 0;
                 }
                 long address = primaryRange.getLo();
-                long hiAddress = address;
-                // int column = 0;
-                // boolean is_stmt = true;
-                // boolean is_basic_block = false;
-                // boolean end_sequence = false;
-                // set state for primary
 
+                // set state for primary
                 debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(),
                                 primaryRange.getLine());
 
@@ -1957,7 +1952,6 @@ public class DwarfSections {
                 pos = putCopy(buffer, pos);
 
                 // now write a row for each subrange lo and hi
-
                 for (Range subrange : primaryEntry.getSubranges()) {
                     assert subrange.getLo() >= primaryRange.getLo();
                     assert subrange.getHi() <= primaryRange.getHi();
@@ -2318,7 +2312,7 @@ public class DwarfSections {
         }
 
         /**
-         * .debug_line section content depends on .debug_str section content and offset
+         * debug_line section content depends on debug_str section content and offset.
          */
         public static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
 

@@ -32,17 +32,17 @@ import java.util.List;
  * interfaces used to allow a native image to communicate
  * details of types, code and data to the underlying
  * object file so that the latter can insert appropriate
- * debug info
+ * debug info.
  */
 public interface DebugInfoProvider {
     /**
-     * access details of a specific type
+     * access details of a specific type.
      */
     interface DebugTypeInfo {
     }
 
     /**
-     * access details of a specific compiled method
+     * access details of a specific compiled method.
      */
     interface DebugCodeInfo {
         String fileName();
@@ -69,13 +69,13 @@ public interface DebugInfoProvider {
     }
 
     /**
-     * access details of a specific heap object
+     * access details of a specific heap object.
      */
     interface DebugDataInfo {
     }
 
     /**
-     *  access details of a specific outer or inlined method at a given line number
+     *  access details of a specific outer or inlined method at a given line number.
      */
     interface DebugLineInfo {
         String fileName();
@@ -103,25 +103,25 @@ public interface DebugInfoProvider {
     }
 
     /**
-     * convenience interface defining iterator type
+     * convenience interface defining iterator type.
      */
     interface DebugTypeInfoProvider extends Iterable<DebugTypeInfo> {
     }
 
     /**
-     * convenience interface defining iterator type
+     * convenience interface defining iterator type.
      */
     interface DebugCodeInfoProvider extends Iterable<DebugCodeInfo> {
     }
 
     /**
-     * convenience interface defining iterator type
+     * convenience interface defining iterator type.
      */
     interface DebugLineInfoProvider extends Iterable<DebugLineInfo> {
     }
 
     /**
-     * convenience interface defining iterator type
+     * convenience interface defining iterator type.
      */
     interface DebugDataInfoProvider extends Iterable<DebugDataInfo> {
     }
