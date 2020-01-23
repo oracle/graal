@@ -38,4 +38,37 @@ public interface CompilationState {
 
     int getDeoptimizations();
 
+    CompilationState ZERO = new CompilationState() {
+
+        @Override
+        public int getQueued() {
+            return 0;
+        }
+
+        @Override
+        public int getRunning() {
+            return 0;
+        }
+
+        @Override
+        public int getFinished() {
+            return 0;
+        }
+
+        @Override
+        public int getFailed() {
+            return 0;
+        }
+
+        @Override
+        public int getDequeued() {
+            return 0;
+        }
+
+        @Override
+        public int getDeoptimizations() {
+            return 0;
+        }
+    };
+
 }

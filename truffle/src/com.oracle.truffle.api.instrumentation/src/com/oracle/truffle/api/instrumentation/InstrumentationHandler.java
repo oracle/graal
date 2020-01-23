@@ -1080,7 +1080,7 @@ final class InstrumentationHandler {
 
         try {
             if (CompilationStateBackdoor.ACCESSOR == null) {
-                return null;
+                return CompilationState.ZERO;
             } else {
                 return CompilationStateBackdoor.ACCESSOR.get();
             }

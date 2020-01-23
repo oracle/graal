@@ -144,21 +144,18 @@ public final class Thermometer implements AutoCloseable {
     private void report() {
         final long time = System.nanoTime();
         final long elapsedTime = time - startTime;
-        final CompilationState compilationState = env.getInstrumenter().sampleCompilationState();
-        if (compilationState != null) {
-            final ThermometerState state = new ThermometerState(
-                    elapsedTime,
-                    sampler.readCompilation(),
-                    sampler.readIterationsPerSecond(elapsedTime),
-                    loadedSource.get(),
-                    getUsedMemory(),
-                    compilationState);
-            env.getLogger("").info(state.format(previousState.get(), hasIterationLocation));
-            if (logStream != null) {
-                state.writeLog(logStream, hasIterationLocation);
-            }
-            previousState.set(state);
+        final ThermometerState state = new ThermometerState(
+                elapsedTime,
+                sampler.readCompilation(),
+                sampler.readIterationsPerSecond(elapsedTime),
+                loadedSource.get(),
+                getUsedMemory(),
+                env.getInstrumenter().sampleCompilationState());
+        env.getLogger("").info(state.format(previousState.get(), hasIterationLocation));
+        if (logStream != null) {
+            state.writeLog(logStream, hasIterationLocation);
         }
+        previousState.set(state);
     }
 
     private long getUsedMemory() {
