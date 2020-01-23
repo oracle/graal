@@ -124,15 +124,20 @@ _env_tests = []
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
+            child_env = {}
+            urlrewrites = mx.get_env('MX_URLREWRITES')
+            if urlrewrites:
+                child_env['MX_URLREWRITES'] = urlrewrites
             for dist_name, _, components, suite, env_file in mx_sdk_vm._vm_configs:
                 if env_file is not False:
                     _env_file = env_file or dist_name
                     graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=_graalvm_base_name, dist_name=dist_name, jdk_version=_src_jdk_version).upper().replace('-', '_')
                     mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
                     out = mx.LinesOutputCapture()
-                    retcode = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=out, env={}, nonZeroIsFatal=False)
+                    err = mx.LinesOutputCapture()
+                    retcode = mx.run_mx(['--quiet', '--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=err, env=child_env, nonZeroIsFatal=False)
                     if retcode != 0:
-                        mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output: \n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines)))
+                        mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output:\n{}\nError:\n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines), '\n'.join(err.lines)))
                     if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
                         out2 = mx.LinesOutputCapture()
                         retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env={}, nonZeroIsFatal=False)
@@ -145,7 +150,7 @@ Expected component list:
 {}
 Actual component list:
 {}
-Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines), sorted(components), got_components))
+Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components))
 
 
 mx_gate.add_gate_runner(_suite, gate_body)
