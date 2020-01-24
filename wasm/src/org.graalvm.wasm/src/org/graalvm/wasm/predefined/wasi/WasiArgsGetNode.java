@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -69,9 +70,7 @@ public class WasiArgsGetNode extends WasmBuiltinRootNode {
         for (String argument : arguments) {
             memory.store_i32(this, argvPointer, argvBuffPointer);
             argvPointer += 4;
-            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
-            }
+            checkEncodable(argument);
             for (int i = 0; i < argument.length(); i++) {
                 final char character = argument.charAt(i);
                 final byte charByte = (byte) character;
@@ -83,6 +82,13 @@ public class WasiArgsGetNode extends WasmBuiltinRootNode {
         }
 
         return WasmVoidResult.getInstance();
+    }
+
+    @TruffleBoundary
+    private void checkEncodable(String argument) {
+        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
+            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+        }
     }
 
     @Override
