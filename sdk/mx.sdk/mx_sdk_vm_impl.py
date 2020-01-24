@@ -125,9 +125,10 @@ def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
             child_env = {}
-            urlrewrites = mx.get_env('MX_URLREWRITES')
-            if urlrewrites:
-                child_env['MX_URLREWRITES'] = urlrewrites
+            for env_var_k in ['MX_URLREWRITES', 'SSH_AUTH_SOCK']:
+                env_var_v = mx.get_env(env_var_k)
+                if env_var_v:
+                    child_env[env_var_k] = env_var_v
             for dist_name, _, components, suite, env_file in mx_sdk_vm._vm_configs:
                 if env_file is not False:
                     _env_file = env_file or dist_name
