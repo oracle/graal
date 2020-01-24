@@ -310,7 +310,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     ExportMessageData exportMessage = exportLib.getExportedMessages().get(message.getName());
 
                     if (exportMessage == null || exportMessage.getResolvedMessage() != message) {
-
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -323,14 +322,13 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                         } else {
                             isAbstract = true;
                         }
-
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
                         }
                     }
                 }
             }
-            if (!missingAbstractMessage.isEmpty()) {
+            if (!missingAbstractMessage.isEmpty() && !exportLib.hasExportDelegation()) {
                 StringBuilder msg = new StringBuilder(
                                 String.format("The following message(s) of library %s are abstract and must be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));

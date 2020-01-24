@@ -220,6 +220,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
     },
