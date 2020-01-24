@@ -273,9 +273,6 @@ public final class PolyglotCompilerOptions {
 
     // Tracing
 
-    @Option(help = "Print compact information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
-    public static final OptionKey<Boolean> TraceCompilationCompact = new OptionKey<>(false);
-
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
 
