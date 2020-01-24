@@ -412,7 +412,8 @@ final class SourceImpl extends Source {
         URL getURL() {
             if (url == INVALID) {
                 try {
-                    url = truffleFile.toUri().toURL();
+                    URI uri = getURI();
+                    url = new URL(uri.getScheme(), uri.getHost(), uri.getPort(), uri.getRawPath());
                 } catch (MalformedURLException e) {
                     // Never thrown
                     throw new AssertionError(e);
