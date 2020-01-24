@@ -229,16 +229,19 @@ public final class WasmModule implements TruffleObject {
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < getArraySize();
         }
 
         @ExportMessage
+        @TruffleBoundary
         long getArraySize() {
             return exportedFunctions.size() + exportedGlobals.size() + memoriesSize();
         }
@@ -248,6 +251,7 @@ public final class WasmModule implements TruffleObject {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object readArrayElement(long absoluteIndex) throws InvalidArrayIndexException {
             long index = absoluteIndex;
             if (!isArrayElementReadable(index)) {
