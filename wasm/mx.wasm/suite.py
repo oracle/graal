@@ -213,7 +213,6 @@ suite = {
 
   "distributions" : {
     "WASM" : {
-      "moduleName" : "org.graalvm.wasm",
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm",
@@ -222,12 +221,10 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
       ],
-      "maven" : {
-        "artifactId" : "wasm",
-      },
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,
       "license" : "UPL",
+      "maven" : False,
     },
 
     "WASM_LAUNCHER" : {
@@ -239,6 +236,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "license" : "UPL",
+      "maven" : False,
     },
 
     "WASM_TESTS" : {
