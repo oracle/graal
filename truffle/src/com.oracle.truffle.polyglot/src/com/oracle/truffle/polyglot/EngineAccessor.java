@@ -91,6 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 import org.graalvm.options.OptionKey;
 
 final class EngineAccessor extends Accessor {
@@ -1005,6 +1006,20 @@ final class EngineAccessor extends Accessor {
             if (currentContext != null && currentContext.sourcesToInvalidate != null) {
                 currentContext.sourcesToInvalidate.add(source);
             }
+        }
+
+        @Override
+        public String getReinitializedPath(TruffleFile truffleFile) {
+            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
+            Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
+            return ((FileSystems.PreInitializeContextFileSystem) fs).pathToString(path);
+        }
+
+        @Override
+        public URI getReinitializedURI(TruffleFile truffleFile) {
+            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
+            Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
+            return ((FileSystems.PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
         }
     }
 

@@ -98,6 +98,14 @@ final class SourceAccessor extends Accessor {
         ACCESSOR.engineSupport().onSourceCreated(source);
     }
 
+    static String getReinitializedPath(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedPath(truffleFile);
+    }
+
+    static URI getReinitializedURI(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedURI(truffleFile);
+    }
+
     static final class SourceSupportImpl extends Accessor.SourceSupport {
 
         @Override

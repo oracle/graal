@@ -418,6 +418,10 @@ public abstract class Accessor {
         public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
+
+        public abstract String getReinitializedPath(TruffleFile truffleFile);
+
+        public abstract URI getReinitializedURI(TruffleFile truffleFile);
     }
 
     public abstract static class LanguageSupport {
