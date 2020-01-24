@@ -35,11 +35,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -69,11 +69,19 @@ public class CCompilerInvoker {
     public Path compileAndParseError(List<String> options, Path source, Path target) {
         try {
             Process compilingProcess = startCompiler(options, source.normalize(), target.normalize());
-            InputStream es = compilingProcess.getErrorStream();
-            InputStream is = compilingProcess.getInputStream();
+            InputStream compilerErrors;
+            InputStream other;
+            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+                compilerErrors = compilingProcess.getErrorStream();
+                other = compilingProcess.getInputStream();
+            } else {
+                /* On Windows compiler errors are printed on stdout */
+                compilerErrors = compilingProcess.getInputStream();
+                other = compilingProcess.getErrorStream();
+            }
 
-            List<String> lines = FileUtils.readAllLines(es);
-            FileUtils.readAllLines(is);
+            List<String> lines = FileUtils.readAllLines(compilerErrors);
+            FileUtils.readAllLines(other);
             int status = compilingProcess.waitFor();
 
             boolean errorReported = false;
