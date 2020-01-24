@@ -117,7 +117,7 @@ sulong-ruby-downstream-test: {
         ruby: "==2.6.3"
     }
     run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
+        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git", --downstream-branch, release/graal-vm/20.0,
          --mx-command, "--dynamicimports /sulong ruby_testdownstream_sulong"]
     ]
     timelimit: "45:00"
