@@ -178,6 +178,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private static final int LOOKUP_JNI_IMPL_PARAMETER_COUNT = 1;
 
+    @TruffleBoundary
     public TruffleObject lookupJniImpl(String methodName) {
         JniSubstitutor m = jniMethods.get(methodName);
         try {

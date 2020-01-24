@@ -89,6 +89,7 @@ public final class Target_java_lang_Class {
         }
     }
 
+    @TruffleBoundary
     @Substitution
     public static boolean desiredAssertionStatus0(@Host(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {

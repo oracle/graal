@@ -256,6 +256,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     public static final int LOOKUP_VM_IMPL_PARAMETER_COUNT = 1;
 
+    @TruffleBoundary
     public TruffleObject lookupVmImpl(String methodName) {
         VMSubstitutor m = vmMethods.get(methodName);
         try {
