@@ -317,8 +317,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             Object[] args = new Object[dataEscapeNodes.length];
             int i = 0;
             if (functionType != null) {
-                assert arguments.length == functionType.getParameterLength() + LLVMCallNode.USER_ARGUMENT_OFFSET;
-                for (; i < functionType.getParameterLength(); i++) {
+                assert arguments.length == functionType.getNumberOfParameters() + LLVMCallNode.USER_ARGUMENT_OFFSET;
+                for (; i < functionType.getNumberOfParameters(); i++) {
                     LLVMInteropType argType = functionType.getParameter(i);
                     if (argType instanceof LLVMInteropType.Value) {
                         LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();

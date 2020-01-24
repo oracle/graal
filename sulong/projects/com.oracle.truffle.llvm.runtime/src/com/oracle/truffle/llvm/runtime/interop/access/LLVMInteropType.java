@@ -339,7 +339,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             return parameterTypes[i];
         }
 
-        public int getParameterLength() {
+        public int getNumberOfParameters() {
             return parameterTypes.length;
         }
     }
