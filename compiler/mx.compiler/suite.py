@@ -2279,6 +2279,19 @@ suite = {
       "javaCompliance" : "8+",
     },
 
+    "GRAAL_PROCESSOR_COMMON" : {
+      "subDir": "src",
+      "dependencies" : ["org.graalvm.compiler.processor"],
+      "maven": False,
+    },
+
+    "GRAAL_OPTIONS_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.compiler.options.processor"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
+      "maven": False,
+    },
+
     "GRAAL_PROCESSOR" : {
       "subDir": "src",
       "dependencies" : [
@@ -2290,6 +2303,7 @@ suite = {
         "org.graalvm.compiler.replacements.processor",
         "org.graalvm.compiler.core.match.processor"
        ],
+      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR", "GRAAL_PROCESSOR_COMMON"],
       "maven": False,
     },
 
