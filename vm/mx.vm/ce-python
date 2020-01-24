@@ -1,1 +1,2 @@
+# Do not modify this env file without updating the Graal.Python benchmark builders
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs,graalpython
