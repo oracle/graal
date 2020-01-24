@@ -55,7 +55,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         String classpath = null;
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
-        for (int i = 0; i < arguments.size(); i++) {
+        int i = 0;
+        while (i < arguments.size()) {
             String arg = arguments.get(i);
             switch (arg) {
                 case "-cp":
@@ -173,6 +174,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 }
                 break;
             }
+            i++;
         }
 
         // classpath provenance order:
