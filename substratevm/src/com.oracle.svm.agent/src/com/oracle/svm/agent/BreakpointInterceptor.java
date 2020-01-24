@@ -51,7 +51,6 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -863,7 +862,7 @@ final class BreakpointInterceptor {
         BreakpointInterceptor.proxyVerifier = prverifier;
         BreakpointInterceptor.resourceVerifier = resverifier;
 
-        BreakpointInterceptor.boundNativeMethods = Collections.synchronizedMap(new HashMap<>());
+        BreakpointInterceptor.boundNativeMethods = new HashMap<>();
         Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
     }
 
