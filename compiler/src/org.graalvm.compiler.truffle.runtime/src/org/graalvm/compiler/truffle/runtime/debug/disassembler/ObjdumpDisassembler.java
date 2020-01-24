@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.site.Call;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,7 +45,8 @@ import java.util.regex.Pattern;
  */
 public class ObjdumpDisassembler implements Disassembler {
 
-    private static final Pattern relativeCodeAddressPattern = Pattern.compile("<\\.text\\+0x([0-9a-f]+)>");
+    private static final Pattern ADDRESS_PATTERN = Pattern.compile("^([0-9a-f]+):\\s");
+    private static final Pattern RELATIVE_CODE_ADDRESS_PATTERN = Pattern.compile("<\\.text\\+0x([0-9a-f]+)>");
 
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final Process process = new ProcessBuilder()
@@ -88,21 +92,44 @@ public class ObjdumpDisassembler implements Disassembler {
                     continue;
                 }
                 // Some objdumps print relative addresses as for example <.text+0x341e>, when we'd prefer an absolute address for our purposes
-                final Matcher matcher = relativeCodeAddressPattern.matcher(line);
-                while (matcher.find()) {
-                    final MatchResult matchResult = matcher.toMatchResult();
+                final Matcher relativeMatcher = RELATIVE_CODE_ADDRESS_PATTERN.matcher(line);
+                while (relativeMatcher.find()) {
+                    final MatchResult matchResult = relativeMatcher.toMatchResult();
                     final long offset = Long.parseLong(matchResult.group(1), 16);
                     final String replacement = String.format("<%x>", machineCode.getAddress() + offset);
                     line = line.substring(0, matchResult.start()) + replacement + line.substring(matchResult.end());
-                    matcher.reset(line);
+                    relativeMatcher.reset(line);
                 }
                 builder.append(line);
                 builder.append(System.lineSeparator());
+                // Add source locations
+                final Matcher addressMatcher = ADDRESS_PATTERN.matcher(line);
+                if (addressMatcher.find()) {
+                    final MatchResult matchResult = addressMatcher.toMatchResult();
+                    final long address = Long.parseLong(matchResult.group(1), 16);
+                    final long offset = address - machineCode.getAddress() - machineCode.getHeaderLength();
+                    machineCode.getInfopoints()
+                            .filter(i -> i.pcOffset == offset)
+                            .filter(i -> i instanceof Call)
+                            .findFirst()
+                            .ifPresent(i -> {
+                                if (i.debugInfo != null) {
+                                    BytecodePosition position = i.debugInfo.getBytecodePosition();
+                                    while (position != null) {
+                                        builder.append("\t\t\t\t; " + position.getMethod().asStackTraceElement(position.getBCI()).toString());
+                                        builder.append(System.lineSeparator());
+                                        position = position.getCaller();
+                                    }
+                                }
+                            });
+                }
             }
             return builder.toString().trim();
         } else {
             return objdumpError.toString(Charset.defaultCharset().name());
         }
     }
+
+
 
 }

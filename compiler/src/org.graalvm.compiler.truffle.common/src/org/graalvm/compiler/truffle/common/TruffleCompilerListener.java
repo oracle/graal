@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import jdk.vm.ci.code.site.Infopoint;
+
 /**
  * A listener for events related to the compilation of a {@link CompilableTruffleAST}. The events
  * are described only in terms of types that can be easily serialized or proxied across a heap
@@ -78,6 +80,10 @@ public interface TruffleCompilerListener {
          * Gets the infopoint reasons in the compiled code.
          */
         String[] getInfopoints();
+
+        default Infopoint[] getFullInfopoints() {
+            return null;
+        }
 
         /**
          * Gets the number of {@code Mark}s in the compiled code.

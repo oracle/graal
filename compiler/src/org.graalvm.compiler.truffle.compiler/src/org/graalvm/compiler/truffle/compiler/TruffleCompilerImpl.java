@@ -398,6 +398,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
 
         @Override
+        public Infopoint[] getFullInfopoints() {
+            return compResult.getInfopoints().toArray(new Infopoint[compResult.getInfopoints().size()]);
+        }
+
+        @Override
         public int getMarksCount() {
             return compResult.getMarks().size();
         }

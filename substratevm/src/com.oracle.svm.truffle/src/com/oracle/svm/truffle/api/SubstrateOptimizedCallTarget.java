@@ -120,6 +120,11 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
+    public long getStart() {
+        return getAddress();
+    }
+
+    @Override
     public long getCodeAddress() {
         return getAddress();
     }

@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+import jdk.vm.ci.code.site.Infopoint;
 import org.graalvm.compiler.truffle.options.DisassemblyFormatType;
 import sun.misc.Unsafe;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 /**
  * Represents machine code for disassembly purposes.
@@ -37,15 +39,19 @@ import java.util.Arrays;
 public class MachineCode {
 
     private final long address;
+    private final long headerLength;
     private final byte[] code;
+    private final Infopoint[] infopoints;
 
-    public static MachineCode read(long address, int size) {
-        return new MachineCode(address, readCode(address, size));
+    public static MachineCode read(long address, long headerLength, int size, Infopoint[] infopoints) {
+        return new MachineCode(address, headerLength, readCode(address, size), infopoints);
     }
 
-    private MachineCode(long address, byte[] code) {
+    private MachineCode(long address, long headerLength, byte[] code, Infopoint[] infopoints) {
         this.address = address;
+        this.headerLength = headerLength;
         this.code = code;
+        this.infopoints = infopoints;
     }
 
     public int getLength() {
@@ -61,6 +67,11 @@ public class MachineCode {
             }
 
             @Override
+            public long getHeaderLength() {
+                return headerLength;
+            }
+
+            @Override
             public int getLength() {
                 return code.length;
             }
@@ -73,6 +84,11 @@ public class MachineCode {
             @Override
             public byte[] getBytes() {
                 return Arrays.copyOf(code, code.length);
+            }
+
+            @Override
+            public Stream<Infopoint> getInfopoints() {
+                return Arrays.stream(infopoints);
             }
 
             @Override

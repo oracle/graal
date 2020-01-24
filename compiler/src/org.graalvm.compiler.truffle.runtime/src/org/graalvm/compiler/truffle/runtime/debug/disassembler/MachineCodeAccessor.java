@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+import jdk.vm.ci.code.site.Infopoint;
+
+import java.util.stream.Stream;
+
 /*
  * Provides read-only low-level access to machine code.
  */
@@ -38,5 +42,9 @@ public interface MachineCodeAccessor {
     byte[] getBytes();
 
     String fileName(String extension);
+
+    Stream<Infopoint> getInfopoints();
+
+    long getHeaderLength();
 
 }
