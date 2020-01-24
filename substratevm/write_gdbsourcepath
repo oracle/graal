@@ -100,7 +100,6 @@ function add_sources()
         typeset -i ignore
         ignore=0
         verbose "considering $dir"
-        set -x
         if [ ! -d ${dir}/src ]; then
             ignore=1
         else
@@ -114,24 +113,19 @@ function add_sources()
                 # check for a specific jdk release
                 if [ "${tail#jdk.}" != "$tail" ]; then
                     # jdk. as part of a package name is ok
-                    echo '+++'
                     if ["${tail#jdk.}" != "$tail" ]; then
                         echo allow $dir
                     fi
-                    echo ///
                     ignore=0
                 elif [ "${tail#*jdk}" != "${JAVA_VERSION}" ]; then
                     # jdk<nn> must match JAVA_VERSION
-                    echo '+++'
                     if [ "${dir#jdk.}" != "$dir" ]; then
                         echo disallow $dir
                     fi
-                    echo ///
                     ignore=1
                 fi
             fi
         fi
-        set +x
         if [ $ignore -eq 1 ] ; then
             verbose "ignoring $dir"
         else
