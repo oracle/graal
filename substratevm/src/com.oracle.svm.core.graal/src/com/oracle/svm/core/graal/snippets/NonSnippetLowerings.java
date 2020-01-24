@@ -153,7 +153,7 @@ public abstract class NonSnippetLowerings {
 
             StructuredGraph graph = node.graph();
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
-            foreignCallNode.setStateAfter(node.stateAfter());
+            foreignCallNode.setStateAfter(node.createStateDuring());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }

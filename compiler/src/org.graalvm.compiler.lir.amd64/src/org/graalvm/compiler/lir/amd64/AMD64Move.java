@@ -589,7 +589,7 @@ public class AMD64Move {
                 masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
                 break;
             default:
-                throw GraalError.shouldNotReachHere("kind=" + kind);
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
     }
 
@@ -615,7 +615,7 @@ public class AMD64Move {
                 masm.movsd(dest, input);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
     }
 
@@ -641,7 +641,7 @@ public class AMD64Move {
                 masm.movdbl(result, src);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
     }
 

@@ -51,7 +51,7 @@ public final class DeoptEntryNode extends DeoptProxyAnchorNode implements Deopti
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().append(new DeoptEntryOp(((NodeLIRBuilder) gen).stateFor(stateAfter())));
+        gen.getLIRGeneratorTool().append(new DeoptEntryOp(((NodeLIRBuilder) gen).stateFor(this, stateAfter())));
     }
 
     @Override
