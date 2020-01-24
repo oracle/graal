@@ -774,7 +774,8 @@ public class DwarfSections {
          */
         public final LayoutDecision.Kind[] targetSectionKinds = {
                         LayoutDecision.Kind.CONTENT,
-                        LayoutDecision.Kind.OFFSET
+                        LayoutDecision.Kind.OFFSET,
+                        LayoutDecision.Kind.VADDR, // add this so we can use the base address
         };
 
         @Override
@@ -2324,7 +2325,6 @@ public class DwarfSections {
         public final LayoutDecision.Kind[] targetSectionKinds = {
                         LayoutDecision.Kind.CONTENT,
                         LayoutDecision.Kind.OFFSET,
-                        LayoutDecision.Kind.VADDR, // add this so we can use the base address
         };
 
         @Override
