@@ -5,7 +5,6 @@ GraalWasm is a WebAssembly engine implemented in the GraalVM.
 It can interpret and compile WebAssembly programs in the binary format,
 or be embedded into other programs.
 
-GraalWasm is currently in EXPERIMENTAL state.
 We are working hard towards making GraalWasm more stable and more efficient,
 as well as to implement various WebAssembly extensions.
 Feedback, bug reports, and open-source contributions are welcome!
