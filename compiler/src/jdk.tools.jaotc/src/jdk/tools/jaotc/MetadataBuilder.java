@@ -98,7 +98,9 @@ final class MetadataBuilder {
             byte[] scopeDesc = metaData.scopesDescBytes();
             byte[] relocationInfo = metaData.relocBytes();
             byte[] oopMapInfo = metaData.oopMaps();
+            // this may be null as the field does not exist before JDK 13
             byte[] implicitExceptionBytes = HotSpotGraalServices.getImplicitExceptionBytes(metaData);
+            byte[] exceptionBytes = metaData.exceptionBytes();
 
             // create a global symbol at this position for this method
             NativeOrderOutputStream metadataStream = new NativeOrderOutputStream();
@@ -160,7 +162,7 @@ final class MetadataBuilder {
                 metadataStream.put(relocationInfo).align(8);
 
                 exceptionOffset.set(metadataStream.position());
-                metadataStream.put(metaData.exceptionBytes()).align(8);
+                metadataStream.put(exceptionBytes).align(8);
 
                 if (implicitExceptionBytes != null) {
                     implictTableOffset.set(metadataStream.position());
