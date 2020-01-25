@@ -89,7 +89,7 @@ if mx.is_linux() and mx.get_arch() == 'amd64' and mx.get_jdk(tag='default').java
     ce_python_components.append('mjdksl')
     ce_no_native_components.append('mjdksl')
 
-mx_sdk_vm.register_vm_config('ce', ['bjs', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'gvm', 'ins', 'ats', 'js', 'lg', 'lsp', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ['ats', 'cmp', 'cov', 'gu', 'gvm', 'ins', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
