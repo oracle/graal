@@ -1764,91 +1764,55 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region Management
 
-    // jmmLongAttribute;
-    public static final int JMM_CLASS_LOADED_COUNT = 1; /* Total number of loaded classes */
-    public static final int JMM_CLASS_UNLOADED_COUNT = 2; /* Total number of unloaded classes */
-    public static final int JMM_THREAD_TOTAL_COUNT = 3; /*
-                                                         * Total number of threads that have been
-                                                         * started
-                                                         */
-    public static final int JMM_THREAD_LIVE_COUNT = 4; /* Current number of live threads */
-    public static final int JMM_THREAD_PEAK_COUNT = 5; /* Peak number of live threads */
-    public static final int JMM_THREAD_DAEMON_COUNT = 6; /* Current number of daemon threads */
-    public static final int JMM_JVM_INIT_DONE_TIME_MS = 7; /*
-                                                            * Time when the JVM finished
-                                                            * initialization
-                                                            */
-    public static final int JMM_COMPILE_TOTAL_TIME_MS = 8; /*
-                                                            * Total accumulated time spent in
-                                                            * compilation
-                                                            */
-    public static final int JMM_GC_TIME_MS = 9; /* Total accumulated time spent in collection */
-    public static final int JMM_GC_COUNT = 10; /* Total number of collections */
-    public static final int JMM_JVM_UPTIME_MS = 11; /* The JVM uptime in milliseconds */
-    public static final int JMM_INTERNAL_ATTRIBUTE_INDEX = 100;
-    public static final int JMM_CLASS_LOADED_BYTES = 101; /*
-                                                           * Number of bytes loaded instance classes
-                                                           */
-    public static final int JMM_CLASS_UNLOADED_BYTES = 102; /*
-                                                             * Number of bytes unloaded instance
-                                                             * classes
-                                                             */
-    public static final int JMM_TOTAL_CLASSLOAD_TIME_MS = 103; /*
-                                                                * Accumulated VM class loader time
-                                                                * (TraceClassLoadingTime)
-                                                                */
-    public static final int JMM_VM_GLOBAL_COUNT = 104; /* Number of VM internal flags */
-    public static final int JMM_SAFEPOINT_COUNT = 105; /* Total number of safepoints */
-    public static final int JMM_TOTAL_SAFEPOINTSYNC_TIME_MS = 106; /*
-                                                                    * Accumulated time spent getting
-                                                                    * to safepoints
-                                                                    */
-    public static final int JMM_TOTAL_STOPPED_TIME_MS = 107; /*
-                                                              * Accumulated time spent at safepoints
-                                                              */
-    public static final int JMM_TOTAL_APP_TIME_MS = 108; /*
-                                                          * Accumulated time spent in Java
-                                                          * application
-                                                          */
-    public static final int JMM_VM_THREAD_COUNT = 109; /* Current number of VM internal threads */
-    public static final int JMM_CLASS_INIT_TOTAL_COUNT = 110; /*
-                                                               * Number of classes for which
-                                                               * initializers were run
-                                                               */
-    public static final int JMM_CLASS_INIT_TOTAL_TIME_MS = 111; /*
-                                                                 * Accumulated time spent in class
-                                                                 * initializers
-                                                                 */
-    public static final int JMM_METHOD_DATA_SIZE_BYTES = 112; /* Size of method data in memory */
-    public static final int JMM_CLASS_VERIFY_TOTAL_TIME_MS = 113; /*
-                                                                   * Accumulated time spent in class
-                                                                   * verifier
-                                                                   */
-    public static final int JMM_SHARED_CLASS_LOADED_COUNT = 114; /*
-                                                                  * Number of shared classes loaded
-                                                                  */
-    public static final int JMM_SHARED_CLASS_UNLOADED_COUNT = 115; /*
-                                                                    * Number of shared classes
-                                                                    * unloaded
-                                                                    */
-    public static final int JMM_SHARED_CLASS_LOADED_BYTES = 116; /*
-                                                                  * Number of bytes loaded shared
-                                                                  * classes
-                                                                  */
-    public static final int JMM_SHARED_CLASS_UNLOADED_BYTES = 117; /*
-                                                                    * Number of bytes unloaded
-                                                                    * shared classes
-                                                                    */
-    public static final int JMM_OS_ATTRIBUTE_INDEX = 200;
-    public static final int JMM_OS_PROCESS_ID = 201; /* Process id of the JVM */
-    public static final int JMM_OS_MEM_TOTAL_PHYSICAL_BYTES = 202; /* Physical memory size */
-    public static final int JMM_GC_EXT_ATTRIBUTE_INFO_SIZE = 401; /*
-                                                                   * the size of the GC specific
-                                                                   * attributes for a given GC
-                                                                   * memory manager
-                                                                   */
+    // Partial/incomplete implementation disclaimer!
+    //
+    // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
+    // beyond Espresso reach e.g. GC stats. Espresso could implement the hard bits by just
+    // forwarding to the host implementation, but this approach is not feasible:
+    // - In some cases it's not possible to gather stats per-context e.g. host GC stats are VM-wide.
+    // - SubstrateVM implements a bare-minimum subset of the management APIs.
+    //
+    // Some implementations below are just partially correct due to limitations of Espresso itself
+    // e.g. dumping stacktraces for all threads.
 
-    // jmmBoolAttribute;
+    // @formatter:off
+    // enum jmmLongAttribute
+    public static final int JMM_CLASS_LOADED_COUNT             = 1;    /* Total number of loaded classes */
+    public static final int JMM_CLASS_UNLOADED_COUNT           = 2;    /* Total number of unloaded classes */
+    public static final int JMM_THREAD_TOTAL_COUNT             = 3;    /* Total number of threads that have been started */
+    public static final int JMM_THREAD_LIVE_COUNT              = 4;    /* Current number of live threads */
+    public static final int JMM_THREAD_PEAK_COUNT              = 5;    /* Peak number of live threads */
+    public static final int JMM_THREAD_DAEMON_COUNT            = 6;    /* Current number of daemon threads */
+    public static final int JMM_JVM_INIT_DONE_TIME_MS          = 7;    /* Time when the JVM finished initialization */
+    public static final int JMM_COMPILE_TOTAL_TIME_MS          = 8;    /* Total accumulated time spent in compilation */
+    public static final int JMM_GC_TIME_MS                     = 9;    /* Total accumulated time spent in collection */
+    public static final int JMM_GC_COUNT                       = 10;   /* Total number of collections */
+    public static final int JMM_JVM_UPTIME_MS                  = 11;   /* The JVM uptime in milliseconds */
+    public static final int JMM_INTERNAL_ATTRIBUTE_INDEX       = 100;
+    public static final int JMM_CLASS_LOADED_BYTES             = 101;  /* Number of bytes loaded instance classes */
+    public static final int JMM_CLASS_UNLOADED_BYTES           = 102;  /* Number of bytes unloaded instance classes */
+    public static final int JMM_TOTAL_CLASSLOAD_TIME_MS        = 103;  /* Accumulated VM class loader time (TraceClassLoadingTime) */
+    public static final int JMM_VM_GLOBAL_COUNT                = 104;  /* Number of VM internal flags */
+    public static final int JMM_SAFEPOINT_COUNT                = 105;  /* Total number of safepoints */
+    public static final int JMM_TOTAL_SAFEPOINTSYNC_TIME_MS    = 106;  /* Accumulated time spent getting to safepoints */
+    public static final int JMM_TOTAL_STOPPED_TIME_MS          = 107;  /* Accumulated time spent at safepoints */
+    public static final int JMM_TOTAL_APP_TIME_MS              = 108;  /* Accumulated time spent in Java application */
+    public static final int JMM_VM_THREAD_COUNT                = 109;  /* Current number of VM internal threads */
+    public static final int JMM_CLASS_INIT_TOTAL_COUNT         = 110;  /* Number of classes for which initializers were run */
+    public static final int JMM_CLASS_INIT_TOTAL_TIME_MS       = 111;  /* Accumulated time spent in class initializers */
+    public static final int JMM_METHOD_DATA_SIZE_BYTES         = 112;  /* Size of method data in memory */
+    public static final int JMM_CLASS_VERIFY_TOTAL_TIME_MS     = 113;  /* Accumulated time spent in class verifier */
+    public static final int JMM_SHARED_CLASS_LOADED_COUNT      = 114;  /* Number of shared classes loaded */
+    public static final int JMM_SHARED_CLASS_UNLOADED_COUNT    = 115;  /* Number of shared classes unloaded */
+    public static final int JMM_SHARED_CLASS_LOADED_BYTES      = 116;  /* Number of bytes loaded shared classes */
+    public static final int JMM_SHARED_CLASS_UNLOADED_BYTES    = 117;  /* Number of bytes unloaded shared classes */
+    public static final int JMM_OS_ATTRIBUTE_INDEX             = 200;
+    public static final int JMM_OS_PROCESS_ID                  = 201;  /* Process id of the JVM */
+    public static final int JMM_OS_MEM_TOTAL_PHYSICAL_BYTES    = 202;  /* Physical memory size */
+    public static final int JMM_GC_EXT_ATTRIBUTE_INFO_SIZE     = 401;  /* the size of the GC specific attributes for a given GC memory manager */
+    // @formatter:on
+
+    // enum jmmBoolAttribute
     public static final int JMM_VERBOSE_GC = 21;
     public static final int JMM_VERBOSE_CLASS = 22;
     public static final int JMM_THREAD_CONTENTION_MONITORING = 23;
