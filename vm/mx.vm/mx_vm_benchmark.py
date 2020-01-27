@@ -83,7 +83,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self.extract_vm_info(args)
         out = mx.TeeOutputCapture(mx.OutputCapture())
         args = self.post_process_launcher_command_line_args(args)
-        mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), args))
+        mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
         code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
