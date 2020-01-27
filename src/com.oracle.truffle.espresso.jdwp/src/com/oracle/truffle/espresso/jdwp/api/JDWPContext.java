@@ -405,4 +405,12 @@ public interface JDWPContext {
      * @return true if the caller method has further method invocations on the current line
      */
     boolean moreMethodCallsOnLine(RootNode callerRoot);
+
+    /**
+     * Returns the current code index (bci) given the current root node.
+     *
+     * @param root the currently executing root node
+     * @return the bci
+     */
+    long getCurrentBCI(RootNode root);
 }

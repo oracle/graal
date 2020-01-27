@@ -843,9 +843,7 @@ public final class DebuggerController implements ContextsListener {
                 long klassId = ids.getIdAsLong(klass);
                 long methodId = ids.getIdAsLong(method);
                 byte typeTag = TypeTag.getKind(klass);
-                int line = frame.getSourceSection().getStartLine();
-
-                long codeIndex = method.getBCIFromLine(line);
+                long codeIndex = context.getCurrentBCI(root);
 
                 DebugScope scope = frame.getScope();
 

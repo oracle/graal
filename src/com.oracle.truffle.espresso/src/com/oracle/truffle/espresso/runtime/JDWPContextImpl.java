@@ -28,11 +28,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -546,33 +543,25 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public long getCurrentBCI(RootNode root) {
+        if (root instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) root;
+            if (espressoRootNode.isBytecodeNode()) {
+                return espressoRootNode.getCurrentBCI();
+            }
+        }
+        return 0;
+    }
+
+    @Override
     public boolean moreMethodCallsOnLine(RootNode callerRoot) {
         if (callerRoot instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
-            final int[] frameBCI = {-1};
+            int bci = -1;
             if (espressoRootNode.isBytecodeNode()) {
-                Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
-                    boolean first = true;
-                    boolean callerVisited = false;
-
-                    @Override
-                    public Object visitFrame(FrameInstance frameInstance) {
-                        if (first) {
-                            first = false;
-                            return null;
-                        }
-                        if (callerVisited) {
-                            return null;
-                        } else {
-                            frameBCI[0] = espressoRootNode.readBCI(frameInstance);
-                            callerVisited = true;
-                            return null;
-                        }
-                    }
-                });
+               bci = espressoRootNode.getCurrentBCI();
             }
-            if (frameBCI[0] != -1) {
-                int bci = frameBCI[0];
+            if (bci != -1) {
                 Method method = espressoRootNode.getMethod();
                 BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
                 LineNumberTable lineNumberTable = method.getLineNumberTable();
