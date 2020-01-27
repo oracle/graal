@@ -31,10 +31,37 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
+import org.graalvm.word.LocationIdentity;
 
+/**
+ * This phase performs read and (simple) write elimination on a graph. It operates on multiple
+ * granularities, i.e., before and after high-tier lowering. The phase iterates the graph in a
+ * reverse-post-order fashion {@linkplain ReentrantBlockIterator} and tracks the currently active
+ * value for a specific {@linkplain LocationIdentity}, which allows the removal of subsequent reads
+ * if no writes happen in between, etc. if the value read from memory is in a virtual register
+ * (node).
+ *
+ * A trivial example for read elimination can be seen below:
+ *
+ * <pre>
+ * int i = object.fieldValue;
+ * // code not changing object.fieldValue but using i
+ * consume(object.fieldValue);
+ * </pre>
+ *
+ * Read elimination will transform this piece of code to the code below and remove the second,
+ * unnecessary, memory read of the field:
+ *
+ * <pre>
+ * int i = object.fieldValue;
+ * // code not changing object.fieldValue but using i
+ * consume(i);
+ * </pre>
+ */
 public class EarlyReadEliminationPhase extends EffectsPhase<CoreProviders> {
 
-    private final boolean considerGuards;
+    protected final boolean considerGuards;
 
     public EarlyReadEliminationPhase(CanonicalizerPhase canonicalizer) {
         super(1, canonicalizer, true);
