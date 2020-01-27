@@ -241,9 +241,16 @@ public final class Meta implements ContextAccess {
         HIDDEN_DEATH = Thread.lookupHiddenField(Name.HIDDEN_DEATH);
         HIDDEN_DEATH_THROWABLE = Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
-        HIDDEN_THREAD_BLOCKED_OBJECT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
-        HIDDEN_THREAD_BLOCKED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
-        HIDDEN_THREAD_WAITED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+
+        if (context.EnableManagement) {
+            HIDDEN_THREAD_BLOCKED_OBJECT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_BLOCKED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
+            HIDDEN_THREAD_WAITED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+        } else {
+            HIDDEN_THREAD_BLOCKED_OBJECT = null;
+            HIDDEN_THREAD_BLOCKED_COUNT = null;
+            HIDDEN_THREAD_WAITED_COUNT = null;
+        }
 
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
