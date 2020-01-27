@@ -135,6 +135,7 @@ public final class EspressoContext {
         this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
+        this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
     }
 
     public ManagementStats getManagementStats() {
@@ -654,6 +655,7 @@ public final class EspressoContext {
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+    public final boolean EnableManagement;
 
     public EspressoOptions.SpecCompliancyMode specCompliancyMode() {
         return SpecCompliancyMode;
