@@ -28,7 +28,7 @@ public interface VMListener {
 
     /**
      * Fire a class prepare event on the listener.
-     * 
+     *
      * @param klass the class that has just been prepared by the VM
      * @param prepareThread the thread used when preparing the class
      */
@@ -36,14 +36,14 @@ public interface VMListener {
 
     /**
      * Fire a thread started event on the listener.
-     * 
+     *
      * @param thread that has just been started
      */
     void threadStarted(Object thread);
 
     /**
      * Fire a thread stopped event on the listener.
-     * 
+     *
      * @param thread that was just stopped
      */
     void threadDied(Object thread);
@@ -52,7 +52,7 @@ public interface VMListener {
      * Determines if the field has a field modification breakpoint set. If true, the caller of the
      * method is expected to enter a probe node to allow for the Truffle Debug API to suspend the
      * execution.
-     * 
+     *
      * @param field the field
      * @param receiver the receiving object in the field instruction
      * @param value the value about to be set on the receiver for the field
@@ -64,7 +64,7 @@ public interface VMListener {
      * Determines if the field has a field access breakpoint set. If true, the caller of the method
      * is expected to enter a probe node to allow for the Truffle Debug API to suspend the
      * execution.
-     * 
+     *
      * @param field the field
      * @param receiver the receiving object in the field instruction
      * @return true only if the field has a access breakpoint, false otherwise
@@ -82,9 +82,8 @@ public interface VMListener {
     void releaseEvents();
 
     /**
-     * Determines if the method has a method breakpoint set. If true, the caller of this method
-     * is expected to enter a probe node to allow for the Truffle Debug API to suspend the
-     * execution.
+     * Determines if the method has a method breakpoint set. If true, the caller of this method is
+     * expected to enter a probe node to allow for the Truffle Debug API to suspend the execution.
      *
      * @param method the method
      * @param returnValue the object to be returned from the method if any

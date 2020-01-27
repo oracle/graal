@@ -48,7 +48,7 @@ public final class CodeAttribute extends Attribute {
     @CompilationFinal(dimensions = 1) //
     private final byte[] code;
 
-    @CompilationFinal(dimensions = 1)
+    @CompilationFinal(dimensions = 1) //
     private final byte[] originalCode; // no bytecode patching
 
     @CompilationFinal(dimensions = 1) //

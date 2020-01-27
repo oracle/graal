@@ -677,7 +677,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     private void suspend(byte suspendPolicy, Object thread) {
-        switch(suspendPolicy) {
+        switch (suspendPolicy) {
             case SuspendStrategy.NONE:
                 return;
             case SuspendStrategy.EVENT_THREAD:

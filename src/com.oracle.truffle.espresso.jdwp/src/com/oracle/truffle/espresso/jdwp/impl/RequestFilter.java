@@ -128,7 +128,6 @@ public final class RequestFilter {
         return breakpointInfo;
     }
 
-
     public void addThisFilterId(long thisId) {
         this.thisFilterId = thisId;
     }
