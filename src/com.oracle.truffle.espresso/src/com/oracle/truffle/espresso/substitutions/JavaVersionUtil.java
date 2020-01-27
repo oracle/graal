@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.substitutions;
 
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+/**
+ * Interface to query the host JVM version.
+ */
+public final class JavaVersionUtil {
 
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
-public final class LinkToVirtualNode implements Linker {
-    public static final Linker virtualLinker = new LinkToVirtualNode();
-
-    @Override
-    public Method linkTo(Method target, Object[] args) {
-        Method resolved = target;
-        if ((target.getRefKind() == REF_invokeSpecial) || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
-            return resolved;
+    private static int getJavaSpecificationVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
         }
-        StaticObject receiver = (StaticObject) args[0];
-        resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
-        return resolved;
+        return Integer.parseInt(value);
+    }
+
+    /**
+     * The integer value corresponding to the value of the {@code java.specification.version} system
+     * property after any leading {@code "1."} has been stripped.
+     */
+    public static final int JAVA_SPEC = getJavaSpecificationVersion();
+
+    private JavaVersionUtil() {
     }
 }

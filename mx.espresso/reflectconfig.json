@@ -8,15 +8,6 @@
       {
         "name": "hash"
       }
-    ],
-    "methods": [
-      {
-        "name": "<init>",
-        "parameterTypes": [
-          "char[]",
-          "boolean"
-        ]
-      }
     ]
   },
   {
@@ -32,13 +23,5 @@
     "fields": [
       { "name": "VM_SUPPORTS_LONG_CAS" }
     ]
-  },
-  {
-    "name": "com.oracle.truffle.espresso.jni.JniEnv",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.vm.VM",
-    "allPublicMethods": true
-  }  
+  }
 ]

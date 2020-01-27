@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,6 @@
  * questions.
  */
 package com.oracle.truffle.espresso.meta;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -139,6 +136,8 @@ public final class Meta implements ContextAccess {
         Long_value = Long.lookupDeclaredField(Name.value, Type._long);
 
         String_value = String.lookupDeclaredField(Name.value, Type._char_array);
+        EspressoError.guarantee(String_value != null && Type._char_array.equals(String_value.getType()), "String.value must be a char[]");
+
         String_hash = String.lookupDeclaredField(Name.hash, Type._int);
         String_hashCode = String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
@@ -226,6 +225,8 @@ public final class Meta implements ContextAccess {
 
         ByteBuffer = knownKlass(Type.ByteBuffer);
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
+        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name.INIT, Signature._void_long_int);
 
         Thread = knownKlass(Type.Thread);
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
@@ -315,6 +316,7 @@ public final class Meta implements ContextAccess {
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
         MethodHandleNatives_linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
         MethodHandleNatives_linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        MethodHandleNatives_fixMethodType = MethodHandleNatives.lookupDeclaredMethod(Name.fixMethodType, Signature.fixMethodType_signature);
         MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
         MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
 
@@ -337,7 +339,7 @@ public final class Meta implements ContextAccess {
         SoftReference = knownKlass(java.lang.ref.SoftReference.class);
         PhantomReference = knownKlass(java.lang.ref.PhantomReference.class);
         FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        Cleaner = knownKlass(sun.misc.Cleaner.class);
+        Cleaner = knownKlass(Type.sun_misc_Cleaner);
         HIDDEN_HOST_REFERENCE = Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
@@ -346,6 +348,8 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_packages = AssertionStatusDirectives.lookupField(Name.packages, Type.String_array);
         AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
+
+        sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
     }
 
     // Checkstyle: stop field name check
@@ -513,6 +517,8 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ByteBuffer;
     public final Method ByteBuffer_wrap;
+    public final ObjectKlass java_nio_DirectByteBuffer;
+    public final Method java_nio_DirectByteBuffer_init_long_int;
 
     public final ObjectKlass ThreadGroup;
     public final Method ThreadGroup_remove;
@@ -601,6 +607,7 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_linkMethodHandleConstant;
     public final Method MethodHandleNatives_findMethodHandleType;
     public final Method MethodHandleNatives_linkCallSite;
+    public final Method MethodHandleNatives_fixMethodType;
 
     // References
 
@@ -623,6 +630,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ReferenceQueue;
     public final Field ReferenceQueue_NULL;
+    public final Method sun_reflect_Reflection_getCallerClass;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -986,7 +994,6 @@ public final class Meta implements ContextAccess {
 
         private static final java.lang.reflect.Field String_value;
         private static final java.lang.reflect.Field String_hash;
-        private static final Constructor<String> String_init;
 
         static {
             try {
@@ -994,19 +1001,15 @@ public final class Meta implements ContextAccess {
                 String_value.setAccessible(true);
                 String_hash = String.class.getDeclaredField("hash");
                 String_hash.setAccessible(true);
-                String_init = String.class.getDeclaredConstructor(char[].class, boolean.class);
-                String_init.setAccessible(true);
-            } catch (NoSuchMethodException | NoSuchFieldException e) {
+            } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
 
         private static char[] getStringValue(String s) {
-            try {
-                return (char[]) String_value.get(s);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            char[] chars = new char[s.length()];
+            s.getChars(0, s.length(), chars, 0);
+            return chars;
         }
 
         private static int getStringHash(String s) {
@@ -1018,11 +1021,7 @@ public final class Meta implements ContextAccess {
         }
 
         private static String createString(final char[] value) {
-            try {
-                return HostJava.String_init.newInstance(value, true);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            return new String(value);
         }
     }
 

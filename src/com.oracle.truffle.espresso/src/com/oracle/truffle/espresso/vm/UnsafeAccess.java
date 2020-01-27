@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import sun.misc.Unsafe;
 
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+public final class UnsafeAccess {
+    private static final Unsafe UNSAFE;
 
-public final class LinkToVirtualNode implements Linker {
-    public static final Linker virtualLinker = new LinkToVirtualNode();
+    private UnsafeAccess() {
+        /* no instances */
+    }
 
-    @Override
-    public Method linkTo(Method target, Object[] args) {
-        Method resolved = target;
-        if ((target.getRefKind() == REF_invokeSpecial) || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
-            return resolved;
+    static {
+        try {
+            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            UNSAFE = (Unsafe) f.get(null);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw EspressoError.shouldNotReachHere(e);
         }
-        StaticObject receiver = (StaticObject) args[0];
-        resolved = receiver.getKlass().vtableLookup(target.getVTableIndex());
-        return resolved;
+    }
+
+    public static Unsafe get() {
+        return UNSAFE;
     }
 }

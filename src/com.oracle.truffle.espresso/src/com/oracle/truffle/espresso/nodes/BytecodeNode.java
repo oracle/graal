@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1733,7 +1733,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
             invoke = InlinedSetterNode.create(resolved, top, opCode, curBCI);
         } else if (resolved.isMethodHandleIntrinsic()) {
-            invoke = new MethodHandleInvokeNode(resolved, top, curBCI);
+            invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opCode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
             invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);

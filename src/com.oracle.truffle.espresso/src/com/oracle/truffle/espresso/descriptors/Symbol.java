@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
-
-import sun.misc.VM;
 
 /**
  * An immutable byte string (modified-UTF8) for internal use in Espresso. <br>
@@ -219,6 +217,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> linkMethodHandleConstant = StaticSymbols.putName("linkMethodHandleConstant");
         public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
         public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
+        public static final Symbol<Name> fixMethodType = StaticSymbols.putName("fixMethodType");
         public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
         public static final Symbol<Name> signature = StaticSymbols.putName("signature");
         public static final Symbol<Name> getParameterTypes = StaticSymbols.putName("getParameterTypes");
@@ -229,6 +228,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
         public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
         public static final Symbol<Name> Null = StaticSymbols.putName("null");
+        public static final Symbol<Name> getCallerClass = StaticSymbols.putName("getCallerClass");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -378,7 +378,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
         public static final Symbol<Type> Runnable = StaticSymbols.putType(Runnable.class);
 
-        public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType(VM.class);
+        public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> ThreadStateEnum = StaticSymbols.putType(Thread.State.class);
 
         public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
@@ -390,6 +390,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Constructor = StaticSymbols.putType(java.lang.reflect.Constructor.class);
         public static final Symbol<Type> Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
         public static final Symbol<Type> Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
+        public static final Symbol<Type> sun_reflect_Reflection = StaticSymbols.putType("Lsun/reflect/Reflection;");
 
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
@@ -400,10 +401,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
         public static final Symbol<Type> ConstructorAccessorImpl = StaticSymbols.putType("Lsun/reflect/ConstructorAccessorImpl;");
 
-        public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType(sun.reflect.ConstantPool.class);
+        public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType("Lsun/reflect/ConstantPool;");
 
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
+        public static final Symbol<Type> java_nio_DirectByteBuffer = StaticSymbols.putType("Ljava/nio/DirectByteBuffer;");
+
         public static final Symbol<Type> PrivilegedActionException = StaticSymbols.putType(java.security.PrivilegedActionException.class);
 
         // Shutdown is not public.
@@ -418,6 +421,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ref_WeakReference = StaticSymbols.putType(java.lang.ref.WeakReference.class);
         public static final Symbol<Type> java_lang_ref_ReferenceQueue = StaticSymbols.putType(java.lang.ref.ReferenceQueue.class);
         public static final Symbol<Type> java_lang_ref_Reference_Lock = StaticSymbols.putType("Ljava/lang/ref/Reference$Lock;");
+
+        public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
 
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
 
@@ -445,7 +450,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
         public static final Symbol<Type> LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
-        public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType(sun.reflect.CallerSensitive.class);
+        public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
 
         // Special threads
         public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
@@ -461,6 +466,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
         public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
+        public static final Symbol<Signature> Class = StaticSymbols.putSignature(Type.Class);
 
         public static final Symbol<Signature> _void_Object = StaticSymbols.putSignature(Type._void, Type.Object);
 
@@ -487,6 +493,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_Exception = StaticSymbols.putSignature(Type._void, Type.Exception);
         public static final Symbol<Signature> _void_String_String_String_int = StaticSymbols.putSignature(Type._void, Type.String, Type.String, Type.String, Type._int);
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
+        public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.Byte, Type._byte);
@@ -507,6 +514,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> linkMethod_signature = StaticSymbols.putSignature(Type.MemberName, Type.Class, Type._int, Type.Class, Type.String, Type.Object, Type.Object_array);
         public static final Symbol<Signature> linkMethodHandleConstant_signature = StaticSymbols.putSignature(Type.MethodHandle, Type.Class, Type._int, Type.Class, Type.String, Type.Object);
         public static final Symbol<Signature> linkCallSite_signature = StaticSymbols.putSignature(Type.MemberName, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object_array);
+        public static final Symbol<Signature> fixMethodType_signature = StaticSymbols.putSignature(Type.MethodType, Type.Class, Type.Object);
         public static final Symbol<Signature> lookup_signature = StaticSymbols.putSignature(Type.Lookup);
 
         public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);

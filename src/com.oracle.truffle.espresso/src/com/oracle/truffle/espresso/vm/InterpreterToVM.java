@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,11 +45,10 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoLock;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-
-import sun.misc.Unsafe;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -62,18 +61,6 @@ public final class InterpreterToVM implements ContextAccess {
     @Override
     public EspressoContext getContext() {
         return context;
-    }
-
-    private static final Unsafe hostUnsafe;
-
-    static {
-        try {
-            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            hostUnsafe = (Unsafe) f.get(null);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
     }
 
     // region Get (array) operations
@@ -200,27 +187,27 @@ public final class InterpreterToVM implements ContextAccess {
 
     // region Monitor enter/exit
 
-    @SuppressWarnings({"deprecation"})
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj) {
-        if (!hostUnsafe.tryMonitorEnter(obj)) {
+        final EspressoLock lock = obj.getLock();
+        if (!lock.tryLock()) {
             Meta meta = obj.getKlass().getMeta();
             StaticObject thread = meta.getContext().getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
-            hostUnsafe.monitorEnter(obj);
+            lock.lock();
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
     }
 
-    @SuppressWarnings({"deprecation"})
     @TruffleBoundary
     public static void monitorExit(@Host(Object.class) StaticObject obj) {
-        if (!Thread.holdsLock(obj)) {
+        final EspressoLock lock = obj.getLock();
+        if (!lock.isHeldByCurrentThread()) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalMonitorStateException.class);
         }
-        hostUnsafe.monitorExit(obj);
+        lock.unlock();
     }
     // endregion
 
@@ -389,9 +376,14 @@ public final class InterpreterToVM implements ContextAccess {
      *
      * The following rules define the direct supertype relation among array types:
      *
-     * - If S and T are both reference types, then S[] >1 T[] iff S >1 T. - Object >1 Object[] -
-     * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
-     * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
+     * <ul>
+     * <li>If S and T are both reference types, then S[] >1 T[] iff S >1 T.
+     * <li>Object >1 Object[]
+     * <li>Cloneable >1 Object[]
+     * <li>java.io.Serializable >1 Object[]
+     * <li>If P is a primitive type, then: Object >1 P[] Cloneable >1 P[] java.io.Serializable >1
+     * P[]
+     * </ul>
      */
     public static boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {

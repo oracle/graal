@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,8 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.jni;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -29,9 +28,30 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * This annotation functions as an alias for the java.lang.invoke.Stable annotation.
+ * Marker for parameters, denoting native-word-sized (pointer, word, handle...) rather than 64-bit.
+ * This annotation can be applied to {@code long} parameters and return types.
+ * 
+ * On the Java side all pointers are represented as {@code long}, regardless of the native word
+ * size. This annotation serves to generate proper signatures to communicate with native code. It
+ * can also be used as a hint for fields; but no checks are performed and no code is derived for
+ * fields.
+ *
+ * <h4>Usage:</h4>
+ * <p>
+ * Receives a methodID and a pointer; both word-sized:
+ * 
+ * <pre>
+ * public void CallVoidMethodVarargs(&#64;Host(Object.class) StaticObject receiver, &#64;Word long methodId, &#64;Word long varargsPtr)
+ * </pre>
+ * 
+ * Returning a pointer:
+ * 
+ * <pre>
+ * public &#64;Word long GetDoubleArrayElements(&#64;Host(double[].class) StaticObject array, &#64;Word long isCopyPtr)
+ * </pre>
+ * </p>
  */
-@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Stable {
+@Target(ElementType.TYPE_USE)
+public @interface Word {
 }

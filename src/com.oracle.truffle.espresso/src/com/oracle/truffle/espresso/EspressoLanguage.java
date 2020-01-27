@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso;
 
 import java.util.Collections;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -32,6 +33,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -60,13 +62,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
-@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
+@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
+
+    public static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     public static final String ID = "java";
     public static final String NAME = "Java";
     public static final String VERSION = "1.8";
-    public static final String MIME_TYPE = "application/x-java";
 
     // Espresso VM info
     public static final String VM_SPECIFICATION_VERSION = "1.8";
@@ -82,7 +85,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
     private static final String SCOPE_NAME = "block";
 
-    private final Symbols symbols;
     private final Utf8ConstantTable utf8Constants;
     private final Names names;
     private final Types types;
@@ -91,15 +93,19 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private long startupClock = 0;
 
     public EspressoLanguage() {
+        // Initialize statically defined symbols and substitutions.
         Name.init();
         Type.init();
         Signature.init();
         Substitutions.init();
-        this.symbols = new Symbols(StaticSymbols.freeze());
-        this.utf8Constants = new Utf8ConstantTable(this.symbols);
-        this.names = new Names(this.symbols);
-        this.types = new Types(this.symbols);
-        this.signatures = new Signatures(this.symbols, types);
+
+        // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
+        // Signatures instead.
+        Symbols symbols = new Symbols(StaticSymbols.freeze());
+        this.utf8Constants = new Utf8ConstantTable(symbols);
+        this.names = new Names(symbols);
+        this.types = new Types(symbols);
+        this.signatures = new Signatures(symbols, types);
     }
 
     @Override
@@ -120,8 +126,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         OptionValues options = env.getOptions();
         // TODO(peterssen): Redirect in/out to env.in()/out()
-        // InputStream in = env.in();
-        // OutputStream out = env.out();
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
 
@@ -189,10 +193,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void finalizeContext(EspressoContext context) {
         long totalTime = System.currentTimeMillis() - startupClock;
-        if (totalTime > 5000) {
-            System.out.println("Time spent in Espresso: " + (totalTime / 1000) + "s");
+        if (totalTime > 10000) {
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
         } else {
-            System.out.println("Time spent in Espresso: " + (totalTime) + "ms");
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
         }
 
         context.prepareDispose();

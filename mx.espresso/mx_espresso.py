@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,10 @@ def _espresso_gate_runner(args, tasks):
             _run_espresso_meta(args=['-cp', mx.classpath('ESPRESSO_PLAYGROUND'), 'com.oracle.truffle.espresso.playground.HelloWorld'])
 
 
+def verify_ci(args):
+    """Verify CI configuration"""
+    mx.verify_ci(args, mx.suite('truffle'), _suite, 'common.json')
+
 
 # REGISTER MX GATE RUNNER
 #########################
@@ -112,6 +116,7 @@ mx.update_commands(_suite, {
     'espresso': [_run_espresso, ''],
     'espresso-meta': [_run_espresso_meta, ''],
     'espresso-playground': [_run_espresso_playground, ''],
+    'verify-ci' : [verify_ci, '[options]'],
 })
 
 # Build configs

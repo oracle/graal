@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,15 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.security.ProtectionDomain;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
@@ -62,14 +65,41 @@ public class Target_java_lang_ref_Reference {
                     0, 18, 0, 0, 0, 2, 0, 25, 0, 0, 0, 2, 0, 26, 0, 7, 0, 0, 0, 2, 0, 27};
 
     static {
-        try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            Unsafe unsafe = (Unsafe) f.get(null);
-            PUBLIC_FINAL_REFERENCE = unsafe.defineClass("java/lang/ref/PublicFinalReference",
-                            PUBLIC_FINAL_REFERENCE_BYTES, 0, PUBLIC_FINAL_REFERENCE_BYTES.length, null, null);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        PUBLIC_FINAL_REFERENCE = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
+    }
+
+    public static void init() {
+        /* nop */
+    }
+
+    /**
+     * Inject raw class in the host boot class loader.
+     */
+    private static Class<?> injectClassInBootClassLoader(String className, byte[] classBytes) {
+        EspressoError.guarantee(JavaVersionUtil.JAVA_SPEC == 8 || JavaVersionUtil.JAVA_SPEC == 11, "Unsupported host Java version: {}", JavaVersionUtil.JAVA_SPEC);
+        if (JavaVersionUtil.JAVA_SPEC == 8) {
+            // Inject class via sun.misc.Unsafe#defineClass.
+            // The use of reflection here is deliberate, so the code compiles with both Java 8/11.
+            try {
+                Method defineClass = Unsafe.class.getDeclaredMethod("defineClass",
+                                String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
+                defineClass.setAccessible(true);
+                return (Class<?>) defineClass.invoke(UnsafeAccess.get(), className, classBytes, 0, classBytes.length, null, null);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        } else if (JavaVersionUtil.JAVA_SPEC == 11 /* removal of sun.misc.Unsafe#defineClass */) {
+            // Inject class via j.l.ClassLoader#defineClass1.
+            try {
+                Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
+                                ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);
+                defineClass1.setAccessible(true);
+                return (Class<?>) defineClass1.invoke(null, null, className, classBytes, 0, classBytes.length, null, null);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        } else {
+            throw EspressoError.shouldNotReachHere("Java version not supported: " + JavaVersionUtil.JAVA_SPEC);
         }
     }
 

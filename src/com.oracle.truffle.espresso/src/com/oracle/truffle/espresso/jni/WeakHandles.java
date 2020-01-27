@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import java.util.WeakHashMap;
  */
 public class WeakHandles<T> {
 
-    private static final int DEFAULT_INITIAL_CAPACITY = 32;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
 
     private final WeakHashMap<T, Integer> map;
     private final LinkedList<Integer> freeList = new LinkedList<>();
