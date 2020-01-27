@@ -54,22 +54,29 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 public class StateSetTest {
 
     private static final int INDEX_SIZE = 0xFF;
+    static final int MAX_SMALL_STATE_INDEX_SIZE = 64;
     private static final int SWITCH_TO_BITSET_THRESHOLD = 4;
 
     private ShortStateIndex index;
+    private ShortStateIndex smallIndex;
     private List<ShortState> tooManyForStateList;
 
     @Before
     public void setUp() {
         index = new ShortStateIndex(INDEX_SIZE);
+        smallIndex = new ShortStateIndex(MAX_SMALL_STATE_INDEX_SIZE);
         tooManyForStateList = new ArrayList<>();
         for (int i = 1; i <= SWITCH_TO_BITSET_THRESHOLD + 1; i++) {
             tooManyForStateList.add(new ShortState(i));
         }
     }
 
+    private StateSetChecker<ShortState> stateSetCreate() {
+        return new StateSetChecker<>(StateSet.create(index), StateSet.create(smallIndex));
+    }
+
     private StateSet<ShortState> bitSet(int... elems) {
-        StateSet<ShortState> result = StateSet.create(index);
+        StateSetChecker<ShortState> result = stateSetCreate();
 
         // force the use of a bit set instead of a state list
         result.addAll(tooManyForStateList);
@@ -83,7 +90,7 @@ public class StateSetTest {
     }
 
     private StateSet<ShortState> stateList(int... elems) {
-        StateSet<ShortState> result = StateSet.create(index);
+        StateSet<ShortState> result = stateSetCreate();
 
         assert elems.length <= SWITCH_TO_BITSET_THRESHOLD;
 

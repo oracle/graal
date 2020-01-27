@@ -233,7 +233,10 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     protected QuantifierGuard[] getQuantifierGuardsOnPath() {
-        // TODO Auto-generated method stub
+        // TODO:
+        // return a list of guards that must hold in order for the transition to be valid in respect
+        // to quantifier bounds, i.e. a quantifier count must be less or equal than its maximum or
+        // greater or equal to its minimum
         return QuantifierGuard.NO_GUARDS;
     }
 

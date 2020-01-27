@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.SortedListOfRanges;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Random;
@@ -120,20 +121,22 @@ public class DebugUtil {
     }
 
     @TruffleBoundary
-    public static String randomJsStringFromRanges(char[] ranges, int length) {
+    public static String randomJsStringFromRanges(SortedListOfRanges ranges, int length) {
         Random random = new Random(System.currentTimeMillis());
         StringBuilder stringBuilder = new StringBuilder(length);
         for (int i = 0; i < length; i++) {
-            int rangeIndex = random.nextInt(ranges.length / 2);
-            char lo = ranges[rangeIndex * 2];
-            char hi = ranges[rangeIndex * 2 + 1];
-            char randChar = (char) (lo + random.nextInt((hi + 1) - lo));
+            int rangeIndex = random.nextInt(ranges.size());
+            int lo = ranges.getLo(rangeIndex);
+            int hi = ranges.getHi(rangeIndex);
+            int randChar = lo + random.nextInt((hi + 1) - lo);
             if (randChar == '"') {
                 stringBuilder.append("\\\\\"");
             } else if (randChar == '\\') {
                 stringBuilder.append("\\\\\\\\");
+            } else if (randChar > 0xffff) {
+                stringBuilder.append(String.format("\\u{%06x}", randChar));
             } else if (randChar > 0x7f || Character.isISOControl(randChar)) {
-                stringBuilder.append(String.format("\\u%04x", (int) randChar));
+                stringBuilder.append(String.format("\\u%04x", randChar));
             } else {
                 stringBuilder.append(randChar);
             }

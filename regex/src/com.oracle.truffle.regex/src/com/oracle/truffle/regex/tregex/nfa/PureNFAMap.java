@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
@@ -54,6 +57,8 @@ public class PureNFAMap {
     private final PureNFA root;
     private final SimpleStateIndex<PureNFA> lookAheads;
     private final SimpleStateIndex<PureNFA> lookBehinds;
+    private int prefixLength = 0;
+    private StateSet<PureNFA>[] prefixLookbehindEntries;
 
     public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookAheads, SimpleStateIndex<PureNFA> lookBehinds) {
         this.ast = ast;
@@ -78,11 +83,29 @@ public class PureNFAMap {
         return lookBehinds;
     }
 
+    public int getPrefixLength() {
+        return prefixLength;
+    }
+
     /**
      * Mark a potential look-behind entry starting {@code offset} characters before the root
      * expression.
      */
+    @SuppressWarnings("unchecked")
     public void addPrefixLookBehindEntry(PureNFA lookBehind, int offset) {
-// System.out.println("Offset " + offset + ast.getLookBehinds().get(lookBehind.getSubTreeId()));
+        if (prefixLookbehindEntries == null || prefixLookbehindEntries.length < offset) {
+            int length = Integer.highestOneBit(offset);
+            if (length < offset) {
+                length *= 2;
+            }
+            assert length >= offset;
+            prefixLookbehindEntries = prefixLookbehindEntries == null ? new StateSet[length] : Arrays.copyOf(prefixLookbehindEntries, length);
+        }
+        int i = offset - 1;
+        if (prefixLookbehindEntries[i] == null) {
+            prefixLookbehindEntries[i] = StateSet.create(lookBehinds);
+        }
+        prefixLookbehindEntries[i].add(lookBehind);
+        prefixLength = Math.max(prefixLength, offset);
     }
 }

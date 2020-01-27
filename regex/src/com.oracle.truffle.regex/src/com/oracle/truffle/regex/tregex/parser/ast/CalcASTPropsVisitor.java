@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,8 +59,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * reach the end of the node. The minPath field of {@link Sequence} nodes is used as a mutable
  * iteration variable when traversing their children (see {@link #visit(CharacterClass)}). The
  * resulting value after the traversal holds the minimum number of {@link CharacterClass} nodes that
- * need to be traversed to reach the end of the Sequence. The same holds for {@link Group}
- * nodes.</li>
+ * need to be traversed to reach the end of the Sequence. The same holds for {@link Group} nodes.
+ * </li>
  * <li>The contents of {@link LookAroundAssertion}s are treated separately, so their minPath values
  * have nothing to do with their parent expression.</li>
  * </ul>
@@ -74,8 +74,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * and {@link com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion.Type#DOLLAR} in backward
  * mode). Note that this algorithm will e.g. not mark the dollar assertion in {@code /(?=a$)bc/} as
  * dead, since it has a (reverse) minimum path of 0 inside the look-ahead assertion.</li>
- * <li>{@link CharacterClass}es that don't match anything
- * ({@link CodePointSet#matchesNothing()}).</li>
+ * <li>{@link CharacterClass}es that don't match anything ({@link CodePointSet#matchesNothing()}).
+ * </li>
  * <li>{@link Sequence}s that contain a dead node.</li>
  * <li>{@link Group}s where all alternatives are dead.</li>
  * <li>{@link RegexASTSubtreeRootNode}s whose child group is dead.</li>
@@ -91,8 +91,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * <li>{@link RegexASTNode#hasCaret()}/{@link RegexASTNode#hasDollar()}:
  * <ul>
  * <li>{@link Sequence}s that contain a caret / dollar {@link PositionAssertion}.</li>
- * <li>{@link Group}s where any alternatives contains a caret / dollar
- * {@link PositionAssertion}.</li>
+ * <li>{@link Group}s where any alternatives contains a caret / dollar {@link PositionAssertion}.
+ * </li>
  * </ul>
  * </li>
  * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all

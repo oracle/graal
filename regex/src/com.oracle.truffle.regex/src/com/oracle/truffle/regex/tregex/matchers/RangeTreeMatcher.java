@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,7 @@ import com.oracle.truffle.regex.tregex.util.MathUtil;
  * something similar to this:
  *
  * <pre>
- * {@code
- * match (char c) {
+ * match(char c) {
  *     if (c < 4) {
  *         return 1 <= c && c <= 2;
  *     } else if (c > 5) {
@@ -70,7 +69,6 @@ import com.oracle.truffle.regex.tregex.util.MathUtil;
  *     } else {
  *         return true;
  *     }
- * }
  * }
  * </pre>
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,18 @@ import java.util.Iterator;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 
+/**
+ * Helper class to check that the specialized StateSet versions for small and large StateSetIndices
+ * have the same behavior.
+ */
 public class StateSetChecker<S> implements StateSet<S> {
 
     private final StateSet<S> a;
     private final StateSet<S> b;
 
     public StateSetChecker(StateSet<S> a, StateSet<S> b) {
+        assert a.getStateIndex().getNumberOfStates() > StateSetTest.MAX_SMALL_STATE_INDEX_SIZE;
+        assert b.getStateIndex().getNumberOfStates() <= StateSetTest.MAX_SMALL_STATE_INDEX_SIZE;
         this.a = a;
         this.b = b;
         assert a.equals(b);
@@ -170,6 +176,25 @@ public class StateSetChecker<S> implements StateSet<S> {
         a.replace(oldState, newState);
         b.replace(oldState, newState);
         assert a.equals(b);
+    }
+
+    @Override
+    public int hashCode() {
+        // hash codes don't need to be equal, because a and b are not built from the same StateIndex
+        return a.hashCode();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof StateSetChecker)) {
+            return false;
+        }
+        StateSetChecker<S> o = (StateSetChecker<S>) obj;
+        boolean r1 = a.equals(o.a);
+        boolean r2 = b.equals(o.b);
+        assert r1 == r2;
+        return r1;
     }
 
     @SuppressWarnings("unchecked")
