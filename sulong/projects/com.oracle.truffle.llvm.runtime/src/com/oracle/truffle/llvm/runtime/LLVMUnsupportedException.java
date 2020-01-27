@@ -68,7 +68,7 @@ public final class LLVMUnsupportedException extends LLVMException {
     }
 
     public LLVMUnsupportedException(Node location, UnsupportedReason reason, Throwable cause) {
-        super(location, reason.getDescription(), cause);
+        super(location, reason.getDescription() + ": " + cause.getMessage(), cause);
     }
 
 }
