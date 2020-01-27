@@ -305,7 +305,6 @@ public final class Symbol<T> extends ByteSequence {
 
     public static final class Type extends Descriptor {
 
-
         public static void init() {
             /* nop */
         }

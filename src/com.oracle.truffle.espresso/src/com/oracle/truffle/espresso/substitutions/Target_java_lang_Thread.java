@@ -77,17 +77,19 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    public static void incrementThreadCounter(StaticObject thread, Field blocked_count) {
-        Long counter = (Long) thread.getHiddenField(blocked_count);
+    public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
+        assert hiddenField.isHidden();
+        Long counter = (Long) thread.getHiddenField(hiddenField);
         if (counter == null) {
             counter = 0L;
         }
         ++counter;
-        thread.setHiddenField(blocked_count, counter);
+        thread.setHiddenField(hiddenField, counter);
     }
 
-    public static long getThreadCounter(StaticObject thread, Field blocked_count) {
-        Long counter = (Long) thread.getHiddenField(blocked_count);
+    public static long getThreadCounter(StaticObject thread, Field hiddenField) {
+        assert hiddenField.isHidden();
+        Long counter = (Long) thread.getHiddenField(hiddenField);
         if (counter == null) {
             counter = 0L;
         }
