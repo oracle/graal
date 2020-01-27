@@ -45,6 +45,14 @@ public interface EspressoLock extends Lock {
      * The current thread must own this object's monitor.
      * <p>
      * Analogous to the {@link Object#wait(long)} method for built-in monitor locks.
+     *
+     * @param timeout the maximum time to wait in milliseconds.
+     * @throws IllegalArgumentException if the value of timeout is negative.
+     * @throws IllegalMonitorStateException if the current thread is not the owner of the object's
+     *             monitor.
+     * @throws InterruptedException if any thread interrupted the current thread before or while the
+     *             current thread was waiting for a notification. The <i>interrupted status</i> of
+     *             the current thread is cleared when this exception is thrown.
      */
     void await(long timeout) throws InterruptedException;
 
