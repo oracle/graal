@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadInfo;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;

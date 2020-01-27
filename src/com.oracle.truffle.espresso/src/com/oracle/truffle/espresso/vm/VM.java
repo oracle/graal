@@ -1758,7 +1758,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@Host(Class.class) StaticObject unused) {
+    public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         final StaticObject[] threads = getContext().getActiveThreads();
         return getMeta().Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
             @Override
@@ -1859,13 +1859,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public int GetVersion() {
+    public static int GetVersion() {
         return JMM_VERSION;
     }
 
     @JniImpl
     @VmImpl
-    public int GetOptionalSupport(long /* jmmOptionalSupport **/ supportPtr) {
+    public static int GetOptionalSupport(@Word long /* jmmOptionalSupport **/ supportPtr) {
         if (supportPtr != 0L) {
             ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
             supportBuf.putInt(0); // nothing optional is supported
@@ -2018,7 +2018,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public @Host(Object[].class) StaticObject GetMemoryManagers(@Host(Object.class) StaticObject pool) {
+    public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool) {
         Klass memoryManagerMXBean = getMeta().loadKlass(Type.MemoryManagerMXBean, StaticObject.NULL);
         return memoryManagerMXBean.allocateArray(1, new IntFunction<StaticObject>() {
             @Override
@@ -2057,7 +2057,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public @Host(Object.class) StaticObject GetMemoryUsage(boolean heap) {
+    public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
         Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
         StaticObject instance = getMeta().MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
@@ -2066,7 +2066,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public long GetLongAttribute(@Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
+    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
                 return getContext().initVMDoneMs;

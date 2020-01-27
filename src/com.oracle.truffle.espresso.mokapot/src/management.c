@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// macros for restartable system calls
-
 #define MANAGEMENT_METHOD_LIST(V) \
     V(GetVersion) \
     V(GetOptionalSupport) \
