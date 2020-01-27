@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -297,8 +297,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def launcher_args(self, args):
         launcher_args = [
-            '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
-            '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
+            '--experimental-options',
+            '--engine.InliningNodeBudget=10000',
+            '--engine.CompilationExceptionsAreFatal',
         ]
         return launcher_args + args
 
