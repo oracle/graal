@@ -889,7 +889,39 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         valueIndex++;
                     } else if (virtual.isVirtualByteArray()) {
                         int bytecount = tool.getVirtualByteCount(entries, valueIndex);
-                        if (bytecount > 1) { // Will handle case == 1 later.
+                        // @formatter:off
+                        /*
+                         * Having a bytecount of 1 here can mean two things:
+                         * - This was a regular byte array access
+                         * - This is an uninitialized value (ie: default)
+                         * 
+                         * In the first case, we want to be able to merge regular accesses without
+                         * issues. But in the second case, if one of the branch has escaped a write
+                         * (while other branches did not touch the array), we want to be able to
+                         * propagate the escape to the merge.
+                         * 
+                         * However, the semantics of virtual object creation in PEA puts a default
+                         * (0) byte value on all entries. As such, the merging is done in two steps:
+                         * - For each virtual entry, know if there is an escaped write in one of the
+                         * branch, and store its byte count, unless it is 1.
+                         * - Now that we know the byte count, we can escape multiple writes for the
+                         * default values from branches that did nothing on the entry in question to
+                         * a default write of a bigger kind.
+                         * 
+                         * for example, consider:
+                         * 
+                         * b = new byte[8]; 
+                         * if (...) {b[0] <- 1L} 
+                         * else     {}
+                         * 
+                         * for escape analysis purposes, it can be seen as:
+                         * 
+                         * b = new byte[8]; 
+                         * if (...) {b[0] <- 1L} 
+                         * else     {b[0] <- 0L}
+                         */
+                        // @formatter:on
+                        if (bytecount > 1) {
                             if (virtualByteCount == null) {
                                 virtualByteCount = new int[entryCount];
                             }
