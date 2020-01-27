@@ -1835,7 +1835,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     public static final int JMM_VERSION = 0x20010203;
 
-    @JniImpl
     @VmImpl
     public synchronized long JVM_GetManagement(int version) {
         if (version != JMM_VERSION_1_0) {
