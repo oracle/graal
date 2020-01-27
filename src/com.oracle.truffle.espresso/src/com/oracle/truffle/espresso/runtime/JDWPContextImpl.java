@@ -559,7 +559,7 @@ public final class JDWPContextImpl implements JDWPContext {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
             int bci = -1;
             if (espressoRootNode.isBytecodeNode()) {
-               bci = espressoRootNode.getCurrentBCI();
+                bci = espressoRootNode.getCurrentBCI();
             }
             if (bci != -1) {
                 Method method = espressoRootNode.getMethod();
