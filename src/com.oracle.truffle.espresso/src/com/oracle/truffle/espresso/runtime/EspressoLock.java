@@ -81,6 +81,16 @@ public interface EspressoLock extends Lock {
     boolean isHeldByCurrentThread();
 
     /**
+     * Returns the thread that currently owns this lock, or {@code null} if not owned. When this
+     * method is called by a thread that is not the owner, the return value reflects a best-effort
+     * approximation of current lock status. For example, the owner may be momentarily {@code null}
+     * even if there are threads trying to acquire the lock but have not yet done so.
+     *
+     * @return the owner, or {@code null} if not owned
+     */
+    Thread getOwnerThread();
+
+    /**
      * Creates a new {@code EspressoLock} instance.
      */
     static EspressoLock create() {
@@ -129,6 +139,11 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     @Override
     public void signalAll() {
         getWaitCondition().signalAll();
+    }
+
+    @Override
+    public Thread getOwnerThread() {
+        return getOwner();
     }
 
     @Override
