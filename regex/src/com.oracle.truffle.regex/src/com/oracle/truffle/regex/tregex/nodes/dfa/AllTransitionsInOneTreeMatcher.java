@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.regex.charset.Constants;
 
 /**
  * This class provides an alternative way of calculating the next transition - instead of checking
@@ -61,8 +62,8 @@ public final class AllTransitionsInOneTreeMatcher {
      * @param sortedRanges a sorted list of adjacent character ranges, in the following format:
      *            Every character in the array simultaneously represents the inclusive lower bound
      *            of a range and the exclusive upper bound of a range. The algorithm adds an
-     *            implicit zero at the begin and an implicit {@link Character#MAX_VALUE} + 1 at the
-     *            end of the array. An array representing the ranges
+     *            implicit zero at the begin and an implicit {@link Constants#MAX_CODE_POINT} + 1 at
+     *            the end of the array. An array representing the ranges
      *            {@code [0x00-0x10][0x10-0xff][0xff-0x2000][0x2000-0x10000]} (represented with
      *            exclusive upper bound) would be: {@code [0x10, 0xff, 0x2000]}.
      * @param rangeTreeSuccessors the list of successors corresponding to every range in the sorted

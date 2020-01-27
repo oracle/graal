@@ -45,11 +45,12 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConvertible {
+public final class CodePointSet implements ImmutableSortedListOfRanges, Comparable<CodePointSet>, JsonConvertible {
 
     private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(new int[0]);
     private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{Character.MIN_CODE_POINT, Character.MAX_CODE_POINT});
@@ -282,6 +283,42 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConv
     }
 
     @Override
+    public int compareTo(CodePointSet o) {
+        if (this == o) {
+            return 0;
+        }
+        if (matchesEverything()) {
+            if (o.matchesEverything()) {
+                return 0;
+            }
+            return 1;
+        }
+        if (matchesNothing()) {
+            if (o.matchesNothing()) {
+                return 0;
+            }
+            return -1;
+        }
+        if (o.matchesEverything()) {
+            return -1;
+        }
+        if (o.matchesNothing()) {
+            return 1;
+        }
+        int cmp = size() - o.size();
+        if (cmp != 0) {
+            return cmp;
+        }
+        for (int i = 0; i < size(); i++) {
+            cmp = getLo(i) - o.getLo(i);
+            if (cmp != 0) {
+                return cmp;
+            }
+        }
+        return cmp;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
@@ -307,6 +344,12 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConv
     }
 
     @TruffleBoundary
+    @Override
+    public String toString() {
+        return defaultToString();
+    }
+
+    @TruffleBoundary
     public String dumpRaw() {
         StringBuilder sb = new StringBuilder(size() * 20);
         for (int i = 0; i < size(); i++) {
@@ -316,5 +359,25 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConv
             sb.append(String.format("0x%06x, 0x%06x", getLo(i), getHi(i)));
         }
         return sb.toString();
+    }
+
+    public CharMatcher createMatcher(CompilationBuffer compilationBuffer) {
+        return CharSet.fromSortedRanges(this).createMatcher(compilationBuffer);
+    }
+
+    public char[] inverseToCharArray() {
+        char[] array = new char[inverseValueCount()];
+        int index = 0;
+        int lastHi = -1;
+        for (int i = 0; i < size(); i++) {
+            for (int j = lastHi + 1; j < getLo(i); j++) {
+                array[index++] = (char) j;
+            }
+            lastHi = getHi(i);
+        }
+        for (int j = lastHi + 1; j <= getMaxValue(); j++) {
+            array[index++] = (char) j;
+        }
+        return array;
     }
 }

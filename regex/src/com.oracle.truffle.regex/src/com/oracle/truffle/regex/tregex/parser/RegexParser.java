@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -71,10 +70,10 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 
 public final class RegexParser {
@@ -348,7 +347,7 @@ public final class RegexParser {
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CharSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
                         finishedAlternative.add(createCharClass(curTrails, token));
                     }
                     curLead = startLead;
@@ -365,7 +364,7 @@ public final class RegexParser {
 
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CharSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
                         finishedAlternative.add(createCharClass(curTrails, token));
                     }
                     curLead = endLead;
@@ -385,7 +384,7 @@ public final class RegexParser {
             }
             if (curTrails.matchesSomething()) {
                 Sequence lastAlternative = group.addSequence(ast);
-                lastAlternative.add(createCharClass(CharSet.create(curLead), token));
+                lastAlternative.add(createCharClass(CodePointSet.create(curLead), token));
                 lastAlternative.add(createCharClass(curTrails, token));
             }
 
@@ -394,7 +393,7 @@ public final class RegexParser {
                 Sequence completeRangesAlt = ast.createSequence();
                 group.insertFirst(completeRangesAlt);
                 completeRangesAlt.add(createCharClass(completeRanges, token));
-                completeRangesAlt.add(createCharClass(CharSet.getTrailSurrogateRange(), token));
+                completeRangesAlt.add(createCharClass(Constants.TRAIL_SURROGATE_RANGE, token));
             }
         }
 
@@ -410,7 +409,7 @@ public final class RegexParser {
         if (flags.isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
-                addTerm(createCharClass(CharSet.getEmpty(), token));
+                addTerm(createCharClass(CodePointSet.getEmpty(), token));
             } else {
                 addTerm(translateUnicodeCharClass(token));
             }
@@ -420,22 +419,14 @@ public final class RegexParser {
     }
 
     private CharacterClass createCharClass(IntRangesBuffer buf, Token token) {
-        return createCharClass(CharSet.fromSortedRanges(buf), token);
+        return createCharClass(CodePointSet.create(buf), token);
     }
 
-    private CharacterClass createCharClass(CodePointSet codePointSet, Token token) {
-        return createCharClass(CharSet.fromSortedRanges(codePointSet), token);
-    }
-
-    private CharacterClass createCharClass(CodePointSet codePointSet, Token token, boolean wasSingleChar) {
-        return createCharClass(CharSet.fromSortedRanges(codePointSet), token, wasSingleChar);
-    }
-
-    private CharacterClass createCharClass(CharSet charSet, Token token) {
+    private CharacterClass createCharClass(CodePointSet charSet, Token token) {
         return createCharClass(charSet, token, false);
     }
 
-    private CharacterClass createCharClass(CharSet charSet, Token token, boolean wasSingleChar) {
+    private CharacterClass createCharClass(CodePointSet charSet, Token token, boolean wasSingleChar) {
         CharacterClass characterClass = ast.createCharacterClass(charSet);
         ast.addSourceSection(characterClass, token);
         if (wasSingleChar) {
@@ -732,7 +723,7 @@ public final class RegexParser {
 
     private void replaceCurTermWithDeadNode() {
         removeCurTerm();
-        addTerm(createCharClass(CharSet.getEmpty(), null));
+        addTerm(createCharClass(CodePointSet.getEmpty(), null));
     }
 
     private void setQuantifier(Term term, Token.Quantifier quantifier) {

@@ -45,7 +45,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -109,7 +109,7 @@ public final class PureNFAGenerator {
         if (lookup != null) {
             return lookup;
         } else {
-            PureNFAState state = new PureNFAState((short) stateID.inc(), t.getId(), t instanceof CharacterClass ? ((CharacterClass) t).getCharSet() : CharSet.getEmpty());
+            PureNFAState state = new PureNFAState((short) stateID.inc(), t.getId(), t instanceof CharacterClass ? ((CharacterClass) t).getCharSet() : CodePointSet.getEmpty());
             expansionQueue.push(state);
             nfaStates.put(t, state);
             return state;
@@ -121,7 +121,7 @@ public final class PureNFAGenerator {
         nfaStates.clear();
         stateID.reset();
         transitionID.reset();
-        PureNFAState dummyInitialState = new PureNFAState((short) stateID.inc(), ast.getWrappedRoot().getId(), CharSet.getEmpty());
+        PureNFAState dummyInitialState = new PureNFAState((short) stateID.inc(), ast.getWrappedRoot().getId(), CodePointSet.getEmpty());
         nfaStates.put(ast.getWrappedRoot(), dummyInitialState);
         if (!root.hasDollar()) {
             anchoredFinalState = null;
@@ -193,7 +193,7 @@ public final class PureNFAGenerator {
     }
 
     private PureNFAState createMatchAllState(RegexASTNode astNode, boolean enqueue) {
-        PureNFAState state = new PureNFAState((short) stateID.inc(), astNode.getId(), CharSet.getFull());
+        PureNFAState state = new PureNFAState((short) stateID.inc(), astNode.getId(), CodePointSet.getFull());
         assert !nfaStates.containsKey(astNode);
         nfaStates.put(astNode, state);
         if (enqueue) {

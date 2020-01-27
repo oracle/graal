@@ -403,8 +403,11 @@ public interface SortedListOfRanges extends CharacterSet {
      * non-adjacent. This property must hold at all times.
      */
     default boolean rangesAreSortedAndDisjoint() {
+        if (size() > 0 && getLo(0) > getHi(0)) {
+            return false;
+        }
         for (int i = 1; i < size(); i++) {
-            if ((!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
+            if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
                 return false;
             }
         }

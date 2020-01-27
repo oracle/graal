@@ -45,7 +45,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
@@ -61,15 +61,15 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * <em>CharacterClassEscape</em> and <em>CharacterEscape</em> of the goal symbol <em>AtomEscape</em>
  * in the ECMAScript RegExp syntax.
  * <p>
- * Note that {@link CharacterClass} nodes and the {@link CharSet}s that they rely on can only match
- * characters from the Basic Multilingual Plane (and whose code point fits into 16-bit integers).
- * Any term which matches characters outside of the Basic Multilingual Plane is expanded by
- * {@link RegexParser} into a more complex expression which matches the individual code units that
- * would make up the UTF-16 encoding of those characters.
+ * Note that {@link CharacterClass} nodes and the {@link CodePointSet}s that they rely on can only
+ * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
+ * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
+ * by {@link RegexParser} into a more complex expression which matches the individual code units
+ * that would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends Term {
 
-    private CharSet charSet;
+    private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
     private StateSet<LookBehindAssertion> lookBehindEntries;
 
@@ -77,7 +77,7 @@ public class CharacterClass extends Term {
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
      * the {@code matcherBuilder}.
      */
-    CharacterClass(CharSet charSet) {
+    CharacterClass(CodePointSet charSet) {
         this.charSet = charSet;
     }
 
@@ -97,14 +97,14 @@ public class CharacterClass extends Term {
     }
 
     /**
-     * Returns the {@link CharSet} representing the set of characters that can be matched by this
-     * {@link CharacterClass}.
+     * Returns the {@link CodePointSet} representing the set of characters that can be matched by
+     * this {@link CharacterClass}.
      */
-    public CharSet getCharSet() {
+    public CodePointSet getCharSet() {
         return charSet;
     }
 
-    public void setCharSet(CharSet charSet) {
+    public void setCharSet(CodePointSet charSet) {
         this.charSet = charSet;
     }
 
@@ -144,7 +144,7 @@ public class CharacterClass extends Term {
     }
 
     public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
-        CharSet c = charSet;
+        CodePointSet c = charSet;
         char c1 = (char) c.getLo(0);
         if (c.matches2CharsWith1BitDifference()) {
             int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
@@ -158,7 +158,7 @@ public class CharacterClass extends Term {
     }
 
     public void extractSingleChar(char[] literal, char[] mask, int i) {
-        CharSet c = charSet;
+        CodePointSet c = charSet;
         char c1 = (char) c.getLo(0);
         if (c.matches2CharsWith1BitDifference()) {
             int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);

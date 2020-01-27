@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -263,7 +263,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return register(new BackReference(groupNumber));
     }
 
-    public CharacterClass createCharacterClass(CharSet matcherBuilder) {
+    public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {
         return register(new CharacterClass(matcherBuilder));
     }
 
@@ -510,7 +510,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * set to true.
      */
     private CharacterClass createPrefixAnyMatcher() {
-        final CharacterClass anyMatcher = createCharacterClass(CharSet.getFull());
+        final CharacterClass anyMatcher = createCharacterClass(CodePointSet.getFull());
         anyMatcher.setPrefix();
         return anyMatcher;
     }

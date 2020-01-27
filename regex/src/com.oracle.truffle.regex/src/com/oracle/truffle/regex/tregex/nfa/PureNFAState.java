@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 import java.util.Collections;
 import java.util.Set;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractState;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -63,10 +63,10 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
     private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
     private final short astNodeId;
-    private final CharSet charSet;
+    private final CodePointSet charSet;
     private Set<PureNFA> lookBehindEntries;
 
-    public PureNFAState(short id, short astNodeId, CharSet charSet) {
+    public PureNFAState(short id, short astNodeId, CodePointSet charSet) {
         super(id, EMPTY_TRANSITIONS);
         this.astNodeId = astNodeId;
         this.charSet = charSet;
@@ -76,7 +76,7 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
         return astNodeId;
     }
 
-    public CharSet getCharSet() {
+    public CodePointSet getCharSet() {
         return charSet;
     }
 

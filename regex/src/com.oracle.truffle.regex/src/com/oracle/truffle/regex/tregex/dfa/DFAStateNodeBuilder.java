@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractState;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
@@ -169,21 +169,21 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
     /**
      * Returns {@code true} iff the union of the
      * {@link DFAStateTransitionBuilder#getMatcherBuilder()} of all transitions in this state is
-     * equal to {@link CharSet#getFull()}.
+     * equal to {@link CodePointSet#getFull()}.
      */
     public boolean coversFullCharSpace(CompilationBuffer compilationBuffer) {
         IntArrayBuffer indicesBuf = compilationBuffer.getIntRangesBuffer1();
         indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
         Arrays.fill(indices, 0, getSuccessors().length, 0);
-        int nextLo = Character.MIN_VALUE;
+        int nextLo = Character.MIN_CODE_POINT;
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {
                 return false;
             }
-            CharSet mb = getSuccessors()[i].getMatcherBuilder();
-            if (mb.getHi(indices[i]) == Character.MAX_VALUE) {
+            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
+            if (mb.getHi(indices[i]) == Character.MAX_CODE_POINT) {
                 return true;
             }
             nextLo = mb.getHi(indices[i]) + 1;
@@ -193,7 +193,7 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
 
     private int findNextLo(int[] indices, int findLo) {
         for (int i = 0; i < getSuccessors().length; i++) {
-            CharSet mb = getSuccessors()[i].getMatcherBuilder();
+            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
             if (indices[i] == mb.size()) {
                 continue;
             }

@@ -40,20 +40,20 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 final class ASTSuccessor implements JsonConvertible {
 
@@ -74,7 +74,7 @@ final class ASTSuccessor implements JsonConvertible {
     }
 
     public void addInitialTransition(ASTTransition transition) {
-        CharSet charSet = CharSet.getFull();
+        CodePointSet charSet = CodePointSet.getFull();
         if (transition.getTarget() instanceof CharacterClass) {
             charSet = ((CharacterClass) transition.getTarget()).getCharSet();
         }
@@ -128,7 +128,7 @@ final class ASTSuccessor implements JsonConvertible {
     private void addAllIntersecting(ASTTransitionCanonicalizer canonicalizer, TransitionBuilder<ASTTransitionSet> state, ASTStep lookAround, ArrayList<TransitionBuilder<ASTTransitionSet>> result) {
         for (ASTSuccessor successor : lookAround.getSuccessors()) {
             for (TransitionBuilder<ASTTransitionSet> lookAroundState : successor.getMergedStates(canonicalizer)) {
-                CharSet intersection = state.getMatcherBuilder().createIntersection(lookAroundState.getMatcherBuilder(), compilationBuffer);
+                CodePointSet intersection = state.getMatcherBuilder().createIntersection(lookAroundState.getMatcherBuilder(), compilationBuffer);
                 if (intersection.matchesSomething()) {
                     result.add(state.createMerged(lookAroundState, intersection));
                 }

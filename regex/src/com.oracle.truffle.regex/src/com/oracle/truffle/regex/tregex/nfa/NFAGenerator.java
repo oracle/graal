@@ -49,7 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
@@ -93,7 +93,7 @@ public final class NFAGenerator {
         this.astStepVisitor = new ASTStepVisitor(ast, compilationBuffer);
         this.transitionGBUpdateIndices = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.transitionGBClearIndices = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CharSet.getEmpty(), Collections.emptySet(), false);
+        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false);
         nfaStates.put(dummyInitialState.getStateSet(), dummyInitialState);
         anchoredFinalState = createFinalState(StateSet.create(ast, ast.getReachableDollars()));
         anchoredFinalState.setForwardAnchoredFinalState(true);
@@ -243,7 +243,7 @@ public final class NFAGenerator {
     }
 
     private NFAState createFinalState(StateSet<? extends RegexASTNode> stateSet) {
-        NFAState state = new NFAState((short) stateID.inc(), stateSet, CharSet.getFull(), Collections.emptySet(), false);
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, CodePointSet.getFull(), Collections.emptySet(), false);
         assert !nfaStates.containsKey(state.getStateSet());
         nfaStates.put(state.getStateSet(), state);
         return state;
@@ -254,7 +254,7 @@ public final class NFAGenerator {
     }
 
     private NFAState registerMatcherState(StateSet<CharacterClass> stateSetCC,
-                    CharSet matcherBuilder,
+                    CodePointSet matcherBuilder,
                     StateSet<LookBehindAssertion> finishedLookBehinds,
                     boolean containsPrefixStates) {
         if (nfaStates.containsKey(stateSetCC)) {

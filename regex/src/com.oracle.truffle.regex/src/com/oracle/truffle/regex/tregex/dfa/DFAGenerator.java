@@ -55,7 +55,8 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
@@ -63,8 +64,8 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.CharRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
@@ -438,7 +439,7 @@ public final class DFAGenerator implements JsonConvertible {
         return createTransitionBuilder(null, transitionSet);
     }
 
-    private DFAStateTransitionBuilder createTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitionSet) {
+    private DFAStateTransitionBuilder createTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitionSet) {
         if (isGenericCG()) {
             return new DFACaptureGroupTransitionBuilder(matcherBuilder, transitionSet, this);
         } else {
@@ -670,7 +671,7 @@ public final class DFAGenerator implements JsonConvertible {
                  * itself as long as no newline is encountered, and the optimized search would
                  * hardly ever trigger after the first occurrence of the literal.
                  */
-                RangesAccumulator<CharRangesBuffer> acc = new RangesAccumulator<>(new CharRangesBuffer());
+                RangesAccumulator<IntRangesBuffer> acc = new RangesAccumulator<>(new IntRangesBuffer());
                 for (DFAStateNodeBuilder s : stateMap.values()) {
                     acc.clear();
                     if (!prefixNFAStates.containsAll(s.getNfaTransitionSet().getTargetStateSet())) {
@@ -697,7 +698,7 @@ public final class DFAGenerator implements JsonConvertible {
                         // GR-17760: newTransitions != null implies mergedTransition != null, but
                         // the "Fortify" tool does not see that
                         if (newTransitions != null && mergedTransition != null) {
-                            mergedTransition.setMatcherBuilder(CharSet.create(acc.get()));
+                            mergedTransition.setMatcherBuilder(CodePointSet.create(acc.get()));
                             s.setSuccessors(newTransitions.toArray(new DFAStateTransitionBuilder[newTransitions.length()]));
                             Arrays.sort(s.getSuccessors(), Comparator.comparing(TransitionBuilder::getMatcherBuilder));
                         }
@@ -744,7 +745,7 @@ public final class DFAGenerator implements JsonConvertible {
         StateSet<NFAState> curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
         StateSet<NFAState> nextState = StateSet.create(nfa);
         for (int i = literalStart; i < literalEnd; i++) {
-            CharSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getCharSet();
+            CodePointSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getCharSet();
             for (NFAState s : curState) {
                 for (NFAStateTransition t : s.getNext()) {
                     if (i == literalStart && !prefixNFAStates.contains(t.getTarget())) {
@@ -802,7 +803,7 @@ public final class DFAGenerator implements JsonConvertible {
             boolean coversCharSpace = s.coversFullCharSpace(compilationBuffer);
             for (int i = 0; i < matchers.length; i++) {
                 DFAStateTransitionBuilder t = s.getSuccessors()[i];
-                CharSet matcherBuilder = t.getMatcherBuilder();
+                CodePointSet matcherBuilder = t.getMatcherBuilder();
                 if (i == matchers.length - 1 && (coversCharSpace || (pruneUnambiguousPaths && !s.isFinalStateSuccessor()))) {
                     // replace the last matcher with an AnyMatcher, since it must always cover the
                     // remaining input space
@@ -851,7 +852,7 @@ public final class DFAGenerator implements JsonConvertible {
                 successors[i] = s.getSuccessors()[i].getTarget().getId();
                 if (successors[i] == s.getId()) {
                     loopToSelf = (short) i;
-                    CharSet loopMB = s.getSuccessors()[i].getMatcherBuilder();
+                    CodePointSet loopMB = s.getSuccessors()[i].getMatcherBuilder();
                     if (coversCharSpace && !loopMB.matchesEverything() && loopMB.inverseValueCount() <= 4) {
                         indexOfChars = loopMB.inverseToCharArray();
                     }
@@ -914,7 +915,7 @@ public final class DFAGenerator implements JsonConvertible {
             int minLo = Integer.MAX_VALUE;
             int minMb = -1;
             for (int i = 0; i < transitions.length; i++) {
-                CharSet mb = transitions[i].getMatcherBuilder();
+                CodePointSet mb = transitions[i].getMatcherBuilder();
                 if (matcherIndices[i] < mb.size() && mb.getLo(matcherIndices[i]) < minLo) {
                     minLo = mb.getLo(matcherIndices[i]);
                     minMb = i;
@@ -929,12 +930,12 @@ public final class DFAGenerator implements JsonConvertible {
             }
             rangeTreeSuccessorsBuf.add((short) minMb);
             lastHi = transitions[minMb].getMatcherBuilder().getHi(matcherIndices[minMb]) + 1;
-            if (lastHi <= Character.MAX_VALUE) {
+            if (lastHi <= Constants.MAX_CODE_POINT) {
                 sortedRangesBuf.add((char) (lastHi));
             }
             matcherIndices[minMb]++;
         }
-        if (lastHi != Character.MAX_VALUE + 1) {
+        if (lastHi != Constants.MAX_CODE_POINT + 1) {
             rangeTreeSuccessorsBuf.add((short) -1);
         }
         return new AllTransitionsInOneTreeMatcher(sortedRangesBuf.toArray(), rangeTreeSuccessorsBuf.toArray());

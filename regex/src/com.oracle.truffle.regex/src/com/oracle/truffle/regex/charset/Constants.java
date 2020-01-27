@@ -42,6 +42,9 @@ package com.oracle.truffle.regex.charset;
 
 public final class Constants {
 
+    public static final int MAX_CODE_POINT = Character.MAX_CODE_POINT;
+
+    public static final CodePointSet BYTE_RANGE = CodePointSet.createNoDedup(0x00, 0xff);
     public static final CodePointSet BMP_RANGE = CodePointSet.createNoDedup(Character.MIN_VALUE, Character.MAX_VALUE);
     public static final CodePointSet TRAIL_SURROGATE_RANGE = CodePointSet.createNoDedup(0xDC00, 0xDFFF);
 

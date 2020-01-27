@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 
 /**
@@ -74,7 +74,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * and {@link com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion.Type#DOLLAR} in backward
  * mode). Note that this algorithm will e.g. not mark the dollar assertion in {@code /(?=a$)bc/} as
  * dead, since it has a (reverse) minimum path of 0 inside the look-ahead assertion.</li>
- * <li>{@link CharacterClass}es that don't match anything ({@link CharSet#matchesNothing()}).</li>
+ * <li>{@link CharacterClass}es that don't match anything
+ * ({@link CodePointSet#matchesNothing()}).</li>
  * <li>{@link Sequence}s that contain a dead node.</li>
  * <li>{@link Group}s where all alternatives are dead.</li>
  * <li>{@link RegexASTSubtreeRootNode}s whose child group is dead.</li>

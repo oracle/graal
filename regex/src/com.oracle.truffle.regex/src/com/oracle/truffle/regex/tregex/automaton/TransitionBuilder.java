@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * This class represents a power-set automaton state transition fragment to be used by
@@ -59,10 +58,10 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public class TransitionBuilder<TS extends TransitionSet> implements JsonConvertible {
 
     private final TS transitionSet;
-    private CharSet matcherBuilder;
+    private CodePointSet matcherBuilder;
     private TransitionBuilder<TS> next;
 
-    public TransitionBuilder(TS transitionSet, CharSet matcherBuilder) {
+    public TransitionBuilder(TS transitionSet, CodePointSet matcherBuilder) {
         this.transitionSet = transitionSet;
         this.matcherBuilder = matcherBuilder;
     }
@@ -77,11 +76,11 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
     /**
      * Represents the character set matched by this transition fragment.
      */
-    public CharSet getMatcherBuilder() {
+    public CodePointSet getMatcherBuilder() {
         return matcherBuilder;
     }
 
-    public void setMatcherBuilder(CharSet matcherBuilder) {
+    public void setMatcherBuilder(CodePointSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
     }
 
@@ -107,12 +106,12 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
      * on {@code this.transitionSet} with {@code other.transitionSet} as parameter. The
      * {@code matcherBuilder} of the new {@link TransitionBuilder} will be set to
      * {@code mergedMatcher} directly.
-     * 
+     *
      * @return the newly created {@link TransitionBuilder}. Overriding classes are expected to
      *         return an instance of their own type!
      */
     @SuppressWarnings("unchecked")
-    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, CharSet mergedMatcher) {
+    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, CodePointSet mergedMatcher) {
         return new TransitionBuilder<>((TS) transitionSet.createMerged(other.transitionSet), mergedMatcher);
     }
 

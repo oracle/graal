@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -93,12 +93,12 @@ public class NFAState implements JsonConvertible {
     @CompilationFinal(dimensions = 1) private NFAStateTransition[] prev;
     private short prevLength = 0;
     private CompilationFinalBitSet possibleResults;
-    private final CharSet matcherBuilder;
+    private final CodePointSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
     public NFAState(short id,
                     StateSet<? extends RegexASTNode> stateSet,
-                    CharSet matcherBuilder,
+                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates) {
         this(id, stateSet, hasPrefixStates ? FLAG_HAS_PREFIX_STATES : FLAGS_NONE,
@@ -108,7 +108,7 @@ public class NFAState implements JsonConvertible {
     private NFAState(short id,
                     StateSet<? extends RegexASTNode> stateSet,
                     byte flags,
-                    CharSet matcherBuilder,
+                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this(id, stateSet, flags, EMPTY_TRANSITIONS, EMPTY_TRANSITIONS, null, matcherBuilder, finishedLookBehinds);
     }
@@ -119,7 +119,7 @@ public class NFAState implements JsonConvertible {
                     NFAStateTransition[] next,
                     NFAStateTransition[] prev,
                     CompilationFinalBitSet possibleResults,
-                    CharSet matcherBuilder,
+                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this.id = id;
         this.stateSet = stateSet;
@@ -135,7 +135,7 @@ public class NFAState implements JsonConvertible {
         return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds);
     }
 
-    public CharSet getCharSet() {
+    public CodePointSet getCharSet() {
         return matcherBuilder;
     }
 

@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
@@ -65,7 +65,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private int[] requiredStatesIndexMap = null;
     private DFACaptureGroupLazyTransition lazyTransition = null;
 
-    DFACaptureGroupTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitions, DFAGenerator dfaGen) {
+    DFACaptureGroupTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitions, DFAGenerator dfaGen) {
         super(matcherBuilder, transitions);
         this.dfaGen = dfaGen;
     }
@@ -76,7 +76,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     }
 
     @Override
-    public DFACaptureGroupTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CharSet mergedMatcher) {
+    public DFACaptureGroupTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CodePointSet mergedMatcher) {
         return new DFACaptureGroupTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()), dfaGen);
     }
 

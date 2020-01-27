@@ -41,7 +41,7 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -55,7 +55,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    DFAStateTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitionSet) {
+    DFAStateTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitionSet) {
         super(transitionSet, matcherBuilder);
     }
 
@@ -64,7 +64,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     }
 
     @Override
-    public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CharSet mergedMatcher) {
+    public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CodePointSet mergedMatcher) {
         return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
     }
 
