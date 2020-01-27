@@ -1282,7 +1282,7 @@ public abstract class TruffleLanguage<C> {
      * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
      */
-    protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
+    public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
     }
 
@@ -1300,7 +1300,7 @@ public abstract class TruffleLanguage<C> {
      * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
      */
-    protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
+    public static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         return LanguageAccessor.engineAccess().getCurrentContext(languageClass);
     }
 
@@ -1312,7 +1312,7 @@ public abstract class TruffleLanguage<C> {
      *
      * @since 19.0
      */
-    protected final String getLanguageHome() {
+    public final String getLanguageHome() {
         return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
     }
 
