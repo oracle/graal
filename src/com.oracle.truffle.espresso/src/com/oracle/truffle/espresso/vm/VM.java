@@ -196,18 +196,23 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "disposeMokapotContext",
                             "(env, sint64): void");
 
-            initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                            "initializeManagementContext", "(env, (string): pointer): sint64");
+            if (jniEnv.getContext().EnableManagement) {
+                initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                                "initializeManagementContext", "(env, (string): pointer): sint64");
 
-            disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                            "disposeManagementContext",
-                            "(env, sint64): void");
+                disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                                "disposeManagementContext",
+                                "(env, sint64): void");
+            } else {
+                initializeManagementContext = null;
+                disposeManagementContext = null;
+            }
 
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getJavaVM",
                             "(env): sint64");
 
-            this.vmPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            this.vmPtr = (long) UNCACHED.execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
 
             assert this.vmPtr != 0;
 
@@ -267,7 +272,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             String signature = m.jniNativeSignature();
             Callback target = vmMethodWrapper(m);
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(jniEnv.dupClosureRefAndCast(signature), target);
+            return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast(signature), target);
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -422,19 +427,26 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(@Host(Object.class) StaticObject self, long timeout) {
-        StaticObject currentThread = getMeta().getContext().getCurrentThread();
+
+        EspressoContext context = getContext();
+        StaticObject currentThread = context.getCurrentThread();
         try {
             Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
-            currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
-            Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
+            if (context.EnableManagement) {
+                // Locks bookkeeping.
+                currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
+                Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
+            }
             self.getLock().await(timeout);
         } catch (InterruptedException e) {
             Target_java_lang_Thread.setInterrupt(currentThread, false);
-            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(InterruptedException.class, e.getMessage());
         } catch (IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } finally {
-            currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
+            if (context.EnableManagement) {
+                currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
+            }
             Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
         }
     }
@@ -753,7 +765,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         try {
             TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
-            long handle = InteropLibrary.getFactory().getUncached().asPointer(function);
+            long handle = UNCACHED.asPointer(function);
             handle2Sym.put(handle, function);
             return handle;
         } catch (UnsupportedMessageException e) {
@@ -781,7 +793,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     public void dispose() {
         assert vmPtr != 0L : "Mokapot already disposed";
         try {
-            InteropLibrary.getFactory().getUncached().execute(disposeMokapotContext, vmPtr);
+
+            if (getContext().EnableManagement) {
+                if (managementPtr != 0L /* NULL */) {
+                    UNCACHED.execute(disposeManagementContext, managementPtr);
+                    this.managementPtr = 0L;
+                }
+            } else {
+                assert managementPtr == 0L /* NULL */;
+            }
+
+            UNCACHED.execute(disposeMokapotContext, vmPtr);
             this.vmPtr = 0L;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
@@ -1836,9 +1858,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public synchronized long JVM_GetManagement(int version) {
+        EspressoContext context = getContext();
+        if (!context.EnableManagement) {
+            return 0L /* NULL */;
+        }
         if (managementPtr == 0) {
             try {
-                managementPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeManagementContext, lookupVmImplCallback);
+                managementPtr = (long) UNCACHED.execute(initializeManagementContext, lookupVmImplCallback);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -1941,7 +1967,9 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (lockObj == null) {
                         lockObj = StaticObject.NULL;
                     }
-                    Thread hostOwner = lockObj.getOwner();
+                    Thread hostOwner = StaticObject.isNull(lockObj)
+                                    ? null
+                                    : lockObj.getLock().getOwnerThread();
                     if (hostOwner != null && hostOwner.isAlive()) {
                         lockOwner = getContext().getGuestThreadFromHost(hostOwner);
                         if (lockOwner == null) {
@@ -2134,7 +2162,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ long globalsPtr, int count) {
+    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Word long globalsPtr, int count) {
         if (globalsPtr == 0L) {
             throw getMeta().throwEx(NullPointerException.class);
         }

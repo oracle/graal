@@ -122,15 +122,6 @@ public final class StaticObject implements TruffleObject {
 
     // Only non-primitive fields are stored in this
     private final Object fields;
-    private Thread owner = null;
-
-    public void setOwner(Thread owner) {
-        this.owner = owner;
-    }
-
-    public Thread getOwner() {
-        return owner;
-    }
 
     /**
      * Stores all primitive types contiguously in a single byte array, without any unused bits
