@@ -68,31 +68,27 @@ public final class PolyglotCompilerOptions {
                     });
 
     public enum PerformanceWarningKind {
-        INLINE("inlining"),
-        INSTANCE_OF("instanceof"),
-        UNREACHABLE_DIRECT_CALL("unreachable"),
-        CALL_TARGET_CHANGE("calltargetchange"),
-        NON_CONSTANT_LOCATION_STORE("store");
+        VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
+        VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warninigs"),
+        VIRTUAL_STORE("store", "Enables virtual store warninigs");
 
-        private static volatile EconomicMap<String, PerformanceWarningKind> kindByName;
-        private String name;
+        private static final EconomicMap<String, PerformanceWarningKind> kindByName;
+        static {
+            kindByName = EconomicMap.create();
+            for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
+                kindByName.put(kind.name, kind);
+            }
+        }
 
-        PerformanceWarningKind(String name) {
+        final String name;
+        final String help;
+
+        PerformanceWarningKind(String name, String help) {
             this.name = name;
+            this.help = help;
         }
 
         public static PerformanceWarningKind forName(String name) {
-            if (kindByName == null) {
-                synchronized (PerformanceWarningKind.class) {
-                    if (kindByName == null) {
-                        EconomicMap<String, PerformanceWarningKind> m = EconomicMap.create();
-                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
-                            m.put(kind.name, kind);
-                        }
-                        kindByName = m;
-                    }
-                }
-            }
             PerformanceWarningKind kind = kindByName.get(name);
             if (kind == null) {
                 throw new IllegalArgumentException("Unknown PerformanceWarningKind name " + name);
@@ -105,9 +101,9 @@ public final class PolyglotCompilerOptions {
                     new Function<String, Set<? extends PerformanceWarningKind>>() {
                         @Override
                         public Set<? extends PerformanceWarningKind> apply(String value) {
-                            if ("none".equals(value)) {
+                            if ("none".equals(value) || "false".equalsIgnoreCase(value)) {
                                 return EnumSet.noneOf(PerformanceWarningKind.class);
-                            } else if ("all".equals(value)) {
+                            } else if ("all".equals(value) || "true".equalsIgnoreCase(value)) {
                                 return EnumSet.allOf(PerformanceWarningKind.class);
                             } else {
                                 Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
@@ -115,7 +111,13 @@ public final class PolyglotCompilerOptions {
                                     try {
                                         result.add(PerformanceWarningKind.forName(name));
                                     } catch (IllegalArgumentException e) {
-                                        throw new IllegalArgumentException("\"" + name + "\" is not a valid option. Valid values are " + EnumSet.allOf(PerformanceWarningKind.class));
+                                        String message = String.format("The \"%s\" is not a valid option. Valid values are%n", name);
+                                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
+                                            message = message + String.format("%s\t\t\t%s%n", kind.name, kind.help);
+                                        }
+                                        message = message + String.format("all\t\t\tEnables all performance wornings%n");
+                                        message = message + String.format("none\t\t\tDisables performance wornings%n");
+                                        throw new IllegalArgumentException(message);
                                     }
                                 }
                                 return result;
