@@ -120,7 +120,7 @@ final class FileSystems {
         if (fileSystem.getClass() == LanguageHomeFileSystem.class) {
             Path path = EngineAccessor.LANGUAGE.getPath(file);
             LanguageHomeFileSystem lhfs = (LanguageHomeFileSystem) fileSystem;
-            return !lhfs.inLanguageHome(lhfs.toAbsolutePathInternal(path));
+            return !lhfs.inLanguageHome(lhfs.toNormalizedAbsolutePath(path));
         }
         return false;
     }
@@ -891,7 +891,7 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Path absolutePath = toAbsolutePathInternal(path);
+            Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
                 if (modes.contains(AccessMode.WRITE)) {
                     throw new IOException("Read-only file");
@@ -915,7 +915,7 @@ final class FileSystems {
             }
             if (!write) {
                 assert read;
-                Path absolutePath = toAbsolutePathInternal(inPath);
+                Path absolutePath = toNormalizedAbsolutePath(inPath);
                 if (inLanguageHome(absolutePath)) {
                     return fullIO.newByteChannel(absolutePath, options, attrs);
                 }
@@ -925,7 +925,7 @@ final class FileSystems {
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path absoluteDir = toAbsolutePathInternal(dir);
+            Path absoluteDir = toNormalizedAbsolutePath(dir);
             if (inLanguageHome(absoluteDir)) {
                 return fullIO.newDirectoryStream(absoluteDir, filter);
             }
@@ -934,7 +934,7 @@ final class FileSystems {
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            Path absolutePath = toAbsolutePathInternal(path);
+            Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
                 return fullIO.readAttributes(absolutePath, attributes, options);
             }
@@ -943,11 +943,16 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return toAbsolutePathInternal(path);
+            return fullIO.toAbsolutePath(path);
         }
 
-        private Path toAbsolutePathInternal(Path path) {
-            return fullIO.toAbsolutePath(path);
+        private Path toNormalizedAbsolutePath(Path path) {
+            if (path.isAbsolute()) {
+                return path;
+            }
+            boolean needsToNormalize = !isNormalized(path);
+            Path absolutePath = fullIO.toAbsolutePath(path);
+            return needsToNormalize ? absolutePath.normalize() : absolutePath;
         }
 
         @Override
@@ -990,6 +995,16 @@ final class FileSystems {
                 }
             }
             return res;
+        }
+
+        private static boolean isNormalized(Path path) {
+            for (Path name : path) {
+                String strName = name.toString();
+                if (".".equals(strName) || "..".equals(strName)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
