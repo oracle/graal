@@ -45,6 +45,7 @@ import java.util.Iterator;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -183,6 +184,27 @@ public final class DebugStackFrame {
             return null;
         }
         return root.getLanguageInfo();
+    }
+
+    /**
+     * Returns the root node of this frame, or <code>null</code> if the requesting language class
+     * does not match the root node guest language.
+     *
+     * @param languageClass the Truffle languageClass class object
+     * @return the root node associated with the frame
+     * @throws IllegalArgumentException if the languageClass associated with this frame is not among
+     *             the allowed languages
+     *
+     * @since 20.1
+     */
+    public RootNode getRootNode(Class<? extends TruffleLanguage> languageClass) throws IllegalArgumentException {
+        RootNode rootNode = findCurrentRoot();
+        if (languageClass == null || rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? rootNode : null;
     }
 
     /**
