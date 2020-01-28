@@ -964,8 +964,18 @@ jboolean JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jclass class2) {
 }
 
 jint JVM_GetLastErrorString(char *buf, int len) {
-  UNIMPLEMENTED(JVM_GetLastErrorString);
-  return 0;
+  NATIVE(JVM_GetLastErrorString);
+
+  if (errno == 0)  return 0;
+
+  const char *s = strerror(errno);
+  size_t n = strlen(s);
+  if (n >= len) {
+    n = len - 1;
+  }
+  strncpy(buf, s, n);
+  buf[n] = '\0';
+  return n;
 }
 
 char *JVM_NativePath(char *pathname) {
