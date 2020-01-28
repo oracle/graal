@@ -356,6 +356,22 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
     }
 
+    public static long unsafeSnippet23(long l1, short s1, float f1, byte[][] box, boolean c) {
+        byte[] t = new byte[16];
+        UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        if (s1 < f1) {
+            UNSAFE.putShort(t, getUnsafeByteArrayOffset(12), (short) 0);
+        }
+        // escape
+        box[0] = t;
+        UNSAFE.putFloat(t, getUnsafeByteArrayOffset(12), f1);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
     @Test
     public void testUnsafePEA01() {
         performTest("unsafeSnippet1", false, true, 1.0);
@@ -469,6 +485,11 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     @Test
     public void testUnsafePEA22() {
         performTest("unsafeSnippet22", false, false, 0x0102030405060708L, Double.longBitsToDouble(0x0506070801020304L));
+    }
+
+    @Test
+    public void testUnsafePEA23() {
+        performTest("unsafeSnippet23", false, false, 0x0102030405060708L, (short) 0x0102, Float.intBitsToFloat(0x01020304), new byte[1][]);
     }
 
     private void performTest(String snippet, boolean shouldEscapeRead, boolean shouldEscapeWrite, Object... args) {
