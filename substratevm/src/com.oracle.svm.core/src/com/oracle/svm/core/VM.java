@@ -25,8 +25,8 @@
 package com.oracle.svm.core;
 
 import java.io.CharConversionException;
-import java.nio.ByteBuffer;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -38,7 +38,9 @@ import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
 public final class VM {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static final String valueSeparator = "\t";
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static final String versionValue = getVersionValue();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -55,15 +57,16 @@ public final class VM {
     }
 
     private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
-
     private static final CGlobalData<CCharPointer> VERSION_INFO = CGlobalDataFactory.createCString(versionValue, VERSION_INFO_SYMBOL_NAME);
+
+    private static final int versionValueHash = versionValue.hashCode();
 
     public static String getVersion() {
         try {
             CCharPointer versionInfoBytes = VERSION_INFO.get();
-            ByteBuffer buffer = CTypeConversion.asByteBuffer(versionInfoBytes, Math.toIntExact(SubstrateUtil.strlen(versionInfoBytes).rawValue()));
-            String version = Utf8.utf8ToString(true, buffer);
-            VMError.guarantee(versionValue.equals(version), "Version info mismatch: " + VERSION_INFO_SYMBOL_NAME + " contains " + version + " (expected " + versionValue + ")");
+            String version = Utf8.utf8ToString(true, CTypeConversion.asByteBuffer(versionInfoBytes, Math.toIntExact(SubstrateUtil.strlen(versionInfoBytes).rawValue())));
+            VMError.guarantee(version.hashCode() == versionValueHash,
+                            "HashCode mismatch for " + VERSION_INFO_SYMBOL_NAME + ": actual " + version.hashCode() + " (expected " + versionValueHash + ")");
             return SubstrateUtil.split(version, valueSeparator)[1];
         } catch (CharConversionException ignore) {
             throw VMError.shouldNotReachHere("Invalid version info in " + VERSION_INFO_SYMBOL_NAME);
