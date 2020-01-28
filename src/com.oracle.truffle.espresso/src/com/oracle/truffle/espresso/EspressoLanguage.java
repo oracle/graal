@@ -140,7 +140,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
-        int currentBci = 0;
+        int currentBci;
 
         Node espressoNode = findKnownEspressoNode(node);
 
@@ -158,7 +158,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             scopeNode = statementNode.getBytecodesNode();
         } else if (espressoNode instanceof BytecodeNode) {
             BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
-            currentBci = 0; // start of the method
+            currentBci = bytecodeNode.getCurrentBCI();
             method = bytecodeNode.getMethod();
             scopeNode = bytecodeNode;
         } else {

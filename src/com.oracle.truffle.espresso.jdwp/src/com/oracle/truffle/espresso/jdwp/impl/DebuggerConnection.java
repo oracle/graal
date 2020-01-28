@@ -70,21 +70,21 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
         addBlocking(debuggerCommand);
     }
 
@@ -108,10 +108,23 @@ public final class DebuggerConnection implements Commands {
     public Callable<Void> createLineBreakpointCommand(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() {
                 LineBreakpointInfo lineInfo = (LineBreakpointInfo) info;
-                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT, null);
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_LINE_BREAKPOINT, info.getFilter());
                 debuggerCommand.setSourceLocation(new SourceLocation(lineInfo.getSlashName(), (int) lineInfo.getLine(), context));
+                debuggerCommand.setBreakpointInfo(info);
+                addBlocking(debuggerCommand);
+                return null;
+            }
+        };
+    }
+
+    @Override
+    public Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info) {
+        return new Callable<Void>() {
+            @Override
+            public Void call() {
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_METHOD_ENTRY_BREAKPOINT, info.getFilter());
                 debuggerCommand.setBreakpointInfo(info);
                 addBlocking(debuggerCommand);
                 return null;
@@ -123,7 +136,7 @@ public final class DebuggerConnection implements Commands {
     public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() {
                 DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);
                 debuggerCommand.setBreakpointInfo(info);
                 addBlocking(debuggerCommand);
@@ -151,8 +164,11 @@ public final class DebuggerConnection implements Commands {
                         case STEP_OUT:
                             controller.stepOut(filter);
                             break;
-                        case SUBMIT_BREAKPOINT:
+                        case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
+                            break;
+                        case SUBMIT_METHOD_ENTRY_BREAKPOINT:
+                            controller.submitMethodEntryBreakpoint(debuggerCommand);
                             break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);
@@ -279,8 +295,17 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.CAPABILITIES.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.CLASS_PATHS.ID:
+                                    result = JDWP.VirtualMachine.CLASS_PATHS.createReply(packet, context);
+                                    break;
                                 case JDWP.VirtualMachine.DISPOSE_OBJECTS.ID:
                                     result = JDWP.VirtualMachine.DISPOSE_OBJECTS.createReply(packet);
+                                    break;
+                                case JDWP.VirtualMachine.HOLD_EVENTS.ID:
+                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, context);
+                                    break;
+                                case JDWP.VirtualMachine.RELEASE_EVENTS.ID:
+                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
@@ -477,6 +502,12 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.SUSPEND_COUNT.ID:
                                     result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                     break;
+                                case JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.ID:
+                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet);
+                                    break;
+                                case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
+                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet);
+                                    break;
                             }
                             break;
                         case JDWP.ThreadGroupReference.ID:
@@ -562,6 +593,17 @@ public final class DebuggerConnection implements Commands {
                             switch (packet.cmd) {
                                 case JDWP.ClassObjectReference.REFLECTED_TYPE.ID: {
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
+                        case JDWP.Event.ID: {
+                            switch (packet.cmd) {
+                                case JDWP.Event.COMPOSITE.ID: {
+                                    result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
                                 }
                                 default:

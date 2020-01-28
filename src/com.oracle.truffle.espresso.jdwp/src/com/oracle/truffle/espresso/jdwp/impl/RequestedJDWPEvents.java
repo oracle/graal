@@ -79,7 +79,7 @@ public final class RequestedJDWPEvents {
         byte suspendPolicy = input.readByte();
         int modifiers = input.readInt();
 
-        RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers, suspendPolicy);
+        RequestFilter filter = new RequestFilter(packet.id, eventKind, suspendPolicy);
         JDWPLogger.log("New event request with ID: %d with kind: %d and %d modifiers", JDWPLogger.LogLevel.STEPPING, packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
@@ -104,11 +104,30 @@ public final class RequestedJDWPEvents {
                 }
                 break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
-            case METHOD_ENTRY:
             case METHOD_EXIT:
+                MethodBreakpointInfo methodInfo = new MethodBreakpointInfo(filter);
+                methodInfo.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
+                eventListener.increaseMethodBreakpointCount();
+                for (KlassRef klass : filter.getKlassRefPatterns()) {
+                    for (MethodRef method : klass.getDeclaredMethods()) {
+                        method.addMethodBreakpointInfo(methodInfo);
+                        methodInfo.addMethod(method);
+                    }
+                }
+                filter.addBreakpointInfo(methodInfo);
+                break;
+            case METHOD_ENTRY:
+                BreakpointInfo info = filter.getBreakpointInfo();
+                if (info == null) {
+                    info = new MethodBreakpointInfo(filter);
+                }
+                info.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), info);
+                prefutures.add(callback.createMethodEntryBreakpointCommand(info));
                 break;
             case BREAKPOINT:
-                BreakpointInfo info = filter.getBreakpointInfo();
+                info = filter.getBreakpointInfo();
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 prefutures.add(callback.createLineBreakpointCommand(info));
@@ -150,10 +169,10 @@ public final class RequestedJDWPEvents {
                 eventListener.increaseFieldBreakpointCount();
                 break;
             case THREAD_START:
-                eventListener.addThreadStartedRequestId(packet.id);
+                eventListener.addThreadStartedRequestId(packet.id, suspendPolicy);
                 break;
             case THREAD_DEATH:
-                eventListener.addThreadDiedRequestId(packet.id);
+                eventListener.addThreadDiedRequestId(packet.id, suspendPolicy);
                 break;
             case CLASS_UNLOAD:
                 eventListener.addClassUnloadRequestId(packet.id);
@@ -307,10 +326,15 @@ public final class RequestedJDWPEvents {
                     case SINGLE_STEP:
                         break;
                     case METHOD_EXIT_WITH_RETURN_VALUE:
-                    case METHOD_ENTRY:
                     case METHOD_EXIT:
+                        MethodBreakpointInfo methodInfo = (MethodBreakpointInfo) requestFilter.getBreakpointInfo();
+                        for (MethodRef method : methodInfo.getMethods()) {
+                            method.removeMethodBreakpointInfo(requestFilter.getRequestId());
+                        }
+                        eventListener.decreaseMethodBreakpointCount();
                         break;
                     case BREAKPOINT:
+                    case METHOD_ENTRY:
                     case EXCEPTION:
                         eventListener.removeBreakpointRequest(requestFilter.getRequestId());
                         break;
@@ -324,10 +348,10 @@ public final class RequestedJDWPEvents {
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
                         break;
                     case THREAD_START:
-                        eventListener.addThreadStartedRequestId(packet.id);
+                        eventListener.removeThreadStartedRequestId();
                         break;
                     case THREAD_DEATH:
-                        eventListener.addThreadDiedRequestId(packet.id);
+                        eventListener.removeThreadDiedRequestId();
                         break;
                     case CLASS_UNLOAD:
                         eventListener.addClassUnloadRequestId(packet.id);

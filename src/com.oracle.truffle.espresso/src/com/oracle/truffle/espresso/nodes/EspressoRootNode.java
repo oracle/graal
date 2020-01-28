@@ -100,6 +100,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
+    public int getCurrentBCI() {
+        return ((BytecodeNode) getMethodNode()).getCurrentBCI();
+    }
+
     public int readBCI(FrameInstance frameInstance) {
         return ((BytecodeNode) getMethodNode()).readBCI(frameInstance);
     }

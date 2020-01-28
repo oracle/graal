@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,21 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import java.util.concurrent.Callable;
+public final class SteppingInfo {
 
-public interface Commands {
-    void stepOver(Object thread, RequestFilter filter);
+    private final int requestId;
+    private final byte suspendPolicy;
 
-    void stepInto(Object thread, RequestFilter filter);
+    public SteppingInfo(int requestId, byte suspendPolicy) {
+        this.requestId = requestId;
+        this.suspendPolicy = suspendPolicy;
+    }
 
-    void stepOut(Object thread, RequestFilter filter);
+    public int getRequestId() {
+        return requestId;
+    }
 
-    Callable<Void> createLineBreakpointCommand(BreakpointInfo info);
-
-    Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
-
-    Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info);
+    public byte getSuspendPolicy() {
+        return suspendPolicy;
+    }
 }

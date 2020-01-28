@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -38,6 +40,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,12 +53,19 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
+    private static volatile int fieldBreakpointCount;
+    private final StableBoolean methodBreakpointsActive = new StableBoolean(false);
+    private static volatile int methodBreakpointCount;
     private SocketConnection connection;
+    private volatile boolean holdEvents;
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
+    private byte threadStartSuspendPolicy;
+    private byte threadDeathSuspendPolicy;
     private int vmDeathRequestId;
     private int vmStartRequestId;
+    private List<PacketStream> heldEvents = new ArrayList<>();
 
     public VMEventListenerImpl(DebuggerController controller) {
         this.debuggerController = controller;
@@ -129,16 +139,16 @@ public final class VMEventListenerImpl implements VMEventListener {
     @CompilerDirectives.TruffleBoundary
     public void removeBreakpointRequest(int requestId) {
         BreakpointInfo remove = breakpointRequests.remove(requestId);
-        Breakpoint breakpoint = remove.getBreakpoint();
-        breakpoint.dispose();
+        Breakpoint[] breakpoints = remove.getBreakpoints();
+        for (Breakpoint breakpoint : breakpoints) {
+            breakpoint.dispose();
+        }
     }
 
     @Override
     public void clearAllBreakpointRequests() {
         breakpointRequests.clear();
     }
-
-    private static volatile int fieldBreakpointCount;
 
     @Override
     public void increaseFieldBreakpointCount() {
@@ -152,6 +162,21 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (fieldBreakpointCount <= 0) {
             fieldBreakpointCount = 0;
             fieldBreakpointsActive.set(false);
+        }
+    }
+
+    @Override
+    public void increaseMethodBreakpointCount() {
+        methodBreakpointCount++;
+        methodBreakpointsActive.set(true);
+    }
+
+    @Override
+    public void decreaseMethodBreakpointCount() {
+        methodBreakpointCount--;
+        if (methodBreakpointCount <= 0) {
+            methodBreakpointCount = 0;
+            methodBreakpointsActive.set(false);
         }
     }
 
@@ -216,6 +241,34 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
+    public boolean hasMethodBreakpoint(MethodRef method, Object returnValue) {
+        if (!methodBreakpointsActive.get()) {
+            return false;
+        } else {
+            return checkMethodBreakpoint(method, returnValue);
+        }
+    }
+
+    private boolean checkMethodBreakpoint(MethodRef method, Object returnValue) {
+        if (!method.hasActiveBreakpoint()) {
+            return false;
+        } else {
+            return checkMethodSlowPath(method, returnValue);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private boolean checkMethodSlowPath(MethodRef method, Object returnValue) {
+        for (MethodBreakpoint info : method.getMethodBreakpointInfos()) {
+            // OK, tell the Debug API to suspend the thread now
+            debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) info, returnValue));
+            debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public void classPrepared(KlassRef klass, Object prepareThread, boolean preparedEarlier) {
         if (connection == null) {
@@ -274,12 +327,20 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.immediateSuspend(prepareThread, suspendPolicy, new Callable<Void>() {
                     @Override
                     public Void call() {
-                        connection.queuePacket(stream);
+                        if (holdEvents) {
+                            heldEvents.add(stream);
+                        } else {
+                            connection.queuePacket(stream);
+                        }
                         return null;
                     }
                 });
             } else {
-                connection.queuePacket(stream);
+                if (holdEvents) {
+                    heldEvents.add(stream);
+                } else {
+                    connection.queuePacket(stream);
+                }
             }
         }
     }
@@ -290,30 +351,71 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void breakpointHit(BreakpointInfo info, Object currentThread) {
+    public void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
-        stream.writeByte(RequestedJDWPEvents.BREAKPOINT);
+        stream.writeByte(info.getEventKind());
         stream.writeInt(info.getRequestId());
         long threadId = ids.getIdAsLong(currentThread);
         stream.writeLong(threadId);
 
         // location
-        stream.writeByte(info.getTypeTag());
-        stream.writeLong(info.getClassId());
-        stream.writeLong(info.getMethodId());
-        stream.writeLong(info.getBci());
+        stream.writeByte(frame.getTypeTag());
+        stream.writeLong(frame.getClassId());
+        stream.writeLong(frame.getMethodId());
+        stream.writeLong(frame.getCodeIndex());
         JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.STEPPING, context.getThreadName(currentThread), info.getSuspendPolicy());
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
+    }
+
+    @Override
+    public void methodBreakpointHit(MethodBreakpointEvent methodEvent, Object currentThread, CallFrame frame) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+        MethodBreakpointInfo info = methodEvent.getInfo();
+
+        stream.writeByte(info.getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(info.getEventKind());
+        stream.writeInt(info.getRequestId());
+        long threadId = ids.getIdAsLong(currentThread);
+        stream.writeLong(threadId);
+
+        // location
+        stream.writeByte(frame.getTypeTag());
+        stream.writeLong(frame.getClassId());
+        stream.writeLong(frame.getMethodId());
+        stream.writeLong(frame.getCodeIndex());
+
+        // return value if requested
+        if (info.getEventKind() == RequestedJDWPEvents.METHOD_EXIT_WITH_RETURN_VALUE) {
+            Object returnValue = methodEvent.getReturnValue();
+            byte tag = context.getTag(returnValue);
+            JDWP.writeValue(tag, returnValue, stream, true, context);
+        }
+
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
     public void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame) {
         PacketStream stream = writeSharedFieldInformation(event, currentThread, callFrame, RequestedJDWPEvents.FIELD_ACCESS);
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -324,7 +426,11 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object value = event.getValue();
         byte tag = context.getTag(value);
         JDWP.writeValue(tag, value, stream, true, context);
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     private PacketStream writeSharedFieldInformation(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame, byte eventType) {
@@ -365,9 +471,10 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame callFrame) {
+    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame[] callFrames) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
+        CallFrame top = callFrames[0];
         stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
@@ -376,31 +483,47 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(ids.getIdAsLong(currentThread));
 
         // location
-        stream.writeByte(callFrame.getTypeTag());
-        stream.writeLong(callFrame.getClassId());
-        stream.writeLong(callFrame.getMethodId());
-        stream.writeLong(callFrame.getCodeIndex());
+        stream.writeByte(top.getTypeTag());
+        stream.writeLong(top.getClassId());
+        stream.writeLong(top.getMethodId());
+        stream.writeLong(top.getCodeIndex());
 
         // exception
         stream.writeByte(TagConstants.OBJECT);
         stream.writeLong(context.getIds().getIdAsLong(exception));
 
-        // catch-location. TODO(Gregersen) - figure out how to implement this
-        // tracked by /browse/GR-19554
-        stream.writeByte((byte) 1);
-        stream.writeLong(0);
-        stream.writeLong(0);
-        stream.writeLong(0);
-        connection.queuePacket(stream);
+        // catch-location
+        boolean caught = false;
+        for (CallFrame callFrame : callFrames) {
+            MethodRef method = (MethodRef) context.getIds().fromId((int) callFrame.getMethodId());
+            int catchLocation = context.getCatchLocation(method, exception, (int) callFrame.getCodeIndex());
+            if (catchLocation != -1) {
+                stream.writeByte(callFrame.getTypeTag());
+                stream.writeLong(callFrame.getClassId());
+                stream.writeLong(callFrame.getMethodId());
+                stream.writeLong(catchLocation);
+                caught = true;
+                break;
+            }
+        }
+        if (!caught) {
+            stream.writeByte((byte) 1);
+            stream.writeLong(0);
+            stream.writeLong(0);
+            stream.writeLong(0);
+        }
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
-    public void stepCompleted(int commandRequestId, CallFrame currentFrame) {
+    public void stepCompleted(int commandRequestId, byte suspendPolicy, Object guestThread, CallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        // TODO(Gregersen) - implemented suspend policies
-        // tracked by /browse/GR-19816
-        stream.writeByte(SuspendStrategy.EVENT_THREAD);
+        stream.writeByte(suspendPolicy);
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
@@ -412,7 +535,13 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getClassId());
         stream.writeLong(currentFrame.getMethodId());
         stream.writeLong(currentFrame.getCodeIndex());
-        connection.queuePacket(stream);
+        JDWPLogger.log("Sending step completed event", JDWPLogger.LogLevel.STEPPING);
+
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -426,13 +555,18 @@ public final class VMEventListenerImpl implements VMEventListener {
             return;
         }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-        stream.writeByte(SuspendStrategy.NONE);
+        stream.writeByte(threadStartSuspendPolicy);
+        suspend(threadStartSuspendPolicy, thread);
         stream.writeInt(1); // # events in reply
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
         JDWPLogger.log("sending thread started event for thread: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread));
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -441,12 +575,17 @@ public final class VMEventListenerImpl implements VMEventListener {
             return;
         }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-        stream.writeByte(SuspendStrategy.NONE);
+        stream.writeByte(threadDeathSuspendPolicy);
+        suspend(threadDeathSuspendPolicy, thread);
         stream.writeInt(1); // # events in reply
         stream.writeByte(RequestedJDWPEvents.THREAD_DEATH);
         stream.writeInt(threadDeathRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -457,7 +596,11 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.VM_START);
         stream.writeInt(vmStartRequestId != -1 ? vmStartRequestId : 0);
         stream.writeLong(context.getIds().getIdAsLong(mainThread));
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -470,7 +613,11 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeInt(1);
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
         stream.writeInt(vmDeathRequestId != -1 ? vmDeathRequestId : 0);
-        connection.queuePacket(stream);
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
     }
 
     @Override
@@ -480,15 +627,29 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void addThreadStartedRequestId(int id) {
+    public void addThreadStartedRequestId(int id, byte suspendPolicy) {
         JDWPLogger.log("Adding thread start listener", JDWPLogger.LogLevel.THREAD);
         this.threadStartedRequestId = id;
+        this.threadStartSuspendPolicy = suspendPolicy;
     }
 
     @Override
-    public void addThreadDiedRequestId(int id) {
+    public void addThreadDiedRequestId(int id, byte suspendPolicy) {
         JDWPLogger.log("Adding thread death listener", JDWPLogger.LogLevel.THREAD);
         this.threadDeathRequestId = id;
+        this.threadDeathSuspendPolicy = suspendPolicy;
+    }
+
+    @Override
+    public void removeThreadStartedRequestId() {
+        this.threadStartSuspendPolicy = 0;
+        this.threadStartedRequestId = 0;
+    }
+
+    @Override
+    public void removeThreadDiedRequestId() {
+        this.threadDeathSuspendPolicy = 0;
+        this.threadDeathRequestId = 0;
     }
 
     @Override
@@ -499,5 +660,32 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public void addVMStartRequest(int id) {
         this.vmDeathRequestId = id;
+    }
+
+    @Override
+    public void holdEvents() {
+        holdEvents = true;
+    }
+
+    @Override
+    public void releaseEvents() {
+        holdEvents = false;
+        // queue all held events for sending
+        for (PacketStream heldEvent : heldEvents) {
+            connection.queuePacket(heldEvent);
+        }
+    }
+
+    private void suspend(byte suspendPolicy, Object thread) {
+        switch (suspendPolicy) {
+            case SuspendStrategy.NONE:
+                return;
+            case SuspendStrategy.EVENT_THREAD:
+                debuggerController.suspend(thread);
+                return;
+            case SuspendStrategy.ALL:
+                debuggerController.suspendAll();
+                return;
+        }
     }
 }

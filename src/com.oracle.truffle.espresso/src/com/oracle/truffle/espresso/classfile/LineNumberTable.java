@@ -42,6 +42,8 @@ public final class LineNumberTable extends Attribute implements LineNumberTableR
 
     private int lastLine = -1;
 
+    private int firstLine = -1;
+
     public LineNumberTable(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
@@ -81,6 +83,27 @@ public final class LineNumberTable extends Attribute implements LineNumberTableR
             max = Math.max(max, entry.getLineNumber());
         }
         return max;
+    }
+
+    public int getFirstLine() {
+        if (firstLine != -1) {
+            return firstLine;
+        }
+        int min = Integer.MAX_VALUE;
+        for (Entry entry : entries) {
+            min = Math.min(min, entry.getLineNumber());
+        }
+        return min;
+    }
+
+    public int getNextLine(int line) {
+        int next = Integer.MAX_VALUE;
+        for (Entry entry : entries) {
+            if (entry.getLineNumber() > line) {
+                next = Math.min(next, entry.getLineNumber());
+            }
+        }
+        return next;
     }
 
     public static final class Entry implements EntryRef {

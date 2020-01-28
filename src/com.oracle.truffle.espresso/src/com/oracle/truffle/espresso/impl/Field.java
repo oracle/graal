@@ -314,7 +314,7 @@ public final class Field extends Member<Type> implements FieldRef {
      * Copied from DebuggerSession with modifications to the set method to make it thread safe (but
      * slower on the slow path).
      */
-    private final class StableBoolean {
+    static final class StableBoolean {
 
         @CompilerDirectives.CompilationFinal private volatile Assumption unchanged;
         @CompilerDirectives.CompilationFinal private volatile boolean value;

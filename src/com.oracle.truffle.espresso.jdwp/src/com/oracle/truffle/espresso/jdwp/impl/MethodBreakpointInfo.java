@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,30 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import java.util.concurrent.Callable;
+import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 
-public interface Commands {
-    void stepOver(Object thread, RequestFilter filter);
+import java.util.Arrays;
 
-    void stepInto(Object thread, RequestFilter filter);
+public class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodBreakpoint {
 
-    void stepOut(Object thread, RequestFilter filter);
+    private MethodRef[] methods = new MethodRef[0];
 
-    Callable<Void> createLineBreakpointCommand(BreakpointInfo info);
+    public MethodBreakpointInfo(RequestFilter filter) {
+        super(filter);
+    }
 
-    Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
+    @Override
+    public boolean isLineBreakpoint() {
+        return true;
+    }
 
-    Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info);
+    public void addMethod(MethodRef method) {
+        methods = Arrays.copyOf(methods, methods.length + 1);
+        methods[methods.length - 1] = method;
+    }
+
+    public MethodRef[] getMethods() {
+        return methods;
+    }
 }

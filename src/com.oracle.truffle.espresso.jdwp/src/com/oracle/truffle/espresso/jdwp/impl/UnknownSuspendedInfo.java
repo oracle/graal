@@ -30,7 +30,7 @@ public final class UnknownSuspendedInfo extends SuspendedInfo {
     private final JDWPContext context;
 
     UnknownSuspendedInfo(Object thread, JDWPContext jdwpContext) {
-        super(null, null, thread);
+        super(null, null, thread, null);
         this.context = jdwpContext;
     }
 

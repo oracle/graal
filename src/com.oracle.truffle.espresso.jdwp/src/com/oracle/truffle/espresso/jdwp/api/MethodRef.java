@@ -105,7 +105,7 @@ public interface MethodRef {
      * 
      * @return the byte array for the bytecode of the method
      */
-    byte[] getCode();
+    byte[] getOriginalCode();
 
     /**
      * Returns all declared parameter types of the method.
@@ -159,4 +159,39 @@ public interface MethodRef {
      * @return the declaring klass
      */
     KlassRef getDeclaringKlass();
+
+    /**
+     * Returns the first line number for the method, or -1 if unknown.
+     *
+     * @return first line
+     */
+    int getFirstLine();
+
+    /**
+     * Returns all information about potential method breakpoints set on this method.
+     *
+     * @return array of method breakpoint info
+     */
+    MethodBreakpoint[] getMethodBreakpointInfos();
+
+    /**
+     * Add a new method breakpoint with the given info on this method.
+     *
+     * @param info the info that describes the breakpoint
+     */
+    void addMethodBreakpointInfo(MethodBreakpoint info);
+
+    /**
+     * Remove a method breakpoint with the given info on this method.
+     *
+     * @param requestId the ID for the request that set the breakpoint
+     */
+    void removeMethodBreakpointInfo(int requestId);
+
+    /**
+     * Determines if there are any breakpoints set on this method.
+     *
+     * @return true if this method has any breakpoints, false otherwise
+     */
+    boolean hasActiveBreakpoint();
 }

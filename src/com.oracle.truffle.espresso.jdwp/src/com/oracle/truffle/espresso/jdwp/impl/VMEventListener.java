@@ -33,15 +33,15 @@ public interface VMEventListener extends VMListener {
 
     void classUnloaded(KlassRef klass);
 
-    void breakpointHit(BreakpointInfo info, Object currentThread);
+    void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread);
 
     void vmDied();
 
     void addClassUnloadRequestId(int id);
 
-    void addThreadStartedRequestId(int id);
+    void addThreadStartedRequestId(int id, byte suspendPolicy);
 
-    void addThreadDiedRequestId(int id);
+    void addThreadDiedRequestId(int id, byte suspendPolicy);
 
     void addVMStartRequest(int id);
 
@@ -55,17 +55,27 @@ public interface VMEventListener extends VMListener {
 
     void removeBreakpointRequest(int requestId);
 
-    void stepCompleted(int commandRequestId, CallFrame currentFrame);
+    void stepCompleted(int commandRequestId, byte suspendPolicy, Object guestThread, CallFrame currentFrame);
 
-    void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame callFrame);
+    void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame[] callFrames);
 
     void increaseFieldBreakpointCount();
 
     void decreaseFieldBreakpointCount();
+
+    void increaseMethodBreakpointCount();
+
+    void decreaseMethodBreakpointCount();
 
     void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 
     void clearAllBreakpointRequests();
+
+    void removeThreadStartedRequestId();
+
+    void removeThreadDiedRequestId();
+
+    void methodBreakpointHit(MethodBreakpointEvent methodEvent, Object currentThread, CallFrame callFrame);
 }
