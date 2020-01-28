@@ -89,12 +89,6 @@ final class NodeAccessor extends Accessor {
             rootNode.setCallTarget(callTarget);
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isTaggedWith(Node node, Class<?> tag) {
-            return node.isTaggedWith(tag);
-        }
-
         @Override
         public boolean isCloneUninitializedSupported(RootNode rootNode) {
             return rootNode.isCloneUninitializedSupported();

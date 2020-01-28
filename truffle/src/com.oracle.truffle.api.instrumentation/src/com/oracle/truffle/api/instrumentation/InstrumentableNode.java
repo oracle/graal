@@ -353,14 +353,14 @@ public interface InstrumentableNode extends NodeInterface {
 
     /**
      * Nodes that the instrumentation framework inserts into guest language ASTs (between
-     * {@link Instrumentable} guest language nodes and their parents) for the purpose of interposing
-     * on execution events and reporting them via the instrumentation framework.
+     * {@link InstrumentableNode instrumentable} guest language nodes and their parents) for the
+     * purpose of interposing on execution events and reporting them via the instrumentation
+     * framework.
      *
-     * @see #createWrapper(Node, ProbeNode)
+     * @see #createWrapper(ProbeNode)
      * @since 0.33
      */
-    @SuppressWarnings("deprecation")
-    public interface WrapperNode extends NodeInterface, InstrumentableFactory.WrapperNode {
+    public interface WrapperNode extends NodeInterface {
 
         /**
          * The {@link InstrumentableNode instrumentable} guest language node, adopted as a child,

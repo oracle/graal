@@ -185,7 +185,7 @@ public class EventBinding<T> {
                 return false;
             } else if (rootNode == null) {
                 return false;
-            } else if (!InstrumentationHandler.isInstrumentableNode(parent, parentSourceSection)) {
+            } else if (!InstrumentationHandler.isInstrumentableNode(parent)) {
                 return false;
             }
 
@@ -205,7 +205,7 @@ public class EventBinding<T> {
                 return false;
             } else if (rootNode == null) {
                 return false;
-            } else if (!InstrumentationHandler.isInstrumentableNode(parent, parentSourceSection)) {
+            } else if (!InstrumentationHandler.isInstrumentableNode(parent)) {
                 return false;
             }
             if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {

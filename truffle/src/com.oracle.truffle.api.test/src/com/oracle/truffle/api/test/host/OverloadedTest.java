@@ -54,7 +54,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 public class OverloadedTest extends ProxyLanguageEnvTest {
 
@@ -112,7 +112,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         }
     }
 
-    private TruffleObject obj;
+    private Object obj;
     private Data data;
 
     @Before
@@ -122,8 +122,8 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void threeProperties() {
-        TruffleObject ret = HostInteropTest.sendKeys(obj);
+    public void threeProperties() throws UnsupportedMessageException {
+        Object ret = INTEROP.getMembers(obj);
         List<?> list = context.asValue(ret).as(List.class);
         assertEquals("Just one (overloaded) property: " + list, 1, list.size());
         assertEquals("x", list.get(0));
@@ -362,19 +362,6 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         public String prepare4(String query, Concrete arg1, int arg2) {
             return Concrete.class.getName();
         }
-    }
-
-    @Test
-    public void testFunctionalVsNonFunctionalInterface() throws InteropException {
-        TruffleObject receiver = asTruffleObject(new PreferSAM());
-        TruffleObject executable = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
-        assertEquals("SAM", INTEROP.invokeMember(receiver, "overloaded1", executable));
-        assertEquals("SAM", INTEROP.invokeMember(receiver, "overloaded2", executable));
-
-        // ambiguous (we do not take the object's members into consideration)
-        TruffleObject keysObject = asTruffleObject(new HostInteropTest.HasKeysObject(true));
-        assertThrowsExceptionWithCause(() -> INTEROP.invokeMember(receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
-        assertThrowsExceptionWithCause(() -> INTEROP.invokeMember(receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
     }
 
     public interface TwoMethods {

@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -71,18 +70,15 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 
 @SupportedAnnotationTypes({
-                TruffleTypes.Instrumentable_Name,
                 TruffleTypes.GenerateWrapper_Name})
 public final class InstrumentableProcessor extends AbstractProcessor {
 
@@ -188,75 +184,9 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 }
             }
 
-            // remove with deprecations
-            processLegacyInstrumentable(roundEnv, context);
-
             return true;
         } finally {
             ProcessorContext.leave();
-        }
-    }
-
-    /*
-     * TO BE REMOVED WITH DEPRECATIONS
-     */
-    private void processLegacyInstrumentable(RoundEnvironment roundEnv, ProcessorContext context) {
-        TruffleTypes types = context.getTypes();
-        for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Instrumentable))) {
-            if (!element.getKind().isClass() && !element.getKind().isInterface()) {
-                continue;
-            }
-            try {
-                if (element.getKind() != ElementKind.CLASS) {
-                    emitError(element, String.format("Only classes can be annotated with %s.", types.Instrumentable.asElement().getSimpleName().toString()));
-                    continue;
-                }
-
-                AnnotationMirror generateWrapperMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateWrapper);
-                if (generateWrapperMirror != null) {
-                    continue;
-                }
-
-                AnnotationMirror instrumentable = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.Instrumentable);
-                if (instrumentable == null) {
-                    continue;
-                } else {
-                    final boolean generateWrapper;
-                    TypeMirror factoryType = ElementUtils.getAnnotationValue(TypeMirror.class, instrumentable, "factory");
-
-                    if (factoryType == null || factoryType.getKind() == TypeKind.ERROR) {
-                        // factory type is erroneous or null (can mean error in javac)
-                        // generate it
-                        generateWrapper = true;
-                    } else {
-                        TypeElement type = ElementUtils.getTypeElement(context.getEnvironment(), "com.oracle.truffle.api.instrumentation.test.TestErrorFactory");
-
-                        if (type != null && ElementUtils.typeEquals(factoryType, type.asType())) {
-                            generateWrapper = true;
-                        } else {
-                            // factory is user defined or already generated
-                            generateWrapper = false;
-                        }
-                    }
-                    if (!generateWrapper) {
-                        continue;
-                    }
-                }
-
-                CodeTypeElement unit = generateWrapperAndFactory(context, element);
-
-                if (unit == null) {
-                    continue;
-                }
-                DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(element, overrideType), null);
-                unit.accept(new CodeWriter(context.getEnvironment(), element), null);
-            } catch (Throwable e) {
-                // never throw annotation processor exceptions to the compiler
-                // it might screw up its state.
-                handleThrowable(e, element);
-            }
         }
     }
 
@@ -272,70 +202,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
         assertNoErrorExpected(e);
         return wrapper;
-    }
-
-    private CodeTypeElement generateWrapperAndFactory(ProcessorContext context, Element e) {
-        CodeTypeElement wrapper = generateWrapper(context, e, false);
-        if (wrapper == null) {
-            return null;
-        }
-        CodeTypeElement factory = generateFactory(context, e, wrapper);
-
-        // add @SuppressWarnings("deprecation")
-        DeclaredType suppressWarnings = context.getDeclaredType(SuppressWarnings.class);
-        CodeAnnotationMirror suppressWarningsAnnotation = new CodeAnnotationMirror(suppressWarnings);
-        suppressWarningsAnnotation.setElementValue(ElementUtils.findExecutableElement(suppressWarnings, "value"),
-                        new CodeAnnotationValue(Arrays.asList(new CodeAnnotationValue("deprecation"))));
-        factory.getAnnotationMirrors().add(suppressWarningsAnnotation);
-
-        wrapper.getModifiers().add(Modifier.STATIC);
-        factory.add(wrapper);
-        assertNoErrorExpected(e);
-        return factory;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static CodeTypeElement generateFactory(ProcessorContext context, Element e, CodeTypeElement wrapper) {
-        TruffleTypes types = context.getTypes();
-        TypeElement sourceType = (TypeElement) e;
-        PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
-        Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.PUBLIC, Modifier.FINAL);
-        CodeTypeElement factory = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, createWrapperClassName(sourceType));
-
-        TypeMirror factoryType = context.reloadType(types.InstrumentableFactory);
-        factory.getImplements().add(new CodeTypeMirror.DeclaredCodeTypeMirror(ElementUtils.fromTypeMirror(factoryType), Arrays.asList(sourceType.asType())));
-
-        GeneratorUtils.addGeneratedBy(context, factory, sourceType);
-
-        TypeMirror returnType = types.InstrumentableFactory_WrapperNode;
-        CodeExecutableElement createMethod = new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), returnType, "createWrapper");
-
-        createMethod.addParameter(new CodeVariableElement(sourceType.asType(), FIELD_DELEGATE));
-        createMethod.addParameter(new CodeVariableElement(types.ProbeNode, FIELD_PROBE));
-
-        CodeTreeBuilder builder = createMethod.createBuilder();
-        ExecutableElement constructor = ElementFilter.constructorsIn(wrapper.getEnclosedElements()).iterator().next();
-
-        String firstParameterReference = null;
-        if (constructor.getParameters().size() > 2) {
-            TypeMirror firstParameter = constructor.getParameters().get(0).asType();
-            if (ElementUtils.typeEquals(firstParameter, sourceType.asType())) {
-                firstParameterReference = FIELD_DELEGATE;
-            } else if (ElementUtils.typeEquals(firstParameter, types.SourceSection)) {
-                firstParameterReference = FIELD_DELEGATE + ".getSourceSection()";
-            }
-        }
-
-        builder.startReturn().startNew(wrapper.asType());
-        if (firstParameterReference != null) {
-            builder.string(firstParameterReference);
-        }
-        builder.string(FIELD_DELEGATE).string(FIELD_PROBE);
-        builder.end().end();
-
-        factory.add(createMethod);
-
-        return factory;
     }
 
     private static String createWrapperClassName(TypeElement sourceType) {
@@ -438,11 +304,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         CodeTypeElement wrapperType = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, wrapperClassName);
         TypeMirror resolvedSuperType = sourceType.asType();
         wrapperType.setSuperClass(resolvedSuperType);
-        if (topLevelClass) {
-            wrapperType.getImplements().add(types.InstrumentableNode_WrapperNode);
-        } else {
-            wrapperType.getImplements().add(types.InstrumentableFactory_WrapperNode);
-        }
+        wrapperType.getImplements().add(types.InstrumentableNode_WrapperNode);
 
         GeneratorUtils.addGeneratedBy(context, wrapperType, sourceType);
 

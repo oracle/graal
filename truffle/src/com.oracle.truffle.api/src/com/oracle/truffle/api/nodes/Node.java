@@ -229,7 +229,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
-     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.InstrumentableNode
      * instrumentable} nodes remain unchanged after their root node is first
      * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
      * don't need to be notified if it is known that none of the inserted nodes are
@@ -596,16 +596,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         // GIL: used for nodes that are replace in ASTs that are not yet adopted
         RootNode root = getRootNode();
         return root == null ? GIL_LOCK : root.lock;
-    }
-
-    /**
-     * @since 0.12
-     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
-     * @deprecated in 0.33 implement InstrumentableNode#hasTag instead.
-     */
-    @Deprecated
-    protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
-        return false;
     }
 
     /**

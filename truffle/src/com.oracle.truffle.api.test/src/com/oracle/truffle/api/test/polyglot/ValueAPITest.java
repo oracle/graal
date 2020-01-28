@@ -1509,24 +1509,56 @@ public class ValueAPITest {
 
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static final class TestObject implements TruffleObject {
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            throw InvalidArrayIndexException.create(index);
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return 0L;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return false;
+        }
+
+    }
+
     @Test
     public void testValueContextPropagation() {
-        ProxyLegacyInteropObject o = new ProxyLegacyInteropObject() {
-            @Override
-            public boolean hasKeys() {
-                return true;
-            }
+        Object o = new TestObject();
 
-            @Override
-            public boolean isExecutable() {
-                return true;
-            }
-
-            @Override
-            public boolean hasSize() {
-                return true;
-            }
-        };
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -1641,24 +1673,7 @@ public class ValueAPITest {
         Context context1 = Context.create();
         Context context2 = Context.create();
         List<Object> nonSharables = new ArrayList<>();
-        ProxyLegacyInteropObject interopObject = new ProxyLegacyInteropObject() {
-
-            @Override
-            public boolean isExecutable() {
-                return true;
-            }
-
-            @Override
-            public boolean hasKeys() {
-                return true;
-            }
-
-            @Override
-            public boolean hasSize() {
-                return true;
-            }
-
-        };
+        Object interopObject = new TestObject();
         nonSharables.add(interopObject);
         Value v = context1.asValue(interopObject);
         nonSharables.add(v.as(Map.class));
@@ -1734,8 +1749,7 @@ public class ValueAPITest {
         }
 
         // special case for context less TruffleObject
-        Value contextLessValue = Value.asValue(new ProxyLegacyInteropObject() {
-        });
+        Value contextLessValue = Value.asValue(new TestObject());
         context1.getPolyglotBindings().putMember("foo", contextLessValue);
         context2.getPolyglotBindings().putMember("foo", contextLessValue);
 
