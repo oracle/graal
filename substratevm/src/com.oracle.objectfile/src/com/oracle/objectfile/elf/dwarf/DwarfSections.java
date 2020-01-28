@@ -467,6 +467,12 @@ public class DwarfSections {
          */
         public abstract void writeContent();
 
+        @Override
+        public boolean isLoadable() {
+            // even though we're a progbits section impl we're not actually loadable
+            return false;
+        }
+
         public void checkDebug(int pos) {
             // if the env var relevant to this element
             // type is set then switch on debugging
@@ -987,6 +993,9 @@ public class DwarfSections {
             pos = writeCIE(buffer, pos);
             pos = writeMethodFrames(buffer, pos);
 
+            if (pos != size) {
+                System.out.format("pos = 0x%x  size = 0x%x", pos, size);
+            }
             assert pos == size;
         }
 
@@ -1010,7 +1019,7 @@ public class DwarfSections {
                 pos += putByte(DW_CFA_CIE_version, scratch, 0);
                 pos += putAsciiStringBytes("", scratch, 0);
                 pos += putULEB(1, scratch, 0);
-                pos += putULEB(-8, scratch, 0);
+                pos += putSLEB(-8, scratch, 0);
                 pos += putByte((byte) getPCIdx(), scratch, 0);
                 // write insns to set up empty frame
                 pos = writeInitialInstructions(buffer, pos);
