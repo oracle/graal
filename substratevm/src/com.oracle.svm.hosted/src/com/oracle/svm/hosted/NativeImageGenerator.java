@@ -724,6 +724,13 @@ public class NativeImageGenerator {
                     }
                 }
 
+                /*
+                 * Libraries defined via @CLibrary annotations are added at the end of the list of
+                 * libraries so that the written object file AND the static JDK libraries can depend
+                 * on them.
+                 */
+                nativeLibraries.processAnnotated();
+
                 AfterAnalysisAccessImpl postConfig = new AfterAnalysisAccessImpl(featureHandler, loader, bigbang, debug);
                 featureHandler.forEachFeature(feature -> feature.afterAnalysis(postConfig));
 
