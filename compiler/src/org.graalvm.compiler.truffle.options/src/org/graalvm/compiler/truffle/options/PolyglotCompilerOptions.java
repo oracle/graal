@@ -69,8 +69,8 @@ public final class PolyglotCompilerOptions {
 
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
-        VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warninigs"),
-        VIRTUAL_STORE("store", "Enables virtual store warninigs");
+        VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
+        VIRTUAL_STORE("store", "Enables virtual store warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -97,13 +97,13 @@ public final class PolyglotCompilerOptions {
         }
     }
 
-    static final OptionType<Set<? extends PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
-                    new Function<String, Set<? extends PerformanceWarningKind>>() {
+    static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
+                    new Function<String, Set<PerformanceWarningKind>>() {
                         @Override
-                        public Set<? extends PerformanceWarningKind> apply(String value) {
-                            if ("none".equals(value) || "false".equalsIgnoreCase(value)) {
+                        public Set<PerformanceWarningKind> apply(String value) {
+                            if ("none".equals(value)) {
                                 return EnumSet.noneOf(PerformanceWarningKind.class);
-                            } else if ("all".equals(value) || "true".equalsIgnoreCase(value)) {
+                            } else if ("all".equals(value)) {
                                 return EnumSet.allOf(PerformanceWarningKind.class);
                             } else {
                                 Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
@@ -111,17 +111,22 @@ public final class PolyglotCompilerOptions {
                                     try {
                                         result.add(PerformanceWarningKind.forName(name));
                                     } catch (IllegalArgumentException e) {
-                                        String message = String.format("The \"%s\" is not a valid option. Valid values are%n", name);
+                                        String message = String.format("The \"%s\" is not a valid performance warning kind. Valid values are%n", name);
                                         for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
-                                            message = message + String.format("%s\t\t\t%s%n", kind.name, kind.help);
+                                            message = message + String.format("%s%s%s%n", kind.name, indent(kind.name.length()), kind.help);
                                         }
-                                        message = message + String.format("all\t\t\tEnables all performance wornings%n");
-                                        message = message + String.format("none\t\t\tDisables performance wornings%n");
+                                        message = message + String.format("all%sEnables all performance warnings%n", indent(3));
+                                        message = message + String.format("none%sDisables performance warnings%n", indent(4));
                                         throw new IllegalArgumentException(message);
                                     }
                                 }
                                 return result;
                             }
+                        }
+
+                        private String indent(int nameLength) {
+                            int len = Math.max(1, 16 - nameLength);
+                            return new String(new char[len]).replace('\0', ' ');
                         }
                     });
 
@@ -194,7 +199,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
 
     @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Set<? extends PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+    public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     // Tracing
 
@@ -323,7 +328,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
 
     @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Set<? extends PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+    public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
