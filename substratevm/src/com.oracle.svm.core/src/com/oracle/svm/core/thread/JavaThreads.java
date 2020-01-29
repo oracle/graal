@@ -683,26 +683,11 @@ public abstract class JavaThreads {
         final Thread thread = Thread.currentThread();
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
 
-        final long startNanos = System.nanoTime();
-        /* Can not park past the end of a 64-bit nanosecond epoch. */
-        final long endNanos = TimeUtils.addOrMaxValue(startNanos, delayNanos);
-
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
-            // How much longer should I sleep?
-            long remainingNanos = delayNanos;
-            while (0L < remainingNanos) {
-                WaitResult result = parkEvent.condTimedWait(remainingNanos);
-                if (result == WaitResult.INTERRUPTED || result == WaitResult.UNPARKED) {
-                    return result;
-                }
-                // If the sleep returns early, how much longer should I delay?
-                remainingNanos = endNanos - System.nanoTime();
-            }
-            return WaitResult.TIMED_OUT;
-
+            return parkEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
@@ -724,25 +709,10 @@ public abstract class JavaThreads {
         final Thread thread = Thread.currentThread();
         final ParkEvent sleepEvent = ensureSleepEvent(thread);
 
-        final long startNanos = System.nanoTime();
-        /* Can not sleep past the end of a 64-bit nanosecond epoch. */
-        final long endNanos = TimeUtils.addOrMaxValue(startNanos, delayNanos);
-
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
-            // How much longer should I sleep?
-            long remainingNanos = delayNanos;
-            while (0L < remainingNanos) {
-                final WaitResult result = sleepEvent.condTimedWait(remainingNanos);
-                if (result == WaitResult.INTERRUPTED || result == WaitResult.UNPARKED) {
-                    return result;
-                }
-                // If the sleep returns early, how much longer should I delay?
-                remainingNanos = endNanos - System.nanoTime();
-            }
-            return WaitResult.TIMED_OUT;
-
+            return sleepEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }

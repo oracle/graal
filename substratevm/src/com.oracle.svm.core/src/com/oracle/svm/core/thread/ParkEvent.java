@@ -51,13 +51,6 @@ public abstract class ParkEvent {
     }
 
     /**
-     * The ticket: false implies unavailable, true implies available. No need to be volatile,
-     * because it is read and written only when the mutex is held, or before a reference to this
-     * ParkEvent is handed out.
-     */
-    protected boolean event;
-
-    /**
      * When true, calls to {@link #condWait} and {@link #condTimedWait} will always wait, even a
      * previous call to {@link #unpark} had not been consumed by a wait yet (the semantics of
      * {@link Thread#sleep}).
@@ -83,6 +76,8 @@ public abstract class ParkEvent {
         TIMED_OUT,
         INTERRUPTED
     }
+
+    protected abstract void reset();
 
     /* cond_wait. */
     protected abstract WaitResult condWait();
@@ -115,8 +110,8 @@ public abstract class ParkEvent {
              * free-list or allocated.
              */
             newEvent.consCell = new ParkEventConsCell(newEvent);
-            newEvent.event = false;
             newEvent.resetEventBeforeWait = resetEventBeforeWait;
+            newEvent.reset();
 
             if (ref.compareAndSet(null, newEvent)) {
                 /* We won the race. */
@@ -170,6 +165,11 @@ final class DetachedParkEvent extends ParkEvent {
     static final ParkEvent SINGLETON = new DetachedParkEvent();
 
     private DetachedParkEvent() {
+    }
+
+    @Override
+    protected void reset() {
+        throw VMError.shouldNotReachHere("Cannot reset a DetachedParkEvent");
     }
 
     @Override
