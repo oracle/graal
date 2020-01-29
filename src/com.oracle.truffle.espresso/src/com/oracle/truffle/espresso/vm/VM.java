@@ -1201,7 +1201,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
+    private final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
 
     @VmImpl
     @JniImpl
