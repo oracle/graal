@@ -589,7 +589,28 @@ public final class DebuggerController implements ContextsListener {
             // a thread job was posted on this thread
             // only wake up to perform the job a go back to sleep
             ThreadJob job = threadJobs.remove(thread);
-            job.runJob();
+            byte suspensionStrategy = job.getSuspensionStrategy();
+
+            if (suspensionStrategy == SuspendStrategy.ALL) {
+                Object[] allThreads = context.getAllGuestThreads();
+                // resume all threads during invocation og method to avoid potential deadlocks
+                for (Object activeThread : allThreads) {
+                    if (activeThread != thread) {
+                        resume(activeThread, false);
+                    }
+                }
+                // perform the job on this thread
+                job.runJob();
+                // suspend all other threads after the invocation
+                for (Object activeThread : allThreads) {
+                    if (activeThread != thread) {
+                        suspend(thread);
+                    }
+                }
+            } else {
+                job.runJob();
+            }
+
             lockThread(thread);
         }
     }

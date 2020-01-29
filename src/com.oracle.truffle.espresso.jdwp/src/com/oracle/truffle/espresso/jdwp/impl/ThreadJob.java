@@ -29,16 +29,26 @@ public final class ThreadJob {
     private final Object jobLock = new Object();
     private final Object thread;
     private final Callable<Object> callable;
+    private final byte suspensionStrategy;
     private boolean resultAvailable;
     private JobResult result;
 
     public ThreadJob(Object guestThread, Callable<Object> task) {
+        this(guestThread, task, SuspendStrategy.EVENT_THREAD);
+    }
+
+    public ThreadJob(Object guestThread, Callable<Object> task, byte suspensionStrategy) {
         this.thread = guestThread;
         this.callable = task;
+        this.suspensionStrategy = suspensionStrategy;
     }
 
     public Object getThread() {
         return thread;
+    }
+
+    public byte getSuspensionStrategy() {
+        return suspensionStrategy;
     }
 
     public void runJob() {
