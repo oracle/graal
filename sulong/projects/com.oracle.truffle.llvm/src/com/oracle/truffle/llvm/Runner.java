@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -92,6 +92,8 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
@@ -129,6 +131,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 final class Runner {
 
@@ -182,7 +185,7 @@ final class Runner {
         return parse(source, bytes, library);
     }
 
-    private static class LoadModulesNode extends RootNode {
+    private static final class LoadModulesNode extends RootNode {
 
         final SulongLibrary sulongLibrary;
         final FrameSlot stackPointerSlot;
@@ -194,7 +197,7 @@ final class Runner {
         @Children final InitializeSymbolsNode[] initSymbols;
         @Children final InitializeModuleNode[] initModules;
 
-        LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
+        private LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
             super(runner.language, rootFrame);
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
@@ -205,13 +208,21 @@ final class Runner {
             int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
             this.initSymbols = new InitializeSymbolsNode[libCount];
             this.initModules = new InitializeModuleNode[libCount];
+        }
 
-            createNodes(runner, rootFrame, order.sulongLibraries, 0, this.initSymbols, this.initModules);
-            createNodes(runner, rootFrame, order.otherLibraries, this.initContextBefore, this.initSymbols, this.initModules);
+        static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
+            LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
+            try {
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules);
+                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules);
+                return node;
+            } catch (TypeOverflowException e) {
+                throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
+            }
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules) {
+                        InitializeModuleNode[] initModules) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
                 initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory());
@@ -317,7 +328,7 @@ final class Runner {
         final boolean readOnly;
         final long offset;
 
-        AllocOtherGlobalNode(GlobalVariable global, Type type, DataSection roSection, DataSection rwSection) {
+        AllocOtherGlobalNode(GlobalVariable global, Type type, DataSection roSection, DataSection rwSection) throws TypeOverflowException {
             super(global);
             this.readOnly = global.isReadOnly();
 
@@ -337,20 +348,20 @@ final class Runner {
         final DataLayout dataLayout;
         final ArrayList<Type> types = new ArrayList<>();
 
-        private int offset = 0;
+        private long offset = 0;
 
         DataSection(DataLayout dataLayout) {
             this.dataLayout = dataLayout;
         }
 
-        long add(GlobalVariable global, Type type) {
+        long add(GlobalVariable global, Type type) throws TypeOverflowException {
             int alignment = getAlignment(dataLayout, global, type);
             int padding = Type.getPadding(offset, alignment);
             addPaddingTypes(types, padding);
-            offset += padding;
+            offset = Type.addUnsignedExact(offset, padding);
             long ret = offset;
             types.add(type);
-            offset += type.getSize(dataLayout);
+            offset = Type.addUnsignedExact(offset, type.getSize(dataLayout));
             return ret;
         }
 
@@ -378,7 +389,7 @@ final class Runner {
         private final int id;
         private final int globalLength;
 
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) throws TypeOverflowException {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
@@ -978,20 +989,26 @@ final class Runner {
 
         LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
-            final Type type = global.getType().getPointeeType();
-            final int size = type.getSize(dataLayout);
+            try {
+                final Type type = global.getType().getPointeeType();
+                final long size = type.getSize(dataLayout);
 
-            // for fetching the address of the global that we want to initialize, we must use the
-            // file scope because we are initializing the globals of the current file
-            LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
-            final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
-            if (size != 0) {
-                if (type instanceof ArrayType || type instanceof StructureType) {
-                    return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
-                } else {
-                    Type t = global.getValue().getType();
-                    return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
+                /*
+                 * For fetching the address of the global that we want to initialize, we must use
+                 * the file scope because we are initializing the globals of the current file.
+                 */
+                LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
+                final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
+                if (size != 0) {
+                    if (type instanceof ArrayType || type instanceof StructureType) {
+                        return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
+                    } else {
+                        Type t = global.getValue().getType();
+                        return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
+                    }
                 }
+            } catch (TypeOverflowException e) {
+                return Type.handleOverflowStatement(e);
             }
         }
 
@@ -1033,33 +1050,37 @@ final class Runner {
         final int elemCount = arrayConstant.getElementCount();
 
         final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
-        final int elementSize = elementType.getSize(dataLayout);
+        try {
+            final long elementSize = elementType.getSize(dataLayout);
 
-        final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
-        final int indexedTypeLength = functionType.getAlignment(dataLayout);
+            final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
+            final int indexedTypeLength = functionType.getAlignment(dataLayout);
 
-        final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
-        FrameDescriptor rootFrame = StackManager.createRootFrame();
-        for (int i = 0; i < elemCount; i++) {
-            final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
-            final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
-            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(elementSize, elementType, globalVarAddress, iNode);
-            final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
+            final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
+            FrameDescriptor rootFrame = StackManager.createRootFrame();
+            for (int i = 0; i < elemCount; i++) {
+                final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
+                final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
+                final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(elementSize, elementType, globalVarAddress, iNode);
+                final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
 
-            final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
-            final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
-            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                            CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
+                final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+                final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
+                final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
+                final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
+                                CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+                final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
-            final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
-            final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
-            final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
-            structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
+                final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
+                final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
+                final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
+                structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
+            }
+
+            return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMStatementNode[]::new);
+        } catch (TypeOverflowException e) {
+            return new LLVMStatementNode[]{Type.handleOverflowStatement(e)};
         }
-
-        return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMStatementNode[]::new);
     }
 
     private static byte[] decodeBase64(CharSequence charSequence) {
@@ -1090,7 +1111,7 @@ final class Runner {
             SulongLibrary lib = new SulongLibrary(name, scope, mainFunctionCallTarget);
 
             FrameDescriptor rootFrame = StackManager.createRootFrame();
-            LoadModulesNode loadModules = new LoadModulesNode(this, rootFrame, initializationOrder, lib);
+            LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }

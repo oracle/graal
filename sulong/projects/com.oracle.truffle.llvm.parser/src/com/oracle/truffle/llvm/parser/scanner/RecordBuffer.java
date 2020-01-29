@@ -108,7 +108,7 @@ public final class RecordBuffer {
         return toUnsignedIntExact(read);
     }
 
-    private int toUnsignedIntExact(long read) {
+    private static int toUnsignedIntExact(long read) {
         if (Type.fitsIntoUnsignedInt(read)) {
             return Type.toUnsignedInt(read);
         }

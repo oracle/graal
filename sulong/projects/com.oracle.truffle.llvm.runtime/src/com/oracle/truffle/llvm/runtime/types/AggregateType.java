@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,9 +32,10 @@ package com.oracle.truffle.llvm.runtime.types;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
 public abstract class AggregateType extends Type {
-    public abstract int getNumberOfElements();
+    public abstract long getNumberOfElements();
 
     public abstract Type getElementType(long index);
 
-    public abstract long getOffsetOf(long index, DataLayout targetDataLayout);
+    public abstract long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException;
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -74,12 +74,13 @@ public final class PointerType extends AggregateType {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
+    public long getSize(DataLayout targetDataLayout) {
         return LLVMNode.ADDRESS_SIZE_IN_BYTES;
     }
 
     @Override
-    public long getOffsetOf(long index, DataLayout targetDataLayout) {
+    public long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException {
+        // For a pointer, the index can be negative
         return getPointeeType().getSize(targetDataLayout) * index;
     }
 
@@ -89,14 +90,14 @@ public final class PointerType extends AggregateType {
     }
 
     @Override
-    public int getNumberOfElements() {
+    public long getNumberOfElements() {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException();
     }
 
     @Override
-    public int getBitSize() {
-        return Long.BYTES * Byte.SIZE;
+    public long getBitSize() {
+        return Long.SIZE;
     }
 
     @Override

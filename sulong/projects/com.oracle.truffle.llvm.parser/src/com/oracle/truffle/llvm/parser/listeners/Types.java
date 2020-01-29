@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -155,7 +155,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case TYPE_ARRAY: {
-                final ArrayType arrayType = new ArrayType(null, buffer.readInt());
+                final ArrayType arrayType = new ArrayType(null, buffer.read());
                 setType(buffer.readInt(), arrayType::setElementType);
                 type = arrayType;
                 break;
@@ -305,7 +305,7 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
-        public int getBitSize() {
+        public long getBitSize() {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }
@@ -317,7 +317,7 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
-        public int getSize(DataLayout targetDataLayout) {
+        public long getSize(DataLayout targetDataLayout) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }

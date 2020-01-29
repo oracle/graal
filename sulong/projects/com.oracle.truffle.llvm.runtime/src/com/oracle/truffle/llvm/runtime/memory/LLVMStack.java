@@ -129,11 +129,11 @@ public final class LLVMStack {
         private long currentSlotPointer = 0;
         private int alignment = 1;
 
-        public UniqueSlot addSlot(int slotSize, int slotAlignment) {
+        public UniqueSlot addSlot(long slotSize, int slotAlignment) {
             CompilerAsserts.neverPartOfCompilation();
             currentSlotPointer = getAlignedAllocation(currentSlotPointer, slotSize, slotAlignment);
             // maximum of current alignment, slot alignment and the alignment masking slot size
-            alignment = Integer.highestOneBit(alignment | slotAlignment | Integer.highestOneBit(slotSize) << 1);
+            alignment = Math.toIntExact(Long.highestOneBit(alignment | slotAlignment | Long.highestOneBit(slotSize) << 1));
             return new UniqueSlot(currentSlotPointer);
         }
 

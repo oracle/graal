@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,7 +46,12 @@ public final class LLVMUnsupportedException extends LLVMException {
          */
         SET_JMP_LONG_JMP("setjmp/longjmp"),
         PARSER_ERROR_VOID_SLOT("parser error void slot"),
-        UNSUPPORTED_SYSCALL("unsupported syscall");
+        UNSUPPORTED_SYSCALL("unsupported syscall"),
+        /**
+         * Indicates that a value is valid in terms of LLVM language spec, but it is unsupported by
+         * this implementation.
+         */
+        UNSUPPORTED_VALUE_RANGE("unsupported value range");
 
         private final String description;
 

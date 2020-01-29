@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -86,6 +86,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -168,30 +169,38 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(ArrayType type) {
-                final int arraySize = type.getSize(dataLayout);
-                if (arraySize == 0) {
-                    resolvedNode = null;
-                } else {
-                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(nodeFactory, type);
-                    resolvedNode = nodeFactory.createZeroNode(target, arraySize);
+                try {
+                    final long arraySize = type.getSize(dataLayout);
+                    if (arraySize == 0) {
+                        resolvedNode = null;
+                    } else {
+                        LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(nodeFactory, type);
+                        resolvedNode = nodeFactory.createZeroNode(target, arraySize);
+                    }
+                } catch (TypeOverflowException e) {
+                    resolvedNode = Type.handleOverflowExpression(e);
                 }
             }
 
             @Override
             public void visit(StructureType structureType) {
-                final int structSize = structureType.getSize(dataLayout);
-                if (structSize == 0) {
-                    final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
-                    resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
-                } else {
-                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(nodeFactory, structureType);
-                    resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
+                try {
+                    final long structSize = structureType.getSize(dataLayout);
+                    if (structSize == 0) {
+                        final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
+                        resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
+                    } else {
+                        LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(nodeFactory, structureType);
+                        resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
+                    }
+                } catch (TypeOverflowException e) {
+                    resolvedNode = Type.handleOverflowExpression(e);
                 }
             }
 
             @Override
             public void visit(VectorType vectorType) {
-                final int nrElements = vectorType.getNumberOfElements();
+                final int nrElements = vectorType.getNumberOfElementsInt();
                 resolvedNode = nodeFactory.createZeroVectorInitializer(nrElements, vectorType);
             }
 
@@ -257,11 +266,15 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(BigIntegerConstant constant) {
-            final Type type = constant.getType();
-            if (type.getBitSize() <= Long.SIZE) {
-                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue().longValueExact(), type);
-            } else {
-                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue(), type);
+            try {
+                final Type type = constant.getType();
+                if (Long.compareUnsigned(type.getBitSize(), Long.SIZE) <= 0) {
+                    resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue().longValueExact(), type);
+                } else {
+                    resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue(), type);
+                }
+            } catch (TypeOverflowException e) {
+                resolvedNode = Type.handleOverflowExpression(e);
             }
         }
 
@@ -314,7 +327,11 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GetElementPointerConstant constant) {
-            resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices(), (symbol, excludeOtherIndex, other, others) -> resolve(symbol));
+            try {
+                resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices(), (symbol, excludeOtherIndex, other, others) -> resolve(symbol));
+            } catch (TypeOverflowException e) {
+                resolvedNode = Type.handleOverflowExpression(e);
+            }
         }
 
         @Override
@@ -529,14 +546,14 @@ public final class LLVMSymbolReadResolver {
                 return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
             } else {
                 // Cases 2, 6
-                int length = ((VectorType) currentType).getNumberOfElements();
+                int length = ((VectorType) currentType).getNumberOfElementsInt();
                 return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, IndexVectorBroadcastNodeGen.create(length, indexNode));
             }
         } else {
             // Cases 0, 1, 4, 5
             if (indexType instanceof VectorType) {
                 // Cases 1, 5
-                int length = ((VectorType) indexType).getNumberOfElements();
+                int length = ((VectorType) indexType).getNumberOfElementsInt();
                 return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, ResultVectorBroadcastNodeGen.create(length, currentAddress), indexNode);
             } else {
                 // Cases 0, 4
@@ -550,7 +567,7 @@ public final class LLVMSymbolReadResolver {
      * allows callers to intercept the resolution of values to nodes (used for frame slot
      * optimization in LLVMBitcodeInstructionVisitor).
      */
-    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) {
+    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) throws TypeOverflowException {
         LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.length];
 
         for (int i = indices.length - 1; i >= 0; i--) {

@@ -217,8 +217,8 @@ public class ParameterAttributes implements ParserListener {
         attributes.add(group);
 
         while (buffer.remaining() > 0) {
-            long type = buffer.read();
-            switch ((int) type) {
+            int type = buffer.readInt();
+            switch (type) {
                 case WELL_KNOWN_ATTRIBUTE_KIND: {
                     Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
                     group.addAttribute(new Attribute.KnownAttribute(attr));

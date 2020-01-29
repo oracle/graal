@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,9 +41,12 @@ public final class ArrayType extends AggregateType {
 
     @CompilationFinal private Assumption elementTypeAssumption;
     @CompilationFinal private Type elementType;
-    private final int length;
+    /**
+     * Length of the vector. The value is interpreted as an unsigned 64 bit integer value.
+     */
+    private final long length;
 
-    public ArrayType(Type type, int length) {
+    public ArrayType(Type type, long length) {
         this.elementTypeAssumption = Truffle.getRuntime().createAssumption("ArrayType.elementType");
         this.elementType = type;
         this.length = length;
@@ -62,8 +65,8 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
-    public int getBitSize() {
-        return getElementType().getBitSize() * getNumberOfElements();
+    public long getBitSize() throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getBitSize(), getNumberOfElements());
     }
 
     public Type getElementType() {
@@ -74,7 +77,7 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
-    public int getNumberOfElements() {
+    public long getNumberOfElements() {
         return length;
     }
 
@@ -89,19 +92,19 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
-        return getElementType().getSize(targetDataLayout) * length;
+    public long getSize(DataLayout targetDataLayout) throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), length);
     }
 
     @Override
-    public long getOffsetOf(long index, DataLayout targetDataLayout) {
-        return getElementType().getSize(targetDataLayout) * index;
+    public long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException {
+        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), index);
     }
 
     @Override
     @TruffleBoundary
     public String toString() {
-        return String.format("[%d x %s]", getNumberOfElements(), getElementType());
+        return String.format("[%s x %s]", Long.toUnsignedString(getNumberOfElements()), getElementType());
     }
 
     @Override
@@ -109,7 +112,7 @@ public final class ArrayType extends AggregateType {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((getElementType() == null) ? 0 : getElementType().hashCode());
-        result = prime * result + length;
+        result = prime * result + (int) length;
         return result;
     }
 

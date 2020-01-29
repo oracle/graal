@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -266,13 +266,13 @@ class AsmFactory {
     private final Type[] argTypes;
     private final Type retType;
     private final Type[] retTypes;
-    private final int[] retOffsets;
+    private final long[] retOffsets;
 
     private String currentPrefix;
 
     private final LLVMLanguage language;
 
-    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
         this.language = language;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
