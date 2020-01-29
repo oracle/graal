@@ -234,7 +234,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("/Zi");
 
             if (removeUnusedSymbols()) {
-                additionalPreOptions.add("/OPT:REF");
+                cmd.add("/OPT:REF");
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
