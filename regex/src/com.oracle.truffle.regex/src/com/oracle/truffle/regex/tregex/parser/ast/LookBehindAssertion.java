@@ -81,37 +81,6 @@ public class LookBehindAssertion extends LookAroundAssertion {
         return ast.register(new LookBehindAssertion(this, ast, recursive));
     }
 
-    /**
-     * Verifies that the contents of this assertion ({@link #getGroup()}) are in "literal" form.
-     *
-     * This means that there is only a single alternative which is composed of a sequence of
-     * {@link CharacterClass} nodes.
-     */
-    public boolean isLiteral() {
-        if (getGroup().size() != 1) {
-            return false;
-        }
-        for (Term t : getGroup().getAlternatives().get(0).getTerms()) {
-            if (!(t instanceof CharacterClass)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Returns the length of the words that can be matched by the body of this lookbehind assertion.
-     * <p>
-     * Because we restrict the regular expressions used in lookbehind assertions to "literal"
-     * regular expressions, all strings that match the body of the assertion are guaranteed to be of
-     * the same length. This is critical to how lookbehind is implemented, because it tells us how
-     * much do we have to rewind when matching a regular expression with lookbehind assertions.
-     */
-    public int getLength() {
-        assert isLiteral();
-        return getGroup().getAlternatives().get(0).getTerms().size();
-    }
-
     @Override
     public String getPrefix() {
         return isNegated() ? "?<!" : "?<=";

@@ -562,7 +562,7 @@ public final class DFAGenerator implements JsonConvertible {
         if (isForward() && isSearching() && !isGenericCG() && !nfa.getAst().getFlags().isSticky() && props.hasInnerLiteral()) {
             int literalEnd = props.getInnerLiteralEnd();
             int literalStart = props.getInnerLiteralStart();
-            Sequence rootSeq = nfa.getAst().getRoot().getAlternatives().get(0);
+            Sequence rootSeq = nfa.getAst().getRoot().getFirstAlternative();
 
             // find all parser tree nodes of the prefix
             StateSet<RegexASTNode> prefixAstNodes = StateSet.create(nfa.getAst());
@@ -741,7 +741,7 @@ public final class DFAGenerator implements JsonConvertible {
     private boolean innerLiteralMatchesPrefix(StateSet<NFAState> prefixNFAStates) {
         int literalEnd = nfa.getAst().getProperties().getInnerLiteralEnd();
         int literalStart = nfa.getAst().getProperties().getInnerLiteralStart();
-        Sequence rootSeq = nfa.getAst().getRoot().getAlternatives().get(0);
+        Sequence rootSeq = nfa.getAst().getRoot().getFirstAlternative();
         StateSet<NFAState> curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
         StateSet<NFAState> nextState = StateSet.create(nfa);
         for (int i = literalStart; i < literalEnd; i++) {

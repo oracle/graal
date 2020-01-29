@@ -275,6 +275,10 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         this.alternatives = alternatives;
     }
 
+    public Sequence getFirstAlternative() {
+        return alternatives.get(0);
+    }
+
     public int size() {
         return alternatives.size();
     }

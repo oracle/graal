@@ -337,7 +337,7 @@ public abstract class NFATraversalRegexASTVisitor {
             // must have at least one child sequence, so no check is needed here.
             // createGroupEnterPathElement initializes the group alternation index with 1, so we
             // don't have to increment it here, either.
-            cur = group.getAlternatives().get(0);
+            cur = group.getFirstAlternative();
             return true;
         } else {
             curPath.add(createPathElement(cur));

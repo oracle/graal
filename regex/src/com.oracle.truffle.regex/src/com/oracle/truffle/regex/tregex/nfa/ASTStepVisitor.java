@@ -159,7 +159,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                     for (LookBehindAssertion lb : charClass.getLookBehindEntries()) {
                         final ASTStep lbAstStep = new ASTStep(lb.getGroup());
                         assert lb.getGroup().isLiteral();
-                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(lb.getGroup().getAlternatives().get(0).getFirstTerm())));
+                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(lb.getGroup().getFirstAlternative().getFirstTerm())));
                         newLookBehinds.add(lbAstStep);
                     }
                     successor.setLookBehinds(newLookBehinds);

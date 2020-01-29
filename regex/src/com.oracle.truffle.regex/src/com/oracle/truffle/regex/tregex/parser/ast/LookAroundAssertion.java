@@ -76,4 +76,57 @@ public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
         assert !hasQuantifier();
         return isNegated() == o.isNegated() && getGroup().equalsSemantic(o.getGroup());
     }
+
+    public boolean startsWithCharClass() {
+        if (getGroup().size() != 1 || getGroup().getFirstAlternative().isEmpty()) {
+            return false;
+        }
+        return getGroup().getFirstAlternative().getFirstTerm() instanceof CharacterClass;
+    }
+
+    public boolean endsWithCharClass() {
+        if (getGroup().size() != 1 || getGroup().getFirstAlternative().isEmpty()) {
+            return false;
+        }
+        return getGroup().getFirstAlternative().getLastTerm() instanceof CharacterClass;
+    }
+
+    /**
+     * Checks if the contents of this assertion ({@link #getGroup()}) are in "literal" form.
+     *
+     * This means that there is only a single alternative which is composed of a sequence of
+     * {@link CharacterClass} nodes.
+     */
+    public boolean isLiteral() {
+        if (getGroup().size() != 1) {
+            return false;
+        }
+        for (Term t : getGroup().getFirstAlternative().getTerms()) {
+            if (!(t instanceof CharacterClass)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the length of the words that can be matched by the body of this lookbehind assertion.
+     * <p>
+     * Because we restrict the regular expressions used in lookbehind assertions to "literal"
+     * regular expressions, all strings that match the body of the assertion are guaranteed to be of
+     * the same length. This is critical to how lookbehind is implemented, because it tells us how
+     * much do we have to rewind when matching a regular expression with lookbehind assertions.
+     */
+    public int getLiteralLength() {
+        assert isLiteral();
+        return getGroup().getFirstAlternative().getTerms().size();
+    }
+
+    /**
+     * Returns {@code true} iff this {@link #isLiteral() is a literal} of {@link #getLiteralLength()
+     * size} 1, without any capturing groups.
+     */
+    public boolean isSingleCCNonCapturingLiteral() {
+        return getGroup().size() == 1 && getGroup().getFirstAlternative().size() == 1 && getGroup().getFirstAlternative().getFirstTerm() instanceof CharacterClass && !getGroup().isCapturing();
+    }
 }

@@ -84,13 +84,13 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
 
     public void run() {
         for (LookBehindAssertion lb : ast.getLookBehinds()) {
-            if (lb.getLength() == 0) {
+            if (lb.getLiteralLength() == 0) {
                 continue;
             }
             run(lb);
             movePastLookAheadBoundaries();
             int curDepth = 1;
-            while (!newEntriesFound.isEmpty() && curDepth < lb.getLength()) {
+            while (!newEntriesFound.isEmpty() && curDepth < lb.getLiteralLength()) {
                 // Here we go to all previous successors until we reach the required depth. This
                 // might cause us to revisit nodes we have already visited but it will not cause
                 // infinite loops. We will re-enter looping groups and try all of their

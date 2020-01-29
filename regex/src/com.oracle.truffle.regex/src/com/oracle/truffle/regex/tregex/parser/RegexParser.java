@@ -181,7 +181,7 @@ public final class RegexParser {
         if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().size() != 1) {
             return;
         }
-        ArrayList<Term> terms = ast.getRoot().getAlternatives().get(0).getTerms();
+        ArrayList<Term> terms = ast.getRoot().getFirstAlternative().getTerms();
         int literalStart = -1;
         int literalEnd = -1;
         int maxPath = 0;
@@ -268,13 +268,57 @@ public final class RegexParser {
         if (parent instanceof RegexASTRootNode) {
             throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
         }
-        if (parent instanceof RegexASTSubtreeRootNode) {
+        if (parent instanceof LookAroundAssertion) {
             curSequence = (Sequence) parent.getParent();
             curTerm = (Term) parent;
+            optimizeLookAround();
         } else {
             curSequence = (Sequence) parent;
         }
         curGroup = curSequence.getParent();
+    }
+
+    private void optimizeLookAround() {
+        LookAroundAssertion lookaround = (LookAroundAssertion) curTerm;
+        Group group = lookaround.getGroup();
+        if (!group.isCapturing()) {
+            if ((group.isEmpty() || (group.size() == 1 && group.getFirstAlternative().isEmpty()))) {
+                if (lookaround.isNegated()) {
+                    // empty negative lookarounds never match
+                    replaceCurTermWithDeadNode();
+                } else {
+                    // empty positive lookarounds are no-ops
+                    removeCurTerm();
+                }
+            } else if (!lookaround.isNegated()) {
+                if (group.size() == 1 && group.getFirstAlternative().size() == 1 && group.getFirstAlternative().getFirstTerm() instanceof PositionAssertion) {
+                    // unwrap positive lookarounds containing only a position assertion
+                    removeCurTerm();
+                    addTerm(group.getFirstAlternative().getFirstTerm());
+                } else {
+                    int innerPositionAssertion = -1;
+                    for (int i = 0; i < group.size(); i++) {
+                        Sequence s = group.getAlternatives().get(i);
+                        if (s.size() == 1 && s.getFirstTerm() instanceof PositionAssertion) {
+                            innerPositionAssertion = i;
+                            break;
+                        }
+                    }
+                    // (?=...|$) -> (?:$|(?=...))
+                    if (innerPositionAssertion >= 0) {
+                        curSequence.removeLastTerm();
+                        Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
+                        Group wrapGroup = ast.createGroup();
+                        wrapGroup.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
+                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
+                        wrapGroup.add(removed);
+                        Sequence wrapSeq = wrapGroup.addSequence(ast);
+                        wrapSeq.add(lookaround);
+                        addTerm(wrapGroup);
+                    }
+                }
+            }
+        }
     }
 
     private void addTerm(Term term) {
@@ -400,7 +444,7 @@ public final class RegexParser {
         if (group.size() > 1) {
             properties.setAlternations();
         }
-        assert !(group.size() == 1 && group.getAlternatives().get(0).getTerms().size() == 1);
+        assert !(group.size() == 1 && group.getFirstAlternative().getTerms().size() == 1);
         return group;
     }
 
@@ -874,7 +918,7 @@ public final class RegexParser {
                     innerGroup.setEnclosedCaptureGroupsLow(enclosedCGLo);
                     innerGroup.setEnclosedCaptureGroupsHigh(enclosedCGHi);
                 }
-                if (!innerGroup.isEmpty() && !(innerGroup.size() == 1 && innerGroup.getAlternatives().get(0).isEmpty())) {
+                if (!innerGroup.isEmpty() && !(innerGroup.size() == 1 && innerGroup.getFirstAlternative().isEmpty())) {
                     mergeCommonPrefixes(innerGroup);
                     prefixSeq.add(innerGroup);
                 }
@@ -955,9 +999,9 @@ public final class RegexParser {
      * expansion: {@code (?!x) -> (?=[^x]|$)}. This simplifies things for the DFA generator.
      */
     private void singleCharNegativeLookAroundToPositive(Group group) {
-        if (group.getParent() instanceof LookAroundAssertion && ((LookAroundAssertion) group.getParent()).isNegated() && group.size() == 1 && group.getAlternatives().get(0).isSingleCharClass()) {
+        if (group.getParent() instanceof LookAroundAssertion && ((LookAroundAssertion) group.getParent()).isNegated() && group.size() == 1 && group.getFirstAlternative().isSingleCharClass()) {
             ast.invertNegativeLookAround((LookAroundAssertion) group.getParent());
-            CharacterClass cc = (CharacterClass) group.getAlternatives().get(0).getFirstTerm();
+            CharacterClass cc = (CharacterClass) group.getFirstAlternative().getFirstTerm();
             // we don't have to expand the inverse in unicode mode here, because the character set
             // is guaranteed to be in BMP range, and its inverse will match all surrogates
             cc.setCharSet(cc.getCharSet().createInverse());

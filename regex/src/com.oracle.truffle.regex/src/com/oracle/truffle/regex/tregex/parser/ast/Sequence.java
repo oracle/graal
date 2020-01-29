@@ -146,7 +146,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     }
 
     public boolean isFirstInGroup() {
-        return getParent().getAlternatives().get(0) == this;
+        return getParent().getFirstAlternative() == this;
     }
 
     public boolean isLastInGroup() {

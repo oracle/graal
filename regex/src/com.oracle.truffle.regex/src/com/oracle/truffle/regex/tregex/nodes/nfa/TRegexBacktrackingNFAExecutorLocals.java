@@ -46,6 +46,28 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 
+/**
+ * Contains the stack used by {@link TRegexBacktrackingNFAExecutorNode}. One stack frame represents
+ * a snapshot of the backtracker's state. The backtracker state consists of:
+ * <ul>
+ * <li>the current index in the input string</li>
+ * <li>the current NFA state</li>
+ * <li>all current capture group boundaries</li>
+ * </ul>
+ * The backtracker state is written to the stack in the order given above, so one stack frame looks
+ * like this:
+ *
+ * <pre>
+ * sp    sp+1      sp+2
+ * |     |         |
+ * v     v         v
+ * --------------------------------
+ * |index|nfa_state|capture_groups|
+ * --------------------------------
+ *
+ * frame size: 2 + n_capture_groups*2
+ * </pre>
+ */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {
 
     private final int stackFrameSize;
@@ -78,9 +100,9 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
             stack = Arrays.copyOf(stack, stack.length * 2);
         }
         System.arraycopy(stack, sp, stack, sp + stackFrameSize, stackFrameSize);
-        t.getGroupBoundaries().apply(stack, sp + 2, getIndex());
-        stack[sp]++;
-        stack[sp + 1] = t.getTarget().getId();
+        apply(t);
+        incIndex(1);
+        setPc(t.getTarget().getId());
         sp += stackFrameSize;
     }
 
@@ -121,6 +143,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     @Override
     public void incIndex(int i) {
         stack[sp] += forward ? i : -i;
+    }
+
+    public int setPc(int pc) {
+        return stack[sp + 1] = pc;
     }
 
     public int[] toResult() {

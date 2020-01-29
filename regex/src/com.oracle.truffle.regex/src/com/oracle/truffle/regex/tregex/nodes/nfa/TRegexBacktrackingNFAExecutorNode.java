@@ -109,10 +109,11 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             if (locals.getIndex() < getInputLength(locals)) {
                 char c = getChar(locals);
                 for (int i = getStartingTransition(curState); i >= 0; i--) {
-                    if (curState.getNext()[i].getTarget().isAnchoredFinalState(true)) {
+                    NFAStateTransition transition = curState.getNext()[i];
+                    if (transition.getTarget().isAnchoredFinalState(true)) {
                         continue;
                     }
-                    if (curState.getNext()[i].getTarget().getCharSet().contains(c)) {
+                    if (transition.getTarget().getCharSet().contains(c)) {
                         if (firstMatch >= 0) {
                             if (curState.getNext()[firstMatch].getTarget().isUnAnchoredFinalState(true)) {
                                 locals.pushResult(curState.getNext()[firstMatch]);

@@ -51,6 +51,7 @@ public abstract class AbstractState<S extends AbstractState<S, T>, T extends Abs
     protected static final byte FLAG_UN_ANCHORED_FINAL_STATE = 1 << 3;
     protected static final byte FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
     protected static final byte FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
+    protected static final byte FLAG_ANY_INITIAL_OR_FINAL_STATE = FLAG_ANY_INITIAL_STATE | FLAG_ANY_FINAL_STATE;
     /**
      * Number of flag bits occupied by this class. Child classes may add their own flags with
      * {@code byte NEW_FLAG = 1 << N_FLAGS; byte NEW_FLAG2 = 1 << (N_FLAGS + 1)} etc.
@@ -156,6 +157,10 @@ public abstract class AbstractState<S extends AbstractState<S, T>, T extends Abs
 
     public boolean isUnAnchoredFinalState(boolean forward) {
         return forward ? isUnAnchoredFinalState() : isUnAnchoredInitialState();
+    }
+
+    public boolean isMatchCharState() {
+        return !getFlag(FLAG_ANY_INITIAL_OR_FINAL_STATE);
     }
 
     public T[] getSuccessors() {

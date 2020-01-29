@@ -41,9 +41,15 @@
 package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
+import java.util.Iterator;
 
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -73,6 +79,18 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void visit(RegexASTNode target) {
+        StateSet<LookAheadAssertion> lookAheadsOnPath = getLookAheadsOnPath();
+        StateSet<LookBehindAssertion> lookBehindsOnPath = getLookBehindsOnPath();
+
+        // Optimization: eagerly remove useless look-around assertions or transitions that cannot
+        // match with their respective look-around assertions
+        if (curState.isMatchCharState() && pruneLookarounds(lookBehindsOnPath, curState.getCharSet(), false)) {
+            return;
+        }
+        if (target instanceof CharacterClass && pruneLookarounds(lookAheadsOnPath, ((CharacterClass) target).getCharSet(), true)) {
+            return;
+        }
+
         PureNFAState targetState;
         if (target instanceof MatchFound) {
             targetState = dollarsOnPath() ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
@@ -85,8 +103,8 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
                         curState,
                         targetState,
                         getGroupBoundaries(),
-                        getLookAheadsOnPath(),
-                        getLookBehindsOnPath(),
+                        lookAheadsOnPath,
+                        lookBehindsOnPath,
                         quantifiers.length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(quantifiers, quantifiers.length)));
     }
 
@@ -96,5 +114,25 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void leaveLookAhead(LookAheadAssertion assertion) {
+    }
+
+    private static <T extends LookAroundAssertion> boolean pruneLookarounds(StateSet<T> lookArounds, CodePointSet parentChars, boolean lookAhead) {
+        Iterator<T> it = lookArounds.iterator();
+        while (it.hasNext()) {
+            LookAroundAssertion la = it.next();
+            if (lookAhead ? la.startsWithCharClass() : la.endsWithCharClass()) {
+                Term firstOrLastTerm = lookAhead ? la.getGroup().getFirstAlternative().getFirstTerm() : la.getGroup().getFirstAlternative().getLastTerm();
+                CodePointSet laChars = ((CharacterClass) firstOrLastTerm).getCharSet();
+                if (la.isNegated() ? laChars.contains(parentChars) : !laChars.intersects(parentChars)) {
+                    // transition can never be taken, prune
+                    return true;
+                }
+                if (la.isSingleCCNonCapturingLiteral() && (la.isNegated() ? !laChars.intersects(parentChars) : laChars.contains(parentChars))) {
+                    // lookaround does not have any influence on the match, remove it
+                    it.remove();
+                }
+            }
+        }
+        return false;
     }
 }

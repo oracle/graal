@@ -205,7 +205,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             // The single alternative in the wrappedRoot is composed of N non-optional prefix
             // matchers, 1 group of optional matchers and the original root. By
             // taking size() - 2, we get the number of non-optional prefix matchers.
-            return wrappedRoot.getAlternatives().get(0).size() - 2;
+            return wrappedRoot.getFirstAlternative().size() - 2;
         }
         return 0;
     }
@@ -216,7 +216,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     public RegexASTNode getEntryAfterPrefix() {
         if (rootIsWrapped()) {
-            return wrappedRoot.getAlternatives().get(0).getTerms().get(getWrappedPrefixLength());
+            return wrappedRoot.getFirstAlternative().getTerms().get(getWrappedPrefixLength());
         }
         return wrappedRoot;
     }
@@ -403,7 +403,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         nfaAnchoredInitialStates.add(pos);
         pos.setNext(getEntryAfterPrefix());
         for (int i = getWrappedPrefixLength() - 1; i >= 0; i--) {
-            RegexASTNode prefixNode = getWrappedRoot().getAlternatives().get(0).getTerms().get(i);
+            RegexASTNode prefixNode = getWrappedRoot().getFirstAlternative().getTerms().get(i);
             hardPrefixNodes.add(prefixNode);
             mf = new MatchFound();
             initNodeId(mf, nextID++);
@@ -455,7 +455,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
                 minPath += laParent.getMinPath();
                 laParent = laParent.getSubTreeParent();
             }
-            prefixLength = Math.max(prefixLength, lb.getLength() - minPath);
+            prefixLength = Math.max(prefixLength, lb.getLiteralLength() - minPath);
         }
         if (prefixLength == 0) {
             wrappedRoot = root;
@@ -477,7 +477,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             opt.setPrefix();
             opt.add(createSequence());
             opt.add(createSequence());
-            opt.getAlternatives().get(0).setPrefix();
+            opt.getFirstAlternative().setPrefix();
             opt.getAlternatives().get(1).setPrefix();
             opt.getAlternatives().get(1).add(createPrefixAnyMatcher());
             if (prevOpt != null) {
