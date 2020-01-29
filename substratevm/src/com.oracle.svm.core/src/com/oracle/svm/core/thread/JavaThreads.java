@@ -662,7 +662,7 @@ public abstract class JavaThreads {
 
     /** Interruptibly park the current thread. */
     static WaitResult park() {
-        VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(): Should not park when it is not okay to block.]");
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
 
@@ -679,7 +679,7 @@ public abstract class JavaThreads {
 
     /** Interruptibly park the current thread for the given number of nanoseconds. */
     static WaitResult park(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(long): Should not park when it is not okay to block.]");
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
 
@@ -705,7 +705,7 @@ public abstract class JavaThreads {
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static WaitResult sleep(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[SleepSupport.sleep(long): Should not sleep when it is not okay to block.]");
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         final ParkEvent sleepEvent = ensureSleepEvent(thread);
 
