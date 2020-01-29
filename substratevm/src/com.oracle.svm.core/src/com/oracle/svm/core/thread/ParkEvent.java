@@ -74,7 +74,7 @@ public abstract class ParkEvent {
     public enum WaitResult {
         UNPARKED,
         TIMED_OUT,
-        INTERRUPTED
+        JAVA_THREAD_INTERRUPTED
     }
 
     protected abstract void reset();

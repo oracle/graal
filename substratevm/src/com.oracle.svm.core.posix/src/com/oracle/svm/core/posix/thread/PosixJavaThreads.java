@@ -255,7 +255,7 @@ class PosixParkEvent extends ParkEvent {
             }
             while (!event) {
                 if (Thread.interrupted()) {
-                    return WaitResult.INTERRUPTED;
+                    return WaitResult.JAVA_THREAD_INTERRUPTED;
                 }
                 int status = Pthread.pthread_cond_wait(cond, mutex);
                 PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
@@ -280,7 +280,7 @@ class PosixParkEvent extends ParkEvent {
             }
             while (!event) {
                 if (Thread.interrupted()) {
-                    return WaitResult.INTERRUPTED;
+                    return WaitResult.JAVA_THREAD_INTERRUPTED;
                 }
                 int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
                 if (status == Errno.ETIMEDOUT()) {
