@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as cp from 'child_process';
 import * as utils from './utils';
-import { Socket } from 'net';
+import * as net from 'net';
 import { pathToFileURL } from 'url';
 import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
@@ -22,6 +22,7 @@ const SELECT_GRAALVM: string = 'Select GraalVM';
 const INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT: string = 'Install GraalVM native-image Component';
 const POLYGLOT: string = "polyglot";
 const LSPORT: number = 8123;
+const delegateLanguageServers: Set<() => Thenable<String>> = new Set();
 
 let client: LanguageClient | undefined;
 let languageServerPID: number = 0;
@@ -73,6 +74,13 @@ export function activate(context: vscode.ExtensionContext) {
 		config();
 		startLanguageServer(graalVMHome);
 	}
+	const api = {
+		registerLanguageServer(server: (() => Thenable<string>)): void {
+			delegateLanguageServers.add(server);
+			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
+		}
+	};
+	return api;
 }
 
 export function deactivate(): Thenable<void> {
@@ -81,54 +89,50 @@ export function deactivate(): Thenable<void> {
 
 function startLanguageServer(graalVMHome: string) {
 	const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
-	if (!inProcessServer) {
+	if (!inProcessServer || delegateLanguageServers.size > 0) {
 		const re = utils.findExecutable(POLYGLOT, graalVMHome);
 		if (re) {
 			let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
 			if (!serverWorkDir) {
 				serverWorkDir = vscode.workspace.rootPath;
 			}
-			let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
-			let lspOpt = '--lsp';
-			if (delegateServers) {
-				lspOpt = '--lsp.Delegates=' + delegateServers;
-			}
-			const serverProcess = cp.spawn(re, ['--jvm', lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
-			if (!serverProcess || !serverProcess.pid) {
-				vscode.window.showErrorMessage(`Launching server using command ${re} failed.`);
-			} else {
-				languageServerPID = serverProcess.pid;
-				serverProcess.stdout.once('data', () => {
-					connectToLanguageServer();
-					if (serverProcess) {
-					    serverProcess.stderr.on('data', data => {
-							if (client) {
-							    client.outputChannel.append(data.toString('utf8'));
-							}
+			connectToLanguageServer(() => new Promise<StreamInfo>((resolve, reject) => {
+				let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+				const s = Array.from(delegateLanguageServers).map(server => server());
+				Promise.all(s).then((servers) => {
+					delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
+					const lspOpt = delegateServers ? '--lsp.Delegates=' + delegateServers : '--lsp';
+					const serverProcess = cp.spawn(re, ['--jvm', lspOpt, '--experimental-options', '--shell'], { cwd: serverWorkDir });
+					if (!serverProcess || !serverProcess.pid) {
+						reject(`Launching server using command ${re} failed.`);
+					} else {
+						languageServerPID = serverProcess.pid;
+						serverProcess.stderr.once('data', data => {
+							reject(data);
+						});
+						serverProcess.stdout.once('data', () => {
+							const socket = new net.Socket();
+							socket.once('error', (e) => {
+								reject(e);
+							});
+							socket.connect(LSPORT, '127.0.0.1', () => {
+								resolve({
+									reader: socket,
+									writer: socket
+								});
+							});
 						});
 					}
 				});
-			}
+			}));
 		} else {
 			vscode.window.showErrorMessage('Cannot find runtime ' + POLYGLOT + ' within your GraalVM installation.');
 		}
 	}
 }
 
-function connectToLanguageServer() {
-	const connection = () => new Promise<StreamInfo>((resolve, reject) => {
-		const socket = new Socket();
-		socket.once('error', (e) => {
-			reject(e);
-		});
-		socket.connect(LSPORT, '127.0.0.1', () => {
-			resolve({
-				reader: socket,
-				writer: socket
-			});
-		});
-	});
-	let clientOptions: LanguageClientOptions = {
+function connectToLanguageServer(connection: (() => Thenable<StreamInfo>)) {
+	const clientOptions: LanguageClientOptions = {
 		documentSelector: [
 			{ scheme: 'file', language: 'javascript' },
 			{ scheme: 'file', language: 'sl' },
@@ -230,7 +234,18 @@ class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 						languageServerPID = message.body.data.pid;
 					}
 					if (message.event === 'initialized') {
-						connectToLanguageServer();
+						connectToLanguageServer(() => new Promise<StreamInfo>((resolve, reject) => {
+							const socket = new net.Socket();
+							socket.once('error', (e) => {
+								reject(e);
+							});
+							socket.connect(LSPORT, '127.0.0.1', () => {
+								resolve({
+									reader: socket,
+									writer: socket
+								});
+							});
+						}));
 					}
 				}
 			}
@@ -241,47 +256,49 @@ class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 class GraalVMConfigurationProvider implements vscode.DebugConfigurationProvider {
 
 	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-		const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
-		const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-		if (graalVMHome) {
-			config.graalVMHome = graalVMHome;
-			const graalVMBin = path.join(graalVMHome, 'bin');
-			if (config.env) {
-				config.env['PATH'] = updatePath(config.env['PATH'], graalVMBin);
-			} else {
-				config.env = { 'PATH': graalVMBin };
-			}
-		}
-		if (inProcessServer) {
-			stopLanguageServer();
-                        let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
-			if (config.runtimeArgs) {
-				let idx = config.runtimeArgs.indexOf('--jvm');
-				if (idx < 0) {
-					config.runtimeArgs.unshift('--jvm');
-				}
-				idx = config.runtimeArgs.indexOf('--lsp');
-				if (idx < 0) {
-					config.runtimeArgs.unshift('--lsp');
-					if (delegateServers) {
-						config.runtimeArgs.unshift('--lsp.Delegates=' + delegateServers);
-					}
-				}
-				idx = config.runtimeArgs.indexOf('--experimental-options');
-				if (idx < 0) {
-					config.runtimeArgs.unshift('--experimental-options');
-				}
-			} else {
-				if (delegateServers) {
-					config.runtimeArgs = ['--jvm', '--lsp.Delegates=' + delegateServers, '--experimental-options'];
+		return new Promise<vscode.DebugConfiguration>(resolve => {
+			const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+			const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+			if (graalVMHome) {
+				config.graalVMHome = graalVMHome;
+				const graalVMBin = path.join(graalVMHome, 'bin');
+				if (config.env) {
+					config.env['PATH'] = updatePath(config.env['PATH'], graalVMBin);
 				} else {
-					config.runtimeArgs = ['--jvm', '--lsp', '--experimental-options'];
+					config.env = { 'PATH': graalVMBin };
 				}
 			}
-		} else if (config.program) {
-			vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
-		}
-		return config;
+			if (inProcessServer) {
+				stopLanguageServer().then(() => {
+					let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+					const s = Array.from(delegateLanguageServers).map(server => server());
+					Promise.all(s).then((servers) => {
+						delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
+						const lspOpt = delegateServers ? '--lsp.Delegates=' + delegateServers : '--lsp';
+						if (config.runtimeArgs) {
+							let idx = config.runtimeArgs.indexOf('--jvm');
+							if (idx < 0) {
+								config.runtimeArgs.unshift('--jvm');
+							}
+							idx = config.runtimeArgs.indexOf('--lsp');
+							if (idx < 0) {
+								config.runtimeArgs.unshift(lspOpt);
+							}
+							idx = config.runtimeArgs.indexOf('--experimental-options');
+							if (idx < 0) {
+								config.runtimeArgs.unshift('--experimental-options');
+							}
+						} else {
+							config.runtimeArgs = ['--jvm', lspOpt, '--experimental-options'];
+						}
+						resolve(config);
+					});
+				});
+			} else if (config.program) {
+				vscode.commands.executeCommand('dry_run', pathToFileURL(this.resolveVarRefs(config.program)));
+				resolve(config);
+			}
+		});
 	}
 
 	resolveVarRefs(programPath: string): string {
