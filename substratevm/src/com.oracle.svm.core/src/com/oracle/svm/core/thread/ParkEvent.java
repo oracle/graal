@@ -84,6 +84,10 @@ public abstract class ParkEvent {
         INTERRUPTED
     }
 
+    protected void reset() {
+        event = false;
+    }
+
     /* cond_wait. */
     protected abstract WaitResult condWait();
 
@@ -115,7 +119,7 @@ public abstract class ParkEvent {
              * free-list or allocated.
              */
             newEvent.consCell = new ParkEventConsCell(newEvent);
-            newEvent.event = false;
+            newEvent.reset();
             newEvent.resetEventBeforeWait = resetEventBeforeWait;
 
             if (ref.compareAndSet(null, newEvent)) {
