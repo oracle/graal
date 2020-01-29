@@ -4,13 +4,19 @@ let initializeAgent = function (tracer) {
     var counter = 0;
 
     agent.on('enter', function(ctx, frame) {
-        const span = tracer.startSpan(frame.req.url);
-        frame.res.id = ++counter;
-        frame.res.span = span;
-        console.log(`agent: handling #${frame.res.id} request for ${frame.req.url}`);
+        const args = frame.args;
+        if ('request' !== frame.type || args.length !== 2 || typeof args[0] !== 'object' || typeof args[1] !== 'object') {
+            return;
+        }
+        const req = args[0];
+        const res = args[1];
+        const span = tracer.startSpan(req.url);
+        res.id = ++counter;
+        res.span = span;
+        console.log(`agent: handling #${res.id} request for ${req.url}`);
     }, {
         roots: true,
-        rootNameFilter: name => name === 'handler'
+        rootNameFilter: name => name === 'emit'
     });
 
     agent.on('return', function(ctx, frame) {

@@ -36,9 +36,9 @@ function tracerIsReady(tracer) {
 var tracer = tracerIsReady(initTracer(config, options));
 
 const http = require("http");
-const srv = http.createServer(function handler(req, res) {
+const srv = http.createServer((_, res) => {
     setTimeout(() => {
-        res.write('OK');
+        res.write('OK#' + res.id);
         res.end();
     }, 5);
 });
@@ -49,7 +49,7 @@ srv.listen(function nowPerformTheTesting() {
     let port = srv.address().port;
     console.log(`server: ready on port ${port}`);
     for (let i = 0; i < testCount; i++) {
-        let url = `http://localhost:${port}/test/${i}`;
+        let url = `http://localhost:${port}/test/${String.fromCharCode(65 + i)}`;
         console.log(`client: Connecting to ${url}`);
         http.get(url, (resp) => {
             let data = '';
