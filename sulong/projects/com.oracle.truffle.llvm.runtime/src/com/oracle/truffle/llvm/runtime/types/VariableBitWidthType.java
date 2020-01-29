@@ -31,9 +31,27 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VariableBitWidthType extends Type {
+
+    /**
+     * Minimum number of bits that can be specified.
+     *
+     * @see <a href=
+     *      "https://github.com/llvm/llvm-project/blob/llvmorg-9.0.0/llvm/include/llvm/IR/DerivedTypes.h#L51">
+     *      LLVM IntergerType.MIN_INT_BITS</a>
+     */
+    public static final int MIN_INT_BITS = 1;
+    /**
+     * Maximum number of bits that can be specified.
+     *
+     * @see <a href=
+     *      "https://github.com/llvm/llvm-project/blob/llvmorg-9.0.0/llvm/include/llvm/IR/DerivedTypes.h#L52">
+     *      LLVM IntergerType.MAX_INT_BITS</a>
+     */
+    public static final int MAX_INT_BITS = (1 << 24) - 1;
 
     private final int bitWidth;
     private final Object constant;
@@ -43,6 +61,9 @@ public final class VariableBitWidthType extends Type {
     }
 
     VariableBitWidthType(int bitWidth, Object constant) {
+        if (bitWidth < MIN_INT_BITS || bitWidth > MAX_INT_BITS) {
+            throw new LLVMParserException(getClass().getSimpleName() + " out of range: " + bitWidth);
+        }
         this.bitWidth = bitWidth;
         this.constant = constant;
     }
