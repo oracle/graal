@@ -34,7 +34,7 @@ public final class JDWPSetup {
     private DebuggerController controller;
 
     public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context) {
-        control.initialize(debugger, options, context, false);
+        control.initialize(debugger, options, context);
         this.controller = control;
     }
 

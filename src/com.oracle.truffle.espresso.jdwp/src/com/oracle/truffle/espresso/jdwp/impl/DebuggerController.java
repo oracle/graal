@@ -96,7 +96,7 @@ public final class DebuggerController implements ContextsListener {
         this.eventFilters = new EventFilters();
     }
 
-    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
+    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext) {
         this.debugger = debug;
         this.options = jdwpOptions;
         this.context = jdwpContext;
@@ -107,13 +107,11 @@ public final class DebuggerController implements ContextsListener {
         debuggerSession = debug.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
 
-        if (!reconnect) {
-            instrument.init(jdwpContext);
-        }
+        instrument.init(jdwpContext);
     }
 
     public void reInitialize() {
-        initialize(debugger, options, context, true);
+        initialize(debugger, options, context);
     }
 
     public JDWPContext getContext() {
@@ -429,8 +427,8 @@ public final class DebuggerController implements ContextsListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                instrument.reset(prepareReconnect);
                 eventListener.vmDied();
+                instrument.reset(prepareReconnect);
             }
         }).start();
     }
