@@ -733,6 +733,22 @@ final class Target_java_lang_Package {
             return null;
         }
     }
+
+    @Alias private Class<?> packageInfo;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private Class<?> getPackageInfo() {
+        if (packageInfo != null) {
+            return packageInfo;
+        }
+
+        return PackageInfoProxy.class;
+    }
+
+}
+
+class PackageInfoProxy {
 }
 
 @TargetClass(java.lang.NullPointerException.class)
