@@ -28,6 +28,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import java.util.Collection;
 
 @SuppressWarnings({"static-method"})
@@ -65,6 +66,19 @@ final class ArrayObject implements TruffleObject {
     @ExportMessage
     long getArraySize() {
         return arr.length;
+    }
+
+    @ExplodeLoop
+    boolean contains(String name) {
+        if (name == null) {
+            return false;
+        }
+        for (int i = 0; i < arr.length; i++) {
+            if (name.equals(readArrayElement(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static ArrayObject array(String... arr) {

@@ -58,44 +58,103 @@ public interface AgentScriptAPI {
     interface Handler {
     }
 
+    interface SourceInfo {
+        /** Name of the {@link #sourceLoaded}.
+         * @return name of the loaded source
+         */
+        String name();
+        /** Character content of the {@link #sourceLoaded}.
+         * @return content of the loaded source
+         */
+        String characters();
+        /** Identification of this source's language.
+         * @return String representing the language ID
+         */
+        String language();
+        /** Mime type of this source.
+         * @return given mime type or {@code null}
+         */
+        String mimeType();
+        /** URI uniquely identifying the source.
+         * @return the URI
+         */
+        String uri();
+    }
+
     @FunctionalInterface
     interface OnSourceLoadedHandler extends Handler {
-        interface Info {
-            /** Name of the {@link #sourceLoaded}.
-             * @return name of the loaded source
-             */
-            String name();
-            /** Character content of the {@link #sourceLoaded}.
-             * @return content of the loaded source
-             */
-            String characters();
-            /** Identification of this source's language.
-             * @return String representing the language ID
-             */
-            String language();
-            /** Mime type of this source.
-             * @return given mime type or {@code null}
-             */
-            String mimeType();
-            /** URI uniquely identifying the source.
-             * @return the URI
-             */
-            String uri();
-        }
-        void sourceLoaded(Info info);
+        void sourceLoaded(SourceInfo info);
     }
     /** Register a handler to be notified when a source is loaded.
      *
      * @param event has to be {@code "source"} string
      * @param handler a callback that takes
-     *      {@link OnSourceLoadedHandler.Info one argument}
+     *      {@link SourceInfo one argument}
      */
     void on(String event, OnSourceLoadedHandler handler);
 
     @FunctionalInterface
     interface OnEventHandler extends Handler {
         interface Context {
+            /** Name of the enclosing function.
+             * @return the name of the enclosing function
+             * @since 0.1
+             */
             String name();
+
+            /** Information about surrounding source.
+             * @return information about the surrounding source
+             * @since 0.4
+             */
+            SourceInfo source();
+
+            /** Characters of the location.
+             * @return the characters of this {@link Context}
+             * @since 0.4
+             */
+            String characters();
+
+            /** Line of this location. The same as {@link #startLine()}.
+             * 
+             * @return line number counting from one
+             * @since 0.4
+             */
+            int line();
+
+            /** Staring line of this location.
+             *
+             * @return line number counting from one
+             * @since 0.4
+             */
+            int startLine();
+
+            /** Final line of this location.
+             *
+             * @return line number counting from one
+             * @since 0.4
+             */
+            int endLine();
+
+            /** Column of this location. The same as {@link #startColumn()}.
+             *
+             * @return column number counting from one
+             * @since 0.4
+             */
+            int column();
+
+            /** Starting column of this location.
+             *
+             * @return column number counting from one
+             * @since 0.4
+             */
+            int startColumn();
+
+            /** Final column of this location.
+             *
+             * @return column number counting from one
+             * @since 0.4
+             */
+            int endColumn();
         }
         void event(Context ctx, Map<String, Object> frame);
     }

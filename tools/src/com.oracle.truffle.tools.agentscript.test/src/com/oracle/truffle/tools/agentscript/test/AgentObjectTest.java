@@ -45,6 +45,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -268,6 +269,15 @@ public class AgentObjectTest {
                 }
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
+                assertNotEquals("Subset of the source found", -1, ctx.characters().indexOf("LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))"));
+
+                assertEquals(14, ctx.column());
+                assertEquals(14, ctx.startColumn());
+                assertEquals(2, ctx.endColumn());
+
+                assertEquals(2, ctx.line());
+                assertEquals(2, ctx.startLine());
+                assertEquals(4, ctx.endLine());
             };
 
             CountDownLatch await = new CountDownLatch(1);
