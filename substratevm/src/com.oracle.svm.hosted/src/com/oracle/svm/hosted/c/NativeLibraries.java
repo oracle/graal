@@ -67,6 +67,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -379,12 +380,13 @@ public final class NativeLibraries {
 
     public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
+        CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory);
+        ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-
-                new CAnnotationProcessor(this, context, tempDirectory).process(cache);
+                new CAnnotationProcessor(this, context, compilerInvoker).process(cache);
             }
         }
     }

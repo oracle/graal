@@ -298,7 +298,7 @@ public abstract class NativeImageCodeCache {
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
 
-    public abstract String[] getCCInputFiles(Path tempDirectory, String imageName);
+    public abstract Path[] getCCInputFiles(Path tempDirectory, String imageName);
 
     public abstract List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile);
 

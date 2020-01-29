@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.hosted.c.codegen;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -34,6 +33,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -43,59 +43,116 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
-public class CCompilerInvoker {
+public abstract class CCompilerInvoker {
 
-    protected final NativeLibraries nativeLibs;
-    protected final Path tempDirectory;
-    private String lastExecutedCommand = "";
+    public final Path tempDirectory;
 
-    public CCompilerInvoker(NativeLibraries nativeLibs, Path tempDirectory) {
-        this.nativeLibs = nativeLibs;
+    public static CCompilerInvoker create(Path tempDirectory) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            return new WindowsCCompilerInvoker(tempDirectory);
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return new LinuxCCompilerInvoker(tempDirectory);
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+            return new DarwinCCompilerInvoker(tempDirectory);
+        } else {
+            throw VMError.shouldNotReachHere("No CCompilerInvoker for " + ImageSingletons.lookup(Platform.class).getClass().getName());
+        }
+    }
+
+    private static class WindowsCCompilerInvoker extends CCompilerInvoker {
+        WindowsCCompilerInvoker(Path tempDirectory) {
+            super(tempDirectory);
+        }
+
+        @Override
+        public String asExecutableName(String basename) {
+            String suffix = ".exe";
+            if (basename.endsWith(suffix)) {
+                return basename;
+            }
+            return basename + suffix;
+        }
+
+        @Override
+        protected String getDefaultCompiler() {
+            return "cl";
+        }
+
+        @Override
+        protected void addTarget(List<String> command, Path target) {
+            command.add("/Fe" + target.toString());
+        }
+
+        @Override
+        protected InputStream getCompilerErrorStream(Process compilingProcess) {
+            return compilingProcess.getInputStream();
+        }
+    }
+
+    private static class LinuxCCompilerInvoker extends CCompilerInvoker {
+        LinuxCCompilerInvoker(Path tempDirectory) {
+            super(tempDirectory);
+        }
+
+        @Override
+        protected String getDefaultCompiler() {
+            return "gcc";
+        }
+    }
+
+    private static class DarwinCCompilerInvoker extends CCompilerInvoker {
+        DarwinCCompilerInvoker(Path tempDirectory) {
+            super(tempDirectory);
+        }
+
+        @Override
+        protected String getDefaultCompiler() {
+            return "cc";
+        }
+    }
+
+    public CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
     }
 
-    public Process startPreprocessor(List<String> options, Path sourceFile) throws IOException {
-        List<String> command = new ArrayList<>();
-        command.add(Platform.includedIn(Platform.WINDOWS.class) ? "CL" : "gcc");
-        command.add("-E");
-        command.add(sourceFile.normalize().toString());
-        command.addAll(options);
-        return startCommand(command);
+    protected InputStream getCompilerErrorStream(Process compilingProcess) {
+        return compilingProcess.getErrorStream();
     }
 
-    public Path compileAndParseError(List<String> options, Path source, Path target) {
+    public interface CompilerErrorHandler {
+        void handle(ProcessBuilder currentRun, Path source, String line);
+    }
+
+    public void compileAndParseError(List<String> options, Path source, Path target, CompilerErrorHandler handler) {
         try {
-            Process compilingProcess = startCompiler(options, source.normalize(), target.normalize());
-            InputStream compilerErrors;
-            InputStream other;
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
-                compilerErrors = compilingProcess.getErrorStream();
-                other = compilingProcess.getInputStream();
-            } else {
-                /* On Windows compiler errors are printed on stdout */
-                compilerErrors = compilingProcess.getInputStream();
-                other = compilingProcess.getErrorStream();
+            List<String> command = createCompilerCommand(options, target.normalize(), source.normalize());
+            ProcessBuilder pb = new ProcessBuilder().command(command).directory(tempDirectory.toFile());
+            Process compilingProcess = pb.start();
+
+            List<String> lines;
+            try (InputStream compilerErrors = getCompilerErrorStream(compilingProcess)) {
+                lines = FileUtils.readAllLines(compilerErrors);
             }
-
-            List<String> lines = FileUtils.readAllLines(compilerErrors);
-            FileUtils.readAllLines(other);
-            int status = compilingProcess.waitFor();
-
             boolean errorReported = false;
             for (String line : lines) {
-                if (line.contains(": error:") || line.contains(": fatal error:")) {
-                    reportCompilerError(source, line);
+                if (detectError(line)) {
+                    if (handler != null) {
+                        handler.handle(pb, source, line);
+                    }
                     errorReported = true;
                 }
             }
+
+            int status = compilingProcess.waitFor();
             if (status != 0 && !errorReported) {
-                reportCompilerError(source, lines.toString());
+                if (handler != null) {
+                    handler.handle(pb, source, lines.toString());
+                }
             }
             compilingProcess.destroy();
-            return target;
 
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
@@ -104,82 +161,70 @@ public class CCompilerInvoker {
         }
     }
 
-    public static String getCCompilerPath() {
-        String compilerPath = SubstrateOptions.CCompilerPath.getValue();
-        if (compilerPath != null) {
-            Path path = Paths.get(compilerPath);
-            if (Files.isDirectory(path) || !Files.isExecutable(path)) {
-                throw UserError.abort(SubstrateOptionsParser.commandArgument(SubstrateOptions.CCompilerPath, compilerPath) + " does not specify a path to an executable.");
+    protected boolean detectError(String line) {
+        return line.contains(": error:") || line.contains(": fatal error:");
+    }
+
+    public static Optional<Path> lookupSearchPath(String name) {
+        return Arrays.stream(System.getenv("PATH").split(File.pathSeparator))
+                        .map(entry -> Paths.get(entry, name))
+                        .filter(Files::isExecutable)
+                        .findFirst();
+    }
+
+    public Path getCCompilerPath() {
+        Path compilerPath;
+        String userDefinedPath = SubstrateOptions.CCompilerPath.getValue();
+        if (userDefinedPath != null) {
+            compilerPath = Paths.get(userDefinedPath);
+        } else {
+            String executableName = asExecutableName(getDefaultCompiler());
+            Optional<Path> optCompilerPath = lookupSearchPath(executableName);
+            if (optCompilerPath.isPresent()) {
+                compilerPath = optCompilerPath.get();
+            } else {
+                throw UserError.abort("Default native-compiler executable '" + executableName + "' not found via environment variable PATH");
             }
+        }
+        if (Files.isDirectory(compilerPath) || !Files.isExecutable(compilerPath)) {
+            String msgSubject;
+            if (userDefinedPath != null) {
+                msgSubject = SubstrateOptionsParser.commandArgument(SubstrateOptions.CCompilerPath, userDefinedPath);
+            } else {
+                msgSubject = "Default native-compiler '" + compilerPath + "'";
+            }
+            throw UserError.abort(msgSubject + " does not specify a path to an executable.");
         }
         return compilerPath;
     }
 
-    public Process startCompiler(List<String> options, Path source, Path target) throws IOException {
+    protected abstract String getDefaultCompiler();
+
+    public String asExecutableName(String basename) {
+        return basename;
+    }
+
+    public List<String> createCompilerCommand(List<String> options, Path target, Path... input) {
         List<String> command = new ArrayList<>();
 
-        String compilerPath = getCCompilerPath();
-        if (compilerPath == null) {
-            compilerPath = Platform.includedIn(Platform.WINDOWS.class) ? "CL" : "gcc";
-        }
-        command.add(compilerPath);
+        command.add(getCCompilerPath().normalize().toString());
         command.addAll(Arrays.asList(SubstrateOptions.CCompilerOption.getValue()));
-
         command.addAll(options);
-        command.add(source.normalize().toString());
+
         if (target != null) {
-            if (Platform.includedIn(Platform.WINDOWS.class)) {
-                command.add("/Fe" + target.normalize().toString());
-            } else {
-                command.add("-o");
-                command.add(target.normalize().toString());
-            }
+            addTarget(command, target);
         }
+        for (Path elem : input) {
+            command.add(elem.toString());
+        }
+
         LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
         command.addAll(currentLibc.getCCompilerOptions());
-        return startCommand(command);
+        return command;
     }
 
-    protected String commandString(List<String> command) {
-        StringBuilder sb = new StringBuilder();
-        for (String s : command) {
-            sb.append(' ').append(s);
-        }
-        return sb.toString();
-    }
-
-    public String lastExecutedCommand() {
-        return lastExecutedCommand;
-    }
-
-    public Process startCommand(List<String> command) throws IOException {
-        Process proc = null;
-        ProcessBuilder pb = new ProcessBuilder().command(command).directory(tempDirectory.toFile());
-        proc = pb.start();
-        lastExecutedCommand = commandString(pb.command());
-        return proc;
-    }
-
-    public int runCommandToExit(List<String> command) {
-        int status;
-        try {
-            Process p = startCommand(command);
-            FileUtils.drainInputStream(p.getInputStream(), System.err);
-            status = p.waitFor();
-        } catch (IOException e) {
-            throw new RuntimeException("Error when running command: " + command + "(wd: " + tempDirectory.toString() + ")", e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while waiting for command: " + command);
-        }
-
-        if (status != 0) {
-            throw new IllegalStateException("command returned " + status);
-        }
-
-        return status;
-    }
-
-    protected void reportCompilerError(@SuppressWarnings("unused") Path queryFile, String line) {
-        throw shouldNotReachHere(line);
+    protected void addTarget(List<String> command, Path target) {
+        command.add("-o");
+        command.add(target.toString());
     }
 }
