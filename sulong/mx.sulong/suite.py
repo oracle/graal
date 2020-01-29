@@ -563,6 +563,28 @@ suite = {
       },
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi" : {
+      "subDir" : "projects",
+      "vpath" : True,
+      "sourceDir" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxxabi",
+      "class" : "CMakeProject",
+      "makeTarget" : "install",
+      "results" : ["native"],
+      "cmakeConfig" : {
+        "LLVM_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/llvm",
+        "LIBCXXABI_INCLUDE_TESTS": "NO",
+        "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx/include",
+        "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx",
+        "LIBCXXABI_ENABLE_STATIC" : "NO",
+        "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
+        "CMAKE_INSTALL_PREFIX" : "native",
+      },
+      "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "license" : "BSD-new",
+    },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
       "subDir" : "tests",
@@ -1093,6 +1115,9 @@ suite = {
       "relpath" : False,
       "platformDependent" : True,
       "layout" : {
+        "./": [
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi/*",
+        ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
@@ -1101,7 +1126,7 @@ suite = {
           {
             "source_type": "extracted-dependency",
             "dependency": "sdk:LLVM_ORG",
-            "path": "./lib/<lib:c++*>*",
+            "path": "./lib/libc++.*",
             "dereference" : "never",
           },
         ],
@@ -1113,6 +1138,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
+        "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
       ],
       "license" : "BSD-new",
     },
