@@ -152,6 +152,12 @@ public class ComponentInstaller extends Launcher {
 
         globalOptions.put(Commands.OPTION_NON_INTERACTIVE, "");
 
+        globalOptions.put(Commands.OPTION_PRINT_VERSION, "");
+        globalOptions.put(Commands.OPTION_SHOW_VERSION, "");
+
+        globalOptions.put(Commands.LONG_OPTION_PRINT_VERSION, Commands.OPTION_PRINT_VERSION);
+        globalOptions.put(Commands.LONG_OPTION_SHOW_VERSION, Commands.OPTION_SHOW_VERSION);
+
         // for simplicity, these options are global, but still commands that use them should
         // declare them explicitly.
         globalOptions.putAll(componentOptions);
@@ -332,6 +338,12 @@ public class ComponentInstaller extends Launcher {
         if (go == null) {
             return 0;
         }
+        if (env.hasOption(Commands.OPTION_PRINT_VERSION)) {
+            printVersion();
+            return 0;
+        } else if (env.hasOption(Commands.OPTION_SHOW_VERSION)) {
+            printVersion();
+        }
         int srcCount = 0;
         if (input.hasOption(Commands.OPTION_FILES)) {
             srcCount++;
@@ -457,7 +469,7 @@ public class ComponentInstaller extends Launcher {
             feedback.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
         } catch (AbortException ex) {
-            feedback.error(null, ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error(null, ex.getCause(), ex.getLocalizedMessage()); // NOI18N
             return ex.getExitCode();
         } catch (RuntimeException ex) {
             feedback.error("INSTALLER_InternalError", ex, ex.getLocalizedMessage()); // NOI18N
@@ -834,8 +846,7 @@ public class ComponentInstaller extends Launcher {
     @Override
     protected void printVersion() {
         env.output("MSG_InstallerVersion",
-                        CommonConstants.INSTALLER_VERSION,
-                        System.getProperty("java.version"));
+                        env.getLocalRegistry().getGraalVersion().displayString());
     }
 
     public boolean runLauncher() {
