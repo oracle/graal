@@ -151,7 +151,7 @@ public abstract class Source {
     private static final CharSequence CONTENT_UNSET = new String();
 
     private static final String UNKNOWN_MIME_TYPE = "content/unknown";
-    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, true).toSourceNotInterned();
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, true, null).toSourceNotInterned();
 
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
@@ -1130,19 +1130,16 @@ public abstract class Source {
 
         useContent = enforceInterfaceContracts(useContent);
         SourceImpl.Key key = null;
+        String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
-            String relativePathInLanguageHome = SourceAccessor.getRelativePathInLanguageHome(useTruffleFile);
-            if (relativePathInLanguageHome != null) {
-                if (SourceAccessor.isPreInitialization()) {
-                    key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy,
-                                    relativePathInLanguageHome);
-                } else {
-                    key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy, relativePathInLanguageHome);
-                }
+            relativePathInLanguageHome = SourceAccessor.getRelativePathInLanguageHome(useTruffleFile);
+            if (relativePathInLanguageHome != null && SourceAccessor.isPreInitialization()) {
+                key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy,
+                                relativePathInLanguageHome);
             }
         }
         if (key == null) {
-            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
+            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy, relativePathInLanguageHome);
         }
         Source source = SOURCES.intern(key);
         SourceAccessor.onSourceCreated(source);

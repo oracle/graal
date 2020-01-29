@@ -313,22 +313,21 @@ final class SourceImpl extends Source {
         private final String path;
 
         /**
-         * Creates an {@link ImmutableKey} for a file under the language home. The hash code must be
-         * equal to {@link ReinitializableKey}'s hash code. The hash code is based on the relative
-         * path in language home and does not include {@code url} nor {@code uri} as they contain
-         * absolute paths.
+         * Creates an {@link ImmutableKey}. The {@code relativePathInLanguageHome} has to be given
+         * for a file under the language home. For the file under the language home the hash code
+         * must be equal to {@link ReinitializableKey}'s hash code, so it's based on the relative
+         * path in the language home and does not include {@code url} nor {@code uri} as they
+         * contain absolute paths.
          */
         ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy,
                         String relativePathInLanguageHome) {
-            this(content, mimeType, languageId, url, uri, name, path, internal, interactive, cached, legacy);
-            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
-        }
-
-        ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
             super(content, mimeType, languageId, name, internal, interactive, cached, legacy);
             this.uri = uri;
             this.url = url;
             this.path = path;
+            if (relativePathInLanguageHome != null) {
+                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, legacy);
+            }
         }
 
         String getPath() {
