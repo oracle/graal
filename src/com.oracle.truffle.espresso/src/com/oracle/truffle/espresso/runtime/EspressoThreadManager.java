@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongUnaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -94,15 +96,21 @@ class EspressoThreadManager implements ContextAccess {
         activeThreads.add(self);
     }
 
+    final AtomicLong createdThreadCount = new AtomicLong();
+    final AtomicLong peakThreadCount = new AtomicLong();
+
     public void registerThread(Thread host, StaticObject guest) {
-
-        // FIXME(peterssen): Thread count must be atomic.
-        EspressoContext.ManagementStats stats = getContext().getManagementStats();
-        int threadCount = stats.getThreadTotalCount();
-        stats.setThreadTotalCount(threadCount + 1);
-        stats.setThreadPeakCount(Math.max(stats.getThreadPeakCount(), threadCount + 1));
-
         activeThreads.add(guest);
+
+        // Update java.lang.management counters.
+        createdThreadCount.incrementAndGet();
+        peakThreadCount.updateAndGet(new LongUnaryOperator() {
+            @Override
+            public long applyAsLong(long oldPeak) {
+                return Math.max(oldPeak, activeThreads.size());
+            }
+        });
+
         if (finalizerThreadId == -1) {
             if (getMeta().FinalizerThread.isAssignableFrom(guest.getKlass())) {
                 synchronized (threadLock) {
