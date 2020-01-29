@@ -169,11 +169,11 @@ public final class ReadOnlyArrayList<T> implements List<T> {
     @Override
     public T get(int index) {
         int at = first + index;
-        T ret = arr[at];
-        if (at >= last) {
+        if (at < first || at >= last) {
             CompilerDirectives.transferToInterpreter();
             throw new ArrayIndexOutOfBoundsException();
         }
+        T ret = arr[at];
         return ret;
     }
 
