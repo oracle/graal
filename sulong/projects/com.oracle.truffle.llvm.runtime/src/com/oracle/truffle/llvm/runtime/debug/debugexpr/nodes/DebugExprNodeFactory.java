@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,8 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public final class DebugExprNodeFactory {
 
@@ -152,7 +154,12 @@ public final class DebugExprNodeFactory {
 
     @SuppressWarnings("static-method")
     public DebugExpressionPair createSizeofNode(DebugExprType type) {
-        LLVMExpressionNode node = new DebugExprSizeofNode(type);
+        LLVMExpressionNode node;
+        try {
+            node = new DebugExprSizeofNode(type);
+        } catch (TypeOverflowException e) {
+            node = Type.handleOverflowExpression(e);
+        }
         return DebugExpressionPair.create(node, DebugExprType.getIntType(32, true));
     }
 

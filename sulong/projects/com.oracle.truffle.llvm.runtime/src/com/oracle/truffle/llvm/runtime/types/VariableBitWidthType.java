@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -77,7 +77,11 @@ public final class VariableBitWidthType extends Type {
     }
 
     @Override
-    public int getBitSize() {
+    public long getBitSize() {
+        return bitWidth;
+    }
+
+    public int getBitSizeInt() {
         return bitWidth;
     }
 
@@ -140,8 +144,19 @@ public final class VariableBitWidthType extends Type {
     }
 
     @Override
-    public int getSize(DataLayout targetDataLayout) {
-        return targetDataLayout.getSize(this);
+    public long getSize(DataLayout targetDataLayout) {
+        try {
+            return targetDataLayout.getSize(this);
+        } catch (TypeOverflowException e) {
+            // should not reach here
+            throw new AssertionError(e);
+        }
+    }
+
+    public int getSizeInt(DataLayout targetDataLayout) {
+        long size = getSize(targetDataLayout);
+        assert (int) size == size;
+        return (int) size;
     }
 
     @Override

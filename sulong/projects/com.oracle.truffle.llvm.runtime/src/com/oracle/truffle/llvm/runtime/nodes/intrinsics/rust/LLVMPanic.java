@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPanic extends LLVMIntrinsic {
@@ -79,8 +80,13 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         private PanicLocType(DataLayout dataLayout, Type type, StrSliceType strslice) {
             this.strslice = strslice;
             StructureType structureType = (StructureType) ((PointerType) type).getElementType(0);
-            this.offsetFilename = structureType.getOffsetOf(1, dataLayout);
-            this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
+            try {
+                this.offsetFilename = structureType.getOffsetOf(1, dataLayout);
+                this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
+            } catch (TypeOverflowException e) {
+                // should not reach here
+                throw new AssertionError(e);
+            }
         }
 
         @TruffleBoundary
@@ -107,7 +113,12 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         private final Type type;
 
         private StrSliceType(DataLayout dataLayout, Type type) {
-            this.lengthOffset = ((StructureType) type).getOffsetOf(1, dataLayout);
+            try {
+                this.lengthOffset = ((StructureType) type).getOffsetOf(1, dataLayout);
+            } catch (TypeOverflowException e) {
+                // should not reach here
+                throw new AssertionError(e);
+            }
             this.type = type;
         }
 

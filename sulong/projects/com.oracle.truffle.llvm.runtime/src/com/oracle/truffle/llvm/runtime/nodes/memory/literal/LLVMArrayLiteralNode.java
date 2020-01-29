@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,9 +42,9 @@ public abstract class LLVMArrayLiteralNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] values;
     @Child private LLVMStoreNode write;
-    private final int stride;
+    private final long stride;
 
-    public LLVMArrayLiteralNode(LLVMExpressionNode[] values, int stride, LLVMStoreNode write) {
+    public LLVMArrayLiteralNode(LLVMExpressionNode[] values, long stride, LLVMStoreNode write) {
         this.values = values;
         this.stride = stride;
         this.write = write;

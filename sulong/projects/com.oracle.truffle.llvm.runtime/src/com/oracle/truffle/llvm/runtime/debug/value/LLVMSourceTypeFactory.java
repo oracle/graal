@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -114,29 +115,33 @@ public final class LLVMSourceTypeFactory {
 
         @Override
         public void visit(PrimitiveType type) {
-            final String name = type.getPrimitiveKind().name().toLowerCase();
+            try {
+                final String name = type.getPrimitiveKind().name().toLowerCase();
 
-            final LLVMSourceType resolvedType;
-            switch (type.getPrimitiveKind()) {
-                case I1:
-                    resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.BOOLEAN, null);
-                    break;
-                case I8:
-                case I16:
-                case I32:
-                case I64:
-                    resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.SIGNED, null);
-                    break;
-                case FLOAT:
-                case DOUBLE:
-                case X86_FP80:
-                    resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.FLOATING, null);
-                    break;
-                default:
-                    resolvedType = LLVMSourceType.UNSUPPORTED;
+                final LLVMSourceType resolvedType;
+                switch (type.getPrimitiveKind()) {
+                    case I1:
+                        resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.BOOLEAN, null);
+                        break;
+                    case I8:
+                    case I16:
+                    case I32:
+                    case I64:
+                        resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.SIGNED, null);
+                        break;
+                    case FLOAT:
+                    case DOUBLE:
+                    case X86_FP80:
+                        resolvedType = new LLVMSourceBasicType(name, getBitSize(type), getAlignment(type), 0L, LLVMSourceBasicType.Kind.FLOATING, null);
+                        break;
+                    default:
+                        resolvedType = LLVMSourceType.UNSUPPORTED;
+                }
+
+                resolved.put(type, resolvedType);
+            } catch (TypeOverflowException e) {
+                throw new AssertionError(e);
             }
-
-            resolved.put(type, resolvedType);
         }
 
         @Override
@@ -146,31 +151,39 @@ public final class LLVMSourceTypeFactory {
 
         @Override
         public void visit(PointerType type) {
-            final LLVMSourcePointerType resolvedType = new LLVMSourcePointerType(getBitSize(type), getAlignment(type), 0L, false, false, null);
-            resolved.put(type, resolvedType);
+            try {
+                final LLVMSourcePointerType resolvedType = new LLVMSourcePointerType(getBitSize(type), getAlignment(type), 0L, false, false, null);
+                resolved.put(type, resolvedType);
 
-            final Type baseType = type.getPointeeType();
-            final LLVMSourceType resolvedBaseType = baseType != null ? resolveType(baseType) : LLVMSourceType.VOID;
-            resolvedType.setBaseType(resolvedBaseType);
-            resolvedType.setName(() -> String.format("%s*", resolvedBaseType.getName()));
+                final Type baseType = type.getPointeeType();
+                final LLVMSourceType resolvedBaseType = baseType != null ? resolveType(baseType) : LLVMSourceType.VOID;
+                resolvedType.setBaseType(resolvedBaseType);
+                resolvedType.setName(() -> String.format("%s*", resolvedBaseType.getName()));
+            } catch (TypeOverflowException e) {
+                throw new AssertionError(e);
+            }
         }
 
         @Override
         public void visit(StructureType type) {
-            final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
-            resolved.put(type, resolvedType);
+            try {
+                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
+                resolved.put(type, resolvedType);
 
-            final int numberOfMembers = type.getNumberOfElements();
-            for (int i = 0; i < numberOfMembers; i++) {
-                final Type memberType = type.getElementType(i);
-                final long memberBitOffset = type.getOffsetOf(i, dataLayout) * Byte.SIZE;
+                final int numberOfMembers = type.getNumberOfElementsInt();
+                for (int i = 0; i < numberOfMembers; i++) {
+                    final Type memberType = type.getElementType(i);
+                    final long memberBitOffset = Type.multiplyUnsignedExact(type.getOffsetOf(i, dataLayout), Byte.SIZE);
 
-                final String memberName = String.format("[%d]", i);
-                final LLVMSourceType resolvedMemberType = resolveType(memberType);
-                final LLVMSourceMemberType member = new LLVMSourceMemberType(memberName, getBitSize(memberType), getAlignment(memberType), memberBitOffset, null);
-                member.setElementType(resolvedMemberType);
+                    final String memberName = String.format("[%d]", i);
+                    final LLVMSourceType resolvedMemberType = resolveType(memberType);
+                    final LLVMSourceMemberType member = new LLVMSourceMemberType(memberName, getBitSize(memberType), getAlignment(memberType), memberBitOffset, null);
+                    member.setElementType(resolvedMemberType);
 
-                resolvedType.addDynamicMember(member);
+                    resolvedType.addDynamicMember(member);
+                }
+            } catch (TypeOverflowException e) {
+                throw new AssertionError(e);
             }
         }
 
@@ -185,18 +198,22 @@ public final class LLVMSourceTypeFactory {
         }
 
         private void resolveArrayOrVectorType(AggregateType type) {
-            final LLVMSourceArrayLikeType resolvedType = new LLVMSourceArrayLikeType(getBitSize(type), getAlignment(type), 0L, null);
-            resolved.put(type, resolvedType);
+            try {
+                final LLVMSourceArrayLikeType resolvedType = new LLVMSourceArrayLikeType(getBitSize(type), getAlignment(type), 0L, null);
+                resolved.put(type, resolvedType);
 
-            final LLVMSourceType resolvedBaseType = resolveType(type.getElementType(0L));
-            resolvedType.setBaseType(resolvedBaseType);
-            resolvedType.setLength(type.getNumberOfElements());
+                final LLVMSourceType resolvedBaseType = resolveType(type.getElementType(0L));
+                resolvedType.setBaseType(resolvedBaseType);
+                resolvedType.setLength(type.getNumberOfElements());
 
-            resolvedType.setName(() -> {
-                final String content = String.format("%d x %s", type.getNumberOfElements(), resolvedBaseType.getName());
-                final String aggregateFormat = type instanceof ArrayType ? "[ %s ]" : "< %s >";
-                return String.format(aggregateFormat, content);
-            });
+                resolvedType.setName(() -> {
+                    final String content = String.format("%d x %s", type.getNumberOfElements(), resolvedBaseType.getName());
+                    final String aggregateFormat = type instanceof ArrayType ? "[ %s ]" : "< %s >";
+                    return String.format(aggregateFormat, content);
+                });
+            } catch (TypeOverflowException e) {
+                throw new AssertionError(e);
+            }
         }
 
         @Override
@@ -214,13 +231,17 @@ public final class LLVMSourceTypeFactory {
 
         @Override
         public void visit(OpaqueType type) {
-            final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
-            resolved.put(type, resolvedType);
+            try {
+                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
+                resolved.put(type, resolvedType);
+            } catch (TypeOverflowException e) {
+                throw new AssertionError(e);
+            }
         }
 
-        private long getBitSize(Type type) {
-            final int byteSize = type.getSize(dataLayout);
-            return byteSize * (long) Byte.SIZE;
+        private long getBitSize(Type type) throws TypeOverflowException {
+            final long byteSize = type.getSize(dataLayout);
+            return Type.multiplyUnsignedExact(byteSize, Byte.SIZE);
         }
 
         private long getAlignment(Type type) {
