@@ -136,7 +136,7 @@ public class CAnnotationProcessor {
         return binary;
     }
 
-    protected void reportCompilerError(ProcessBuilder lastCommand, Path queryFile, String line) {
+    protected void reportCompilerError(ProcessBuilder current, Path queryFile, String line) {
         for (String header : codeCtx.getDirectives().getHeaderFiles()) {
             if (line.contains(header.substring(1, header.length() - 1) + ": No such file or directory")) {
                 UserError.abort("Basic header file missing (" + header + "). Make sure headers are available on your system.");
@@ -164,6 +164,12 @@ public class CAnnotationProcessor {
             }
         }
 
-        nativeLibs.getErrors().add(new CInterfaceError("Error compiling query code (in " + queryFile + "). Compiler command " + lastCommand + " output included error: " + line, elements));
+        CInterfaceError error = new CInterfaceError(
+                        String.format("Error compiling query code (in %s). Compiler command '%s' output included error: %s",
+                                        queryFile,
+                                        String.join(" ", current.command()),
+                                        line),
+                        elements);
+        nativeLibs.getErrors().add(error);
     }
 }
