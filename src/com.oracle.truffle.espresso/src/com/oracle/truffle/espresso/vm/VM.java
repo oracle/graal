@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
@@ -38,6 +39,7 @@ import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -481,7 +483,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region JNI Invocation Interface
     @VmImpl
     public static int DestroyJavaVM() {
-        return JniEnv.JNI_OK;
+        return JNI_OK;
     }
 
     @SuppressWarnings("unused")
@@ -489,14 +491,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static int AttachCurrentThread(@Word long penvPtr, @Word long argsPtr) {
         VMLogger.warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
         EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
-        return JniEnv.JNI_OK;
+        return JNI_OK;
     }
 
     @VmImpl
     public static int DetachCurrentThread() {
         VMLogger.warning("DetachCurrentThread!!!" + Thread.currentThread());
         EspressoLanguage.getCurrentContext().disposeThread(Thread.currentThread());
-        return JniEnv.JNI_OK;
+        return JNI_OK;
     }
 
     /**
@@ -516,15 +518,16 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public int GetEnv(@Word long vmPtr_, @Word long envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
+        assert getJavaVM() == vmPtr_;
         LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
         buf.put(jniEnv.getNativePointer());
-        return JniEnv.JNI_OK;
+        return JNI_OK;
     }
 
     @SuppressWarnings("unused")
     @VmImpl
     public static int AttachCurrentThreadAsDaemon(@Word long penvPtr, @Word long argsPtr) {
-        return JniEnv.JNI_OK;
+        return JNI_OK;
     }
 
     // endregion JNI Invocation Interface
@@ -1730,6 +1733,22 @@ public final class VM extends NativeEnv implements ContextAccess {
         });
         return res == null ? -1 : res;
     }
+
+    // region Invocation API
+
+    @VmImpl
+    public int JNI_GetCreatedJavaVMs(@Word long vmBufPtr, int bufLen, @Word long numVMsPtr) {
+        if (bufLen > 0) {
+            getContext().getJNI().GetJavaVM(vmBufPtr);
+            if (numVMsPtr != 0L) {
+                IntBuffer numVMsBuf = directByteBuffer(numVMsPtr, 1, JavaKind.Int).asIntBuffer();
+                numVMsBuf.put(1);
+            }
+        }
+        return JNI_OK;
+    }
+
+    // endregion Invocation API
 
     private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
         if (stack.compare(frameInstance)) {

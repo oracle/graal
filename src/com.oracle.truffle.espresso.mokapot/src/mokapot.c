@@ -106,6 +106,14 @@ void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
   VM_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
 
+  struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_ *)(*(functions->vm));
+  #define DISPOSE_INVOCATION_API__(name) \
+      (*truffle_env)->releaseClosureRef(truffle_env, java_vm_functions->name); \
+      java_vm_functions->name = NULL;
+
+  JNI_INVOKE_INTERFACE_METHODS(DISPOSE_INVOCATION_API__)
+  #undef DISPOSE_INVOCATION_API__
+
   free((*moka_env)->vm);
   functions->vm = NULL;
   free(functions);
@@ -1393,6 +1401,15 @@ int JVM_handle_linux_signal(int sig,
   UNIMPLEMENTED(JVM_handle_linux_signal);
   return 0;
 }
+
+// region Invocation API
+
+jint JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {
+    IMPLEMENTED(JNI_GetCreatedJavaVMs);
+    return (*getEnv())->JNI_GetCreatedJavaVMs(vm_buf, buf_len, numVMs);
+}
+
+// endregion Invocation API
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
     NATIVE(jio_vsnprintf);
