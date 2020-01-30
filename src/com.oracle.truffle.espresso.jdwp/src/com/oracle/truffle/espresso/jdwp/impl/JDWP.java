@@ -997,7 +997,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                int invocationOptions =  input.readInt();
+                int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
@@ -1057,7 +1057,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                int invocationOptions =  input.readInt();
+                int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
@@ -1151,7 +1151,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                int invocationOptions =  input.readInt();
+                int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
@@ -1550,7 +1550,7 @@ final class JDWP {
 
                 JDWPLogger.log("trying to invoke method: %s", JDWPLogger.LogLevel.PACKET, method.getNameAsString());
 
-                int invocationOptions =  input.readInt();
+                int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
