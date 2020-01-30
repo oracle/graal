@@ -82,7 +82,7 @@ import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.Multi;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
@@ -375,8 +375,8 @@ public final class SchedulePhase extends Phase {
             if (!killed.isAny()) {
                 for (Node n : subList) {
                     // Check if this node kills a node in the watch list.
-                    if (n instanceof Single) {
-                        LocationIdentity identity = ((Single) n).getKilledLocationIdentity();
+                    if (n instanceof SingleMemoryKill) {
+                        LocationIdentity identity = ((SingleMemoryKill) n).getKilledLocationIdentity();
                         killed.add(identity);
                         if (killed.isAny()) {
                             return;
@@ -472,8 +472,8 @@ public final class SchedulePhase extends Phase {
         private static void checkWatchList(Block b, NodeMap<Block> nodeMap, NodeBitMap unprocessed, ArrayList<Node> result, ArrayList<FloatingReadNode> watchList, Node n) {
             if (watchList != null && !watchList.isEmpty()) {
                 // Check if this node kills a node in the watch list.
-                if (n instanceof Single) {
-                    LocationIdentity identity = ((Single) n).getKilledLocationIdentity();
+                if (n instanceof SingleMemoryKill) {
+                    LocationIdentity identity = ((SingleMemoryKill) n).getKilledLocationIdentity();
                     checkWatchList(watchList, identity, b, result, nodeMap, unprocessed);
                 } else if (n instanceof Multi) {
                     for (LocationIdentity identity : ((Multi) n).getKilledLocationIdentities()) {
@@ -1184,8 +1184,8 @@ public final class SchedulePhase extends Phase {
         private static void printNode(Node n) {
             Formatter buf = new Formatter();
             buf.format("%s", n);
-            if (n instanceof Single) {
-                buf.format(" // kills %s", ((Single) n).getKilledLocationIdentity());
+            if (n instanceof SingleMemoryKill) {
+                buf.format(" // kills %s", ((SingleMemoryKill) n).getKilledLocationIdentity());
             } else if (n instanceof Multi) {
                 buf.format(" // kills ");
                 for (LocationIdentity locid : ((Multi) n).getKilledLocationIdentities()) {

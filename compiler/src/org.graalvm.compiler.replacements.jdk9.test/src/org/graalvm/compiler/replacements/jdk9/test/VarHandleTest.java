@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -161,8 +161,8 @@ public class VarHandleTest extends GraalCompilerTest {
         for (Node n : graph.getNodes()) {
             if (n instanceof StartNode) {
                 startNodes++;
-            } else if (n instanceof Single) {
-                Single single = (Single) n;
+            } else if (n instanceof SingleMemoryKill) {
+                SingleMemoryKill single = (SingleMemoryKill) n;
                 if (single.getKilledLocationIdentity().isAny()) {
                     anyKillCount++;
                 }

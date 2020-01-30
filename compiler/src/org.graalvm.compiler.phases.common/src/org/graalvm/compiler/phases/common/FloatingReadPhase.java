@@ -69,7 +69,7 @@ import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -168,8 +168,8 @@ public class FloatingReadPhase extends Phase {
     }
 
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
-        if (node instanceof Single) {
-            processIdentity(currentState, ((Single) node).getKilledLocationIdentity());
+        if (node instanceof SingleMemoryKill) {
+            processIdentity(currentState, ((SingleMemoryKill) node).getKilledLocationIdentity());
         } else if (node instanceof Multi) {
             for (LocationIdentity identity : ((Multi) node).getKilledLocationIdentities()) {
                 processIdentity(currentState, identity);
@@ -284,7 +284,7 @@ public class FloatingReadPhase extends Phase {
     }
 
     public static boolean nodeOfMemoryType(Node node) {
-        return !(node instanceof MemoryKill) || (node instanceof Single ^ node instanceof Multi);
+        return !(node instanceof MemoryKill) || (node instanceof SingleMemoryKill ^ node instanceof Multi);
     }
 
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
@@ -330,8 +330,8 @@ public class FloatingReadPhase extends Phase {
             if (createFloatingReads && node instanceof FloatableAccessNode) {
                 processFloatable((FloatableAccessNode) node, state);
             }
-            if (node instanceof Single) {
-                processCheckpoint((Single) node, state);
+            if (node instanceof SingleMemoryKill) {
+                processCheckpoint((SingleMemoryKill) node, state);
             } else if (node instanceof Multi) {
                 processCheckpoint((Multi) node, state);
             }
@@ -372,7 +372,7 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private static void processCheckpoint(Single checkpoint, MemoryMapImpl state) {
+        private static void processCheckpoint(SingleMemoryKill checkpoint, MemoryMapImpl state) {
             processIdentity(checkpoint.getKilledLocationIdentity(), checkpoint, state);
         }
 

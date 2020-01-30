@@ -2,7 +2,7 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.word.LocationIdentity;
 
-public interface Single extends MemoryKill {
+public interface SingleMemoryKill extends MemoryKill {
 
     /**
      * This method is used to determine which memory location is killed by this node. Returning

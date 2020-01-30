@@ -58,7 +58,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -200,8 +200,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     }
                 }
             }
-        } else if (node instanceof Single) {
-            LocationIdentity identity = ((Single) node).getKilledLocationIdentity();
+        } else if (node instanceof SingleMemoryKill) {
+            LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
             killReadCacheByIdentity(state, identity);
         } else if (node instanceof Multi) {
             for (LocationIdentity identity : ((Multi) node).getKilledLocationIdentities()) {

@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -71,7 +71,7 @@ import jdk.vm.ci.meta.JavaKind;
           sizeRationale = "We can only dynamically, based on the type of the call (special, static, virtual, interface) decide" +
                           "how much code is generated for the call.")
 // @formatter:on
-public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, Single, UncheckedInterfaceProvider {
+public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, SingleMemoryKill, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeNode> TYPE = NodeClass.create(InvokeNode.class);
 
     @OptionalInput ValueNode classInit;

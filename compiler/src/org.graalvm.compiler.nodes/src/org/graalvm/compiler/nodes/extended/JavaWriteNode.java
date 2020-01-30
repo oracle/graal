@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.JavaKind;
  * write barriers, implicit conversions and optionally oop compression.
  */
 @NodeInfo(nameTemplate = "JavaWrite#{p#location/s}")
-public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, Single {
+public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
     protected final JavaKind writeKind;

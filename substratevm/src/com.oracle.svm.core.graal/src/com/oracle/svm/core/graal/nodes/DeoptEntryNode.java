@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
@@ -42,7 +42,7 @@ import com.oracle.svm.core.graal.lir.DeoptEntryOp;
  * deoptimization entry points.
  */
 @NodeInfo(allowedUsageTypes = InputType.Anchor, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeoptEntryNode extends DeoptProxyAnchorNode implements DeoptimizingNode.DeoptAfter, Single {
+public final class DeoptEntryNode extends DeoptProxyAnchorNode implements DeoptimizingNode.DeoptAfter, SingleMemoryKill {
     public static final NodeClass<DeoptEntryNode> TYPE = NodeClass.create(DeoptEntryNode.class);
 
     public DeoptEntryNode() {

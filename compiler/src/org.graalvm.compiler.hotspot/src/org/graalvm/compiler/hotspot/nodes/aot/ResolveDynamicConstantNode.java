@@ -34,12 +34,12 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_4, size = SIZE_16, allowedUsageTypes = {InputType.Memory})
-public class ResolveDynamicConstantNode extends DeoptimizingFixedWithNextNode implements Lowerable, Single {
+public class ResolveDynamicConstantNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
     public static final NodeClass<ResolveDynamicConstantNode> TYPE = NodeClass.create(ResolveDynamicConstantNode.class);
 
     @Input ValueNode value;

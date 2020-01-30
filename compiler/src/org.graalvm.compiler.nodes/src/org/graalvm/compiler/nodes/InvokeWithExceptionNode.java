@@ -40,7 +40,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -51,7 +51,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.BytecodeFrame;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, IterableNodeType, Single, LIRLowerable, UncheckedInterfaceProvider {
+public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, IterableNodeType, SingleMemoryKill, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
     private static final double EXCEPTION_PROBA = 1e-5;

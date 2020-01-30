@@ -32,7 +32,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Store of a value at a location specified as an absolute address.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerable, Single {
+public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<UnsafeMemoryStoreNode> TYPE = NodeClass.create(UnsafeMemoryStoreNode.class);
     @Input protected ValueNode value;

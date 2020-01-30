@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
@@ -57,7 +57,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  * emitted.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, Single, ControlFlowAnchored {
+public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {
     public static final NodeClass<CFunctionPrologueNode> TYPE = NodeClass.create(CFunctionPrologueNode.class);
 
     private final int newThreadStatus;

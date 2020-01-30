@@ -42,7 +42,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Guard}, cycles = CYCLES_2, size = SIZE_1)
-public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, Single, MemoryAccess, GuardingNode {
+public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, SingleMemoryKill, MemoryAccess, GuardingNode {
 
     public static final NodeClass<AbstractWriteNode> TYPE = NodeClass.create(AbstractWriteNode.class);
     @Input ValueNode value;

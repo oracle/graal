@@ -31,13 +31,13 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.memory.Single;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(allowedUsageTypes = InputType.Memory, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class KillMemoryNode extends FixedWithNextNode implements Single, LIRLowerable {
+public class KillMemoryNode extends FixedWithNextNode implements SingleMemoryKill, LIRLowerable {
     public static final NodeClass<KillMemoryNode> TYPE = NodeClass.create(KillMemoryNode.class);
 
     protected final LocationIdentity killedIdentity;
