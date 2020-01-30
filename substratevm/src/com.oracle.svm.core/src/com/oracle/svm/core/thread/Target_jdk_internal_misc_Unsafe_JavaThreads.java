@@ -52,8 +52,10 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
             JavaThreads.park(delayNanos);
         }
-        // sun.misc.Unsafe.park does not distinguish between
-        // timing out, being unparked, and being interrupted.
+        /*
+         * Unsafe.park does not distinguish between timing out, being unparked, and being
+         * interrupted, but the thread's interrupt status must be preserved.
+         */
     }
 
     /**

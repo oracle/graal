@@ -359,8 +359,7 @@ final class Target_java_lang_Thread {
          * call Thread.interrupted() unconditionally.
          */
         boolean interrupted = Thread.interrupted();
-        /* The common case is interruption is UNPARKED: Check it first. */
-        if (sleepResult == WaitResult.UNPARKED || sleepResult == WaitResult.JAVA_THREAD_INTERRUPTED || interrupted) {
+        if (sleepResult != WaitResult.TIMED_OUT || interrupted) {
             throw new InterruptedException();
         }
     }
