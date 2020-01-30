@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
@@ -160,6 +162,50 @@ public abstract class CCompilerInvoker {
         @Override
         protected String getDefaultCompiler() {
             return "gcc";
+        }
+
+        @Override
+        protected CompilerInfo createCompilerInfo(Scanner scanner) {
+            try {
+                while (scanner.findInLine("Target: ") == null) {
+                    scanner.nextLine();
+                }
+                scanner.useDelimiter("-");
+                Class<? extends Architecture> arch;
+                switch (scanner.next()) {
+                    case "x86_64":
+                        arch = AMD64.class;
+                        break;
+                    case "aarch64":
+                        arch = AArch64.class;
+                        break;
+                    default:
+                        arch = null;
+                }
+                String vendor = scanner.next();
+                scanner.reset(); /* back to default delimiters */
+                while (scanner.findInLine("gcc version ") == null) {
+                    scanner.nextLine();
+                }
+                scanner.useDelimiter(Pattern.quote("."));
+                int major = scanner.nextInt();
+                int minor = scanner.nextInt();
+                return new CompilerInfo(vendor, "GNU project C and C++ compiler", major, minor, arch);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        @Override
+        public void verifyCompiler() {
+            CompilerInfo compilerInfo = getCCompilerInfo();
+            if (compilerInfo == null) {
+                UserError.abort("Unable to detect supported Linux native software development toolchain.");
+            }
+            Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
+            if (compilerInfo.target != substrateTargetArch) {
+                UserError.abort(String.format("Native toolchain (%s) and native-image target architecture (%s) mismatch.", compilerInfo.target, substrateTargetArch));
+            }
         }
     }
 
