@@ -67,7 +67,6 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -661,11 +660,11 @@ public abstract class JavaThreads {
     }
 
     /** Interruptibly park the current thread. */
-    static WaitResult park() {
+    static void park() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         if (thread.isInterrupted()) { // avoid state changes and synchronization
-            return WaitResult.JAVA_THREAD_INTERRUPTED;
+            return;
         }
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
         // Change the Java thread state while parking.
@@ -673,25 +672,25 @@ public abstract class JavaThreads {
         int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
-            return parkEvent.condWait();
+            parkEvent.condWait();
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
     }
 
     /** Interruptibly park the current thread for the given number of nanoseconds. */
-    static WaitResult park(long delayNanos) {
+    static void park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         if (thread.isInterrupted()) { // avoid state changes and synchronization
-            return WaitResult.JAVA_THREAD_INTERRUPTED;
+            return;
         }
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
-            return parkEvent.condTimedWait(delayNanos);
+            parkEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
@@ -708,7 +707,7 @@ public abstract class JavaThreads {
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static WaitResult sleep(long delayNanos) {
+    static void sleep(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         if (thread.isInterrupted()) {
@@ -716,14 +715,14 @@ public abstract class JavaThreads {
              * For this, it is crucial that the ParkEvent always resets before it starts waiting
              * (see below) or a stale unpark could instantly end our next sleep.
              */
-            return WaitResult.JAVA_THREAD_INTERRUPTED;
+            return;
         }
         final boolean resetEventBeforeWait = true;
         final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), resetEventBeforeWait);
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
-            return sleepEvent.condTimedWait(delayNanos);
+            sleepEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }

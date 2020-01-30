@@ -49,7 +49,6 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -352,14 +351,8 @@ final class Target_java_lang_Thread {
         if (millis < 0) {
             throw new IllegalArgumentException("timeout value is negative");
         }
-        WaitResult sleepResult = JavaThreads.sleep(TimeUtils.millisToNanos(millis));
-        /*
-         * If the sleep did not time out, I was interrupted. The interrupted flag of the thread must
-         * be cleared when an InterruptedException is thrown (see JavaDoc of Thread.sleep), so we
-         * call Thread.interrupted() unconditionally.
-         */
-        boolean interrupted = Thread.interrupted();
-        if (sleepResult != WaitResult.TIMED_OUT || interrupted) {
+        JavaThreads.sleep(TimeUtils.millisToNanos(millis));
+        if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
             throw new InterruptedException();
         }
     }

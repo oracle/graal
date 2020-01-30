@@ -71,19 +71,13 @@ public abstract class ParkEvent {
     protected ParkEvent() {
     }
 
-    public enum WaitResult {
-        UNPARKED,
-        TIMED_OUT,
-        JAVA_THREAD_INTERRUPTED
-    }
-
     protected abstract void reset();
 
     /* cond_wait. */
-    protected abstract WaitResult condWait();
+    protected abstract void condWait();
 
     /** cond_timedwait, similar to {@link #condWait} but with a timeout in nanoseconds. */
-    protected abstract WaitResult condTimedWait(long delayNanos);
+    protected abstract void condTimedWait(long delayNanos);
 
     /** Notify anyone waiting on this event. */
     protected abstract void unpark();
@@ -173,12 +167,12 @@ final class DetachedParkEvent extends ParkEvent {
     }
 
     @Override
-    protected WaitResult condWait() {
+    protected void condWait() {
         throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
     }
 
     @Override
-    protected WaitResult condTimedWait(long delayNanos) {
+    protected void condTimedWait(long delayNanos) {
         throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
     }
 

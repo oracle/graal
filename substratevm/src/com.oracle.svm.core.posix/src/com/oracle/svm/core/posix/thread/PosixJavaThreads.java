@@ -247,7 +247,7 @@ class PosixParkEvent extends ParkEvent {
     }
 
     @Override
-    protected WaitResult condWait() {
+    protected void condWait() {
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
         try {
             if (resetEventBeforeWait) {
@@ -258,14 +258,13 @@ class PosixParkEvent extends ParkEvent {
                 PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
             }
             event = false;
-            return WaitResult.UNPARKED;
         } finally {
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
         }
     }
 
     @Override
-    protected WaitResult condTimedWait(long delayNanos) {
+    protected void condTimedWait(long delayNanos) {
         /* Encode the delay as a deadline in a Time.timespec. */
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
@@ -291,11 +290,7 @@ class PosixParkEvent extends ParkEvent {
                     PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
                 }
             }
-            if (event) {
-                event = false;
-                return WaitResult.UNPARKED;
-            }
-            return WaitResult.TIMED_OUT;
+            event = false;
         } finally {
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
         }
