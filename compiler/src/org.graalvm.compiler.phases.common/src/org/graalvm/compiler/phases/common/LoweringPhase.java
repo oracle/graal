@@ -70,6 +70,7 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -317,7 +318,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                 if (n instanceof Single) {
                     isAny = ((Single) n).getKilledLocationIdentity().isAny();
                 } else {
-                    for (LocationIdentity ident : ((MemoryCheckpoint.Multi) n).getKilledLocationIdentities()) {
+                    for (LocationIdentity ident : ((Multi) n).getKilledLocationIdentities()) {
                         if (ident.isAny()) {
                             isAny = true;
                         }

@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.memory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedNodeInterface;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations
@@ -36,23 +35,10 @@ import org.graalvm.word.LocationIdentity;
  */
 public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
 
-    interface Multi extends MemoryCheckpoint {
-
-        /**
-         * This method is used to determine which set of memory locations is killed by this node.
-         * Returning the special value {@link LocationIdentity#any()} will kill all memory
-         * locations.
-         *
-         * @return the identities of all locations killed by this node.
-         */
-        LocationIdentity[] getKilledLocationIdentities();
-
-    }
-
     class TypeAssertion {
 
         public static boolean correctType(Node node) {
-            return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof MemoryCheckpoint.Multi);
+            return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof Multi);
         }
     }
 }

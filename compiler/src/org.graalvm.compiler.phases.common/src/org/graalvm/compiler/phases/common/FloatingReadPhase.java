@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
+import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -169,8 +170,8 @@ public class FloatingReadPhase extends Phase {
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
         if (node instanceof Single) {
             processIdentity(currentState, ((Single) node).getKilledLocationIdentity());
-        } else if (node instanceof MemoryCheckpoint.Multi) {
-            for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getKilledLocationIdentities()) {
+        } else if (node instanceof Multi) {
+            for (LocationIdentity identity : ((Multi) node).getKilledLocationIdentities()) {
                 processIdentity(currentState, identity);
             }
         }
@@ -327,8 +328,8 @@ public class FloatingReadPhase extends Phase {
             }
             if (node instanceof Single) {
                 processCheckpoint((Single) node, state);
-            } else if (node instanceof MemoryCheckpoint.Multi) {
-                processCheckpoint((MemoryCheckpoint.Multi) node, state);
+            } else if (node instanceof Multi) {
+                processCheckpoint((Multi) node, state);
             }
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
@@ -371,7 +372,7 @@ public class FloatingReadPhase extends Phase {
             processIdentity(checkpoint.getKilledLocationIdentity(), checkpoint, state);
         }
 
-        private static void processCheckpoint(MemoryCheckpoint.Multi checkpoint, MemoryMapImpl state) {
+        private static void processCheckpoint(Multi checkpoint, MemoryMapImpl state) {
             for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
                 processIdentity(identity, checkpoint, state);
             }
