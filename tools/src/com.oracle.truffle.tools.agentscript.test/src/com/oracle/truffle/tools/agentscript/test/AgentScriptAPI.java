@@ -59,30 +59,39 @@ public interface AgentScriptAPI {
     }
 
     interface SourceInfo {
-        /** Name of the {@link #sourceLoaded}.
+        /** Name of the {@link OnSourceLoadedHandler#sourceLoaded}.
          * @return name of the loaded source
+         * @since 0.1
          */
         String name();
-        /** Character content of the {@link #sourceLoaded}.
+        /** Character content of the {@link OnSourceLoadedHandler#sourceLoaded}.
          * @return content of the loaded source
+         * @since 0.1
          */
         String characters();
         /** Identification of this source's language.
          * @return String representing the language ID
+         * @since 0.1
          */
         String language();
         /** Mime type of this source.
          * @return given mime type or {@code null}
+         * @since 0.1
          */
         String mimeType();
         /** URI uniquely identifying the source.
          * @return the URI
+         * @since 0.1
          */
         String uri();
     }
 
     @FunctionalInterface
     interface OnSourceLoadedHandler extends Handler {
+        /** Called when a new source is loaded into the system.
+         * @param info information about the loaded source
+         * @since 0.1
+         */
         void sourceLoaded(SourceInfo info);
     }
     /** Register a handler to be notified when a source is loaded.
