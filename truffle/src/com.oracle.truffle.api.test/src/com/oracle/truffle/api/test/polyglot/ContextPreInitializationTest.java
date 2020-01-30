@@ -1223,6 +1223,73 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    public void testSingeInstrumentInstanceAfterContextPatch() throws Exception {
+        AtomicInteger instrumentCreateCount = new AtomicInteger();
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+            instrumentCreateCount.incrementAndGet();
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, instrumentCreateCount.get());
+        try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            assertEquals(1, emittedContexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(1, firstLangCtx.initializeThreadCount);
+            assertEquals(0, firstLangCtx.disposeThreadCount);
+            assertEquals(1, instrumentCreateCount.get());
+        }
+    }
+
+    @Test
+    public void testInstrumentRecreatedAfterFailedContextPatch() throws Exception {
+        AtomicInteger instrumentCreateCount = new AtomicInteger();
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+            instrumentCreateCount.incrementAndGet();
+        });
+        setPatchable();
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, instrumentCreateCount.get());
+        try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            contexts.remove(firstLangCtx);
+            CountingContext newFirstLangCtx = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx.disposeContextCount);
+            assertEquals(1, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+            assertEquals(1, newFirstLangCtx.createContextCount);
+            assertEquals(1, newFirstLangCtx.initializeContextCount);
+            assertEquals(0, newFirstLangCtx.patchContextCount);
+            assertEquals(0, newFirstLangCtx.disposeContextCount);
+            assertEquals(1, newFirstLangCtx.initializeThreadCount);
+            assertEquals(0, newFirstLangCtx.disposeThreadCount);
+            assertEquals(2, instrumentCreateCount.get());
+        }
+    }
+
+    @Test
     public void testSetCurrentWorkingDirectory() throws Exception {
         setPatchable(FIRST);
         Path newCwd = Files.createTempDirectory("testSetCWD");
@@ -1705,6 +1772,7 @@ public class ContextPreInitializationTest {
             if (getActions() != null) {
                 environment = env;
                 contextsListenerBinding = env.getInstrumenter().attachContextsListener(this, true);
+                performAction(null, null);
             }
         }
 
