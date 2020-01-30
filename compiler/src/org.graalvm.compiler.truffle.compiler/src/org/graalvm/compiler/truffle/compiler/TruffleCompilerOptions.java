@@ -91,11 +91,15 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
 
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -222,9 +226,9 @@ public final class TruffleCompilerOptions {
         if (options != null && options.hasBeenSet(optionKey)) {
             return options.get(optionKey);
         }
-        OptionKey<T> compilerOptionKey = (OptionKey<T>) Lazy.POLYGLOT_TO_COMPILER.get(optionKey);
-        if (compilerOptionKey != null) {
-            return getValue(compilerOptionKey);
+        Pair<? extends OptionKey<?>, Function<Object, ?>> compilerOptionKeyPair = Lazy.POLYGLOT_TO_COMPILER.get(optionKey);
+        if (compilerOptionKeyPair != null) {
+            return (T) compilerOptionKeyPair.getRight().apply(getValue(compilerOptionKeyPair.getLeft()));
         }
         return optionKey.getDefaultValue();
     }
@@ -238,7 +242,7 @@ public final class TruffleCompilerOptions {
          * This is duplicated in TruffleRuntimeOptions#areTruffleCompilationExceptionsFatal.
          */
         boolean compilationExceptionsAreFatal = getPolyglotOptionValue(options, CompilationExceptionsAreFatal);
-        boolean performanceWarningsAreFatal = getPolyglotOptionValue(options, PerformanceWarningsAreFatal);
+        boolean performanceWarningsAreFatal = !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty();
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 
@@ -342,10 +346,11 @@ public final class TruffleCompilerOptions {
     static void checkDeprecation() {
         EconomicMap<OptionKey<?>, org.graalvm.options.OptionKey<?>> deprecatedToReplacement = EconomicMap.create(Equivalence.IDENTITY);
         OptionValues options = getOptions();
-        MapCursor<org.graalvm.options.OptionKey<?>, OptionKey<?>> cursor = Lazy.POLYGLOT_TO_COMPILER.getEntries();
+        MapCursor<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> cursor = Lazy.POLYGLOT_TO_COMPILER.getEntries();
         while (cursor.advance()) {
-            if (cursor.getValue().hasBeenSet(options)) {
-                deprecatedToReplacement.put(cursor.getValue(), cursor.getKey());
+            OptionKey<?> deprecatedKey = cursor.getValue().getLeft();
+            if (deprecatedKey.hasBeenSet(options)) {
+                deprecatedToReplacement.put(deprecatedKey, cursor.getKey());
             }
         }
         if (!deprecatedToReplacement.isEmpty()) {
@@ -384,76 +389,89 @@ public final class TruffleCompilerOptions {
         static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
 
         // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.
-        private static final EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
+        private static final EconomicMap<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
 
-        private static EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> initializePolyglotToGraalMapping() {
-            EconomicMap<org.graalvm.options.OptionKey<?>, OptionKey<?>> result = EconomicMap.create(Equivalence.IDENTITY);
-            result.put(InlineAcrossTruffleBoundary, TruffleInlineAcrossTruffleBoundary);
-            result.put(TracePerformanceWarnings, TraceTrufflePerformanceWarnings);
-            result.put(PrintExpansionHistogram, PrintTruffleExpansionHistogram);
-            result.put(IterativePartialEscape, TruffleIterativePartialEscape);
-            result.put(InstrumentFilter, TruffleInstrumentFilter);
-            result.put(InstrumentationTableSize, TruffleInstrumentationTableSize);
-            result.put(MaximumGraalNodeCount, TruffleMaximumGraalNodeCount);
-            result.put(MaximumInlineNodeCount, TruffleMaximumInlineNodeCount);
-            result.put(TraceInliningDetails, TraceTruffleInliningDetails);
-            result.put(InliningPolicy, TruffleInliningPolicy);
-            result.put(InliningExpansionBudget, TruffleInliningExpansionBudget);
-            result.put(InliningInliningBudget, TruffleInliningInliningBudget);
-            result.put(InliningCutoffCountPenalty, TruffleInliningCutoffCountPenalty);
-            result.put(InliningNodeCountPenalty, TruffleInliningNodeCountPenalty);
-            result.put(InliningExpandAllProximityFactor, TruffleInliningExpandAllProximityFactor);
-            result.put(InliningExpandAllProximityBonus, TruffleInliningExpandAllProximityBonus);
-            result.put(InliningExpansionCounterPressure, TruffleInliningExpansionCounterPressure);
-            result.put(InliningInliningCounterPressure, TruffleInliningInliningCounterPressure);
-            result.put(CompilationExceptionsAreFatal, SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal);
-            result.put(PerformanceWarningsAreFatal, SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal);
-            result.put(TraceInlining, SharedTruffleCompilerOptions.TraceTruffleInlining);
-            result.put(TraceStackTraceLimit, SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit);
-            result.put(Inlining, SharedTruffleCompilerOptions.TruffleFunctionInlining);
-            result.put(InliningRecursionDepth, SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining);
-            result.put(LanguageAgnosticInlining, SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining);
+        private static EconomicMap<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> initializePolyglotToGraalMapping() {
+            EconomicMap<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> result = EconomicMap.create(Equivalence.IDENTITY);
+            result.put(InlineAcrossTruffleBoundary, identity(TruffleInlineAcrossTruffleBoundary));
+            result.put(TracePerformanceWarnings, booleanToPerformanceWarningKind(TraceTrufflePerformanceWarnings));
+            result.put(PrintExpansionHistogram, identity(PrintTruffleExpansionHistogram));
+            result.put(IterativePartialEscape, identity(TruffleIterativePartialEscape));
+            result.put(InstrumentFilter, identity(TruffleInstrumentFilter));
+            result.put(InstrumentationTableSize, identity(TruffleInstrumentationTableSize));
+            result.put(MaximumGraalNodeCount, identity(TruffleMaximumGraalNodeCount));
+            result.put(MaximumInlineNodeCount, identity(TruffleMaximumInlineNodeCount));
+            result.put(TraceInliningDetails, identity(TraceTruffleInliningDetails));
+            result.put(InliningPolicy, identity(TruffleInliningPolicy));
+            result.put(InliningExpansionBudget, identity(TruffleInliningExpansionBudget));
+            result.put(InliningInliningBudget, identity(TruffleInliningInliningBudget));
+            result.put(InliningCutoffCountPenalty, identity(TruffleInliningCutoffCountPenalty));
+            result.put(InliningNodeCountPenalty, identity(TruffleInliningNodeCountPenalty));
+            result.put(InliningExpandAllProximityFactor, identity(TruffleInliningExpandAllProximityFactor));
+            result.put(InliningExpandAllProximityBonus, identity(TruffleInliningExpandAllProximityBonus));
+            result.put(InliningExpansionCounterPressure, identity(TruffleInliningExpansionCounterPressure));
+            result.put(InliningInliningCounterPressure, identity(TruffleInliningInliningCounterPressure));
+            result.put(CompilationExceptionsAreFatal, identity(SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal));
+            result.put(PerformanceWarningsAreFatal, booleanToPerformanceWarningKind(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal));
+            result.put(TraceInlining, identity(SharedTruffleCompilerOptions.TraceTruffleInlining));
+            result.put(TraceStackTraceLimit, identity(SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit));
+            result.put(Inlining, identity(SharedTruffleCompilerOptions.TruffleFunctionInlining));
+            result.put(InliningRecursionDepth, identity(SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining));
+            result.put(LanguageAgnosticInlining, identity(SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining));
 
-            result.put(Compilation, SharedTruffleCompilerOptions.TruffleCompilation);
-            result.put(CompileOnly, SharedTruffleCompilerOptions.TruffleCompileOnly);
-            result.put(CompileImmediately, SharedTruffleCompilerOptions.TruffleCompileImmediately);
-            result.put(BackgroundCompilation, SharedTruffleCompilerOptions.TruffleBackgroundCompilation);
-            result.put(CompilerThreads, SharedTruffleCompilerOptions.TruffleCompilerThreads);
-            result.put(CompilationThreshold, SharedTruffleCompilerOptions.TruffleCompilationThreshold);
-            result.put(MinInvokeThreshold, SharedTruffleCompilerOptions.TruffleMinInvokeThreshold);
-            result.put(InvalidationReprofileCount, SharedTruffleCompilerOptions.TruffleInvalidationReprofileCount);
-            result.put(ReplaceReprofileCount, SharedTruffleCompilerOptions.TruffleReplaceReprofileCount);
-            result.put(ArgumentTypeSpeculation, SharedTruffleCompilerOptions.TruffleArgumentTypeSpeculation);
-            result.put(ReturnTypeSpeculation, SharedTruffleCompilerOptions.TruffleReturnTypeSpeculation);
-            result.put(Profiling, SharedTruffleCompilerOptions.TruffleProfilingEnabled);
-            result.put(MultiTier, SharedTruffleCompilerOptions.TruffleMultiTier);
-            result.put(FirstTierCompilationThreshold, SharedTruffleCompilerOptions.TruffleFirstTierCompilationThreshold);
-            result.put(FirstTierMinInvokeThreshold, SharedTruffleCompilerOptions.TruffleFirstTierMinInvokeThreshold);
-            result.put(CompilationExceptionsArePrinted, SharedTruffleCompilerOptions.TruffleCompilationExceptionsArePrinted);
-            result.put(CompilationExceptionsAreThrown, SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreThrown);
-            result.put(TraceCompilation, SharedTruffleCompilerOptions.TraceTruffleCompilation);
-            result.put(TraceCompilationDetails, SharedTruffleCompilerOptions.TraceTruffleCompilationDetails);
-            result.put(TraceCompilationPolymorphism, SharedTruffleCompilerOptions.TraceTruffleCompilationPolymorphism);
-            result.put(TraceCompilationAST, SharedTruffleCompilerOptions.TraceTruffleCompilationAST);
-            result.put(TraceCompilationCallTree, SharedTruffleCompilerOptions.TraceTruffleCompilationCallTree);
-            result.put(TraceAssumptions, SharedTruffleCompilerOptions.TraceTruffleAssumptions);
-            result.put(CompilationStatistics, SharedTruffleCompilerOptions.TruffleCompilationStatistics);
-            result.put(CompilationStatisticDetails, SharedTruffleCompilerOptions.TruffleCompilationStatisticDetails);
-            result.put(TraceTransferToInterpreter, SharedTruffleCompilerOptions.TraceTruffleTransferToInterpreter);
-            result.put(TraceSplitting, SharedTruffleCompilerOptions.TraceTruffleSplitting);
-            result.put(InliningNodeBudget, SharedTruffleCompilerOptions.TruffleInliningMaxCallerSize);
-            result.put(Splitting, SharedTruffleCompilerOptions.TruffleSplitting);
-            result.put(SplittingMaxCalleeSize, SharedTruffleCompilerOptions.TruffleSplittingMaxCalleeSize);
-            result.put(SplittingGrowthLimit, SharedTruffleCompilerOptions.TruffleSplittingGrowthLimit);
-            result.put(SplittingMaxNumberOfSplitNodes, SharedTruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes);
-            result.put(SplittingMaxPropagationDepth, SharedTruffleCompilerOptions.TruffleSplittingMaxPropagationDepth);
-            result.put(TraceSplittingSummary, SharedTruffleCompilerOptions.TruffleTraceSplittingSummary);
-            result.put(SplittingTraceEvents, SharedTruffleCompilerOptions.TruffleSplittingTraceEvents);
-            result.put(SplittingDumpDecisions, SharedTruffleCompilerOptions.TruffleSplittingDumpDecisions);
-            result.put(SplittingAllowForcedSplits, SharedTruffleCompilerOptions.TruffleSplittingAllowForcedSplits);
-            result.put(OSR, SharedTruffleCompilerOptions.TruffleOSR);
-            result.put(OSRCompilationThreshold, SharedTruffleCompilerOptions.TruffleOSRCompilationThreshold);
+            result.put(Compilation, identity(SharedTruffleCompilerOptions.TruffleCompilation));
+            result.put(CompileOnly, identity(SharedTruffleCompilerOptions.TruffleCompileOnly));
+            result.put(CompileImmediately, identity(SharedTruffleCompilerOptions.TruffleCompileImmediately));
+            result.put(BackgroundCompilation, identity(SharedTruffleCompilerOptions.TruffleBackgroundCompilation));
+            result.put(CompilerThreads, identity(SharedTruffleCompilerOptions.TruffleCompilerThreads));
+            result.put(CompilationThreshold, identity(SharedTruffleCompilerOptions.TruffleCompilationThreshold));
+            result.put(MinInvokeThreshold, identity(SharedTruffleCompilerOptions.TruffleMinInvokeThreshold));
+            result.put(InvalidationReprofileCount, identity(SharedTruffleCompilerOptions.TruffleInvalidationReprofileCount));
+            result.put(ReplaceReprofileCount, identity(SharedTruffleCompilerOptions.TruffleReplaceReprofileCount));
+            result.put(ArgumentTypeSpeculation, identity(SharedTruffleCompilerOptions.TruffleArgumentTypeSpeculation));
+            result.put(ReturnTypeSpeculation, identity(SharedTruffleCompilerOptions.TruffleReturnTypeSpeculation));
+            result.put(Profiling, identity(SharedTruffleCompilerOptions.TruffleProfilingEnabled));
+            result.put(MultiTier, identity(SharedTruffleCompilerOptions.TruffleMultiTier));
+            result.put(FirstTierCompilationThreshold, identity(SharedTruffleCompilerOptions.TruffleFirstTierCompilationThreshold));
+            result.put(FirstTierMinInvokeThreshold, identity(SharedTruffleCompilerOptions.TruffleFirstTierMinInvokeThreshold));
+            result.put(CompilationExceptionsArePrinted, identity(SharedTruffleCompilerOptions.TruffleCompilationExceptionsArePrinted));
+            result.put(CompilationExceptionsAreThrown, identity(SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreThrown));
+            result.put(TraceCompilation, identity(SharedTruffleCompilerOptions.TraceTruffleCompilation));
+            result.put(TraceCompilationDetails, identity(SharedTruffleCompilerOptions.TraceTruffleCompilationDetails));
+            result.put(TraceCompilationPolymorphism, identity(SharedTruffleCompilerOptions.TraceTruffleCompilationPolymorphism));
+            result.put(TraceCompilationAST, identity(SharedTruffleCompilerOptions.TraceTruffleCompilationAST));
+            result.put(TraceCompilationCallTree, identity(SharedTruffleCompilerOptions.TraceTruffleCompilationCallTree));
+            result.put(TraceAssumptions, identity(SharedTruffleCompilerOptions.TraceTruffleAssumptions));
+            result.put(CompilationStatistics, identity(SharedTruffleCompilerOptions.TruffleCompilationStatistics));
+            result.put(CompilationStatisticDetails, identity(SharedTruffleCompilerOptions.TruffleCompilationStatisticDetails));
+            result.put(TraceTransferToInterpreter, identity(SharedTruffleCompilerOptions.TraceTruffleTransferToInterpreter));
+            result.put(TraceSplitting, identity(SharedTruffleCompilerOptions.TraceTruffleSplitting));
+            result.put(InliningNodeBudget, identity(SharedTruffleCompilerOptions.TruffleInliningMaxCallerSize));
+            result.put(Splitting, identity(SharedTruffleCompilerOptions.TruffleSplitting));
+            result.put(SplittingMaxCalleeSize, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxCalleeSize));
+            result.put(SplittingGrowthLimit, identity(SharedTruffleCompilerOptions.TruffleSplittingGrowthLimit));
+            result.put(SplittingMaxNumberOfSplitNodes, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes));
+            result.put(SplittingMaxPropagationDepth, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxPropagationDepth));
+            result.put(TraceSplittingSummary, identity(SharedTruffleCompilerOptions.TruffleTraceSplittingSummary));
+            result.put(SplittingTraceEvents, identity(SharedTruffleCompilerOptions.TruffleSplittingTraceEvents));
+            result.put(SplittingDumpDecisions, identity(SharedTruffleCompilerOptions.TruffleSplittingDumpDecisions));
+            result.put(SplittingAllowForcedSplits, identity(SharedTruffleCompilerOptions.TruffleSplittingAllowForcedSplits));
+            result.put(OSR, identity(SharedTruffleCompilerOptions.TruffleOSR));
+            result.put(OSRCompilationThreshold, identity(SharedTruffleCompilerOptions.TruffleOSRCompilationThreshold));
             return result;
         }
+    }
+
+    private static Pair<OptionKey<?>, Function<Object, ?>> identity(OptionKey<?> key) {
+        return Pair.create(key, Function.identity());
+    }
+
+    private static Pair<OptionKey<Boolean>, Function<Object, ?>> booleanToPerformanceWarningKind(OptionKey<Boolean> key) {
+        return Pair.create(key, new Function<Object, Set<PolyglotCompilerOptions.PerformanceWarningKind>>() {
+            @Override
+            public Set<PolyglotCompilerOptions.PerformanceWarningKind> apply(Object t) {
+                return ((Boolean) t) ? EnumSet.allOf(PolyglotCompilerOptions.PerformanceWarningKind.class) : EnumSet.noneOf(PolyglotCompilerOptions.PerformanceWarningKind.class);
+            }
+        });
     }
 }

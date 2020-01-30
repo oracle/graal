@@ -64,8 +64,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
     @Before
     public void setUp() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", Boolean.TRUE.toString()).option(
-                        "engine.PerformanceWarningsAreFatal", Boolean.TRUE.toString()).build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
+                        "engine.PerformanceWarningsAreFatal", "all").build());
     }
 
     @Test
