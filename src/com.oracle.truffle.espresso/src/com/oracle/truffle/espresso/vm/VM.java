@@ -1750,8 +1750,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Invocation API
 
-    // Checkstyle: resume method name check
-
     private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
         if (stack.compare(frameInstance)) {
             StaticObject loader = stack.classLoader();
