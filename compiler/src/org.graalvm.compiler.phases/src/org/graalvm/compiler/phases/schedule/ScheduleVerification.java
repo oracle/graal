@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
+import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.word.LocationIdentity;
@@ -102,8 +103,8 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
         }
         for (Node n : blockToNodesMap.get(block)) {
             if (n instanceof MemoryCheckpoint) {
-                if (n instanceof MemoryCheckpoint.Single) {
-                    MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
+                if (n instanceof Single) {
+                    Single single = (Single) n;
                     processLocation(n, single.getKilledLocationIdentity(), currentState);
                 } else if (n instanceof MemoryCheckpoint.Multi) {
                     MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;

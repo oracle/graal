@@ -62,6 +62,7 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -120,9 +121,9 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             return processUnsafeLoad((RawLoadNode) node, state, effects);
         } else if (node instanceof RawStoreNode) {
             return processUnsafeStore((RawStoreNode) node, state, effects);
-        } else if (node instanceof MemoryCheckpoint.Single) {
+        } else if (node instanceof Single) {
             COUNTER_MEMORYCHECKPOINT.increment(node.getDebug());
-            LocationIdentity identity = ((MemoryCheckpoint.Single) node).getKilledLocationIdentity();
+            LocationIdentity identity = ((Single) node).getKilledLocationIdentity();
             processIdentity(state, identity);
         } else if (node instanceof MemoryCheckpoint.Multi) {
             COUNTER_MEMORYCHECKPOINT.increment(node.getDebug());

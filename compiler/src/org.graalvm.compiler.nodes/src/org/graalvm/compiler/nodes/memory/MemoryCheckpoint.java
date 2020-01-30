@@ -36,17 +36,6 @@ import org.graalvm.word.LocationIdentity;
  */
 public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
 
-    interface Single extends MemoryCheckpoint {
-
-        /**
-         * This method is used to determine which memory location is killed by this node. Returning
-         * the special value {@link LocationIdentity#any()} will kill all memory locations.
-         *
-         * @return the identity of the location killed by this node.
-         */
-        LocationIdentity getKilledLocationIdentity();
-    }
-
     interface Multi extends MemoryCheckpoint {
 
         /**
@@ -63,7 +52,7 @@ public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
     class TypeAssertion {
 
         public static boolean correctType(Node node) {
-            return !(node instanceof MemoryCheckpoint) || (node instanceof MemoryCheckpoint.Single ^ node instanceof MemoryCheckpoint.Multi);
+            return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof MemoryCheckpoint.Multi);
         }
     }
 }

@@ -68,6 +68,7 @@ import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -166,8 +167,8 @@ public class FloatingReadPhase extends Phase {
     }
 
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
-        if (node instanceof MemoryCheckpoint.Single) {
-            processIdentity(currentState, ((MemoryCheckpoint.Single) node).getKilledLocationIdentity());
+        if (node instanceof Single) {
+            processIdentity(currentState, ((Single) node).getKilledLocationIdentity());
         } else if (node instanceof MemoryCheckpoint.Multi) {
             for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getKilledLocationIdentities()) {
                 processIdentity(currentState, identity);
@@ -324,8 +325,8 @@ public class FloatingReadPhase extends Phase {
             if (createFloatingReads && node instanceof FloatableAccessNode) {
                 processFloatable((FloatableAccessNode) node, state);
             }
-            if (node instanceof MemoryCheckpoint.Single) {
-                processCheckpoint((MemoryCheckpoint.Single) node, state);
+            if (node instanceof Single) {
+                processCheckpoint((Single) node, state);
             } else if (node instanceof MemoryCheckpoint.Multi) {
                 processCheckpoint((MemoryCheckpoint.Multi) node, state);
             }
@@ -366,7 +367,7 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private static void processCheckpoint(MemoryCheckpoint.Single checkpoint, MemoryMapImpl state) {
+        private static void processCheckpoint(Single checkpoint, MemoryMapImpl state) {
             processIdentity(checkpoint.getKilledLocationIdentity(), checkpoint, state);
         }
 
