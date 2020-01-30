@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedNodeInterface;
 
@@ -35,10 +34,4 @@ import org.graalvm.compiler.nodes.FixedNodeInterface;
  */
 public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
 
-    class TypeAssertion {
-
-        public static boolean correctType(Node node) {
-            return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof Multi);
-        }
-    }
 }

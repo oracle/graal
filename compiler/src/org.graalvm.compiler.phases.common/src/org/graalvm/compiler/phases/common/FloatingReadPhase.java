@@ -283,6 +283,10 @@ public class FloatingReadPhase extends Phase {
 
     }
 
+    public static boolean nodeOfMemoryType(Node node) {
+        return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof Multi);
+    }
+
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
         keys.forEach(t -> {
             assert t.isMutable();
@@ -331,7 +335,7 @@ public class FloatingReadPhase extends Phase {
             } else if (node instanceof Multi) {
                 processCheckpoint((Multi) node, state);
             }
-            assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
+            assert nodeOfMemoryType(node) : node;
 
             if (createMemoryMapNodes && node instanceof ReturnNode) {
                 ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
