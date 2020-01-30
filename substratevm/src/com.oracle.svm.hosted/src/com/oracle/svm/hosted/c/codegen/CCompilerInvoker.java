@@ -103,7 +103,7 @@ public abstract class CCompilerInvoker {
         @Override
         protected List<String> getVersionInfoOptions() {
             return Collections.emptyList();
-        };
+        }
 
         @Override
         protected CompilerInfo createCompilerInfo(List<String> lines) {
