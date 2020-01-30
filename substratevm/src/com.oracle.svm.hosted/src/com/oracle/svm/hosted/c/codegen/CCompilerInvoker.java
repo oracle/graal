@@ -125,7 +125,7 @@ public abstract class CCompilerInvoker {
                     default:
                         arch = null;
                 }
-                return new CompilerInfo("Microsoft", "C/C++ Optimizing Compiler", major, minor, arch);
+                return new CompilerInfo("Microsoft", "C/C++ Optimizing Compiler", "cl", major, minor, arch);
             } catch (Exception e) {
                 return null;
             }
@@ -190,7 +190,7 @@ public abstract class CCompilerInvoker {
                 scanner.useDelimiter(Pattern.quote("."));
                 int major = scanner.nextInt();
                 int minor = scanner.nextInt();
-                return new CompilerInfo(vendor, "GNU project C and C++ compiler", major, minor, arch);
+                return new CompilerInfo(vendor, "GNU project C and C++ compiler", "gcc", major, minor, arch);
             } catch (Exception e) {
                 return null;
             }
@@ -234,14 +234,16 @@ public abstract class CCompilerInvoker {
 
     public static final class CompilerInfo {
         public final String name;
+        public final String shortName;
         public final String vendor;
         public final int versionMajor;
         public final int versionMinor;
         public final Class<? extends Architecture> target;
 
-        public CompilerInfo(String vendor, String name, int versionMajor, int versionMinor, Class<? extends Architecture> target) {
+        public CompilerInfo(String vendor, String name, String shortName, int versionMajor, int versionMinor, Class<? extends Architecture> target) {
             this.name = name;
             this.vendor = vendor;
+            this.shortName = shortName;
             this.versionMajor = versionMajor;
             this.versionMinor = versionMinor;
             this.target = target;
