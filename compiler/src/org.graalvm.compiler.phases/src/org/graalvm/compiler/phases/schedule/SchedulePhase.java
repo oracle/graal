@@ -81,7 +81,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.Multi;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.OptionValues;
@@ -381,8 +381,8 @@ public final class SchedulePhase extends Phase {
                         if (killed.isAny()) {
                             return;
                         }
-                    } else if (n instanceof Multi) {
-                        for (LocationIdentity identity : ((Multi) n).getKilledLocationIdentities()) {
+                    } else if (n instanceof MultiMemoryKill) {
+                        for (LocationIdentity identity : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                             killed.add(identity);
                             if (killed.isAny()) {
                                 return;
@@ -475,8 +475,8 @@ public final class SchedulePhase extends Phase {
                 if (n instanceof SingleMemoryKill) {
                     LocationIdentity identity = ((SingleMemoryKill) n).getKilledLocationIdentity();
                     checkWatchList(watchList, identity, b, result, nodeMap, unprocessed);
-                } else if (n instanceof Multi) {
-                    for (LocationIdentity identity : ((Multi) n).getKilledLocationIdentities()) {
+                } else if (n instanceof MultiMemoryKill) {
+                    for (LocationIdentity identity : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                         checkWatchList(watchList, identity, b, result, nodeMap, unprocessed);
                     }
                 }
@@ -1186,9 +1186,9 @@ public final class SchedulePhase extends Phase {
             buf.format("%s", n);
             if (n instanceof SingleMemoryKill) {
                 buf.format(" // kills %s", ((SingleMemoryKill) n).getKilledLocationIdentity());
-            } else if (n instanceof Multi) {
+            } else if (n instanceof MultiMemoryKill) {
                 buf.format(" // kills ");
-                for (LocationIdentity locid : ((Multi) n).getKilledLocationIdentities()) {
+                for (LocationIdentity locid : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
                     buf.format("%s, ", locid);
                 }
             } else if (n instanceof FloatingReadNode) {

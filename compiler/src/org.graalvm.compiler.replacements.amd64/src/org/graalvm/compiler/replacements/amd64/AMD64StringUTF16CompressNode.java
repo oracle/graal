@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
-import org.graalvm.compiler.nodes.memory.Multi;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.Value;
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN)
 
 public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
-                implements LIRLowerable, Multi, MemoryAccess {
+                implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
     public static final NodeClass<AMD64StringUTF16CompressNode> TYPE = NodeClass.create(AMD64StringUTF16CompressNode.class);
 

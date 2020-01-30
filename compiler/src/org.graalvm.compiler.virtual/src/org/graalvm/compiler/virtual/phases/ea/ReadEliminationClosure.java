@@ -56,7 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.memory.Multi;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -203,8 +203,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         } else if (node instanceof SingleMemoryKill) {
             LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
             killReadCacheByIdentity(state, identity);
-        } else if (node instanceof Multi) {
-            for (LocationIdentity identity : ((Multi) node).getKilledLocationIdentities()) {
+        } else if (node instanceof MultiMemoryKill) {
+            for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                 killReadCacheByIdentity(state, identity);
             }
         }

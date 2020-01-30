@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
-import org.graalvm.compiler.nodes.memory.Multi;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
@@ -263,8 +263,8 @@ public final class Block extends AbstractBlockBase<Block> {
             if (node instanceof SingleMemoryKill) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 result.add(identity);
-            } else if (node instanceof Multi) {
-                for (LocationIdentity identity : ((Multi) node).getKilledLocationIdentities()) {
+            } else if (node instanceof MultiMemoryKill) {
+                for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                     result.add(identity);
                 }
             }
