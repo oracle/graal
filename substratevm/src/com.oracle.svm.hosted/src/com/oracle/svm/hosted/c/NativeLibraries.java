@@ -381,6 +381,7 @@ public final class NativeLibraries {
     public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
         CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory);
+        compilerInvoker.verifyCompiler();
         ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
