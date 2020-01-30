@@ -115,7 +115,7 @@ public interface AgentScriptAPI {
             String characters();
 
             /** Line of this location. The same as {@link #startLine()}.
-             * 
+             *
              * @return line number counting from one
              * @since 0.4
              */
@@ -163,7 +163,10 @@ public interface AgentScriptAPI {
         public boolean statements;
         public boolean roots;
         public Predicate<String> rootNameFilter;
+        /* @since 0.4 */
+        public Predicate<SourceInfo> sourceFilter;
     }
+
     /** Register a handler on a particular elements in the source code.
      *
      * @param event one of {@code "enter"}, {@code "return"} strings
@@ -185,9 +188,9 @@ public interface AgentScriptAPI {
     void on(String event, OnCloseHandler handler);
 
     /** Unregisters a handler.
-     * 
+     *
      * @param event the event type to unregister from
-     * @param handler the instance of handler registered 
+     * @param handler the instance of handler registered
      *   by one of the {@code on} methods
      * @since 0.2
      */

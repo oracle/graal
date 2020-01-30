@@ -33,7 +33,8 @@ agent.on('enter', function(ctx, frame) {
     }
     previousCharacters = ctx.source.characters;
 }, {
-    expressions: true
+    expressions: true,
+    sourceFilter: (source) => source.name === 'fib.js'
 });
 
 agent.on('return', function(ctx, frame) {
