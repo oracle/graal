@@ -26,12 +26,13 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedNodeInterface;
+import org.graalvm.word.LocationIdentity;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations
- * represented by location identities (i.e. change a value at one or more locations that belong to
- * these location identities).
+ * represented by {@linkplain LocationIdentity} (i.e. change a value at one or more locations that
+ * belong to these location identities).
  */
-public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
+public interface MemoryKill extends MemoryNode, FixedNodeInterface {
 
 }

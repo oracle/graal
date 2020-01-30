@@ -69,7 +69,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.Multi;
 import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -308,7 +308,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                 assert postLoweringMark.equals(mark) : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
                                 graph.getNewNodes(postLoweringMark).snapshot();
             }
-            if (graph.isAfterFloatingReadPhase() && n instanceof MemoryCheckpoint && !(node instanceof MemoryCheckpoint) && !(node instanceof ControlSinkNode)) {
+            if (graph.isAfterFloatingReadPhase() && n instanceof MemoryKill && !(node instanceof MemoryKill) && !(node instanceof ControlSinkNode)) {
                 /*
                  * The lowering introduced a MemoryCheckpoint but the current node isn't a
                  * checkpoint. This is only OK if the locations involved don't affect the memory

@@ -113,7 +113,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
@@ -1511,7 +1511,7 @@ public class SnippetTemplate {
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
-                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
+                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryKill) {
                     replacer.replace(replacee, null);
                 } else {
                     assert returnValue != null || replacee.hasNoUsages();

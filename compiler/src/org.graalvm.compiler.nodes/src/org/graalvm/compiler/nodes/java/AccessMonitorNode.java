@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -43,7 +43,7 @@ import jdk.vm.ci.code.BailoutException;
  * throws a {@link BailoutException} instead during graph building.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
+public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryKill, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
 
     public static final NodeClass<AccessMonitorNode> TYPE = NodeClass.create(AccessMonitorNode.class);
     @OptionalInput(InputType.State) FrameState stateBefore;

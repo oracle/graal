@@ -2,7 +2,7 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.word.LocationIdentity;
 
-public interface Multi extends MemoryCheckpoint {
+public interface Multi extends MemoryKill {
 
     /**
      * This method is used to determine which set of memory locations is killed by this node.

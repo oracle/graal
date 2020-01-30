@@ -62,7 +62,7 @@ import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
@@ -284,7 +284,7 @@ public class FloatingReadPhase extends Phase {
     }
 
     public static boolean nodeOfMemoryType(Node node) {
-        return !(node instanceof MemoryCheckpoint) || (node instanceof Single ^ node instanceof Multi);
+        return !(node instanceof MemoryKill) || (node instanceof Single ^ node instanceof Multi);
     }
 
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
@@ -382,7 +382,7 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private static void processIdentity(LocationIdentity identity, MemoryCheckpoint checkpoint, MemoryMapImpl state) {
+        private static void processIdentity(LocationIdentity identity, MemoryKill checkpoint, MemoryMapImpl state) {
             if (identity.isAny()) {
                 state.getMap().clear();
             }
@@ -423,7 +423,7 @@ public class FloatingReadPhase extends Phase {
                  * side it needs to choose by putting in the location identity on both successors.
                  */
                 InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) node.predecessor();
-                result.getMap().put(invoke.getKilledLocationIdentity(), (MemoryCheckpoint) node);
+                result.getMap().put(invoke.getKilledLocationIdentity(), (MemoryKill) node);
             }
             return result;
         }

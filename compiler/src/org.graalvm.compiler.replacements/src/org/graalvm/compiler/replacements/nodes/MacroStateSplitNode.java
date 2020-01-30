@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.Single;
 import org.graalvm.word.LocationIdentity;
 
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This is an extension of {@link MacroNode} that is a {@link StateSplit} and a
- * {@link MemoryCheckpoint}.
+ * {@link MemoryKill}.
  */
 @NodeInfo
 public abstract class MacroStateSplitNode extends MacroNode implements StateSplit, Single {
