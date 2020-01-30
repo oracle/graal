@@ -2269,10 +2269,6 @@ final class JDWP {
                 if (classLoader == null) {
                     return new CommandResult(reply);
                 }
-
-                // TODO(Gregersen) - we will need all classes for which this classloader was the
-                // initiating loader
-                // tracked by /browse/GR-19820
                 KlassRef[] klasses = context.getInitiatedClasses(classLoader);
 
                 reply.writeInt(klasses.length);
