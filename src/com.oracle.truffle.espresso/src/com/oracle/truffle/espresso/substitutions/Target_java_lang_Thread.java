@@ -32,6 +32,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -74,6 +75,25 @@ public final class Target_java_lang_Thread {
         } catch (Throwable e) {
             throw EspressoError.shouldNotReachHere();
         }
+    }
+
+    public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
+        assert hiddenField.isHidden();
+        Long counter = (Long) thread.getHiddenField(hiddenField);
+        if (counter == null) {
+            counter = 0L;
+        }
+        ++counter;
+        thread.setHiddenField(hiddenField, counter);
+    }
+
+    public static long getThreadCounter(StaticObject thread, Field hiddenField) {
+        assert hiddenField.isHidden();
+        Long counter = (Long) thread.getHiddenField(hiddenField);
+        if (counter == null) {
+            counter = 0L;
+        }
+        return counter;
     }
 
     public enum State {

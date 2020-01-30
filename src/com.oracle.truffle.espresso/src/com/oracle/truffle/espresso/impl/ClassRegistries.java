@@ -174,6 +174,15 @@ public final class ClassRegistries {
         }
     }
 
+    public long getLoadedClassesCount() {
+        long result = bootClassRegistry.classes.size();
+        for (ClassRegistry registry : registries.values()) {
+            result += registry.classes.size();
+        }
+        assert result >= 0;
+        return result;
+    }
+
     public boolean isClassLoader(StaticObject object) {
         return registries.keySet().contains(object);
     }

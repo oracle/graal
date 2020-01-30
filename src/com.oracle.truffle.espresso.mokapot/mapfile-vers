@@ -31,6 +31,10 @@ SUNWprivate_1.1 {
                 disposeMokapotContext;
                 getJavaVM;
 
+                # Espresso management native API
+                initializeManagementContext;
+                disposeManagementContext;
+
                 # JNI
                 JNI_CreateJavaVM;
                 JNI_GetCreatedJavaVMs;

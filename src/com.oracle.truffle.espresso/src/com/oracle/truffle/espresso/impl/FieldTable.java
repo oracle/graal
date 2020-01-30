@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 class FieldTable {
     static class CreationResult {
@@ -228,6 +229,14 @@ class FieldTable {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH_THROWABLE));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SUSPEND_LOCK));
+
+            EspressoContext context = thisKlass.getContext();
+            if (context.EnableManagement) {
+                // Only used for j.l.management bookkeeping.
+                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_OBJECT));
+                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_COUNT));
+                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_WAITED_COUNT));
+            }
             return c;
         } else if (type == Type.Class) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SIGNERS));

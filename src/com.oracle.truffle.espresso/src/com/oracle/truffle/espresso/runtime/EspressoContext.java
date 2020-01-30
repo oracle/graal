@@ -87,6 +87,7 @@ public final class EspressoContext {
     private StaticObject mainThreadGroup;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
+    public long initVMDoneMs;
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
@@ -134,6 +135,7 @@ public final class EspressoContext {
         this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
+        this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
     }
 
     public ClassRegistries getRegistries() {
@@ -354,6 +356,7 @@ public final class EspressoContext {
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
         EspressoLogger.log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
+        initVMDoneMs = System.currentTimeMillis();
     }
 
     private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
@@ -566,6 +569,20 @@ public final class EspressoContext {
         return threadManager.getGuestThreadFromHost(Thread.currentThread());
     }
 
+    /**
+     * Returns the maximum number of alive (registered) threads at any point, since the VM started.
+     */
+    public long getPeakThreadCount() {
+        return threadManager.peakThreadCount.get();
+    }
+
+    /**
+     * Returns the number of created threads since the VM started.
+     */
+    public long getCreatedThreadCount() {
+        return threadManager.createdThreadCount.get();
+    }
+
     public StaticObject[] getActiveThreads() {
         return threadManager.activeThreads();
     }
@@ -621,6 +638,7 @@ public final class EspressoContext {
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+    public final boolean EnableManagement;
 
     public EspressoOptions.SpecCompliancyMode specCompliancyMode() {
         return SpecCompliancyMode;

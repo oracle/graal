@@ -231,11 +231,12 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
-                    @SuppressWarnings("unused") @Host(ProtectionDomain.class) StaticObject pd) {
+                    @Host(ProtectionDomain.class) StaticObject pd) {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
         Klass klass = self.getKlass().getMeta().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader);
+        klass.mirror().setHiddenField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, pd);
         return klass.mirror();
     }
 

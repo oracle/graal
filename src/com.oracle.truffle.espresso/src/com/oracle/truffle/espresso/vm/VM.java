@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
@@ -33,6 +34,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -128,15 +130,36 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private final TruffleObject initializeMokapotContext;
     private final TruffleObject disposeMokapotContext;
+
+    private final TruffleObject initializeManagementContext;
+    private final TruffleObject disposeManagementContext;
+
     private final TruffleObject getJavaVM;
 
     private final JniEnv jniEnv;
+
+    private long managementPtr;
 
     public JNIHandles getHandles() {
         return jniEnv.getHandles();
     }
 
     private @Word long vmPtr;
+
+    private Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
+        @Override
+        public Object call(Object... args) {
+            try {
+                return VM.this.lookupVmImpl((String) args[0]);
+            } catch (ClassCastException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    });
 
     // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
     // interface (libjvm).
@@ -174,25 +197,23 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "disposeMokapotContext",
                             "(env, sint64): void");
 
+            if (jniEnv.getContext().EnableManagement) {
+                initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                                "initializeManagementContext", "(env, (string): pointer): sint64");
+
+                disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                                "disposeManagementContext",
+                                "(env, sint64): void");
+            } else {
+                initializeManagementContext = null;
+                disposeManagementContext = null;
+            }
+
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getJavaVM",
                             "(env): sint64");
 
-            Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
-                @Override
-                public Object call(Object... args) {
-                    try {
-                        return VM.this.lookupVmImpl((String) args[0]);
-                    } catch (ClassCastException e) {
-                        throw EspressoError.shouldNotReachHere(e);
-                    } catch (RuntimeException e) {
-                        throw e;
-                    } catch (Throwable e) {
-                        throw EspressoError.shouldNotReachHere(e);
-                    }
-                }
-            });
-            this.vmPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            this.vmPtr = (long) UNCACHED.execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
 
             assert this.vmPtr != 0;
 
@@ -252,7 +273,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             String signature = m.jniNativeSignature();
             Callback target = vmMethodWrapper(m);
-            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(jniEnv.dupClosureRefAndCast(signature), target);
+            return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast(signature), target);
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -351,7 +372,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         return new Callback(m.parameterCount() + extraArg, new Callback.Function() {
             @Override
-            @CompilerDirectives.TruffleBoundary
+            @TruffleBoundary
             public Object call(Object... args) {
                 boolean isJni = m.isJni();
                 try {
@@ -407,16 +428,26 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(@Host(Object.class) StaticObject self, long timeout) {
-        StaticObject currentThread = getMeta().getContext().getCurrentThread();
+
+        EspressoContext context = getContext();
+        StaticObject currentThread = context.getCurrentThread();
         try {
             Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
+            if (context.EnableManagement) {
+                // Locks bookkeeping.
+                currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
+                Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
+            }
             self.getLock().await(timeout);
         } catch (InterruptedException e) {
             Target_java_lang_Thread.setInterrupt(currentThread, false);
-            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw getMeta().throwExWithMessage(InterruptedException.class, e.getMessage());
         } catch (IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } finally {
+            if (context.EnableManagement) {
+                currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
+            }
             Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
         }
     }
@@ -690,7 +721,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindLoadedClass(@Host(ClassLoader.class) StaticObject loader, @Host(String.class) StaticObject name) {
         Symbol<Type> type = getTypes().fromClassGetName(Meta.toHostString(name));
-        Klass klass = getRegistries().findLoadedClass(type, loader);
+        // HotSpot skips reflection (DelegatingClassLoader) class loaders.
+        Klass klass = getRegistries().findLoadedClass(type, nonReflectionClassLoader(loader));
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -702,13 +734,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final ConcurrentHashMap<Long, TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
     // region Library support
+
+    @TruffleBoundary
     @VmImpl
     public @Word long JVM_LoadLibrary(String name) {
+        VMLogger.fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
             TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
+            VMLogger.fine(String.format("JVM_LoadLibrary: Succesfuly loaded '%s' with handle %x", name, handle));
             handle2Lib.put(handle, lib);
             return handle;
         } catch (IllegalAccessException | NoSuchFieldException e) {
@@ -716,16 +752,17 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    @TruffleBoundary
     @VmImpl
     public static void JVM_UnloadLibrary(@SuppressWarnings("unused") @Word long handle) {
         // TODO(peterssen): Do unload the library.
-        VMLogger.severe("JVM_UnloadLibrary called but library was not unloaded!");
+        VMLogger.severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", handle));
     }
 
     @VmImpl
     public @Word long JVM_FindLibraryEntry(@Word long libHandle, String name) {
         if (libHandle == 0) {
-            VMLogger.warning("JVM_FindLibraryEntry from default/global namespace (0): " + name);
+            VMLogger.warning(String.format("JVM_FindLibraryEntry from default/global namespace (0): %s", name));
             return 0L;
         }
         // TODO(peterssen): Workaround for MacOS flags: RTLD_DEFAULT...
@@ -735,7 +772,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         try {
             TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
-            long handle = InteropLibrary.getFactory().getUncached().asPointer(function);
+            long handle = UNCACHED.asPointer(function);
             handle2Sym.put(handle, function);
             return handle;
         } catch (UnsupportedMessageException e) {
@@ -763,7 +800,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     public void dispose() {
         assert vmPtr != 0L : "Mokapot already disposed";
         try {
-            InteropLibrary.getFactory().getUncached().execute(disposeMokapotContext, vmPtr);
+
+            if (getContext().EnableManagement) {
+                if (managementPtr != 0L /* NULL */) {
+                    UNCACHED.execute(disposeManagementContext, managementPtr);
+                    this.managementPtr = 0L;
+                }
+            } else {
+                assert managementPtr == 0L /* NULL */;
+            }
+
+            UNCACHED.execute(disposeMokapotContext, vmPtr);
             this.vmPtr = 0L;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
@@ -852,39 +899,48 @@ public final class VM extends NativeEnv implements ContextAccess {
         return false;
     }
 
+    /**
+     * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
+     * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
+     */
     private static FrameInstance getCallerFrame(int depth, boolean securityStackWalk) {
-        // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
-        // Non-Espresso frames (e.g TruffleNFI) are ignored.
-        // The call stack should look like this:
-        // 2 : the @CallerSensitive annotated method.
-        // ... : skipped non-Espresso frames.
-        // 1 : getCallerClass method.
-        // ... :
-        // 0 : the callee.
-        //
-        // JVM_CALLER_DEPTH => the caller.
-        int callerDepth = (depth == JVM_CALLER_DEPTH) ? 2 : depth + 1;
+        if (depth == JVM_CALLER_DEPTH) {
+            return getCallerFrame(1, securityStackWalk);
+        }
+        assert depth >= 0;
 
-        final int[] depthCounter = new int[]{callerDepth};
-        FrameInstance target = Truffle.getRuntime().iterateFrames(
+        // Ignores non-Espresso frames.
+        //
+        // The call stack at this point looks something like this:
+        //
+        // [0] [ current frame e.g. AccessController.doPrivileged, Reflection.getCallerClass ]
+        // [.] [ (skipped intermediate frames) ]
+        // ...
+        // [n] [ caller ]
+        FrameInstance callerFrame = Truffle.getRuntime().iterateFrames(
                         new FrameInstanceVisitor<FrameInstance>() {
+                            private int n;
+
                             @Override
                             public FrameInstance visitFrame(FrameInstance frameInstance) {
                                 Method m = getMethodFromFrame(frameInstance);
                                 if (m != null) {
                                     if (!securityStackWalk || !isIgnoredBySecurityStackWalk(m, m.getMeta())) {
-                                        if (--depthCounter[0] < 0) {
+                                        if (n == depth) {
                                             return frameInstance;
                                         }
+                                        ++n;
                                     }
                                 }
                                 return null;
                             }
                         });
-        if (target != null) {
-            return target;
+
+        if (callerFrame != null) {
+            return callerFrame;
         }
-        throw EspressoError.shouldNotReachHere();
+
+        throw EspressoError.shouldNotReachHere(String.format("Caller frame not found at depth %d", depth));
     }
 
     private static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
@@ -1155,11 +1211,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
+    private final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
 
     @VmImpl
     @JniImpl
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_DoPrivileged(@Host(Class.class) StaticObject cls,
                     @Host(typeName = "PrivilegedAction OR PrivilegedActionException") StaticObject action,
@@ -1168,7 +1224,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(action)) {
             throw getMeta().throwEx(NullPointerException.class);
         }
-        FrameInstance callerFrame = getCallerFrame(0, false);
+        FrameInstance callerFrame = getCallerFrame(1, false);
         assert callerFrame != null : "No caller ?";
         Klass caller = getMethodFromFrame(callerFrame).getDeclaringKlass();
         StaticObject acc = context;
@@ -1206,7 +1262,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetStackAccessControlContext(@Host(Class.class) StaticObject cls) {
         ArrayList<StaticObject> domains = new ArrayList<>();
@@ -1348,12 +1404,11 @@ public final class VM extends NativeEnv implements ContextAccess {
      *
      * @param array the array
      * @param index the index
+     * @throws NullPointerException If the specified object is null
+     * @throws IllegalArgumentException If the specified object is not an array
+     * @throws ArrayIndexOutOfBoundsException If the specified {@code index} argument is negative,
+     *             or if it is greater than or equal to the length of the specified array
      * @returns the (possibly wrapped) value of the indexed component in the specified array
-     * @exception NullPointerException If the specified object is null
-     * @exception IllegalArgumentException If the specified object is not an array
-     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
-     *                negative, or if it is greater than or equal to the length of the specified
-     *                array
      */
     @VmImpl
     @JniImpl
@@ -1676,8 +1731,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return res == null ? -1 : res;
     }
 
-    // Checkstyle: resume method name check
-
     private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
         if (stack.compare(frameInstance)) {
             StaticObject loader = stack.classLoader();
@@ -1712,4 +1765,415 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         return false;
     }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
+        final StaticObject[] threads = getContext().getActiveThreads();
+        return getMeta().Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int index) {
+                return threads[index];
+            }
+        });
+    }
+
+    // region Management
+
+    // Partial/incomplete implementation disclaimer!
+    //
+    // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
+    // beyond Espresso reach e.g. GC stats. Espresso could implement the hard bits by just
+    // forwarding to the host implementation, but this approach is not feasible:
+    // - In some cases it's not possible to gather stats per-context e.g. host GC stats are VM-wide.
+    // - SubstrateVM implements a bare-minimum subset of the management APIs.
+    //
+    // Some implementations below are just partially correct due to limitations of Espresso itself
+    // e.g. dumping stacktraces for all threads.
+
+    // @formatter:off
+    // enum jmmLongAttribute
+    public static final int JMM_CLASS_LOADED_COUNT             = 1;    /* Total number of loaded classes */
+    public static final int JMM_CLASS_UNLOADED_COUNT           = 2;    /* Total number of unloaded classes */
+    public static final int JMM_THREAD_TOTAL_COUNT             = 3;    /* Total number of threads that have been started */
+    public static final int JMM_THREAD_LIVE_COUNT              = 4;    /* Current number of live threads */
+    public static final int JMM_THREAD_PEAK_COUNT              = 5;    /* Peak number of live threads */
+    public static final int JMM_THREAD_DAEMON_COUNT            = 6;    /* Current number of daemon threads */
+    public static final int JMM_JVM_INIT_DONE_TIME_MS          = 7;    /* Time when the JVM finished initialization */
+    public static final int JMM_COMPILE_TOTAL_TIME_MS          = 8;    /* Total accumulated time spent in compilation */
+    public static final int JMM_GC_TIME_MS                     = 9;    /* Total accumulated time spent in collection */
+    public static final int JMM_GC_COUNT                       = 10;   /* Total number of collections */
+    public static final int JMM_JVM_UPTIME_MS                  = 11;   /* The JVM uptime in milliseconds */
+    public static final int JMM_INTERNAL_ATTRIBUTE_INDEX       = 100;
+    public static final int JMM_CLASS_LOADED_BYTES             = 101;  /* Number of bytes loaded instance classes */
+    public static final int JMM_CLASS_UNLOADED_BYTES           = 102;  /* Number of bytes unloaded instance classes */
+    public static final int JMM_TOTAL_CLASSLOAD_TIME_MS        = 103;  /* Accumulated VM class loader time (TraceClassLoadingTime) */
+    public static final int JMM_VM_GLOBAL_COUNT                = 104;  /* Number of VM internal flags */
+    public static final int JMM_SAFEPOINT_COUNT                = 105;  /* Total number of safepoints */
+    public static final int JMM_TOTAL_SAFEPOINTSYNC_TIME_MS    = 106;  /* Accumulated time spent getting to safepoints */
+    public static final int JMM_TOTAL_STOPPED_TIME_MS          = 107;  /* Accumulated time spent at safepoints */
+    public static final int JMM_TOTAL_APP_TIME_MS              = 108;  /* Accumulated time spent in Java application */
+    public static final int JMM_VM_THREAD_COUNT                = 109;  /* Current number of VM internal threads */
+    public static final int JMM_CLASS_INIT_TOTAL_COUNT         = 110;  /* Number of classes for which initializers were run */
+    public static final int JMM_CLASS_INIT_TOTAL_TIME_MS       = 111;  /* Accumulated time spent in class initializers */
+    public static final int JMM_METHOD_DATA_SIZE_BYTES         = 112;  /* Size of method data in memory */
+    public static final int JMM_CLASS_VERIFY_TOTAL_TIME_MS     = 113;  /* Accumulated time spent in class verifier */
+    public static final int JMM_SHARED_CLASS_LOADED_COUNT      = 114;  /* Number of shared classes loaded */
+    public static final int JMM_SHARED_CLASS_UNLOADED_COUNT    = 115;  /* Number of shared classes unloaded */
+    public static final int JMM_SHARED_CLASS_LOADED_BYTES      = 116;  /* Number of bytes loaded shared classes */
+    public static final int JMM_SHARED_CLASS_UNLOADED_BYTES    = 117;  /* Number of bytes unloaded shared classes */
+    public static final int JMM_OS_ATTRIBUTE_INDEX             = 200;
+    public static final int JMM_OS_PROCESS_ID                  = 201;  /* Process id of the JVM */
+    public static final int JMM_OS_MEM_TOTAL_PHYSICAL_BYTES    = 202;  /* Physical memory size */
+    public static final int JMM_GC_EXT_ATTRIBUTE_INFO_SIZE     = 401;  /* the size of the GC specific attributes for a given GC memory manager */
+    // @formatter:on
+
+    // enum jmmBoolAttribute
+    public static final int JMM_VERBOSE_GC = 21;
+    public static final int JMM_VERBOSE_CLASS = 22;
+    public static final int JMM_THREAD_CONTENTION_MONITORING = 23;
+    public static final int JMM_THREAD_CPU_TIME = 24;
+    public static final int JMM_THREAD_ALLOCATED_MEMORY = 25;
+
+    // enum
+    public static final int JMM_VERSION_1 = 0x20010000;
+    public static final int JMM_VERSION_1_0 = 0x20010000;
+    public static final int JMM_VERSION_1_1 = 0x20010100; // JDK 6
+    public static final int JMM_VERSION_1_2 = 0x20010200; // JDK 7
+    public static final int JMM_VERSION_1_2_1 = 0x20010201; // JDK 7 GA
+    public static final int JMM_VERSION_1_2_2 = 0x20010202;
+
+    public static final int JMM_VERSION = 0x20010203;
+
+    @VmImpl
+    public synchronized long JVM_GetManagement(int version) {
+        if (version != JMM_VERSION_1_0) {
+            return 0L /* NULL */;
+        }
+        EspressoContext context = getContext();
+        if (!context.EnableManagement) {
+            VMLogger.severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
+                            "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
+            return 0L /* NULL */;
+        }
+        if (managementPtr == 0) {
+            try {
+                managementPtr = (long) UNCACHED.execute(initializeManagementContext, lookupVmImplCallback);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+            assert this.managementPtr != 0;
+        }
+        return managementPtr;
+    }
+
+    @JniImpl
+    @VmImpl
+    public static int GetVersion() {
+        return JMM_VERSION;
+    }
+
+    @JniImpl
+    @VmImpl
+    public static int GetOptionalSupport(@Word long /* jmmOptionalSupport **/ supportPtr) {
+        if (supportPtr != 0L) {
+            ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
+            supportBuf.putInt(0); // nothing optional is supported
+            return 0;
+        }
+        return -1;
+    }
+
+    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds) {
+        assert threadIds.isArray();
+        int numThreads = threadIds.length();
+        for (int i = 0; i < numThreads; ++i) {
+            long tid = threadIds.<long[]> unwrap()[i];
+            if (tid <= 0) {
+                throw meta.throwExWithMessage(IllegalArgumentException.class, "Invalid thread ID entry");
+            }
+        }
+    }
+
+    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray) {
+        // check if the element of infoArray is of type ThreadInfo class
+        Klass component = infoArray.getKlass().getComponentType();
+        if (component == null || !meta.management_ThreadInfo.equals(component)) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "infoArray element type is not ThreadInfo class");
+        }
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray) {
+        Meta meta = getMeta();
+        if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
+            throw meta.throwEx(NullPointerException.class);
+        }
+
+        if (maxDepth < -1) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "Invalid maxDepth");
+        }
+
+        validateThreadIdArray(meta, ids);
+        validateThreadInfoArray(meta, infoArray);
+
+        if (ids.length() != infoArray.length()) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
+        }
+
+        Method init = meta.management_ThreadInfo.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(/* returns */Type._void,
+                        /* t */ Type.Thread,
+                        /* state */ Type._int,
+                        /* lockObj */ Type.Object,
+                        /* lockOwner */Type.Thread,
+                        /* blockedCount */Type._long,
+                        /* blockedTime */Type._long,
+                        /* waitedCount */Type._long,
+                        /* waitedTime */Type._long,
+                        /* StackTraceElement[] */ Type.StackTraceElement_array));
+
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        StaticObject currentThread = getContext().getCurrentThread();
+        for (int i = 0; i < ids.length(); ++i) {
+            long id = getInterpreterToVM().getArrayLong(i, ids);
+            StaticObject thread = StaticObject.NULL;
+
+            for (int j = 0; j < activeThreads.length; ++j) {
+                if ((long) meta.Thread_tid.get(activeThreads[j]) == id) {
+                    thread = activeThreads[j];
+                    break;
+                }
+            }
+
+            if (StaticObject.isNull(thread)) {
+                getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
+            } else {
+
+                int threadStatus = thread.getIntField(meta.Thread_threadStatus);
+                StaticObject lockObj = StaticObject.NULL;
+                StaticObject lockOwner = StaticObject.NULL;
+                int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
+                if ((threadStatus & mask) != 0) {
+                    lockObj = (StaticObject) thread.getHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT);
+                    if (lockObj == null) {
+                        lockObj = StaticObject.NULL;
+                    }
+                    Thread hostOwner = StaticObject.isNull(lockObj)
+                                    ? null
+                                    : lockObj.getLock().getOwnerThread();
+                    if (hostOwner != null && hostOwner.isAlive()) {
+                        lockOwner = getContext().getGuestThreadFromHost(hostOwner);
+                        if (lockOwner == null) {
+                            lockOwner = StaticObject.NULL;
+                        }
+                    }
+                }
+
+                long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_BLOCKED_COUNT);
+                long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_WAITED_COUNT);
+
+                StaticObject stackTrace;
+                if (maxDepth != 0 && thread == currentThread) {
+                    stackTrace = (StaticObject) getMeta().Throwable_getStackTrace.invokeDirect(getMeta().newThrowable());
+                    if (stackTrace.length() > maxDepth && maxDepth != -1) {
+                        StaticObject[] unwrapped = stackTrace.unwrap();
+                        unwrapped = Arrays.copyOf(unwrapped, maxDepth);
+                        stackTrace = StaticObject.wrap(unwrapped);
+                    }
+                } else {
+                    stackTrace = meta.StackTraceElement.allocateArray(0);
+                }
+
+                StaticObject threadInfo = meta.management_ThreadInfo.allocateInstance();
+                init.invokeDirect( /* this */ threadInfo,
+                                /* t */ thread,
+                                /* state */ threadStatus,
+                                /* lockObj */ lockObj,
+                                /* lockOwner */ lockOwner,
+                                /* blockedCount */ blockedCount,
+                                /* blockedTime */ -1L,
+                                /* waitedCount */ waitedCount,
+                                /* waitedTime */ -1L,
+                                /* StackTraceElement[] */ stackTrace);
+                getInterpreterToVM().setArrayObject(threadInfo, i, infoArray);
+            }
+        }
+
+        return 0; // always 0
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(String[].class) StaticObject GetInputArgumentArray() {
+        return getMeta().String.allocateArray(0);
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused) {
+        Klass memoryPoolMXBean = getMeta().loadKlass(Type.MemoryPoolMXBean, StaticObject.NULL);
+        return memoryPoolMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int value) {
+                // (String name, boolean isHeap, long uThreshold, long gcThreshold)
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryPool.invokeDirect(null,
+                                /* String name */ getMeta().toGuestString("foo"),
+                                /* boolean isHeap */ true,
+                                /* long uThreshold */ -1L,
+                                /* long gcThreshold */ 0L);
+            }
+        });
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool) {
+        Klass memoryManagerMXBean = getMeta().loadKlass(Type.MemoryManagerMXBean, StaticObject.NULL);
+        return memoryManagerMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int value) {
+                // (String name, String type)
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryManager.invokeDirect(null,
+                                /* String name */ getMeta().toGuestString("foo"),
+                                /* String type */ StaticObject.NULL);
+            }
+        });
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+        if (StaticObject.isNull(pool)) {
+            return StaticObject.NULL;
+        }
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetPeakMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+        if (StaticObject.isNull(pool)) {
+            return StaticObject.NULL;
+        }
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
+        switch (att) {
+            case JMM_JVM_INIT_DONE_TIME_MS:
+                return getContext().initVMDoneMs;
+            case JMM_CLASS_LOADED_COUNT:
+                return getRegistries().getLoadedClassesCount();
+            case JMM_CLASS_UNLOADED_COUNT:
+                return 0L;
+            case JMM_JVM_UPTIME_MS:
+                return System.currentTimeMillis() - getContext().initVMDoneMs;
+            case JMM_OS_PROCESS_ID:
+                String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+                String[] parts = processName.split("@");
+                return Long.parseLong(parts[0]);
+            case JMM_THREAD_DAEMON_COUNT:
+                int daemonCount = 0;
+                for (StaticObject t : getContext().getActiveThreads()) {
+                    if ((boolean) getMeta().Thread_daemon.get(t)) {
+                        ++daemonCount;
+                    }
+                }
+                return daemonCount;
+
+            case JMM_THREAD_PEAK_COUNT:
+                return getContext().getPeakThreadCount();
+            case JMM_THREAD_LIVE_COUNT:
+                return getContext().getActiveThreads().length;
+            case JMM_THREAD_TOTAL_COUNT:
+                return getContext().getCreatedThreadCount();
+        }
+        throw EspressoError.unimplemented("GetLongAttribute " + att);
+    }
+
+    private boolean JMM_VERBOSE_GC_state = false;
+    private boolean JMM_VERBOSE_CLASS_state = false;
+    private boolean JMM_THREAD_CONTENTION_MONITORING_state = false;
+    private boolean JMM_THREAD_CPU_TIME_state = false;
+    private boolean JMM_THREAD_ALLOCATED_MEMORY_state = false;
+
+    @JniImpl
+    @VmImpl
+    public boolean GetBoolAttribute(/* jmmBoolAttribute */ int att) {
+        switch (att) {
+            case JMM_VERBOSE_GC:
+                return JMM_VERBOSE_GC_state;
+            case JMM_VERBOSE_CLASS:
+                return JMM_VERBOSE_CLASS_state;
+            case JMM_THREAD_CONTENTION_MONITORING:
+                return JMM_THREAD_CONTENTION_MONITORING_state;
+            case JMM_THREAD_CPU_TIME:
+                return JMM_THREAD_CPU_TIME_state;
+            case JMM_THREAD_ALLOCATED_MEMORY:
+                return JMM_THREAD_ALLOCATED_MEMORY_state;
+        }
+        throw EspressoError.unimplemented("GetBoolAttribute " + att);
+    }
+
+    @JniImpl
+    @VmImpl
+    public boolean SetBoolAttribute(/* jmmBoolAttribute */ int att, boolean flag) {
+        switch (att) {
+            case JMM_VERBOSE_GC:
+                return JMM_VERBOSE_GC_state = flag;
+            case JMM_VERBOSE_CLASS:
+                return JMM_VERBOSE_CLASS_state = flag;
+            case JMM_THREAD_CONTENTION_MONITORING:
+                return JMM_THREAD_CONTENTION_MONITORING_state = flag;
+            case JMM_THREAD_CPU_TIME:
+                return JMM_THREAD_CPU_TIME_state = flag;
+            case JMM_THREAD_ALLOCATED_MEMORY:
+                return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
+        }
+        throw EspressoError.unimplemented("SetBoolAttribute " + att);
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Word long globalsPtr, @SuppressWarnings("unused") int count) {
+        if (globalsPtr == 0L /* NULL */) {
+            throw getMeta().throwEx(NullPointerException.class);
+        }
+        if (StaticObject.notNull(names)) {
+            if (!names.getKlass().equals(getMeta().String.array())) {
+                throw getMeta().throwExWithMessage(IllegalArgumentException.class, "Array element type is not String class");
+            }
+
+            StaticObject[] entries = names.unwrap();
+            for (StaticObject entry : entries) {
+                if (StaticObject.isNull(entry)) {
+                    throw getMeta().throwEx(NullPointerException.class);
+                }
+                VMLogger.fine("GetVMGlobals: " + Meta.toHostString(entry));
+            }
+        }
+        return 0;
+    }
+
+    // endregion Management
+
+    // Checkstyle: resume method name check
 }

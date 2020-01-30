@@ -190,6 +190,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
+        public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
@@ -229,6 +230,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
         public static final Symbol<Name> Null = StaticSymbols.putName("null");
         public static final Symbol<Name> getCallerClass = StaticSymbols.putName("getCallerClass");
+
+        public static final Symbol<Name> createMemoryPool = StaticSymbols.putName("createMemoryPool");
+        public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
+        public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
+        public static final Symbol<Name> tid = StaticSymbols.putName("tid");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -292,6 +298,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
         public static final Symbol<Name> HIDDEN_PROTECTION_DOMAIN = StaticSymbols.putName("0HIDDEN_PROTECTION_DOMAIN");
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
+        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
     }
 
     public static final class Type extends Descriptor {
@@ -425,6 +434,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
 
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
+        public static final Symbol<Type> StackTraceElement_array = StaticSymbols.putType(StackTraceElement[].class);
 
         public static final Symbol<Type> Error = StaticSymbols.putType(Error.class);
         public static final Symbol<Type> NoSuchFieldError = StaticSymbols.putType(NoSuchFieldError.class);
@@ -455,6 +465,11 @@ public final class Symbol<T> extends ByteSequence {
         // Special threads
         public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
         public static final Symbol<Type> ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
+        // java.management
+        public static final Symbol<Type> MemoryManagerMXBean = StaticSymbols.putType(java.lang.management.MemoryManagerMXBean.class);
+        public static final Symbol<Type> MemoryPoolMXBean = StaticSymbols.putType(java.lang.management.MemoryPoolMXBean.class);
+        public static final Symbol<Type> GarbageCollectorMXBean = StaticSymbols.putType(java.lang.management.GarbageCollectorMXBean.class);
+        public static final Symbol<Type> sun_management_ManagementFactory = StaticSymbols.putType("Lsun/management/ManagementFactory;");
     }
 
     public static final class Signature extends Descriptor {
@@ -485,6 +500,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.Class, Type.String, Type._boolean, Type.ClassLoader);
 
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.Throwable);
+        public static final Symbol<Signature> StackTraceElement_array = StaticSymbols.putSignature(Type.StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.String, Type.Throwable);
         public static final Symbol<Signature> _void_String = StaticSymbols.putSignature(Type._void, Type.String);
         public static final Symbol<Signature> Class_String = StaticSymbols.putSignature(Type.Class, Type.String);
@@ -525,5 +541,9 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
 
+        // java.management
+        public static final Symbol<Signature> MemoryPoolMXBean_String_boolean_long_long = StaticSymbols.putSignature(Type.MemoryPoolMXBean, Type.String, Type._boolean, Type._long, Type._long);
+        public static final Symbol<Signature> MemoryManagerMXBean_String = StaticSymbols.putSignature(Type.MemoryManagerMXBean, Type.String);
+        public static final Symbol<Signature> GarbageCollectorMXBean_String_String = StaticSymbols.putSignature(Type.GarbageCollectorMXBean, Type.String, Type.String);
     }
 }

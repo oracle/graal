@@ -192,9 +192,19 @@ public final class InterpreterToVM implements ContextAccess {
         final EspressoLock lock = obj.getLock();
         if (!lock.tryLock()) {
             Meta meta = obj.getKlass().getMeta();
-            StaticObject thread = meta.getContext().getCurrentThread();
+            EspressoContext context = meta.getContext();
+            StaticObject thread = context.getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
+            if (context.EnableManagement) {
+                // Locks bookkeeping.
+                thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
+                Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
+                Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
+            }
             lock.lock();
+            if (context.EnableManagement) {
+                thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
+            }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
     }
@@ -209,6 +219,7 @@ public final class InterpreterToVM implements ContextAccess {
         }
         lock.unlock();
     }
+
     // endregion
 
     public static boolean getFieldBoolean(StaticObject obj, Field field) {

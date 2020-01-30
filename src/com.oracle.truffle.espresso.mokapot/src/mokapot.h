@@ -36,6 +36,14 @@ typedef MokapotEnv_ MokapotEnv;
 typedef const struct MokapotNativeInterface_ *MokapotEnv;
 #endif
 
+#define UNIMPLEMENTED(name) \
+  fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
+
+#define IMPLEMENTED(name) do {} while (0);
+
+// Methods implemented in C (not Java call)
+#define NATIVE(name) do {} while (0);
+
 // Additional Java basic types
 
 typedef uint8_t  jubyte;

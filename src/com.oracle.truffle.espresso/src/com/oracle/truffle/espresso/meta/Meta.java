@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import java.lang.management.MemoryUsage;
+import java.lang.management.ThreadInfo;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -143,6 +146,7 @@ public final class Meta implements ContextAccess {
         String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
 
         Throwable = knownKlass(Type.Throwable);
+        Throwable_getStackTrace = Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
         HIDDEN_FRAMES = Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
         Throwable_cause = Throwable.lookupField(Name.cause, Type.Throwable);
@@ -235,12 +239,24 @@ public final class Meta implements ContextAccess {
         HIDDEN_DEATH = Thread.lookupHiddenField(Name.HIDDEN_DEATH);
         HIDDEN_DEATH_THROWABLE = Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
+
+        if (context.EnableManagement) {
+            HIDDEN_THREAD_BLOCKED_OBJECT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_BLOCKED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
+            HIDDEN_THREAD_WAITED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+        } else {
+            HIDDEN_THREAD_BLOCKED_OBJECT = null;
+            HIDDEN_THREAD_BLOCKED_COUNT = null;
+            HIDDEN_THREAD_WAITED_COUNT = null;
+        }
+
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
         Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
         Thread_threadStatus = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
+        Thread_tid = Thread.lookupDeclaredField(Name.tid, Type._long);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
@@ -350,6 +366,18 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
         sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+
+        // java.management
+        MemoryUsage = knownKlass(MemoryUsage.class);
+        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
+        // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
+        sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
+        // MemoryManagerMXBean createMemoryManager(String var0)
+        sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
+        // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
+        sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector, Signature.GarbageCollectorMXBean_String_String);
+
+        management_ThreadInfo = knownKlass(ThreadInfo.class);
     }
 
     // Checkstyle: stop field name check
@@ -490,6 +518,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass VerifyError;
 
     public final ObjectKlass Throwable;
+    public final Method Throwable_getStackTrace;
     public final Field HIDDEN_FRAMES;
     public final Field Throwable_backtrace;
     public final Field Throwable_cause;
@@ -526,6 +555,7 @@ public final class Meta implements ContextAccess {
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
     public final Field Thread_threadStatus;
+    public final Field Thread_tid;
     public final Method Thread_exit;
     public final Method Thread_run;
     public final Method Thread_checkAccess;
@@ -536,6 +566,10 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_DEATH;
     public final Field HIDDEN_DEATH_THROWABLE;
     public final Field HIDDEN_SUSPEND_LOCK;
+    public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
+    public final Field HIDDEN_THREAD_BLOCKED_COUNT;
+    public final Field HIDDEN_THREAD_WAITED_COUNT;
+
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
@@ -610,7 +644,6 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_fixMethodType;
 
     // References
-
     public final ObjectKlass Finalizer;
     public final Method Finalizer_register;
     public final ObjectKlass Reference;
@@ -631,6 +664,13 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ReferenceQueue;
     public final Field ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
+
+    public final ObjectKlass MemoryUsage;
+    public final ObjectKlass sun_management_ManagementFactory;
+    public final Method sun_management_ManagementFactory_createMemoryPool;
+    public final Method sun_management_ManagementFactory_createMemoryManager;
+    public final Method sun_management_ManagementFactory_createGarbageCollector;
+    public final ObjectKlass management_ThreadInfo;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -841,6 +881,10 @@ public final class Meta implements ContextAccess {
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         return getRegistries().loadKlass(type, classLoader);
+    }
+
+    public StaticObject newThrowable() {
+        return initEx(Throwable);
     }
 
     /**

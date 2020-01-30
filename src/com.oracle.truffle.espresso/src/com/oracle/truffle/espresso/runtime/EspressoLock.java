@@ -45,6 +45,14 @@ public interface EspressoLock extends Lock {
      * The current thread must own this object's monitor.
      * <p>
      * Analogous to the {@link Object#wait(long)} method for built-in monitor locks.
+     *
+     * @param timeout the maximum time to wait in milliseconds.
+     * @throws IllegalArgumentException if the value of timeout is negative.
+     * @throws IllegalMonitorStateException if the current thread is not the owner of the object's
+     *             monitor.
+     * @throws InterruptedException if any thread interrupted the current thread before or while the
+     *             current thread was waiting for a notification. The <i>interrupted status</i> of
+     *             the current thread is cleared when this exception is thrown.
      */
     void await(long timeout) throws InterruptedException;
 
@@ -79,6 +87,16 @@ public interface EspressoLock extends Lock {
      * Analogous to the {@link Thread#holdsLock(Object)} method for built-in monitor locks.
      */
     boolean isHeldByCurrentThread();
+
+    /**
+     * Returns the thread that currently owns this lock, or {@code null} if not owned. When this
+     * method is called by a thread that is not the owner, the return value reflects a best-effort
+     * approximation of current lock status. For example, the owner may be momentarily {@code null}
+     * even if there are threads trying to acquire the lock but have not yet done so.
+     *
+     * @return the owner, or {@code null} if not owned
+     */
+    Thread getOwnerThread();
 
     /**
      * Creates a new {@code EspressoLock} instance.
@@ -129,6 +147,11 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     @Override
     public void signalAll() {
         getWaitCondition().signalAll();
+    }
+
+    @Override
+    public Thread getOwnerThread() {
+        return getOwner();
     }
 
     @Override

@@ -40,14 +40,6 @@ void* getJavaVM(TruffleEnv *truffle_env) {
   return (*mokaEnv)->vm;
 }
 
-#define UNIMPLEMENTED(name) \
-  fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
-
-#define IMPLEMENTED(name) do {} while (0);
-
-// Methods implemented in C (not Java call)
-#define NATIVE(name) do {} while (0);
-
 // macros for restartable system calls
 
 #define RESTARTABLE_RETURN_INT(_cmd) do { \
@@ -384,8 +376,8 @@ void JVM_DumpAllStacks(JNIEnv *env, jclass unused) {
 }
 
 jobjectArray JVM_GetAllThreads(JNIEnv *env, jclass dummy) {
-  UNIMPLEMENTED(JVM_GetAllThreads);
-  return NULL;
+  IMPLEMENTED(JVM_GetAllThreads);
+  return (*getEnv())->JVM_GetAllThreads(env, dummy);
 }
 
 void JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jstring name) {
@@ -1302,8 +1294,8 @@ void JVM_RawMonitorExit(void *mon) {
 }
 
 void *JVM_GetManagement(jint version) {
-  UNIMPLEMENTED(JVM_GetManagement);
-  return NULL;
+  IMPLEMENTED(JVM_GetManagement);
+  return (*getEnv())->JVM_GetManagement(version);
 }
 
 jobject JVM_InitAgentProperties(JNIEnv *env, jobject agent_props) {
