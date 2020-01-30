@@ -143,7 +143,7 @@ public class WindowsFileOperations extends FileOperations {
             for (Map.Entry<Path, Path> e : copiedPaths.entrySet()) {
                 Path orig = e.getKey();
                 if (Files.exists(orig)) {
-                    String s = orig.toString() + "|" + e.getValue().toString();
+                    String s = orig.toAbsolutePath().toString() + "|" + e.getValue().toAbsolutePath().toString();
                     lines.add(s);
                     // do not delete the directory's contents.
                     delayDeletedPaths.remove(orig);
@@ -160,7 +160,7 @@ public class WindowsFileOperations extends FileOperations {
         if (delayDeletedList != null) {
             List<String> lines = new ArrayList<>(delayDeletedPaths.size());
             for (Path p : delayDeletedPaths) {
-                lines.add(p.toString());
+                lines.add(p.toAbsolutePath().toString());
             }
             if (!lines.isEmpty()) {
                 r = true;
