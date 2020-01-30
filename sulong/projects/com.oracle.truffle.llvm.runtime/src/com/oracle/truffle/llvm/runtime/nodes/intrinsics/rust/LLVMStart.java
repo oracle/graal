@@ -118,6 +118,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                 dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
                 return exitCode.longValue();
             } catch (TypeOverflowException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new LLVMUnsupportedException(this, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
             }
         }
