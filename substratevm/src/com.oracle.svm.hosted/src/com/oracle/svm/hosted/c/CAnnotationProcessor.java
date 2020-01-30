@@ -35,6 +35,7 @@ import java.util.List;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
@@ -125,7 +126,11 @@ public class CAnnotationProcessor {
 
     private Path compileQueryCode(Path queryFile) {
         /* replace the '.c' or '.cpp' from the end to get the binary name */
-        String fileName = queryFile.getFileName().toString();
+        Path fileNamePath = queryFile.getFileName();
+        if (fileNamePath == null) {
+            throw VMError.shouldNotReachHere(queryFile + " invalid queryFile");
+        }
+        String fileName = fileNamePath.toString();
         Path binary = queryFile.resolveSibling(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
         compilerInvoker.compileAndParseError(codeCtx.getDirectives().getOptions(), queryFile, binary, this::reportCompilerError);
         return binary;
