@@ -40,6 +40,7 @@ import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -847,22 +848,42 @@ public final class DebuggerController implements ContextsListener {
                     continue;
                 }
 
+                long klassId;
+                long methodId;
+                byte typeTag;
+                long codeIndex;
+
                 RootNode root = findCurrentRoot(frame);
                 if (root == null) {
-                    // unable to find root object for this frame,
-                    // skip!
+                    // since we can't lookup the root node, we have to
+                    // construct a jdwp-like location from the frame
+                    // TODO(Gregersen) - add generic polyglot jdwp frame representation
                     continue;
+                } else {
+                    MethodRef method = getContext().getMethodFromRootNode(root);
+                    KlassRef klass = method.getDeclaringKlass();
+
+                    klassId = ids.getIdAsLong(klass);
+                    methodId = ids.getIdAsLong(method);
+                    typeTag = TypeTag.getKind(klass);
+                    // try to get the precise code index directly
+                    codeIndex = context.getCurrentBCI(root);
+
+                    if (codeIndex == -1) {
+                        // could not obtain precise bci from the root node
+                        // try to get an encapsulated source section from the frame
+                        SourceSection sourceSection = root.getEncapsulatingSourceSection();
+                        if (sourceSection.hasLines()) {
+                            if (sourceSection.getStartLine() != sourceSection.getEndLine()) {
+                                JDWPLogger.log("Not able to get a precise encapsulated source section", JDWPLogger.LogLevel.ALL);
+                            }
+                            codeIndex = method.getBCIFromLine(sourceSection.getStartLine());
+                        } else {
+                            // no lines! Fall back to bci 0 then
+                            codeIndex = 0;
+                        }
+                    }
                 }
-                MethodRef method = getContext().getMethodFromRootNode(root);
-                assert method != null;
-
-                KlassRef klass = method.getDeclaringKlass();
-                assert klass != null;
-
-                long klassId = ids.getIdAsLong(klass);
-                long methodId = ids.getIdAsLong(method);
-                byte typeTag = TypeTag.getKind(klass);
-                long codeIndex = context.getCurrentBCI(root);
 
                 DebugScope scope = frame.getScope();
 
