@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public abstract class TRegexExecutorNode extends Node {
+public class LookAroundIndex<T extends LookAroundAssertion> extends SimpleStateIndex<T> {
 
-    @CompilationFinal protected TRegexExecRootNode root;
-
-    public void setRoot(TRegexExecRootNode root) {
-        this.root = root;
+    @Override
+    protected short getStateId(T state) {
+        return state.getSubTreeId();
     }
 
-    /**
-     * The length of the {@code input} argument given to
-     * {@link TRegexExecRootNode#execute(Object, int)}.
-     *
-     * @return the length of the {@code input} argument given to
-     *         {@link TRegexExecRootNode#execute(Object, int)}.
-     */
-    public int getInputLength(TRegexExecutorLocals locals) {
-        assert root != null;
-        return root.inputLength(locals.getInput());
+    @Override
+    protected void setStateId(T state, short id) {
+        state.setSubTreeId(id);
     }
-
-    public char getChar(TRegexExecutorLocals locals) {
-        assert root != null;
-        return root.inputCharAt(locals.getInput(), locals.getIndex());
-    }
-
-    public char getCharAt(TRegexExecutorLocals locals, int index) {
-        assert root != null;
-        return root.inputCharAt(locals.getInput(), index);
-    }
-
-    public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
-
-    public abstract Object execute(TRegexExecutorLocals locals, boolean compactString);
 }

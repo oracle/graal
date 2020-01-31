@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -49,18 +48,20 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public abstract class RegexASTNode implements IndexedState, JsonConvertible {
+public abstract class RegexASTNode implements JsonConvertible {
 
-    private static final short FLAG_PREFIX = 1;
-    private static final short FLAG_DEAD = 1 << 1;
-    private static final short FLAG_CARET = 1 << 2;
-    private static final short FLAG_DOLLAR = 1 << 3;
-    protected static final short FLAG_GROUP_LOOP = 1 << 4;
-    protected static final short FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
-    protected static final short FLAG_LOOK_AROUND_NEGATED = 1 << 6;
-    protected static final short FLAG_EMPTY_GUARD = 1 << 7;
-    protected static final short FLAG_HAS_LOOPS = 1 << 8;
-    protected static final short FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 9;
+    static final short FLAG_PREFIX = 1;
+    static final short FLAG_DEAD = 1 << 1;
+    static final short FLAG_HAS_CARET = 1 << 2;
+    static final short FLAG_HAS_DOLLAR = 1 << 3;
+    static final short FLAG_STARTS_WITH_CARET = 1 << 4;
+    static final short FLAG_ENDS_WITH_DOLLAR = 1 << 5;
+    static final short FLAG_GROUP_LOOP = 1 << 6;
+    static final short FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 7;
+    static final short FLAG_LOOK_AROUND_NEGATED = 1 << 8;
+    static final short FLAG_EMPTY_GUARD = 1 << 9;
+    static final short FLAG_HAS_LOOPS = 1 << 10;
+    static final short FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 11;
 
     private short id = -1;
     private RegexASTNode parent;
@@ -98,7 +99,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         return id >= 0;
     }
 
-    @Override
     public short getId() {
         assert idInitialized();
         return id;
@@ -134,6 +134,18 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         setFlag(flag, true);
     }
 
+    protected short getFlags(short mask) {
+        return (short) (flags & mask);
+    }
+
+    /**
+     * Update all flags denoted by {@code mask} with the values from {@code newFlags}.
+     */
+    protected void setFlags(short newFlags, short mask) {
+        assert (newFlags & ~mask) == 0;
+        flags = (short) (flags & ~mask | newFlags);
+    }
+
     protected void setFlag(short flag, boolean value) {
         if (value) {
             flags |= flag;
@@ -146,7 +158,11 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
      * Marks the node as dead, i.e. unmatchable.
      */
     public void markAsDead() {
-        setFlag(FLAG_DEAD);
+        setDead(true);
+    }
+
+    public void setDead(boolean dead) {
+        setFlag(FLAG_DEAD, dead);
     }
 
     /**
@@ -175,8 +191,32 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         setFlag(FLAG_PREFIX);
     }
 
+    public boolean hasCaret() {
+        return isFlagSet(FLAG_HAS_CARET);
+    }
+
+    public void setHasCaret() {
+        setHasCaret(true);
+    }
+
+    public void setHasCaret(boolean hasCaret) {
+        setFlag(FLAG_HAS_CARET, hasCaret);
+    }
+
+    public boolean hasDollar() {
+        return isFlagSet(FLAG_HAS_DOLLAR);
+    }
+
+    public void setHasDollar() {
+        setHasDollar(true);
+    }
+
+    public void setHasDollar(boolean hasDollar) {
+        setFlag(FLAG_HAS_DOLLAR, hasDollar);
+    }
+
     public boolean startsWithCaret() {
-        return isFlagSet(FLAG_CARET);
+        return isFlagSet(FLAG_STARTS_WITH_CARET);
     }
 
     public void setStartsWithCaret() {
@@ -184,11 +224,11 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     }
 
     public void setStartsWithCaret(boolean startsWithCaret) {
-        setFlag(FLAG_CARET, startsWithCaret);
+        setFlag(FLAG_STARTS_WITH_CARET, startsWithCaret);
     }
 
     public boolean endsWithDollar() {
-        return isFlagSet(FLAG_DOLLAR);
+        return isFlagSet(FLAG_ENDS_WITH_DOLLAR);
     }
 
     public void setEndsWithDollar() {
@@ -196,7 +236,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     }
 
     public void setEndsWithDollar(boolean endsWithDollar) {
-        setFlag(FLAG_DOLLAR, endsWithDollar);
+        setFlag(FLAG_ENDS_WITH_DOLLAR, endsWithDollar);
     }
 
     public void setHasLoops() {

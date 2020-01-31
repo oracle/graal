@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,20 +41,21 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
+public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements AbstractTransition<DFAStateNodeBuilder, DFAStateTransitionBuilder>, JsonConvertible {
 
     private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    DFAStateTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitionSet) {
+    DFAStateTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitionSet) {
         super(transitionSet, matcherBuilder);
     }
 
@@ -63,10 +64,11 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     }
 
     @Override
-    public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CharSet mergedMatcher) {
+    public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CodePointSet mergedMatcher) {
         return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
     }
 
+    @Override
     public int getId() {
         return id;
     }
@@ -75,6 +77,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         this.id = id;
     }
 
+    @Override
     public DFAStateNodeBuilder getSource() {
         return source;
     }
@@ -83,6 +86,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         this.source = source;
     }
 
+    @Override
     public DFAStateNodeBuilder getTarget() {
         return target;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -318,7 +318,7 @@ public final class TRegexCompilationRequest {
             file = env.getPublicTruffleFile("./nfa_reverse.gv");
             NFAExport.exportDotReverse(nfa, file, true, false);
             file = env.getPublicTruffleFile("nfa.json");
-            nfa.toJson().dump(file);
+            Json.obj(Json.prop("dfa", Json.obj(Json.prop("pattern", source.toString()), Json.prop("nfa", nfa.toJson(true))))).dump(file);
         }
     }
 

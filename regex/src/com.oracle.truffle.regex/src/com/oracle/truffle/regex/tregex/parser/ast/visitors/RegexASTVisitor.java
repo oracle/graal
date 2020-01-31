@@ -45,7 +45,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
@@ -74,12 +73,7 @@ public abstract class RegexASTVisitor {
 
     protected abstract void visit(CharacterClass characterClass);
 
-    protected abstract void visit(MatchFound matchFound);
-
     protected void doVisit(RegexASTNode cur) {
-        if (cur == null) {
-            throw new IllegalStateException();
-        }
         if (cur instanceof Group) {
             visit((Group) cur);
         } else if (cur instanceof Sequence) {
@@ -94,8 +88,6 @@ public abstract class RegexASTVisitor {
             visit((CharacterClass) cur);
         } else if (cur instanceof BackReference) {
             visit((BackReference) cur);
-        } else if (cur instanceof MatchFound) {
-            visit((MatchFound) cur);
         } else {
             throw new IllegalStateException();
         }

@@ -53,7 +53,11 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
 
+    private short subTreeId = -1;
     private Group group;
+    private PositionAssertion anchoredInitialState;
+    private MatchFound unAnchoredInitialState;
+    private PositionAssertion anchoredFinalState;
     private MatchFound matchFound;
     private boolean visitorGroupVisited = false;
 
@@ -65,7 +69,19 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         if (recursive) {
             setGroup(copy.group.copy(ast, true));
         }
-        ast.createEndPoint(this);
+        ast.createNFAHelperNodes(this);
+    }
+
+    public boolean subTreeIdInitialized() {
+        return subTreeId >= 0;
+    }
+
+    public short getSubTreeId() {
+        return subTreeId;
+    }
+
+    public void setSubTreeId(short subTreeId) {
+        this.subTreeId = subTreeId;
     }
 
     @Override
@@ -87,6 +103,12 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public void setGroup(Group group) {
         this.group = group;
         group.setParent(this);
+        if (anchoredInitialState != null) {
+            anchoredInitialState.setNext(group);
+        }
+        if (unAnchoredInitialState != null) {
+            unAnchoredInitialState.setNext(group);
+        }
     }
 
     /**
@@ -99,6 +121,35 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public void setMatchFound(MatchFound matchFound) {
         this.matchFound = matchFound;
         matchFound.setParent(this);
+    }
+
+    public RegexASTNode getAnchoredInitialState() {
+        return anchoredInitialState;
+    }
+
+    public void setAnchoredInitialState(PositionAssertion anchoredInitialState) {
+        this.anchoredInitialState = anchoredInitialState;
+        anchoredInitialState.setParent(this);
+        anchoredInitialState.setNext(group);
+    }
+
+    public RegexASTNode getUnAnchoredInitialState() {
+        return unAnchoredInitialState;
+    }
+
+    public void setUnAnchoredInitialState(MatchFound unAnchoredInitialState) {
+        this.unAnchoredInitialState = unAnchoredInitialState;
+        unAnchoredInitialState.setParent(this);
+        unAnchoredInitialState.setNext(group);
+    }
+
+    public RegexASTNode getAnchoredFinalState() {
+        return anchoredFinalState;
+    }
+
+    public void setAnchoredFinalState(PositionAssertion anchoredFinalState) {
+        this.anchoredFinalState = anchoredFinalState;
+        anchoredFinalState.setParent(this);
     }
 
     @Override

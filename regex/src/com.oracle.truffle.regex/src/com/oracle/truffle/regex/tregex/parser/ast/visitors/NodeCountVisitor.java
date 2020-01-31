@@ -38,40 +38,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 
-import java.util.Collection;
+/**
+ * Counts the total number of child nodes of a given node.
+ */
+public class NodeCountVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
+    private int count = 0;
 
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
-    }
-
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
-    }
-
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
-    }
-
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
-    }
-
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+    public int count(RegexASTNode runRoot) {
+        count = 0;
+        run(runRoot);
+        return count;
     }
 
     @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    protected void visit(BackReference backReference) {
+        count++;
+    }
+
+    @Override
+    protected void visit(Group group) {
+        count++;
+        if (group.getParent() instanceof RegexASTSubtreeRootNode) {
+            // account for the NFA helper nodes
+            count += 4;
+        }
+    }
+
+    @Override
+    protected void visit(Sequence sequence) {
+        count++;
+    }
+
+    @Override
+    protected void visit(PositionAssertion assertion) {
+        count++;
+    }
+
+    @Override
+    protected void visit(LookBehindAssertion assertion) {
+        count++;
+    }
+
+    @Override
+    protected void visit(LookAheadAssertion assertion) {
+        count++;
+    }
+
+    @Override
+    protected void visit(CharacterClass characterClass) {
+        count++;
     }
 }

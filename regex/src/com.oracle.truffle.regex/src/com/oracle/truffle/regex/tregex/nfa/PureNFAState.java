@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,73 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
+package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.tregex.parser.Token;
+import java.util.Collections;
+import java.util.Set;
+
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
 /**
- * This visitor is used for setting the {@link SourceSection} of AST subtrees that are copied into
- * the parser tree as substitutions for things like word boundaries and position assertions in
- * multi-line mode. It will set the source section of all nodes in the subtree to the
- * {@link SourceSection} object passed to {@link #run(Group, Token)}.
- *
- * @see com.oracle.truffle.regex.tregex.parser.RegexParser
+ * Represents a state of a {@link PureNFA}. All {@link PureNFAState}s correspond to a single
+ * {@link RegexASTNode}, referenced by {@link #getAstNodeId()}. Initial and final states correspond
+ * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
+ * to either {@link CharacterClass}es or {@link BackReference}s.
  */
-public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
+public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition> {
 
-    private final RegexAST ast;
-    private Token token;
+    private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
-    public SetSourceSectionVisitor(RegexAST ast) {
-        this.ast = ast;
+    private final short astNodeId;
+    private final CodePointSet charSet;
+    private Set<PureNFA> lookBehindEntries;
+
+    public PureNFAState(short id, short astNodeId, CodePointSet charSet) {
+        super(id, EMPTY_TRANSITIONS);
+        this.astNodeId = astNodeId;
+        this.charSet = charSet;
     }
 
-    public void run(Group root, Token t) {
-        this.token = t;
-        run(root);
+    public short getAstNodeId() {
+        return astNodeId;
     }
 
-    @Override
-    protected void visit(BackReference backReference) {
-        ast.addSourceSection(backReference, token);
-    }
-
-    @Override
-    protected void visit(Group group) {
-    }
-
-    @Override
-    protected void leave(Group group) {
+    public CodePointSet getCharSet() {
+        return charSet;
     }
 
     @Override
-    protected void visit(Sequence sequence) {
+    protected PureNFATransition[] createTransitionsArray(int length) {
+        return new PureNFATransition[length];
     }
 
-    @Override
-    protected void visit(PositionAssertion assertion) {
-        ast.addSourceSection(assertion, token);
+    public Set<PureNFA> getLookBehindEntries() {
+        if (lookBehindEntries == null) {
+            return Collections.emptySet();
+        }
+        return lookBehindEntries;
     }
 
-    @Override
-    protected void visit(LookBehindAssertion assertion) {
-    }
-
-    @Override
-    protected void visit(LookAheadAssertion assertion) {
-    }
-
-    @Override
-    protected void visit(CharacterClass characterClass) {
-        ast.addSourceSection(characterClass, token);
+    public void addLookBehindEntry(SimpleStateIndex<PureNFA> lookBehinds, PureNFA lb) {
+        if (lookBehindEntries == null) {
+            lookBehindEntries = StateSet.create(lookBehinds);
+        }
+        lookBehindEntries.add(lb);
     }
 }

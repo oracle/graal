@@ -46,7 +46,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
@@ -130,10 +129,5 @@ public final class ASTDebugDumpVisitor extends DepthFirstTraversalRegexASTVisito
     @Override
     protected void visit(CharacterClass characterClass) {
         append(characterClass);
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        append(matchFound);
     }
 }

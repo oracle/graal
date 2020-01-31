@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,67 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-public interface IndexedState {
-    short getId();
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
+
+    private final ArrayList<T> states;
+    private StateSet<T> emptySet;
+
+    protected SimpleStateIndex() {
+        states = new ArrayList<>();
+    }
+
+    protected SimpleStateIndex(int size) {
+        states = new ArrayList<>(size);
+    }
+
+    public void add(T state) {
+        assert !states.contains(state);
+        setStateId(state, (short) states.size());
+        states.add(state);
+        assert states.get(getStateId(state)) == state;
+    }
+
+    protected abstract short getStateId(T state);
+
+    protected abstract void setStateId(T state, short id);
+
+    @Override
+    public int getNumberOfStates() {
+        return states.size();
+    }
+
+    @Override
+    public short getId(T state) {
+        short id = getStateId(state);
+        assert states.get(id) == state;
+        return id;
+    }
+
+    @Override
+    public T getState(int id) {
+        return states.get(id);
+    }
+
+    public StateSet<T> getEmptySet() {
+        if (emptySet == null) {
+            emptySet = StateSet.create(this);
+        }
+        return emptySet;
+    }
+
+    public int size() {
+        return states.size();
+    }
+
+    public T get(int i) {
+        return states.get(i);
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return states.iterator();
+    }
 }

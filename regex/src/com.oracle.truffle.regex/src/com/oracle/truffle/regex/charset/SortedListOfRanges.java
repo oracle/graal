@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -403,8 +403,11 @@ public interface SortedListOfRanges extends CharacterSet {
      * non-adjacent. This property must hold at all times.
      */
     default boolean rangesAreSortedAndDisjoint() {
+        if (size() > 0 && getLo(0) > getHi(0)) {
+            return false;
+        }
         for (int i = 1; i < size(); i++) {
-            if ((!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
+            if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
                 return false;
             }
         }
