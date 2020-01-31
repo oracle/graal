@@ -35,7 +35,7 @@ class PureMustBeSafe {
     }
 }
 
-class InitializesPureMustBeSafe {
+class InitializesPureMustBeDelayed {
     static int v;
     static {
         v = PureMustBeSafe.v;
@@ -178,6 +178,36 @@ class PureDependsOnImplicitExceptionMustBeDelayed {
     }
 }
 
+class StaticFieldHolderMustBeSafe {
+    /**
+     * Other class initializers that modify {@link #a} must not run at image build time so that the
+     * initial value 111 assigned here can be read at run time.
+     */
+    static int a = 111;
+
+    static void setA(int value) {
+        a = value;
+    }
+}
+
+class StaticFieldModifer1MustBeDelayed {
+    static {
+        StaticFieldHolderMustBeSafe.a = 222;
+    }
+
+    static void triggerInitialization() {
+    }
+}
+
+class StaticFieldModifer2MustBeDelayed {
+    static {
+        StaticFieldHolderMustBeSafe.setA(333);
+    }
+
+    static void triggerInitialization() {
+    }
+}
+
 /**
  * Suffixes MustBeSafe and MustBeDelayed are parsed by an external script in the tests after the
  * image is built. Every class that ends with `MustBeSafe` should be eagerly initialized and every
@@ -187,17 +217,17 @@ class PureDependsOnImplicitExceptionMustBeDelayed {
  */
 public class TestClassInitializationMustBeSafe {
     static int pure() {
-        return PureCallMustBeSafe.v + PureCallMustBeSafe.v + PureCallMustBeSafe.v + transitivelyPure();
+        return transitivelyPure() + 42;
     }
 
     private static int transitivelyPure() {
-        return PureCallMustBeSafe.v + PureCallMustBeSafe.v + PureCallMustBeSafe.v;
+        return 42;
     }
 
     public static void main(String[] args) {
         System.out.println(PureMustBeSafe.v);
         System.out.println(PureCallMustBeSafe.v);
-        System.out.println(InitializesPureMustBeSafe.v);
+        System.out.println(InitializesPureMustBeDelayed.v);
         System.out.println(NonPureMustBeDelayed.v);
         System.out.println(NonPureAccessedFinal.v);
         System.out.println(InitializesNonPureMustBeDelayed.v);
@@ -227,6 +257,23 @@ public class TestClassInitializationMustBeSafe {
             throw new RuntimeException("should not reach here");
         } catch (NoClassDefFoundError ae) {
             /* This is OK */
+        }
+
+        int a = StaticFieldHolderMustBeSafe.a;
+        if (a != 111) {
+            throw new RuntimeException("expected 111 but found " + a);
+        }
+
+        StaticFieldModifer1MustBeDelayed.triggerInitialization();
+        a = StaticFieldHolderMustBeSafe.a;
+        if (a != 222) {
+            throw new RuntimeException("expected 222 but found " + a);
+        }
+
+        StaticFieldModifer2MustBeDelayed.triggerInitialization();
+        a = StaticFieldHolderMustBeSafe.a;
+        if (a != 333) {
+            throw new RuntimeException("expected 333 but found " + a);
         }
     }
 }
