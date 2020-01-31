@@ -914,7 +914,7 @@ def _helloworld(native_image, javac_command, path, build_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
-    native_image(["-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
+    native_image(["--native-image-info", "-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
     if not build_only:
         expected_output = [output + os.linesep]
