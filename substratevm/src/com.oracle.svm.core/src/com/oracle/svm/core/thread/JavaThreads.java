@@ -703,22 +703,23 @@ public abstract class JavaThreads {
 
     /** Get the Park event for a thread, initializing it if necessary. */
     private static ParkEvent ensureUnsafeParkEvent(Thread thread) {
-        return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread), false);
+        return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread));
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static void sleep(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
+        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread));
+        sleepEvent.reset();
+        /*
+         * It is critical to reset the event *before* checking for an interrupt, which requires that
+         * updates to the event's unparked status and updates to the thread's interrupt status
+         * cannot be reordered with regard to each other.
+         */
         if (thread.isInterrupted()) {
-            /*
-             * For this, it is crucial that the ParkEvent always resets before it starts waiting
-             * (see below) or a stale unpark could instantly end our next sleep.
-             */
-            return;
+            return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
-        final boolean resetEventBeforeWait = true;
-        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), resetEventBeforeWait);
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
