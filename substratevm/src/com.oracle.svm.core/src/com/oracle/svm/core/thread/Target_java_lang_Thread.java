@@ -276,9 +276,14 @@ final class Target_java_lang_Thread {
         return interrupted;
     }
 
+    /**
+     * Marks the thread as interrupted and wakes it up.
+     *
+     * See {@link JavaThreads#park()}, {@link JavaThreads#park(long)} and {@link JavaThreads#sleep}
+     * for vital aspects of the underlying mechanisms.
+     */
     @Substitute
     void interrupt0() {
-        /* Set the interrupt status of the thread. */
         interrupted = true;
 
         if (!SubstrateOptions.MultiThreaded.getValue()) {
