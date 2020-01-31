@@ -355,6 +355,9 @@ public final class EspressoContext {
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
+        // Create application (system) class loader.
+        meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
+
         EspressoLogger.log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
         initVMDoneMs = System.currentTimeMillis();
     }
