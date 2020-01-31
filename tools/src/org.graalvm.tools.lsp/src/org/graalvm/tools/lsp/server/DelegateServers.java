@@ -45,6 +45,8 @@ import org.graalvm.tools.lsp.server.types.LanguageServer.DelegateServer;
 import org.graalvm.tools.lsp.server.types.LanguageServer.LoggerProxy;
 import org.graalvm.tools.lsp.server.types.RenameOptions;
 import org.graalvm.tools.lsp.server.types.ServerCapabilities;
+import org.graalvm.tools.lsp.server.types.TextDocumentSyncKind;
+import org.graalvm.tools.lsp.server.types.TextDocumentSyncOptions;
 
 /**
  * Merge of communication with delegate language servers.
@@ -81,19 +83,9 @@ public final class DelegateServers {
     }
 
     private String findContextLanguage(JSONObject params) {
-        Object context = params.opt("context");
-        if (!(context instanceof JSONObject)) {
-            context = params;
-        }
-        Object textDocument = ((JSONObject) context).opt("textDocument");
-        if (!(textDocument instanceof JSONObject)) {
-            return null;
-        }
-        Object uri = ((JSONObject) textDocument).opt("uri");
-        if (!(uri instanceof String)) {
-            return null;
-        }
-        return truffleAdapter.getLanguageId(URI.create((String) uri));
+        JSONObject textDocument = params != null ? params.optJSONObject("textDocument") : null;
+        Object uri = textDocument != null ? textDocument.opt("uri") : null;
+        return uri instanceof String ? truffleAdapter.getLanguageId(URI.create((String) uri)) : null;
     }
 
     private static boolean languageMatch(String languageId1, String languageId2) {
@@ -108,7 +100,7 @@ public final class DelegateServers {
         for (DelegateServer ds : delegateServers) {
             try {
                 JSONObject message = ds.awaitMessage(id);
-                if (logger.isLoggable(Level.FINER)) {
+                if (message != null && logger.isLoggable(Level.FINER)) {
                     String format = "[Trace - %s] Received response from %s: %s";
                     logger.log(Level.FINER, String.format(format, Instant.now().toString(), ds.toString(), message.toString()));
                 }
@@ -126,7 +118,7 @@ public final class DelegateServers {
     }
 
     private static Object mergeResults(Object allResults, JSONObject message2) {
-        if (message2.has("result")) {
+        if (message2 != null && message2.has("result")) {
             Object result2 = message2.get("result");
             if (allResults == null) {
                 return result2;
@@ -148,18 +140,33 @@ public final class DelegateServers {
                     jo1.put(key2, mergeJSONInto(key2, jo1.get(key2), jo2.get(key2)));
                 }
             }
-        } else if (j1 instanceof JSONArray && j2 instanceof JSONArray) {
+        } else if (j1 instanceof JSONArray) {
             JSONArray ja1 = (JSONArray) j1;
-            JSONArray ja2 = (JSONArray) j2;
-            if (ja1.isEmpty()) {
-                for (Object value : ja2) {
-                    ja1.put(value);
+            if (j2 instanceof JSONArray) {
+                JSONArray ja2 = (JSONArray) j2;
+                if (ja1.isEmpty()) {
+                    for (Object value : ja2) {
+                        ja1.put(value);
+                    }
+                } else if (!ja2.isEmpty()) {
+                    Set<String> labels = getLabels(ja1);
+                    for (Object value : ja2) {
+                        addIfNoSuchLabel(ja1, labels, value);
+                    }
                 }
-            } else if (!ja2.isEmpty()) {
+            } else if (!ja1.isEmpty()) {
                 Set<String> labels = getLabels(ja1);
-                for (Object value : ja2) {
-                    addIfNoSuchLabel(ja1, labels, value);
-                }
+                addIfNoSuchLabel(ja1, labels, j2);
+            } else {
+                ja1.put(j2);
+            }
+        } else if (j2 instanceof JSONArray) {
+            JSONArray ja2 = (JSONArray) j2;
+            if (!ja2.isEmpty()) {
+                Set<String> labels = getLabels(ja2);
+                addIfNoSuchLabel(ja2, labels, j1);
+            } else {
+                ja2.put(j1);
             }
         } else {
             if (isTrue(j1) && isFalse(j2) || isFalse(j1) && isTrue(j2)) {
@@ -227,6 +234,9 @@ public final class DelegateServers {
                 capability = capabilities.getCodeActionProvider();
                 break;
             case "textDocument/codeLens":
+                capability = capabilities.getCodeLensProvider();
+                break;
+            case "codeLens/resolve":
                 CodeLensOptions clp = capabilities.getCodeLensProvider();
                 capability = (clp != null) ? clp.getResolveProvider() : null;
                 break;
@@ -253,6 +263,9 @@ public final class DelegateServers {
                 capability = capabilities.getDocumentHighlightProvider();
                 break;
             case "textDocument/documentLink":
+                capability = capabilities.getDocumentLinkProvider();
+                break;
+            case "documentLink/resolve":
                 DocumentLinkOptions dlo = capabilities.getDocumentLinkProvider();
                 capability = (dlo != null) ? dlo.getResolveProvider() : null;
                 break;
@@ -291,7 +304,11 @@ public final class DelegateServers {
                 capability = capabilities.getSignatureHelpProvider();
                 break;
             case "textDocument/didChange":
-                capability = true;
+                capability = capabilities.getTextDocumentSync();
+                if (capability instanceof TextDocumentSyncOptions) {
+                    capability = ((TextDocumentSyncOptions) capability).getChange();
+                }
+                capability = (capability == TextDocumentSyncKind.Full || capability == TextDocumentSyncKind.Incremental) ? true : null;
                 break;
             case "textDocument/typeDefinition":
                 capability = capabilities.getTypeDefinitionProvider();
