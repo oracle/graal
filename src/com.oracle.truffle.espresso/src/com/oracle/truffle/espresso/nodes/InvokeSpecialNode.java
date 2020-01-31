@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ public final class InvokeSpecialNode extends QuickNode {
     }
 
     @Override
-    public int invoke(final VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?
         Object receiver = nullCheck(root.peekReceiver(frame, top, method));

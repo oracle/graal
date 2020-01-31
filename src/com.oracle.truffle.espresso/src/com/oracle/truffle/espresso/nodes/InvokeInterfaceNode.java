@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame) {
+    public final int execute(final VirtualFrame frame) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public final class InvokeStaticNode extends QuickNode {
     }
 
     @Override
-    public int invoke(final VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

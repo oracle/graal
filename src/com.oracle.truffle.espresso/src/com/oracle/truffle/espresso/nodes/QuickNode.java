@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends Node {
+public abstract class QuickNode extends EspressoInstrumentableQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 
@@ -43,7 +42,8 @@ public abstract class QuickNode extends Node {
         this.callerBCI = callerBCI;
     }
 
-    public abstract int invoke(VirtualFrame frame);
+    @Override
+    public abstract int execute(VirtualFrame frame);
 
     // TODO(peterssen): Make this a node?
     protected static StaticObject nullCheck(StaticObject value) {
@@ -66,6 +66,6 @@ public abstract class QuickNode extends Node {
 
     @Override
     public SourceSection getSourceSection() {
-        return getBytecodesNode().getEncapsulatingSourceSection();
+        return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
     }
 }

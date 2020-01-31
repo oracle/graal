@@ -20,32 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.nodes;
 
-public final class SteppingInfo {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
 
-    private final int requestId;
-    private final byte suspendPolicy;
-    private long stepOutBCI = -1;
+@GenerateWrapper
+public abstract class EspressoInstrumentableQuickNode extends Node implements InstrumentableNode {
 
-    public SteppingInfo(int requestId, byte suspendPolicy) {
-        this.requestId = requestId;
-        this.suspendPolicy = suspendPolicy;
+    public abstract int execute(VirtualFrame frame);
+
+    public final boolean isInstrumentable() {
+        return true;
     }
 
-    public int getRequestId() {
-        return requestId;
+    @Override
+    public final WrapperNode createWrapper(ProbeNode probeNode) {
+        return new EspressoInstrumentableQuickNodeWrapper(this, probeNode);
     }
 
-    public byte getSuspendPolicy() {
-        return suspendPolicy;
-    }
-
-    public void setStepOutBCI(long stepOutBCI) {
-        this.stepOutBCI = stepOutBCI;
-    }
-
-    public long getStepOutBCI() {
-        return stepOutBCI;
-    }
 }

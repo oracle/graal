@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ public abstract class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame) {
+    public final int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);

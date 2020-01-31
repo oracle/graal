@@ -348,9 +348,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    // only maintained/accessed for instrumentation purposes
-    private int currentBCI;
-
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
@@ -370,17 +367,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         System.err.println("Copying node for " + getMethod());
     }
 
-    public int getCurrentBCI() {
-        return currentBCI;
-    }
-
-    @Override
-    public SourceSection getEncapsulatingSourceSection() {
-        SourceSection section = getSourceSectionAtBCI(currentBCI);
-        return section != null ? section : getSourceSection();
-    }
-
-    private SourceSection getSourceSectionAtBCI(int bci) {
+    public SourceSection getSourceSectionAtBCI(int bci) {
         Source s = getSource();
         if (s == null) {
             return null;
@@ -610,14 +597,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                if (instrument != null) {
-                    this.currentBCI = curBCI;
-                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
-                    statementIndex = nextStatementIndex;
-                }
-
                 if (Bytecodes.canTrap(curOpcode)) {
                     setBCI(frame, curBCI);
+                }
+
+                if (instrument != null) {
+                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    statementIndex = nextStatementIndex;
                 }
 
                 // @formatter:off
@@ -1035,7 +1021,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                         case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                        case QUICK: top += nodes[bs.readCPI(curBCI)].invoke(frame); break;
+                        case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
 
 
                         default:
@@ -1610,7 +1596,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opCode) {
@@ -1626,7 +1612,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     @SuppressWarnings("unused")
@@ -1651,7 +1637,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             }
         }
         // Perform the call outside of the lock.
-        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     /**
@@ -1669,7 +1655,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             nodes[cpi] = nodes[cpi].replace(invoke);
         }
         // Perform the call outside of the lock.
-        return invoke.invoke(frame);
+        return invoke.execute(frame);
     }
 
     private QuickNode dispatchQuickened(int top, int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
@@ -1788,7 +1774,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
         if (quick != null) {
             // Do invocation outside of the lock.
-            return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
+            return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
         }
 
         assert pool != null && inDy != null;
@@ -1855,7 +1841,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top, curBCI));
             }
         }
-        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass accessingKlass, Meta meta) {

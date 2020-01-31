@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.api.frame.FrameInstance;
+
 public final class CallFrame {
 
     private final byte typeTag;
@@ -29,15 +31,17 @@ public final class CallFrame {
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
+    private final FrameInstance frameInstance;
     private final Object thisValue;
     private final Object[] variables;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Object thisValue, Object[] variables) {
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Object thisValue, Object[] variables) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
         this.codeIndex = codeIndex;
+        this.frameInstance = frameInstance;
         this.thisValue = thisValue;
         this.variables = variables;
     }
@@ -60,6 +64,10 @@ public final class CallFrame {
 
     public long getThreadId() {
         return threadId;
+    }
+
+    public FrameInstance getFrameInstance() {
+        return frameInstance;
     }
 
     public Object getThisValue() {
