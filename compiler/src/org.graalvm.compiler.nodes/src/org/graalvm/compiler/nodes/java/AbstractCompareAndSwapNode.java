@@ -90,8 +90,8 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted();
+    public Stamp getAccessStamp(NodeView view) {
+        return expectedValue.stamp(view).meet(newValue.stamp(view)).unrestricted();
     }
 
     @Override

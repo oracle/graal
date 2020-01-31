@@ -45,8 +45,7 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * This is an extension of {@link MacroNode} that is a {@link StateSplit} and a
- * {@link MemoryKill}.
+ * This is an extension of {@link MacroNode} that is a {@link StateSplit} and a {@link MemoryKill}.
  */
 @NodeInfo
 public abstract class MacroStateSplitNode extends MacroNode implements StateSplit, SingleMemoryKill {

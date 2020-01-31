@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,14 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
-public interface LIRLowerableAccess extends LIRLowerable, AddressableMemoryAccess {
-    Stamp getAccessStamp(NodeView view);
+/**
+ *
+ * A special form of {@linkplain MemoryAccess} requiring a {@linkplain GuardingNode} to hold to be
+ * executed.
+ */
+public interface GuardedMemoryAccess extends MemoryAccess, GuardedNode {
+
 }

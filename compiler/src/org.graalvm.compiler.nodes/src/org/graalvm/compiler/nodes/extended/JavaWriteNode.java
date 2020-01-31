@@ -25,9 +25,9 @@
 package org.graalvm.compiler.nodes.extended;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
@@ -76,12 +76,12 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return StampFactory.forKind(writeKind);
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return getLocationIdentity();
+    public Stamp getAccessStamp(NodeView view) {
+        return value().stamp(view);
     }
 }

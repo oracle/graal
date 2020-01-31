@@ -68,15 +68,15 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return value().stamp(NodeView.DEFAULT);
+    public Stamp getAccessStamp(NodeView view) {
+        return value().stamp(view);
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
             WriteNode write = (WriteNode) next();
-            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp().isCompatible(write.getAccessStamp()) && !isVolatile()) {
+            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp(NodeView.DEFAULT).isCompatible(write.getAccessStamp(NodeView.DEFAULT)) && !isVolatile()) {
                 write.setLastLocationAccess(getLastLocationAccess());
                 return write;
             }
@@ -95,4 +95,5 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     public boolean isVolatile() {
         return volatileAccess;
     }
+
 }

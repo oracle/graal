@@ -49,7 +49,6 @@ import org.graalvm.word.LocationIdentity;
  * AArch64-specific subclass of ReadNode that knows how to merge ZeroExtend and SignExtend into the
  * read.
  */
-
 @NodeInfo
 public class AArch64ReadNode extends ReadNode {
     public static final NodeClass<AArch64ReadNode> TYPE = NodeClass.create(AArch64ReadNode.class);
@@ -73,7 +72,7 @@ public class AArch64ReadNode extends ReadNode {
     }
 
     @Override
-    public Stamp getAccessStamp() {
+    public Stamp getAccessStamp(NodeView view) {
         return accessStamp;
     }
 
@@ -89,7 +88,7 @@ public class AArch64ReadNode extends ReadNode {
 
         ValueNode usage = (ValueNode) readNode.usages().first();
         boolean isSigned = usage instanceof SignExtendNode;
-        IntegerStamp accessStamp = ((IntegerStamp) readNode.getAccessStamp());
+        IntegerStamp accessStamp = ((IntegerStamp) readNode.getAccessStamp(NodeView.DEFAULT));
 
         AddressNode address = readNode.getAddress();
         LocationIdentity location = readNode.getLocationIdentity();

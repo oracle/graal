@@ -271,4 +271,5 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(getBci(), asNode().getStackKind());
         setStateDuring(newStateDuring);
     }
+
 }

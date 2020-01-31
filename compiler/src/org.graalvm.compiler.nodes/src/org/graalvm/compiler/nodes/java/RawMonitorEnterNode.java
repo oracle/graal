@@ -94,4 +94,5 @@ public final class RawMonitorEnterNode extends AccessMonitorNode implements Virt
     public ValueNode getHub() {
         return hub;
     }
+
 }

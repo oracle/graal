@@ -79,8 +79,9 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -100,7 +101,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         super(gen);
     }
 
-    protected LIRFrameState getState(Access access) {
+    protected LIRFrameState getState(MemoryAccess access) {
         if (access instanceof DeoptimizingNode) {
             return state((DeoptimizingNode) access);
         }
@@ -112,7 +113,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     protected LIRKind getLirKind(LIRLowerableAccess access) {
-        return gen.getLIRKind(access.getAccessStamp());
+        return gen.getLIRKind(access.getAccessStamp(NodeView.DEFAULT));
     }
 
     protected OperandSize getMemorySize(LIRLowerableAccess access) {
@@ -211,7 +212,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
-    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access, ValueKind<?> addressKind) {
+    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, AddressableMemoryAccess access, ValueKind<?> addressKind) {
         return builder -> {
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
             LIRFrameState state = getState(access);
@@ -222,11 +223,11 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         };
     }
 
-    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access) {
+    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, AddressableMemoryAccess access) {
         return emitConvertMemoryOp(kind, op, size, access, null);
     }
 
-    private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits, ValueKind<?> addressKind) {
+    private ComplexMatchResult emitSignExtendMemory(AddressableMemoryAccess access, int fromBits, int toBits, ValueKind<?> addressKind) {
         assert fromBits <= toBits && toBits <= 64;
         AMD64Kind kind = null;
         AMD64RMOp op;
@@ -273,7 +274,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         return null;
     }
 
-    private Value emitReinterpretMemory(LIRKind to, Access access) {
+    private Value emitReinterpretMemory(LIRKind to, AddressableMemoryAccess access) {
         AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
         LIRFrameState state = getState(access);
         return getArithmeticLIRGenerator().emitLoad(to, address, state);

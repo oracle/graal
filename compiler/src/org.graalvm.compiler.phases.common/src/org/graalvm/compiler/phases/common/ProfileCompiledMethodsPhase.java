@@ -63,7 +63,7 @@ import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.Phase;
@@ -170,7 +170,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 0;
         } else if (node instanceof AccessMonitorNode) {
             return 10;
-        } else if (node instanceof Access) {
+        } else if (node instanceof MemoryAccess) {
             return 2;
         } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof NotNode) {
             return 1;

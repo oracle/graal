@@ -25,11 +25,6 @@
 
 package org.graalvm.compiler.core.aarch64;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
@@ -73,7 +68,13 @@ import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 @MatchableNode(nodeClass = AArch64PointerAddNode.class, inputs = {"base", "offset"})
 public class AArch64NodeMatchRules extends NodeMatchRules {
@@ -113,15 +114,15 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         super(gen);
     }
 
-    protected LIRFrameState getState(Access access) {
+    protected LIRFrameState getState(MemoryAccess access) {
         if (access instanceof DeoptimizingNode) {
             return state((DeoptimizingNode) access);
         }
         return null;
     }
 
-    protected AArch64Kind getMemoryKind(Access access) {
-        return (AArch64Kind) gen.getLIRKind(access.asNode().stamp(NodeView.DEFAULT)).getPlatformKind();
+    protected AArch64Kind getMemoryKind(MemoryAccess access) {
+        return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
     }
 
     private static ExtendType getZeroExtendType(int fromBits) {

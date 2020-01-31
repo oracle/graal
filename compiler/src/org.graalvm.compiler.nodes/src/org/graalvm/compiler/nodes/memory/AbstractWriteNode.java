@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
@@ -42,7 +43,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Guard}, cycles = CYCLES_2, size = SIZE_1)
-public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, SingleMemoryKill, MemoryAccess, GuardingNode {
+public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, SingleMemoryKill, GuardingNode {
 
     public static final NodeClass<AbstractWriteNode> TYPE = NodeClass.create(AbstractWriteNode.class);
     @Input ValueNode value;
@@ -92,5 +93,5 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         lastLocationAccess = newLla;
     }
 
-    public abstract Stamp getAccessStamp();
+    public abstract Stamp getAccessStamp(NodeView view);
 }

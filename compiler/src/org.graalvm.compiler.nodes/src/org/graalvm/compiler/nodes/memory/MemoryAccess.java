@@ -48,4 +48,5 @@ public interface MemoryAccess {
      *            {@linkplain MemoryAccess#getLocationIdentity()}
      */
     void setLastLocationAccess(MemoryNode lla);
+
 }

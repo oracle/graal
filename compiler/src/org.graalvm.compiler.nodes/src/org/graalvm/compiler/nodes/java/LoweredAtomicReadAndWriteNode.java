@@ -100,8 +100,8 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return stamp(NodeView.DEFAULT);
+    public Stamp getAccessStamp(NodeView view) {
+        return stamp(view);
     }
 
     @Override

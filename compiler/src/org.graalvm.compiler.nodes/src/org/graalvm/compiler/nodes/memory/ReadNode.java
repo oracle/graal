@@ -62,7 +62,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, MemoryAccess {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -91,7 +91,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp());
+        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
         gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this)));
     }
 
@@ -168,7 +168,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return stamp(NodeView.DEFAULT);
+    public Stamp getAccessStamp(NodeView view) {
+        return stamp(view);
     }
 }

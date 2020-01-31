@@ -134,4 +134,5 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }
+
 }

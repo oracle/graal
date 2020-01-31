@@ -28,14 +28,14 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
-import org.junit.Test;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.word.LocationIdentity;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -47,8 +47,8 @@ public class ReferenceGetLoopTest extends GraalCompilerTest {
         boolean found = false;
         for (LoopEx loop : loops.loops()) {
             for (Node node : loop.inside().nodes()) {
-                if (node instanceof Access) {
-                    Access access = (Access) node;
+                if (node instanceof MemoryAccess) {
+                    MemoryAccess access = (MemoryAccess) node;
                     LocationIdentity location = access.getLocationIdentity();
                     if (location instanceof FieldLocationIdentity) {
                         ResolvedJavaField field = ((FieldLocationIdentity) location).getField();
