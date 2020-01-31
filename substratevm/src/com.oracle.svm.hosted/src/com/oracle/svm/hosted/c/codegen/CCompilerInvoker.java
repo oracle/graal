@@ -280,12 +280,12 @@ public abstract class CCompilerInvoker {
                         .command(compilerCommand)
                         .directory(tempDirectory.toFile())
                         .redirectErrorStream(true);
-        CompilerInfo compilerInfo = null;
+        CompilerInfo result = null;
         Process process = null;
         try {
             process = pb.start();
             try (Scanner scanner = new Scanner(process.getInputStream())) {
-                compilerInfo = createCompilerInfo(scanner);
+                result = createCompilerInfo(scanner);
             }
             process.waitFor();
         } catch (InterruptedException ex) {
@@ -297,7 +297,7 @@ public abstract class CCompilerInvoker {
                 process.destroy();
             }
         }
-        return compilerInfo;
+        return result;
     }
 
     protected List<String> getVersionInfoOptions() {
@@ -320,7 +320,6 @@ public abstract class CCompilerInvoker {
     }
 
     protected static Class<? extends Architecture> guessArchitecture(String archStr) {
-        Class<? extends Architecture> arch;
         switch (archStr) {
             case "x86_64":
             case "x64": /* Windows notation */
