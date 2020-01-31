@@ -16,7 +16,8 @@ let initializeAgent = function (tracer) {
         console.log(`agent: handling #${res.id} request for ${req.url}`);
     }, {
         roots: true,
-        rootNameFilter: name => name === 'emit'
+        rootNameFilter: name => name === 'emit',
+        sourceFilter: src => src.name === 'events.js'
     });
 
     agent.on('return', function(ctx, frame) {
@@ -30,7 +31,8 @@ let initializeAgent = function (tracer) {
         }
     }, {
         roots: true,
-        rootNameFilter: name => name === 'end'
+        rootNameFilter: name => name === 'end',
+        sourceFilter: src => src.name === '_http_outgoing.js'
     });
     console.log('agent: ready');
 };
