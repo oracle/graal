@@ -250,7 +250,7 @@ class PosixParkEvent extends ParkEvent {
              */
             while (!event) {
                 /* Before blocking, check if this thread has been interrupted. */
-                if (Thread.interrupted()) {
+                if (Thread.currentThread().isInterrupted()) {
                     result = WaitResult.INTERRUPTED;
                     return result;
                 }
@@ -294,7 +294,7 @@ class PosixParkEvent extends ParkEvent {
             }
             while (!event) {
                 /* Before blocking, check if this thread has been interrupted. */
-                if (Thread.interrupted()) {
+                if (Thread.currentThread().isInterrupted()) {
                     result = WaitResult.INTERRUPTED;
                     return result;
                 }
