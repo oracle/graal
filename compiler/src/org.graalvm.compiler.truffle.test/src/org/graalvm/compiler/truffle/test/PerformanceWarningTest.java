@@ -114,7 +114,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     }
 
     @SuppressWarnings("try")
-    private static void testHelper(TruffleCompilerImpl compiler, RootNode rootNode, boolean expectException, String... outputStrings) {
+    private void testHelper(TruffleCompilerImpl compiler, RootNode rootNode, boolean expectException, String... outputStrings) {
 
         // Compile and capture output to TTY.
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
@@ -122,6 +122,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+            initializeCompiler(target);
             DebugContext debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;

@@ -199,14 +199,12 @@ public abstract class PartialEvaluator {
 
     void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
-        GraphBuilderConfiguration newConfig = configForParsing.copy();
         boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, EnableInfopoints) ||
                         instrumentationCfg.instrumentBranches ||
                         instrumentationCfg.instrumentBoundaries ||
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
-        newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || needSourcePositions);
-        newConfig.withOmitAssertions(TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
-        configForParsing = newConfig;
+        configForParsing = configForParsing.copy().withNodeSourcePosition(configForParsing.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
+                        TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
     }
 
     /**

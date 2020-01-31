@@ -24,10 +24,13 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assume;
@@ -35,6 +38,7 @@ import org.junit.Assume;
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     protected final TruffleCompilerImpl truffleCompiler;
+    private final AtomicBoolean compilerInitialized = new AtomicBoolean();
     private Context activeContext;
 
     protected TruffleCompilerImplTest() {
@@ -43,6 +47,12 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
         beforeInitialization();
         TruffleCompiler compiler = runtime.newTruffleCompiler();
         this.truffleCompiler = (TruffleCompilerImpl) compiler;
+    }
+
+    protected final void initializeCompiler(OptimizedCallTarget callTarget) {
+        if (compilerInitialized.compareAndSet(false, true)) {
+            truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+        }
     }
 
     /**

@@ -190,7 +190,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             compilable.call(arguments);
         } catch (IgnoreError e) {
         }
-
+        initializeCompiler(compilable);
         OptionValues options = getOptions();
         DebugContext debug = getDebugContext(options);
         lastDebug = debug;

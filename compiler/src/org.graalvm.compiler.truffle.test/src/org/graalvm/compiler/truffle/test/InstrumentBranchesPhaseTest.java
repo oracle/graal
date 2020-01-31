@@ -24,20 +24,16 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.polyglot.Context;
 
 public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
@@ -81,16 +77,9 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
-    private TruffleOptionsOverrideScope overrides;
-
     @Override
     protected void beforeInitialization() {
-        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true);
-    }
-
-    @After
-    public void disableInstrumentAfterTests() {
-        overrides.close();
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("engine.InstrumentBranches", "true").build());
     }
 
     @Test
