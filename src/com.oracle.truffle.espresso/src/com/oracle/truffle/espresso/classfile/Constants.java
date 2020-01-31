@@ -56,6 +56,7 @@ public final class Constants {
 
     public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
 
+    // Table 4.1-A. Class access and property modifiers.
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
                     ACC_SUPER | // Only very old compilers.
@@ -68,6 +69,7 @@ public final class Constants {
     // Inner classes can be static, private or protected (classic VM does this)
     public static final int RECOGNIZED_INNER_CLASS_MODIFIERS = (JVM_RECOGNIZED_CLASS_MODIFIERS | ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
 
+    // Table 4.5-A. Field access and property flags.
     public static final int JVM_RECOGNIZED_FIELD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |
                     ACC_PROTECTED |
@@ -78,6 +80,7 @@ public final class Constants {
                     ACC_ENUM |
                     ACC_SYNTHETIC;
 
+    // Table 4.6-A. Method access and property flags.
     public static final int JVM_RECOGNIZED_METHOD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |
                     ACC_PROTECTED |
