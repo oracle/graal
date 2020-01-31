@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 @AutomaticFeature
 public class VMFeature implements Feature {
@@ -48,6 +50,13 @@ public class VMFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
+        if (SubstrateOptions.DumpTargetInfo.getValue()) {
+            System.out.println("# Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
+            System.out.println("# Using native toolchain:");
+            ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> System.out.println("#   " + x));
+            System.out.println("# Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
+        }
+
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         String fieldName = "VERSION_INFO";
         try {
@@ -65,12 +74,17 @@ public class VMFeature implements Feature {
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
 
-        String delimiter = File.pathSeparator;
-        addCGlobalDataString("Target.Libraries", String.join(delimiter, nativeLibraries.getLibraries()));
+        addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
         addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream()
-                        .map(Path::getFileName).map(Path::toString).collect(Collectors.joining(delimiter)));
+                        .map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
+        addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
 
-        /* TODO Add native toolchain info */
+        if (SubstrateOptions.DumpTargetInfo.getValue()) {
+            System.out.println("# Static libraries:");
+            Path current = Paths.get(".").toAbsolutePath();
+            nativeLibraries.getStaticLibraries().stream().map(current::relativize).map(Path::toString).forEach(x -> System.out.println("#   " + x));
+            System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
+        }
     }
 
     private static void addCGlobalDataString(String infoType, String content) {

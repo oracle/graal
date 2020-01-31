@@ -380,14 +380,11 @@ public final class NativeLibraries {
 
     public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
-        CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory);
-        compilerInvoker.verifyCompiler();
-        ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-                new CAnnotationProcessor(this, context, compilerInvoker).process(cache);
+                new CAnnotationProcessor(this, context, ImageSingletons.lookup(CCompilerInvoker.class)).process(cache);
             }
         }
     }

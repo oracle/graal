@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.VMError;
 
 public final class VM {
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static final String valueSeparator = "\t";
+    public static final String valueSeparator = "=";
     @Platforms(Platform.HOSTED_ONLY.class) //
     private static final String versionValue = getVersionValue();
 

@@ -223,6 +223,7 @@ import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -844,6 +845,11 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.hostVM(), aWordTypes);
 
                 prepareLibC();
+
+                CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
+                compilerInvoker.verifyCompiler();
+                ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
+
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializationSupport);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
