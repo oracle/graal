@@ -241,14 +241,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
-        if (!Boolean.getBoolean("debugexpr.antlr")) {
-            return parseAntlr(request);
-        }
-        throw new IllegalStateException("The antlr parser is not enabled.");
-    }
-
-    private ExecutableNode parseAntlr(InlineParsingRequest request) {
+    protected ExecutableNode parse(InlineParsingRequest request) {
         Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
         final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes,
                         getCurrentContext(LLVMLanguage.class));
