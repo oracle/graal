@@ -105,6 +105,10 @@
 			{
 				"os": "darwin",
 				"arch": "amd64"
+			},
+			{
+				"os": "windows",
+				"arch": "amd64"
 			}
 		]
 	},
@@ -123,6 +127,10 @@
 			},
 			{
 				"os": "darwin",
+				"arch": "amd64"
+			},
+			{
+				"os": "windows",
 				"arch": "amd64"
 			}
 		]
@@ -204,6 +212,36 @@
 	},
 	{
 		"name": "ruby-installable-svm-java11",
+		"core": false,
+		"jdk": "jdk_11",
+		"artifacts": [
+			{
+				"os": "linux",
+				"arch": "amd64"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64"
+			}
+		]
+	},
+	{
+		"name": "wasm-installable-svm-java8",
+		"core": false,
+		"jdk": "jdk_8",
+		"artifacts": [
+			{
+				"os": "linux",
+				"arch": "amd64"
+			},
+			{
+				"os": "darwin",
+				"arch": "amd64"
+			}
+		]
+	},
+	{
+		"name": "wasm-installable-svm-java11",
 		"core": false,
 		"jdk": "jdk_11",
 		"artifacts": [
