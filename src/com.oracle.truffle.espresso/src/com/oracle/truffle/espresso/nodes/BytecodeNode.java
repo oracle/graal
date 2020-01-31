@@ -320,8 +320,6 @@ import com.oracle.truffle.object.DebugCounter;
  */
 public final class BytecodeNode extends EspressoMethodNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_CATCH = false;
-
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
@@ -506,12 +504,10 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     }
 
     public void putLong(VirtualFrame frame, int slot, long value) {
-        // frame.setObject(stackSlots[slot], StaticObject.NULL);
         frame.setLong(stackSlots[slot + 1], value);
     }
 
     public void putDouble(VirtualFrame frame, int slot, double value) {
-        // frame.setObject(stackSlots[slot], StaticObject.NULL);
         frame.setLong(stackSlots[slot + 1], Double.doubleToRawLongBits(value));
     }
 
@@ -1027,9 +1023,19 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
-            } catch (EspressoException e) {
+            } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
+                // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
                 CompilerAsserts.partialEvaluationConstant(curBCI);
-                if (e == getContext().getStackOverflow()) {
+                StaticObject exceptionToHandle = null;
+                // Handle both guest and host StackOverflowError.
+                if (e == getContext().getStackOverflow() || e instanceof StackOverflowError) {
+                    CompilerDirectives.transferToInterpreter();
+                    if (e instanceof StackOverflowError) {
+                        // Transform host to guest exception.
+                        exceptionToHandle = getContext().getStackOverflow().getExceptionObject();
+                    } else {
+                        exceptionToHandle = ((EspressoException) e).getExceptionObject();
+                    }
                     /*
                      * Stack Overflow management. All calls to stack manipulation are manually
                      * inlined to prevent another SOE.
@@ -1041,59 +1047,27 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         for (int i = 0; i < stackOverflowErrorInfo.length; i += 3) {
                             if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
                                 top = 0;
-                                putObject(frame, 0, e.getExceptionObject());
+                                putObject(frame, 0, exceptionToHandle);
                                 top++;
-                                curBCI = stackOverflowErrorInfo[i + 2];
-                                continue loop;
+                                int targetBCI = stackOverflowErrorInfo[i + 2];
+                                checkBackEdge(curBCI, targetBCI, top, NOP);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                curBCI = targetBCI;
+                                continue loop; // skip bs.next()
                             }
                         }
                     }
-                    throw e;
-                }
-
-                ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
-                ExceptionHandler handler = null;
-                for (ExceptionHandler toCheck : handlers) {
-                    if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
-                        Klass catchType = null;
-                        if (!toCheck.isCatchAll()) {
-                            // exception handlers are similar to instanceof bytecodes, so we pass
-                            // instanceof
-                            catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
-                        }
-
-                        if (catchType == null || InterpreterToVM.instanceOf(e.getExceptionObject(), catchType)) {
-                            // the first found exception handler is our exception handler
-                            handler = toCheck;
-                            break;
-                        }
-                    }
-                }
-
-                if (handler != null) {
-                    top = 0;
-                    putObject(frame, 0, e.getExceptionObject());
-                    top++;
-                    int targetBCI = handler.getHandlerBCI();
-                    checkBackEdge(curBCI, targetBCI, top, NOP);
-                    if (instrument != null) {
-                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
-                    }
-                    curBCI = targetBCI;
-                    continue loop; // skip bs.next()
-                } else {
-                    throw e;
-                }
-            } catch (StackOverflowError | OutOfMemoryError e) {
-                CompilerDirectives.transferToInterpreter();
-                // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
-                Meta meta = getMeta();
-                StaticObject exceptionToHandle = null;
-                if (e instanceof StackOverflowError) {
-                    exceptionToHandle = Meta.initEx(meta.StackOverflowError);
+                    throw (EspressoException) ((e instanceof StackOverflowError) ? getContext().getStackOverflow() : e);
                 } else if (e instanceof OutOfMemoryError) {
-                    exceptionToHandle = Meta.initEx(meta.OutOfMemoryError);
+                    CompilerDirectives.transferToInterpreter();
+                    exceptionToHandle = Meta.initEx(getMeta().OutOfMemoryError);
+                } else {
+                    exceptionToHandle = ((EspressoException) e).getExceptionObject();
                 }
+
+                // Guest exception != StackOverflowError/OutOfMemoryError.
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
                 ExceptionHandler handler = null;
                 for (ExceptionHandler toCheck : handlers) {
@@ -1121,7 +1095,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                     }
                     curBCI = targetBCI;
-                    continue loop;
+                    continue loop; // skip bs.next()
                 } else {
                     throw new EspressoException(exceptionToHandle);
                 }
