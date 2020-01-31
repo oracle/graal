@@ -90,14 +90,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         if (prepareForReconnect) {
             // replace the controller instance
             controller.reInitialize();
-
-            // prepare to accept a new debugger connection
-            try {
-                doConnect();
-            } catch (IOException e) {
-                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-                printStackTrace(e);
-            }
         }
     }
 

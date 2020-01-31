@@ -997,7 +997,8 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /* int invocationOptions = */ input.readInt();
+                int invocationOptions = input.readInt();
+                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1007,7 +1008,7 @@ final class JDWP {
                         public Object call() throws Exception {
                             return method.invokeMethod(null, args);
                         }
-                    });
+                    }, suspensionStrategy);
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
@@ -1056,7 +1057,8 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /* int invocationOptions = */ input.readInt();
+                int invocationOptions = input.readInt();
+                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1066,7 +1068,7 @@ final class JDWP {
                         public Object call() throws Exception {
                             return method.invokeMethod(null, args);
                         }
-                    });
+                    }, suspensionStrategy);
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
@@ -1149,7 +1151,8 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /* int invocationOptions = */ input.readInt();
+                int invocationOptions = input.readInt();
+                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1159,7 +1162,7 @@ final class JDWP {
                         public Object call() throws Exception {
                             return method.invokeMethod(null, args);
                         }
-                    });
+                    }, suspensionStrategy);
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
@@ -1537,9 +1540,6 @@ final class JDWP {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input, context);
                 }
-                // TODO(Gregersen) - handle invocation options
-                // tracked by /browse/GR-19819
-                /* int options = */ input.readInt();
 
                 Object callee = context.getIds().fromId((int) objectId);
                 MethodRef method = verifyMethodRef(methodId, reply, context);
@@ -1550,6 +1550,8 @@ final class JDWP {
 
                 JDWPLogger.log("trying to invoke method: %s", JDWPLogger.LogLevel.PACKET, method.getNameAsString());
 
+                int invocationOptions = input.readInt();
+                byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1558,7 +1560,7 @@ final class JDWP {
                         public Object call() throws Exception {
                             return method.invokeMethod(callee, args);
                         }
-                    });
+                    }, suspensionStrategy);
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
@@ -2267,10 +2269,6 @@ final class JDWP {
                 if (classLoader == null) {
                     return new CommandResult(reply);
                 }
-
-                // TODO(Gregersen) - we will need all classes for which this classloader was the
-                // initiating loader
-                // tracked by /browse/GR-19820
                 KlassRef[] klasses = context.getInitiatedClasses(classLoader);
 
                 reply.writeInt(klasses.length);
