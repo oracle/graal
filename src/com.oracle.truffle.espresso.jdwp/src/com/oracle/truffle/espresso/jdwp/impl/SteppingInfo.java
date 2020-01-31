@@ -26,6 +26,7 @@ public final class SteppingInfo {
 
     private final int requestId;
     private final byte suspendPolicy;
+    private long stepOutBCI = -1;
 
     public SteppingInfo(int requestId, byte suspendPolicy) {
         this.requestId = requestId;
@@ -38,5 +39,13 @@ public final class SteppingInfo {
 
     public byte getSuspendPolicy() {
         return suspendPolicy;
+    }
+
+    public void setStepOutBCI(long stepOutBCI) {
+        this.stepOutBCI = stepOutBCI;
+    }
+
+    public long getStepOutBCI() {
+        return stepOutBCI;
     }
 }

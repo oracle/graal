@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -520,21 +520,22 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void stepCompleted(int commandRequestId, byte suspendPolicy, Object guestThread, CallFrame currentFrame) {
+    public void stepCompleted(SteppingInfo info, CallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        stream.writeByte(suspendPolicy);
+        stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
-        stream.writeInt(commandRequestId);
+        stream.writeInt(info.getRequestId());
         stream.writeLong(currentFrame.getThreadId());
 
         // location
         stream.writeByte(currentFrame.getTypeTag());
         stream.writeLong(currentFrame.getClassId());
         stream.writeLong(currentFrame.getMethodId());
-        stream.writeLong(currentFrame.getCodeIndex());
+        long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
+        stream.writeLong(codeIndex);
         JDWPLogger.log("Sending step completed event", JDWPLogger.LogLevel.STEPPING);
 
         if (holdEvents) {

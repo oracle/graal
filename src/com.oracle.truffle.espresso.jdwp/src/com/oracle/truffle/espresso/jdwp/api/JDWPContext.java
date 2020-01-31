@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import java.nio.file.Path;
@@ -402,15 +403,17 @@ public interface JDWPContext {
      * Determines if a caller has more same-line method invocations.
      *
      * @param callerRoot the root node of the caller frame
+     * @param frameInstance the frame instance to read the current bci from
      * @return true if the caller method has further method invocations on the current line
      */
-    boolean moreMethodCallsOnLine(RootNode callerRoot);
+    boolean moreMethodCallsOnLine(RootNode callerRoot, FrameInstance frameInstance);
 
     /**
-     * Returns the current code index (bci) given the current root node.
+     * Returns the current BCI or -1 if the BCI cannot be read.
      *
-     * @param root the currently executing root node
-     * @return the bci
+     * @param root the root node, representing the method/function
+     * @param frameInstance the frame instance to read the bci from
+     * @return the BCI or -1
      */
-    long getCurrentBCI(RootNode root);
+    long readBCIFromFrame(RootNode root, FrameInstance frameInstance);
 }

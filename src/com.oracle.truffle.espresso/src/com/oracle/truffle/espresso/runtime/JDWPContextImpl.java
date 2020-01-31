@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -543,24 +544,10 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public long getCurrentBCI(RootNode root) {
-        if (root instanceof EspressoRootNode) {
-            EspressoRootNode espressoRootNode = (EspressoRootNode) root;
-            if (espressoRootNode.isBytecodeNode()) {
-                return espressoRootNode.getCurrentBCI();
-            }
-        }
-        return -1;
-    }
-
-    @Override
-    public boolean moreMethodCallsOnLine(RootNode callerRoot) {
+    public boolean moreMethodCallsOnLine(RootNode callerRoot, FrameInstance frameInstance) {
         if (callerRoot instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
-            int bci = -1;
-            if (espressoRootNode.isBytecodeNode()) {
-                bci = espressoRootNode.getCurrentBCI();
-            }
+            int bci = (int) readBCIFromFrame(callerRoot, frameInstance);
             if (bci != -1) {
                 Method method = espressoRootNode.getMethod();
                 BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
@@ -589,5 +576,16 @@ public final class JDWPContextImpl implements JDWPContext {
             }
         }
         return false;
+    }
+
+    @Override
+    public long readBCIFromFrame(RootNode root, FrameInstance frameInstance) {
+        if (root instanceof EspressoRootNode && frameInstance != null) {
+            EspressoRootNode rootNode = (EspressoRootNode) root;
+            if (rootNode.isBytecodeNode()) {
+                return rootNode.readBCI(frameInstance);
+            }
+        }
+        return -1;
     }
 }

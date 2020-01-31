@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ public interface VMEventListener extends VMListener {
 
     void removeBreakpointRequest(int requestId);
 
-    void stepCompleted(int commandRequestId, byte suspendPolicy, Object guestThread, CallFrame currentFrame);
+    void stepCompleted(SteppingInfo info, CallFrame currentFrame);
 
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame[] callFrames);
 

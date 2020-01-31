@@ -348,9 +348,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    // only maintained/accessed for instrumentation purposes
-    private int currentBCI;
-
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
@@ -370,17 +367,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         System.err.println("Copying node for " + getMethod());
     }
 
-    public int getCurrentBCI() {
-        return currentBCI;
-    }
-
-    @Override
-    public SourceSection getEncapsulatingSourceSection() {
-        SourceSection section = getSourceSectionAtBCI(currentBCI);
-        return section != null ? section : getSourceSection();
-    }
-
-    private SourceSection getSourceSectionAtBCI(int bci) {
+    public SourceSection getSourceSectionAtBCI(int bci) {
         Source s = getSource();
         if (s == null) {
             return null;
@@ -610,14 +597,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                if (instrument != null) {
-                    this.currentBCI = curBCI;
-                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
-                    statementIndex = nextStatementIndex;
-                }
-
                 if (Bytecodes.canTrap(curOpcode)) {
                     setBCI(frame, curBCI);
+                }
+
+                if (instrument != null) {
+                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    statementIndex = nextStatementIndex;
                 }
 
                 // @formatter:off
