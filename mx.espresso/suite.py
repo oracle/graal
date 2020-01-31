@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.248.11",
+    "mxversion": "5.250.0",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "acb888bfb357fbce7aa94284d0c799c10711bd04",
+                "version": "df23b22f6b04e2bdfe9b4c26b063c6b92b410e74",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
