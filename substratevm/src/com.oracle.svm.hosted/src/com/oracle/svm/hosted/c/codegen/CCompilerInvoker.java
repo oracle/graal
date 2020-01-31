@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
@@ -132,7 +133,7 @@ public abstract class CCompilerInvoker {
                 scanner.findInLine("for ");
                 String targetArch = scanner.next();
                 return new CompilerInfo("microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
-            } catch (Exception e) {
+            } catch (NoSuchElementException e) {
                 return null;
             }
         }
@@ -181,7 +182,7 @@ public abstract class CCompilerInvoker {
                 int minor0 = scanner.nextInt();
                 int minor1 = scanner.nextInt();
                 return new CompilerInfo(triplet[1], "GNU project C and C++ compiler", "gcc", major, minor0, minor1, triplet[0]);
-            } catch (Exception e) {
+            } catch (NoSuchElementException e) {
                 return null;
             }
         }
@@ -220,7 +221,7 @@ public abstract class CCompilerInvoker {
                 scanner.reset(); /* back to default delimiters */
                 String[] triplet = guessTargetTriplet(scanner);
                 return new CompilerInfo(triplet[1], "LLVM", "clang", major, minor0, minor1, triplet[0]);
-            } catch (Exception e) {
+            } catch (NoSuchElementException e) {
                 return null;
             }
         }
