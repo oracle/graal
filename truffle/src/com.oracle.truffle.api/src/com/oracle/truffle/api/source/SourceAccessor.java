@@ -85,6 +85,27 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
     }
 
+    static boolean isPreInitialization() {
+        Object polyglotContext = ACCESSOR.engineSupport().getCurrentOuterContext();
+        return polyglotContext == null ? false : ACCESSOR.engineSupport().inContextPreInitialization(polyglotContext);
+    }
+
+    static String getRelativePathInLanguageHome(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getRelativePathInLanguageHome(truffleFile);
+    }
+
+    static void onSourceCreated(Source source) {
+        ACCESSOR.engineSupport().onSourceCreated(source);
+    }
+
+    static String getReinitializedPath(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedPath(truffleFile);
+    }
+
+    static URI getReinitializedURI(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedURI(truffleFile);
+    }
+
     static final class SourceSupportImpl extends Accessor.SourceSupport {
 
         @Override
@@ -125,6 +146,11 @@ final class SourceAccessor extends Accessor {
         @Override
         public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
             builder.embedderFileSystemContext(fileSystemContext);
+        }
+
+        @Override
+        public void invalidateAfterPreinitialiation(Source source) {
+            ((SourceImpl) source).key.invalidateAfterPreinitialiation();
         }
     }
 }

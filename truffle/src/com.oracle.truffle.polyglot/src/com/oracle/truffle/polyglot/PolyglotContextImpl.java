@@ -80,6 +80,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
@@ -191,6 +192,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
+    List<Source> sourcesToInvalidate;  // Non null only during content pre-initialization
 
     final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
@@ -1287,6 +1289,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         EnvironmentAccess.INHERIT, null, null, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
+            context.sourcesToInvalidate = new ArrayList<>();
             final String oldOption = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
             final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
             final String optionValue;
@@ -1328,6 +1331,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             disposeStaticContext(context);
             return context;
         } finally {
+            for (Source sourceToInvalidate : context.sourcesToInvalidate) {
+                EngineAccessor.SOURCE.invalidateAfterPreinitialiation(sourceToInvalidate);
+            }
+            context.sourcesToInvalidate = null;
             fs.onPreInitializeContextEnd();
             internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
