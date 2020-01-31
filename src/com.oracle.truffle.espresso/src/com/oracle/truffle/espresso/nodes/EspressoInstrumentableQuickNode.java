@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,23 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
 
-public class LeafAssumptionSetterNode extends InlinedSetterNode {
+@GenerateWrapper
+public abstract class EspressoInstrumentableQuickNode extends Node implements InstrumentableNode {
 
-    private final int curBCI;
-    private final int opcode;
+    public abstract int execute(VirtualFrame frame);
 
-    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
-        super(inlinedMethod, top, opCode, curBCI);
-        this.curBCI = curBCI;
-        this.opcode = opCode;
+    public final boolean isInstrumentable() {
+        return true;
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
-        if (inlinedMethod.leafAssumption()) {
-            setFieldNode.setField(frame, root, top);
-            return -slotCount + stackEffect;
-        } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opcode, inlinedMethod);
-        }
+    public final WrapperNode createWrapper(ProbeNode probeNode) {
+        return new EspressoInstrumentableQuickNodeWrapper(this, probeNode);
     }
 
 }

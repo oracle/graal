@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,7 @@ final class InvokeDynamicCallSiteNode extends QuickNode {
     }
 
     @Override
-    public int invoke(final VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         int argCount = Signatures.parameterCount(parsedSignature, false);
         Object[] args = root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
