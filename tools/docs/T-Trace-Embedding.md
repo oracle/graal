@@ -1,4 +1,4 @@
-# [T-Trace](T-Trace-Manual.md): Embedding
+# [T-Trace](T-Trace.md): Embedding
 
 [T-Trace](T-Trace-Manual.md) is a multipurpose, flexible tool providing
 enourmous possiblilities when it comes to dynamic understanding of user
@@ -21,10 +21,10 @@ priviledged one - imagine various bindings to OS concepts or other features
 of one's application. Such scripts are better to remain blackboxed and hidden
 from [T-Trace](T-Trace-Manual.md) instrumentation capabilities.
 
-To hide priviledged scripts from [T-Trace](T-Trace-Manual.md) sight
+To hide priviledged scripts from [T-Trace](T-Trace.md) sight
 [mark such scripts as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-)
-- by default [T-Trace](T-Trace-Manual.md) ignores and doesn't process *internal* scripts.
+- by default [T-Trace](T-Trace.md) ignores and doesn't process *internal* scripts.
 
 ## Where next?
 
-Read about more T-Trace use-cases in its [hacker's manual](T-Trace-Manual.md).
+Read about more [T-Trace](T-Trace.md) use-cases in its [hacker's manual](T-Trace-Manual.md).
