@@ -310,6 +310,26 @@ public final class DebugStackFrame {
         return Objects.hash(event, currentFrame);
     }
 
+    /**
+     * Returns the underlying materialized frame for this debug stack frame or <code>null</code> if
+     * the requesting language class does not match the root node guest language.
+     *
+     * @param languageClass the Truffle languageClass class object
+     * @return the materialized frame
+     *
+     * @since 20.1
+     */
+    public MaterializedFrame getMaterializedFrame(Class<? extends TruffleLanguage> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = findCurrentRoot();
+        if (languageClass == null || rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? findTruffleFrame() : null;
+    }
+
     MaterializedFrame findTruffleFrame() {
         if (currentFrame == null) {
             return event.getMaterializedFrame();
