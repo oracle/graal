@@ -192,12 +192,11 @@ public final class DebugStackFrame {
      *
      * @param languageClass the Truffle languageClass class object
      * @return the root node associated with the frame
-     * @throws IllegalArgumentException if the languageClass associated with this frame is not among
-     *             the allowed languages
      *
      * @since 20.1
      */
-    public RootNode getRootNode(Class<? extends TruffleLanguage> languageClass) throws IllegalArgumentException {
+    public RootNode getRootNode(Class<? extends TruffleLanguage> languageClass) {
+        Objects.requireNonNull(languageClass);
         RootNode rootNode = findCurrentRoot();
         if (languageClass == null || rootNode == null) {
             return null;

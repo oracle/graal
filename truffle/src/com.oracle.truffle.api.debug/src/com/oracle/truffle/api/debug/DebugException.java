@@ -45,6 +45,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -125,6 +126,7 @@ public final class DebugException extends RuntimeException {
      * @since 20.1
      */
     public Throwable asGuestException(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
         RootNode rootNode = throwLocation.getRootNode();
         if (languageClass == null || rootNode == null) {
             return null;
