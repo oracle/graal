@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
@@ -43,6 +44,7 @@ final class EventContextObject implements TruffleObject {
                     "column", "startColumn", "endColumn");
     private final EventContext context;
     @CompilerDirectives.CompilationFinal private String name;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
 
     EventContextObject(EventContext context) {
         this.context = context;
@@ -75,6 +77,7 @@ final class EventContextObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
+        int index;
         switch (member) {
             case "name":
                 if (name == null) {
@@ -83,22 +86,43 @@ final class EventContextObject implements TruffleObject {
                 }
                 return name;
             case "characters":
+                CompilerDirectives.transferToInterpreter();
                 return context.getInstrumentedSourceSection().getCharacters().toString();
             case "source":
                 return new SourceEventObject(context.getInstrumentedSourceSection().getSource());
             case "line":
             case "startLine":
-                return context.getInstrumentedSourceSection().getStartLine();
+                index = 0;
+                break;
             case "endLine":
-                return context.getInstrumentedSourceSection().getEndLine();
+                index = 1;
+                break;
             case "column":
             case "startColumn":
-                return context.getInstrumentedSourceSection().getStartColumn();
+                index = 2;
+                break;
             case "endColumn":
-                return context.getInstrumentedSourceSection().getEndColumn();
+                index = 3;
+                break;
             default:
                 throw UnknownIdentifierException.create(member);
         }
+        if (values == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            values = valuesForContext();
+        }
+        return values[index];
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private int[] valuesForContext() {
+        final SourceSection section = context.getInstrumentedSourceSection();
+        return new int[]{
+                        section.getStartLine(),
+                        section.getEndLine(),
+                        section.getStartColumn(),
+                        section.getEndColumn()
+        };
     }
 
     @ExportMessage
