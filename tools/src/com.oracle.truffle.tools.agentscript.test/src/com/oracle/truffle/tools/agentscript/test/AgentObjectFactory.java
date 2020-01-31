@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tools.agentscript.test.AgentScriptAPI.SourceInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
@@ -50,12 +51,15 @@ import org.junit.Assert;
 final class AgentObjectFactory extends ProxyLanguage {
     static TruffleObject agentObject;
 
-    static AgentScriptAPI.OnConfig createConfig(boolean expressions, boolean statements, boolean roots, Predicate<String> rootNameFilter) {
+    static AgentScriptAPI.OnConfig createConfig(
+                    boolean expressions, boolean statements, boolean roots,
+                    Predicate<String> rootNameFilter, Predicate<SourceInfo> sourceFilter) {
         AgentScriptAPI.OnConfig config = new AgentScriptAPI.OnConfig();
         config.expressions = expressions;
         config.statements = statements;
         config.roots = roots;
         config.rootNameFilter = rootNameFilter;
+        config.sourceFilter = sourceFilter;
         return config;
     }
 
