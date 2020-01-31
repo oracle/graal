@@ -41,15 +41,13 @@
 package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
-import java.util.Iterator;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -61,6 +59,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     private final PureNFAGenerator nfaGen;
     private final ObjectArrayBuffer transitionBuffer = new ObjectArrayBuffer(8);
+    private final ShortArrayBuffer traversedLookAroundsBuffer = new ShortArrayBuffer(8);
     private PureNFAState curState;
 
     public PureNFATransitionGenerator(RegexAST ast, PureNFAGenerator nfaGen) {
@@ -79,15 +78,10 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void visit(RegexASTNode target) {
-        StateSet<LookAheadAssertion> lookAheadsOnPath = getLookAheadsOnPath();
-        StateSet<LookBehindAssertion> lookBehindsOnPath = getLookBehindsOnPath();
-
+        traversedLookAroundsBuffer.clear();
         // Optimization: eagerly remove useless look-around assertions or transitions that cannot
         // match with their respective look-around assertions
-        if (curState.isMatchCharState() && pruneLookarounds(lookBehindsOnPath, curState.getCharSet(), false)) {
-            return;
-        }
-        if (target instanceof CharacterClass && pruneLookarounds(lookAheadsOnPath, ((CharacterClass) target).getCharSet(), true)) {
+        if (pruneLookarounds(target)) {
             return;
         }
 
@@ -99,12 +93,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
         }
         targetState.incPredecessors();
         QuantifierGuard[] quantifiers = getQuantifierGuardsOnPath();
-        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(),
-                        curState,
-                        targetState,
-                        getGroupBoundaries(),
-                        lookAheadsOnPath,
-                        lookBehindsOnPath,
+        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), traversedLookAroundsBuffer.toArray(),
                         quantifiers.length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(quantifiers, quantifiers.length)));
     }
 
@@ -116,11 +105,14 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     protected void leaveLookAhead(LookAheadAssertion assertion) {
     }
 
-    private static <T extends LookAroundAssertion> boolean pruneLookarounds(StateSet<T> lookArounds, CodePointSet parentChars, boolean lookAhead) {
-        Iterator<T> it = lookArounds.iterator();
-        while (it.hasNext()) {
-            LookAroundAssertion la = it.next();
-            if (lookAhead ? la.startsWithCharClass() : la.endsWithCharClass()) {
+    private boolean pruneLookarounds(RegexASTNode target) {
+        CodePointSet lookBehindParentChars = curState.isMatchCharState() ? curState.getCharSet() : null;
+        CodePointSet lookAheadParentChars = target instanceof CharacterClass ? ((CharacterClass) target).getCharSet() : null;
+        for (int id : getLookAroundsOnPath()) {
+            LookAroundAssertion la = ast.getLookArounds().get(id);
+            boolean lookAhead = la instanceof LookAheadAssertion;
+            CodePointSet parentChars = lookAhead ? lookAheadParentChars : lookBehindParentChars;
+            if (parentChars != null && (lookAhead ? la.startsWithCharClass() : la.endsWithCharClass())) {
                 Term firstOrLastTerm = lookAhead ? la.getGroup().getFirstAlternative().getFirstTerm() : la.getGroup().getFirstAlternative().getLastTerm();
                 CodePointSet laChars = ((CharacterClass) firstOrLastTerm).getCharSet();
                 if (la.isNegated() ? laChars.contains(parentChars) : !laChars.intersects(parentChars)) {
@@ -129,9 +121,10 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
                 }
                 if (la.isSingleCCNonCapturingLiteral() && (la.isNegated() ? !laChars.intersects(parentChars) : laChars.contains(parentChars))) {
                     // lookaround does not have any influence on the match, remove it
-                    it.remove();
+                    continue;
                 }
             }
+            traversedLookAroundsBuffer.add((short) id);
         }
         return false;
     }

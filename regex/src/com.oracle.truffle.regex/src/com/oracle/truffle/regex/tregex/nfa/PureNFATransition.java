@@ -41,34 +41,31 @@
 package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
 /**
  * Represents a transition of a {@link PureNFA}.
  */
 public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
+    public static final short[] NO_LOOK_AROUNDS = {};
+
     private final short id;
     private final PureNFAState source;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
-    private final StateSet<LookAheadAssertion> traversedLookAheads;
-    private final StateSet<LookBehindAssertion> traversedLookBehinds;
+    private final short[] traversedLookArounds;
     private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries,
-                    StateSet<LookAheadAssertion> traversedLookAheads,
-                    StateSet<LookBehindAssertion> traversedLookBehinds,
-                    QuantifierGuard[] quantifierGuards) {
+    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, short[] traversedLookArounds, QuantifierGuard[] quantifierGuards) {
         this.id = id;
         this.source = source;
         this.target = target;
         this.groupBoundaries = groupBoundaries;
-        this.traversedLookAheads = traversedLookAheads;
-        this.traversedLookBehinds = traversedLookBehinds;
+        this.traversedLookArounds = traversedLookArounds;
         this.quantifierGuards = quantifierGuards;
     }
 
@@ -95,24 +92,17 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
     }
 
     /**
-     * Set of {@link LookAheadAssertion}s traversed by this transition. All
-     * {@link LookAheadAssertion}s contained in this set must match in order for this transition to
-     * be valid.<br>
-     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookAheads()} of the
+     * List of {@link RegexASTSubtreeRootNode#getSubTreeId() IDs} of {@link LookAroundAssertion}s
+     * traversed by this transition, in the exact order seen by {@link NFATraversalRegexASTVisitor}.
+     * All {@link LookAroundAssertion}s contained in this list must match in order for this
+     * transition to be valid.<br>
+     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookArounds()} of the
      * transition from {@code a} to {@code [a-z]} will contain the look-ahead assertion
      * {@code (?=b)}, so the regex matcher must check {@code (?=b)} before continuing to
      * {@code [a-z]}.
      */
-    public StateSet<LookAheadAssertion> getTraversedLookAheads() {
-        return traversedLookAheads;
-    }
-
-    /**
-     * Set of {@link LookBehindAssertion}s traversed by this transition, analoguous to
-     * {@link #getTraversedLookAheads()}.
-     */
-    public StateSet<LookBehindAssertion> getTraversedLookBehinds() {
-        return traversedLookBehinds;
+    public short[] getTraversedLookArounds() {
+        return traversedLookArounds;
     }
 
     public QuantifierGuard[] getQuantifierGuards() {

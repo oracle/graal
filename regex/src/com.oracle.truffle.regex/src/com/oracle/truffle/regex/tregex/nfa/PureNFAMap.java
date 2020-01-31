@@ -55,16 +55,14 @@ public class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
-    private final SimpleStateIndex<PureNFA> lookAheads;
-    private final SimpleStateIndex<PureNFA> lookBehinds;
+    private final SimpleStateIndex<PureNFA> lookArounds;
     private int prefixLength = 0;
     private StateSet<PureNFA>[] prefixLookbehindEntries;
 
-    public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookAheads, SimpleStateIndex<PureNFA> lookBehinds) {
+    public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookArounds) {
         this.ast = ast;
         this.root = root;
-        this.lookAheads = lookAheads;
-        this.lookBehinds = lookBehinds;
+        this.lookArounds = lookArounds;
     }
 
     public RegexAST getAst() {
@@ -75,12 +73,8 @@ public class PureNFAMap {
         return root;
     }
 
-    public SimpleStateIndex<PureNFA> getLookAheads() {
-        return lookAheads;
-    }
-
-    public SimpleStateIndex<PureNFA> getLookBehinds() {
-        return lookBehinds;
+    public SimpleStateIndex<PureNFA> getLookArounds() {
+        return lookArounds;
     }
 
     public int getPrefixLength() {
@@ -103,7 +97,7 @@ public class PureNFAMap {
         }
         int i = offset - 1;
         if (prefixLookbehindEntries[i] == null) {
-            prefixLookbehindEntries[i] = StateSet.create(lookBehinds);
+            prefixLookbehindEntries[i] = StateSet.create(lookArounds);
         }
         prefixLookbehindEntries[i].add(lookBehind);
         prefixLength = Math.max(prefixLength, offset);

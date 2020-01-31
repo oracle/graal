@@ -97,14 +97,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * </li>
  * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
  * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
- * <li>{@link RegexAST#getLookAheads()}/{@link RegexAST#getLookBehinds()}: all reachable
- * {@link LookAroundAssertion}s are added to these lists.</li>
+ * <li>{@link RegexAST#getLookArounds()}}: all reachable {@link LookAroundAssertion}s are added to
+ * these lists.</li>
  * </ul>
  *
  * @see RegexAST#getReachableCarets()
  * @see RegexAST#getReachableDollars()
- * @see RegexAST#getLookAheads()
- * @see RegexAST#getLookBehinds()
+ * @see RegexAST#getLookArounds()
  * @see RegexASTNode#hasCaret()
  * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
@@ -249,9 +248,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookBehindAssertion assertion) {
-        if (!isReverse() && !assertion.isDead()) {
-            ast.getLookBehinds().add(assertion);
-        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -263,13 +259,13 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
-        if (!isReverse() && !assertion.isDead()) {
-            ast.getLookAheads().add(assertion);
-        }
         leaveLookAroundAssertion(assertion);
     }
 
     public void leaveLookAroundAssertion(LookAroundAssertion assertion) {
+        if (!isReverse() && !assertion.isDead()) {
+            ast.getLookArounds().add(assertion);
+        }
         assertion.getParent().setFlags((short) (assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS)), CHANGED_FLAGS);
     }
 

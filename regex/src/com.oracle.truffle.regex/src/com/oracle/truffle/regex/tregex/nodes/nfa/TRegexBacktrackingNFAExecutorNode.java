@@ -42,9 +42,12 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAState;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.regex.tregex.nfa.PureNFA;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
+import com.oracle.truffle.regex.tregex.nfa.PureNFAState;
+import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
+import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
@@ -56,27 +59,22 @@ import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
  */
 public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
 
-    private final NFA nfa;
+    private final PureNFA nfa;
     private final int numberOfCaptureGroups;
 
     @Child InputRegionMatchesNode regionMatchesNode;
 
-    public TRegexBacktrackingNFAExecutorNode(NFA nfa, int numberOfCaptureGroups) {
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, int numberOfCaptureGroups) {
         this.nfa = nfa;
-        nfa.setInitialLoopBack(!nfa.getAst().getFlags().isSticky());
+        nfa.setInitialLoopBack(!nfaMap.getAst().getFlags().isSticky());
         this.numberOfCaptureGroups = numberOfCaptureGroups;
-        for (int i = 0; i < nfa.getAnchoredEntry().length; i++) {
-            if (nfa.getState(nfa.getUnAnchoredEntry()[i].getTarget().getId()) != null && nfa.getAnchoredEntry()[i].getTarget() != nfa.getUnAnchoredEntry()[i].getTarget()) {
-                nfa.getAnchoredEntry()[i].getTarget().addLoopBackNext(new NFAStateTransition((short) -1,
-                                nfa.getAnchoredEntry()[i].getTarget(),
-                                nfa.getUnAnchoredEntry()[i].getTarget(),
-                                GroupBoundaries.getEmptyInstance()));
-            }
-        }
-        for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
-            if (nfa.getTransitions()[i] != null) {
-                nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
-            }
+        if (nfa == nfaMap.getRoot() && nfa.getAnchoredInitialState() != nfa.getUnAnchoredInitialState()) {
+            nfa.getAnchoredInitialState().addLoopBackNext(new PureNFATransition((short) -1,
+                            nfa.getAnchoredInitialState(),
+                            nfa.getUnAnchoredInitialState(),
+                            GroupBoundaries.getEmptyInstance(),
+                            PureNFATransition.NO_LOOK_AROUNDS,
+                            QuantifierGuard.NO_GUARDS));
         }
     }
 
@@ -92,59 +90,70 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-
-        final int offset = Math.min(locals.getIndex(), nfa.getAnchoredEntry().length - 1);
-        locals.setIndex(locals.getIndex() - offset);
-        int pc = (locals.getIndex() == 0 ? nfa.getAnchoredEntry() : nfa.getUnAnchoredEntry())[offset].getTarget().getId();
-        if (nfa.getState(pc) == null) {
-            return null;
+        int pc = (locals.getIndex() == 0 ? nfa.getAnchoredEntry() : nfa.getUnAnchoredEntry()).getTarget().getId();
+        while (pc >= 0) {
+            pc = runState(locals, pc);
         }
+        return locals.popResult();
+    }
 
-        while (true) {
-            NFAState curState = nfa.getState(pc);
-            if (curState.isFinalState(true)) {
-                return locals.toResult();
-            }
-            int firstMatch = -1;
-            if (locals.getIndex() < getInputLength(locals)) {
-                char c = getChar(locals);
-                for (int i = getStartingTransition(curState); i >= 0; i--) {
-                    NFAStateTransition transition = curState.getNext()[i];
-                    if (transition.getTarget().isAnchoredFinalState(true)) {
-                        continue;
+    @ExplodeLoop
+    private int runState(TRegexBacktrackingNFAExecutorLocals locals, int pc) {
+        for (int stateID = 0; stateID < nfa.getNumberOfStates(); stateID++) {
+            if (stateID == pc) {
+                PureNFAState curState = nfa.getState(stateID);
+                CompilerDirectives.isPartialEvaluationConstant(curState);
+                if (curState.isFinalState()) {
+                    locals.pushResult();
+                    return -1;
+                }
+                int firstMatch = -1;
+                PureNFATransition[] successors = curState.getSuccessors();
+                char c;
+                boolean atEnd = locals.getIndex() >= getInputLength(locals);
+                if (atEnd) {
+                    c = 0;
+                } else {
+                    c = getChar(locals);
+                }
+                for (int i = successors.length - 1; i >= 0; i--) {
+                    PureNFATransition transition = successors[i];
+                    CompilerDirectives.isPartialEvaluationConstant(transition);
+                    if (transition.getTarget().isAnchoredFinalState()) {
+                        if (atEnd) {
+                            firstMatch = i;
+                            break;
+                        } else {
+                            continue;
+                        }
                     }
                     if (transition.getTarget().getCharSet().contains(c)) {
                         if (firstMatch >= 0) {
-                            if (curState.getNext()[firstMatch].getTarget().isUnAnchoredFinalState(true)) {
-                                locals.pushResult(curState.getNext()[firstMatch]);
+                            if (successors[firstMatch].getTarget().isUnAnchoredFinalState(true)) {
+                                locals.pushResult(successors[firstMatch]);
                             } else {
-                                locals.push(curState.getNext()[firstMatch]);
+                                locals.push(successors[firstMatch]);
                             }
                         }
                         firstMatch = i;
                     }
                 }
-            } else if (curState.hasTransitionToFinalState(true)) {
-                firstMatch = curState.getFirstTransitionToFinalStateIndex(true);
-            }
-            if (firstMatch < 0) {
-                if (locals.canPopResult()) {
-                    return locals.popResult();
-                } else if (locals.canPop()) {
-                    pc = locals.pop();
+                if (firstMatch < 0) {
+                    if (locals.canPopResult()) {
+                        return -1;
+                    } else if (locals.canPop()) {
+                        return locals.pop();
+                    } else {
+                        return -1;
+                    }
                 } else {
-                    return null;
+                    locals.apply(successors[firstMatch]);
+                    locals.incIndex(1);
+                    return successors[firstMatch].getTarget().getId();
                 }
-            } else {
-                locals.apply(curState.getNext()[firstMatch]);
-                locals.incIndex(1);
-                pc = curState.getNext()[firstMatch].getTarget().getId();
             }
         }
-    }
-
-    private static int getStartingTransition(NFAState curState) {
-        return curState.hasTransitionToUnAnchoredFinalState(true) ? curState.getTransitionToUnAnchoredFinalStateId(true) : curState.getNext().length - 1;
+        return -1;
     }
 
     public boolean regionMatches(TRegexExecutorLocals locals, int startIndex1, int startIndex2, int length) {

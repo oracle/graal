@@ -76,12 +76,11 @@ public final class PureNFAGenerator {
     public static PureNFAMap mapToNFA(RegexAST ast) {
         PureNFAGenerator gen = new PureNFAGenerator(ast);
         PureNFA root = gen.createNFA(ast.getWrappedRoot().getSubTreeParent());
-        PureNFAIndex lookAheads = mapLookArounds(gen, ast.getLookAheads());
-        PureNFAIndex lookBehinds = mapLookArounds(gen, ast.getLookBehinds());
-        return new PureNFAMap(ast, root, lookAheads, lookBehinds);
+        PureNFAIndex lookArounds = mapLookArounds(gen, ast.getLookArounds());
+        return new PureNFAMap(ast, root, lookArounds);
     }
 
-    private static PureNFAIndex mapLookArounds(PureNFAGenerator gen, LookAroundIndex<? extends LookAroundAssertion> lookArounds) {
+    private static PureNFAIndex mapLookArounds(PureNFAGenerator gen, LookAroundIndex lookArounds) {
         if (lookArounds.isEmpty()) {
             return PureNFAIndex.getEmptyInstance();
         }
@@ -163,7 +162,7 @@ public final class PureNFAGenerator {
         assert dummyInitialState.getId() == 0;
         dummyInitialState.setPredecessors(new PureNFATransition[]{createEmptyTransition(anchoredFinalState, dummyInitialState), createEmptyTransition(unAnchoredFinalState, dummyInitialState)});
         expandAllStates();
-        return new PureNFA(root.getSubTreeId(), nfaStates.values(), stateID, transitionID);
+        return new PureNFA(root, nfaStates.values(), stateID, transitionID);
     }
 
     private void expandAllStates() {
@@ -203,9 +202,6 @@ public final class PureNFAGenerator {
     }
 
     private PureNFATransition createEmptyTransition(PureNFAState src, PureNFAState tgt) {
-        return new PureNFATransition((short) transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(),
-                        ast.getLookAheads().getEmptySet(),
-                        ast.getLookBehinds().getEmptySet(),
-                        QuantifierGuard.NO_GUARDS);
+        return new PureNFATransition((short) transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(), PureNFATransition.NO_LOOK_AROUNDS, QuantifierGuard.NO_GUARDS);
     }
 }

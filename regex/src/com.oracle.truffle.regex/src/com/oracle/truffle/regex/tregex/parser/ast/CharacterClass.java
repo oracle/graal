@@ -122,7 +122,7 @@ public class CharacterClass extends Term {
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(ast.getLookBehinds());
+            lookBehindEntries = StateSet.create(ast.getLookArounds());
         }
         lookBehindEntries.add(lookBehindEntry);
     }

@@ -161,7 +161,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         byte preReorderFinalStateResultIndex = (byte) newOrder[DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX];
         // important: don't change the order, because newOrderToSequenceOfSwaps() reuses
         // CompilationBuffer#getByteArrayBuffer()
-        byte[] byteArrayCopies = arrayCopies.length() == 0 ? DFACaptureGroupPartialTransition.EMPTY_ARRAY_COPIES : arrayCopies.toArray();
+        byte[] byteArrayCopies = arrayCopies.toArray();
         byte[] reorderSwaps = skipReorder() ? DFACaptureGroupPartialTransition.EMPTY_REORDER_SWAPS : newOrderToSequenceOfSwaps(newOrder, compilationBuffer);
         DFACaptureGroupPartialTransition dfaCaptureGroupPartialTransitionNode = DFACaptureGroupPartialTransition.create(
                         dfaGen,
@@ -200,7 +200,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             } while (swapTarget != i);
         }
         assert swaps.length() / 2 < newOrder.length;
-        return swaps.length() == 0 ? DFACaptureGroupPartialTransition.EMPTY_REORDER_SWAPS : swaps.toArray();
+        return swaps.toArray();
     }
 
     public DFACaptureGroupLazyTransition toLazyTransition(CompilationBuffer compilationBuffer) {

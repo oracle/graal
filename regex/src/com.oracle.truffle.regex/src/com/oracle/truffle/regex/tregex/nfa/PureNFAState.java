@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
@@ -92,10 +93,20 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
         return lookBehindEntries;
     }
 
-    public void addLookBehindEntry(SimpleStateIndex<PureNFA> lookBehinds, PureNFA lb) {
+    public void addLookBehindEntry(SimpleStateIndex<PureNFA> lookArounds, PureNFA lb) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(lookBehinds);
+            lookBehindEntries = StateSet.create(lookArounds);
         }
         lookBehindEntries.add(lb);
+    }
+
+    public void addLoopBackNext(PureNFATransition transition) {
+        PureNFATransition[] newSuccessors = Arrays.copyOf(getSuccessors(), getSuccessors().length + 1);
+        newSuccessors[newSuccessors.length - 1] = transition;
+        setSuccessors(newSuccessors);
+    }
+
+    public void removeLoopBackNext() {
+        setSuccessors(Arrays.copyOf(getSuccessors(), getSuccessors().length + 1));
     }
 }

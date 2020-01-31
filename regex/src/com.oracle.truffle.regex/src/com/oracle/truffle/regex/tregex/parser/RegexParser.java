@@ -161,8 +161,8 @@ public final class RegexParser {
             UnrollQuantifiersVisitor.unrollQuantifiers(this, ast.getRoot());
         }
         CalcASTPropsVisitor.run(ast);
-        for (LookBehindAssertion lb : ast.getLookBehinds()) {
-            if (!lb.isLiteral()) {
+        for (LookAroundAssertion lb : ast.getLookArounds()) {
+            if (lb instanceof LookBehindAssertion && !lb.isLiteral()) {
                 properties.setNonLiteralLookBehindAssertions();
                 break;
             }

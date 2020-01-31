@@ -64,6 +64,7 @@ import java.util.Arrays;
  */
 public class IntArrayBuffer extends AbstractArrayBuffer {
 
+    private static final int[] EMPTY = {};
     protected int[] buf;
 
     public IntArrayBuffer(int initialSize) {
@@ -92,6 +93,6 @@ public class IntArrayBuffer extends AbstractArrayBuffer {
     }
 
     public int[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
     }
 }

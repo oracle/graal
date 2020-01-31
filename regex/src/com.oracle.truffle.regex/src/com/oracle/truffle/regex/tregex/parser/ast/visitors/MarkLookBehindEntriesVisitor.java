@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -83,8 +84,8 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     }
 
     public void run() {
-        for (LookBehindAssertion lb : ast.getLookBehinds()) {
-            if (lb.getLiteralLength() == 0) {
+        for (LookAroundAssertion lb : ast.getLookArounds()) {
+            if (lb instanceof LookAheadAssertion) {
                 continue;
             }
             run(lb);
@@ -115,7 +116,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
                 movePastLookAheadBoundaries();
             }
             for (CharacterClass t : newEntriesFound) {
-                t.addLookBehindEntry(ast, lb);
+                t.addLookBehindEntry(ast, (LookBehindAssertion) lb);
             }
             curEntriesFound.clear();
             newEntriesFound.clear();

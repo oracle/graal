@@ -91,10 +91,6 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         return buf[i];
     }
 
-    public Object getLast() {
-        return buf[length() - 1];
-    }
-
     public void add(Object o) {
         if (length == buf.length) {
             grow(length * 2);

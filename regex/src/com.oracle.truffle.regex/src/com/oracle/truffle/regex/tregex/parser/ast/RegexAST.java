@@ -88,8 +88,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     private Group wrappedRoot;
     private Group[] captureGroups;
-    private final LookAroundIndex<LookAheadAssertion> lookAheads = new LookAroundIndex<>();
-    private final LookAroundIndex<LookBehindAssertion> lookBehinds = new LookAroundIndex<>();
+    private final LookAroundIndex lookArounds = new LookAroundIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<PositionAssertion> nfaAnchoredInitialStates;
@@ -221,20 +220,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return wrappedRoot;
     }
 
-    public boolean hasLookAheads() {
-        return !lookAheads.isEmpty();
-    }
-
-    public LookAroundIndex<LookAheadAssertion> getLookAheads() {
-        return lookAheads;
-    }
-
-    public boolean hasLookBehinds() {
-        return !lookBehinds.isEmpty();
-    }
-
-    public LookAroundIndex<LookBehindAssertion> getLookBehinds() {
-        return lookBehinds;
+    public LookAroundIndex getLookArounds() {
+        return lookArounds;
     }
 
     public List<PositionAssertion> getReachableCarets() {
@@ -445,7 +432,10 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             return;
         }
         int prefixLength = 0;
-        for (LookBehindAssertion lb : lookBehinds) {
+        for (LookAroundAssertion lb : lookArounds) {
+            if (lb instanceof LookAheadAssertion) {
+                continue;
+            }
             int minPath = lb.getMinPath();
             RegexASTSubtreeRootNode laParent = lb.getSubTreeParent();
             while (!(laParent instanceof RegexASTRootNode)) {
@@ -492,8 +482,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     }
 
     public GroupBoundaries createGroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
-        if (updateIndices.isEmpty() && clearIndices.isEmpty()) {
-            return GroupBoundaries.getEmptyInstance();
+        GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(updateIndices, clearIndices);
+        if (staticInstance != null) {
+            return staticInstance;
         }
         GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices);
         if (groupBoundariesDeduplicationMap.containsKey(lookup)) {

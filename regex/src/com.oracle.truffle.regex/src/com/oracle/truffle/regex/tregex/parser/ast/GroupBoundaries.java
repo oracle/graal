@@ -72,8 +72,15 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  */
 public class GroupBoundaries implements JsonConvertible {
 
-    private static final GroupBoundaries EMPTY_INSTANCE = new GroupBoundaries(new CompilationFinalBitSet(0), new CompilationFinalBitSet(0));
-    private static final byte[] EMPTY_ARRAY = new byte[0];
+    private static final GroupBoundaries[] STATIC_INSTANCES = new GroupBoundaries[CompilationFinalBitSet.getNumberOfStaticInstances()];
+
+    static {
+        for (int i = 0; i < CompilationFinalBitSet.getNumberOfStaticInstances(); i++) {
+            STATIC_INSTANCES[i] = new GroupBoundaries(CompilationFinalBitSet.getStaticInstance(i), CompilationFinalBitSet.getEmptyInstance());
+        }
+    }
+
+    private static final byte[] EMPTY_ARRAY = {};
 
     private final CompilationFinalBitSet updateIndices;
     private final CompilationFinalBitSet clearIndices;
@@ -89,13 +96,22 @@ public class GroupBoundaries implements JsonConvertible {
         this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
     }
 
+    public static GroupBoundaries getStaticInstance(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+        if (clearIndices.isEmpty()) {
+            int key = updateIndices.getStaticCacheKey();
+            if (key >= 0) {
+                return STATIC_INSTANCES[key];
+            }
+        }
+        return null;
+    }
+
     public static GroupBoundaries getEmptyInstance() {
-        return EMPTY_INSTANCE;
+        return STATIC_INSTANCES[0];
     }
 
     public boolean isEmpty() {
-        assert !(updateIndices.isEmpty() && clearIndices.isEmpty()) || this == EMPTY_INSTANCE;
-        return this == EMPTY_INSTANCE;
+        return updateIndices.isEmpty() && clearIndices.isEmpty();
     }
 
     /**
@@ -143,7 +159,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     public void materializeArrays() {
-        if (this != EMPTY_INSTANCE && updateArray == null) {
+        if (updateArray == null) {
             updateArray = indicesToArray(updateIndices);
             clearArray = indicesToArray(clearIndices);
         }
@@ -232,9 +248,6 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     public void apply(int[] array, int offset, int index) {
-        if (this == EMPTY_INSTANCE) {
-            return;
-        }
         for (byte i : clearArray) {
             array[offset + Byte.toUnsignedInt(i)] = -1;
         }

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * Abstract base class for states of an automaton.
  */
@@ -59,9 +61,9 @@ public abstract class AbstractState<S extends AbstractState<S, T>, T extends Abs
     protected static final int N_FLAGS = 4;
 
     private final short id;
-    private byte flags;
-    private T[] successors;
-    private T[] predecessors;
+    @CompilationFinal private byte flags;
+    @CompilationFinal(dimensions = 1) private T[] successors;
+    @CompilationFinal(dimensions = 1) private T[] predecessors;
     private int nPredecessors = 0;
 
     /**
@@ -149,6 +151,10 @@ public abstract class AbstractState<S extends AbstractState<S, T>, T extends Abs
 
     public void setUnAnchoredFinalState() {
         setFlag(FLAG_UN_ANCHORED_FINAL_STATE);
+    }
+
+    public boolean isFinalState(boolean forward) {
+        return forward ? isFinalState() : isInitialState();
     }
 
     public boolean isAnchoredFinalState(boolean forward) {
