@@ -50,6 +50,9 @@ public abstract class ParkEvent {
         ParkEvent create();
     }
 
+    /** Currently required by legacy code. */
+    protected boolean isSleepEvent;
+
     /**
      * A cons-cell for putting this ParkEvent on the free list. This must be (a) allocated
      * beforehand because I need it when I can not allocate, (b) must not be reused, to avoid an ABA
@@ -89,7 +92,7 @@ public abstract class ParkEvent {
      * and garbage collected.
      */
 
-    static ParkEvent initializeOnce(AtomicReference<ParkEvent> ref) {
+    static ParkEvent initializeOnce(AtomicReference<ParkEvent> ref, boolean isSleepEvent) {
         ParkEvent result = ref.get();
         if (result == null) {
             ParkEvent newEvent = ParkEvent.acquire();
@@ -98,6 +101,7 @@ public abstract class ParkEvent {
              * free-list or allocated.
              */
             newEvent.consCell = new ParkEventConsCell(newEvent);
+            newEvent.isSleepEvent = isSleepEvent;
             newEvent.reset();
 
             if (ref.compareAndSet(null, newEvent)) {

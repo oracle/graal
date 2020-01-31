@@ -703,14 +703,14 @@ public abstract class JavaThreads {
 
     /** Get the Park event for a thread, initializing it if necessary. */
     private static ParkEvent ensureUnsafeParkEvent(Thread thread) {
-        return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread));
+        return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread), false);
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static void sleep(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread));
+        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
         sleepEvent.reset();
         /*
          * It is critical to reset the event *before* checking for an interrupt, which requires that
