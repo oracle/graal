@@ -146,12 +146,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(runtime);
 
-        OptionValues optionValues = runtime.getOptions(OptionValues.class);
-        boolean needSourcePositions = TruffleCompilerOptions.TruffleEnableInfopoints.getValue(optionValues) ||
-                        TruffleCompilerOptions.TruffleInstrumentBranches.getValue(optionValues) || TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(optionValues);
-        GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.TruffleExcludeAssertions.getValue(optionValues)).withBytecodeExceptionMode(
-                        BytecodeExceptionMode.ExplicitOnly);
+        GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins));
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
 
         this.partialEvaluator = createPartialEvaluator();
         this.firstTierProviders = firstTierProviders;
@@ -272,7 +268,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
-    public void initialize() {
+    public void initialize(Map<String, Object> optionsMap) {
         if (!checkedDeprecatedOptionsUsage) {
             boolean doCheck = false;
             synchronized (this) {
@@ -285,6 +281,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 TruffleCompilerOptions.checkDeprecation();
             }
         }
+        partialEvaluator.initialize(TruffleCompilerOptions.getOptionsForCompiler(optionsMap));
     }
 
     private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener inListener,
@@ -340,11 +337,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     @Override
     public void shutdown() {
-        InstrumentPhase.Instrumentation ins = this.partialEvaluator.instrumentation;
-        if (ins != null) {
-            OptionValues options = TruffleCompilerOptions.getOptions();
-            if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries)) {
-                ins.dumpAccessTable(options);
+        InstrumentPhase.InstrumentationConfiguration cfg = partialEvaluator.instrumentationCfg;
+        if (cfg != null && (cfg.instrumentBoundaries || cfg.instrumentBranches)) {
+            InstrumentPhase.Instrumentation ins = this.partialEvaluator.instrumentation;
+            if (ins != null) {
+                ins.dumpAccessTable();
             }
         }
     }

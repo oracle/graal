@@ -25,6 +25,11 @@
 package org.graalvm.compiler.truffle.compiler.phases;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranchesPerInlineSite;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundariesPerInlineSite;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentationTableSize;
 
 import java.lang.reflect.Method;
 import java.util.AbstractMap;
@@ -144,7 +149,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
     protected abstract int instrumentationPointSlotCount();
 
-    protected abstract boolean instrumentPerInlineSite(org.graalvm.compiler.options.OptionValues options);
+    protected abstract boolean instrumentPerInlineSite();
 
     protected abstract Point createPoint(int id, int startIndex, Node n);
 
@@ -201,7 +206,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                 if (!methodFilter.matches(pos.getMethod())) {
                     return null;
                 }
-                if (phase.instrumentPerInlineSite(node.getOptions())) {
+                if (phase.instrumentPerInlineSite()) {
                     StringBuilder sb = new StringBuilder();
                     while (pos != null) {
                         MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
@@ -221,8 +226,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static String prettify(org.graalvm.compiler.options.OptionValues options, String key, Point p) {
-            if (p.isPrettified(options)) {
+        private static String prettify(String key, Point p) {
+            if (p.isPrettified()) {
                 StringBuilder sb = new StringBuilder();
                 NodeSourcePosition pos = p.getPosition();
                 NodeSourcePosition lastPos = null;
@@ -274,7 +279,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        public synchronized ArrayList<String> accessTableToList(org.graalvm.compiler.options.OptionValues options) {
+        public synchronized ArrayList<String> accessTableToList() {
 
             /*
              * Using sortedEntries.addAll(pointMap.entrySet(), instead of the iteration below, is
@@ -298,7 +303,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
             ArrayList<String> list = new ArrayList<>();
             for (Map.Entry<String, Point> entry : sortedEntries) {
-                list.add(prettify(options, entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue());
+                list.add(prettify(entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue());
             }
             return list;
         }
@@ -326,7 +331,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
             return histogram;
         }
 
-        public synchronized void dumpAccessTable(org.graalvm.compiler.options.OptionValues options) {
+        public synchronized void dumpAccessTable() {
             // Dump accumulated profiling information.
             TTY.println("Execution profile (sorted by hotness)");
             TTY.println("=====================================");
@@ -334,7 +339,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                 TTY.println(line);
             }
             TTY.println();
-            for (String line : accessTableToList(options)) {
+            for (String line : accessTableToList()) {
                 TTY.println(line);
                 TTY.println();
             }
@@ -370,6 +375,23 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         }
     }
 
+    public static final class InstrumentationConfiguration {
+
+        public final boolean instrumentBranches;
+        public final boolean instrumentBranchesPerInlineSite;
+        public final boolean instrumentBoundaries;
+        public final boolean instrumentBoundariesPerInlineSite;
+        public final int instrumentationTableSize;
+
+        public InstrumentationConfiguration(OptionValues options) {
+            this.instrumentBranches = getPolyglotOptionValue(options, InstrumentBranches);
+            this.instrumentBranchesPerInlineSite = getPolyglotOptionValue(options, InstrumentBranchesPerInlineSite);
+            this.instrumentBoundaries = getPolyglotOptionValue(options, InstrumentBoundaries);
+            this.instrumentBoundariesPerInlineSite = getPolyglotOptionValue(options, InstrumentBoundariesPerInlineSite);
+            this.instrumentationTableSize = getPolyglotOptionValue(options, InstrumentationTableSize);
+        }
+    }
+
     public abstract static class Point {
         protected int id;
         protected int rawIndex;
@@ -398,7 +420,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
         public abstract long getHotness();
 
-        public abstract boolean isPrettified(org.graalvm.compiler.options.OptionValues options);
+        public abstract boolean isPrettified();
 
         public boolean shouldInclude() {
             return true;

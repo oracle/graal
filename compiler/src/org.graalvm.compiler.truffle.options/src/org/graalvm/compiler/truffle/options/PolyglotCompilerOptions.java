@@ -348,6 +348,24 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
 
+    @Option(help = "Exclude assertion code from Truffle compilations", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> ExcludeAssertions = new OptionKey<>(true);
+
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> EnableInfopoints = new OptionKey<>(false);
+
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InstrumentBoundaries = new OptionKey<>(false);
+
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InstrumentBoundariesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches and output profiling information to the standard output.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InstrumentBranches = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
+
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)

@@ -26,6 +26,8 @@ package org.graalvm.compiler.truffle.compiler;
 
 import java.util.Formatter;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EnableInfopoints;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningCutoffCountPenalty;
@@ -38,6 +40,10 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlin
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeCountPenalty;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningPolicy;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundariesPerInlineSite;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranchesPerInlineSite;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentFilter;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentationTableSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
@@ -125,8 +131,11 @@ public final class TruffleCompilerOptions {
     // @formatter:off
     // configuration
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#ExcludeAssertions}.
+     */
     @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(true);
+    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(ExcludeAssertions.getDefaultValue());
 
     @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(false);
@@ -137,23 +146,38 @@ public final class TruffleCompilerOptions {
     @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(false);
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#EnableInfopoints}.
+     */
     @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(EnableInfopoints.getDefaultValue());
 
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(false);
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranches}.
+     */
     @Option(help = "Instrument branches and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(InstrumentBranches.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranchesPerInlineSite}.
+     */
     @Option(help = "Instrument branches by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(InstrumentBranchesPerInlineSite.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundaries}.
+     */
     @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(InstrumentBoundaries.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundariesPerInlineSite}.
+     */
     @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(InstrumentBoundariesPerInlineSite.getDefaultValue());
 
     @Option(help = "Method filter for host methods in which to add instrumentation.")
     public static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>("*.*.*");
@@ -167,6 +191,9 @@ public final class TruffleCompilerOptions {
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
     public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(150000);
 
+    /**
+     * Deprecated with no replacement.
+     */
     @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
 
@@ -418,6 +445,12 @@ public final class TruffleCompilerOptions {
             result.put(Inlining, identity(SharedTruffleCompilerOptions.TruffleFunctionInlining));
             result.put(InliningRecursionDepth, identity(SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining));
             result.put(LanguageAgnosticInlining, identity(SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining));
+            result.put(ExcludeAssertions, identity(TruffleExcludeAssertions));
+            result.put(EnableInfopoints, identity(TruffleEnableInfopoints));
+            result.put(InstrumentBoundaries, identity(TruffleInstrumentBoundaries));
+            result.put(InstrumentBoundariesPerInlineSite, identity(TruffleInstrumentBoundariesPerInlineSite));
+            result.put(InstrumentBranches, identity(TruffleInstrumentBranches));
+            result.put(InstrumentBranchesPerInlineSite, identity(TruffleInstrumentBranchesPerInlineSite));
 
             result.put(Compilation, identity(SharedTruffleCompilerOptions.TruffleCompilation));
             result.put(CompileOnly, identity(SharedTruffleCompilerOptions.TruffleCompileOnly));

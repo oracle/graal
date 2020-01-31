@@ -72,6 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
 import org.graalvm.compiler.truffle.runtime.EngineData;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import sun.misc.Unsafe;
 
 /**
@@ -168,7 +169,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public HotSpotTruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            initializeTruffleCompiler();
+            initializeTruffleCompiler(null);    // TODO
             rethrowTruffleCompilerInitializationException();
         }
         return (HotSpotTruffleCompiler) truffleCompiler;
@@ -196,14 +197,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
                     rethrowTruffleCompilerInitializationException();
-                    EngineData engineData = getEngineData(firstCallTarget.getRootNode());
+                    EngineData engineData = firstCallTarget.engine;
                     traceTransferToInterpreter = engineData.traceTransferToInterpreter;
                     profilingEnabled = engineData.profilingEnabled;
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
                             synchronized (lock) {
-                                initializeTruffleCompiler();
+                                initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
                                 assert initializationTask != null;
                                 initializationTask = null;
@@ -230,13 +231,13 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         truffleCompilerInitializationException = null;
     }
 
-    private synchronized void initializeTruffleCompiler() {
+    private synchronized void initializeTruffleCompiler(OptimizedCallTarget callTarget) {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();
             try {
                 TruffleCompiler compiler = newTruffleCompiler();
-                compiler.initialize();
+                compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
                 truffleCompiler = compiler;
                 truffleCompilerInitialized = true;
             } catch (Throwable e) {

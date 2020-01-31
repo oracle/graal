@@ -25,6 +25,8 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EnableInfopoints;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
@@ -124,7 +126,6 @@ import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPha
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
@@ -152,12 +153,18 @@ public abstract class PartialEvaluator {
     protected final ResolvedJavaMethod callInlinedAgnosticMethod;
     private final ResolvedJavaMethod callIndirectMethod;
     private final ResolvedJavaMethod callRootMethod;
-    private final GraphBuilderConfiguration configForParsing;
+    private GraphBuilderConfiguration configForParsing;     // TODO return final
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
     private final KnownTruffleTypes knownTruffleTypes;
     private final ResolvedJavaMethod callBoundary;
 
+    /**
+     * Holds instrumentation options initialized in
+     * {@link #initialize(org.graalvm.options.OptionValues)} method before the first compilation.
+     * These options are not engine aware.
+     */
+    volatile InstrumentPhase.InstrumentationConfiguration instrumentationCfg;
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
      * value is lazily initialized the first time it is requested because it depends on the Truffle
@@ -190,15 +197,27 @@ public abstract class PartialEvaluator {
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
     }
 
+    void initialize(OptionValues options) {
+        instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
+        GraphBuilderConfiguration newConfig = configForParsing.copy();
+        boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, EnableInfopoints) ||
+                        instrumentationCfg.instrumentBranches ||
+                        instrumentationCfg.instrumentBoundaries ||
+                        !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
+        newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || needSourcePositions);
+        newConfig.withOmitAssertions(TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
+        configForParsing = newConfig;
+    }
+
     /**
      * Gets the instrumentation manager associated with this compiler, creating it first if
      * necessary. Each compiler instance has its own instrumentation manager.
      */
-    public final InstrumentPhase.Instrumentation getInstrumentation(OptionValues options) {
+    public final InstrumentPhase.Instrumentation getInstrumentation() {
         if (instrumentation == null) {
             synchronized (this) {
                 if (instrumentation == null) {
-                    long[] accessTable = new long[getPolyglotOptionValue(options, PolyglotCompilerOptions.InstrumentationTableSize)];
+                    long[] accessTable = new long[instrumentationCfg.instrumentationTableSize];
                     instrumentation = new InstrumentPhase.Instrumentation(accessTable);
                 }
             }
@@ -618,10 +637,7 @@ public abstract class PartialEvaluator {
         GraphBuilderConfiguration newConfig = config.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        boolean mustInstrumentBranches = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) ||
-                        TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries);
-        return newConfig.withNodeSourcePosition(
-                        newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TraceTrufflePerformanceWarnings));
+        return newConfig;
     }
 
     protected NodePlugin[] createNodePlugins(Plugins plugins) {
@@ -705,11 +721,12 @@ public abstract class PartialEvaluator {
     }
 
     protected void applyInstrumentationPhases(OptionValues options, StructuredGraph graph, HighTierContext tierContext) {
-        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue(graph.getOptions())) {
-            new InstrumentBranchesPhase(options, snippetReflection, getInstrumentation(options)).apply(graph, tierContext);
+        InstrumentPhase.InstrumentationConfiguration cfg = instrumentationCfg;
+        if (cfg.instrumentBranches) {
+            new InstrumentBranchesPhase(options, snippetReflection, getInstrumentation(), cfg.instrumentBranchesPerInlineSite).apply(graph, tierContext);
         }
-        if (TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(graph.getOptions())) {
-            new InstrumentTruffleBoundariesPhase(options, snippetReflection, getInstrumentation(options)).apply(graph, tierContext);
+        if (cfg.instrumentBoundaries) {
+            new InstrumentTruffleBoundariesPhase(options, snippetReflection, getInstrumentation(), cfg.instrumentBoundariesPerInlineSite).apply(graph, tierContext);
         }
     }
 
