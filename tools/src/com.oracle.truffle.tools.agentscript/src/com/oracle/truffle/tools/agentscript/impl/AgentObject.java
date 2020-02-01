@@ -227,12 +227,26 @@ final class AgentObject implements TruffleObject {
                         break;
                     case "rootNameFilter":
                         try {
-                            Object rootNameFilter = iop.readMember(config, "rootNameFilter");
-                            if (rootNameFilter != null && !iop.isNull(rootNameFilter)) {
-                                if (!iop.isExecutable(rootNameFilter)) {
+                            Object fn = iop.readMember(config, "rootNameFilter");
+                            if (fn != null && !iop.isNull(fn)) {
+                                if (!iop.isExecutable(fn)) {
                                     throw new IllegalArgumentException("rootNameFilter has to be a function!");
                                 }
-                                builder.rootNameIs(new RootNameFilter(rootNameFilter));
+                                builder.rootNameIs(new RootNameFilter(fn));
+                            }
+                        } catch (UnknownIdentifierException ex) {
+                            // OK
+                        }
+                        break;
+                    case "sourceFilter":
+                        try {
+                            Object fn = iop.readMember(config, "sourceFilter");
+                            if (fn != null && !iop.isNull(fn)) {
+                                if (!iop.isExecutable(fn)) {
+                                    throw new IllegalArgumentException("sourceFilter has to be a function!");
+                                }
+                                SourceFilter filter = SourceFilter.newBuilder().sourceIs(new AgentSourceFilter(fn)).build();
+                                builder.sourceFilter(filter);
                             }
                         } catch (UnknownIdentifierException ex) {
                             // OK

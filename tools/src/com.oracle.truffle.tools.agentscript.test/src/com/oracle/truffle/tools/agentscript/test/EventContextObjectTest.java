@@ -78,7 +78,16 @@ public class EventContextObjectTest {
     public void enumerateAttributes() throws Exception {
         assertTrue("It has members", iop.hasMembers(eventContextObject));
         Object members = iop.getMembers(eventContextObject);
-        assertEquals(1L, iop.getArraySize(members));
-        assertEquals("name", iop.readArrayElement(members, 0));
+
+        String[] expectedNames = {
+                        "name", "source", "characters",
+                        "line", "startLine", "endLine",
+                        "column", "startColumn", "endColumn"
+        };
+
+        assertEquals(expectedNames.length, iop.getArraySize(members));
+        for (int i = 0; i < expectedNames.length; i++) {
+            assertEquals(expectedNames[i], iop.readArrayElement(members, i));
+        }
     }
 }
