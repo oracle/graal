@@ -62,6 +62,31 @@
     ]
   },
   {
+    "name" : "java.nio.Bits",
+    "justification" : "Bits are package private class used by direct buffers which uses Unsafe to access off heap memory.",
+    "allDeclaredMethods" : true
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer",
+    "justification" : "DirectByteBuffer uses Unsafe to allocate and initialize off heap memory.",
+    "allDeclaredMethods" : true,
+    "methods" : [
+        { "name" : "<init>",
+          "parameterTypes" : [
+            "int"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
     "name" : "java.nio.file.spi.FileSystemProvider",
     "methods" : [
         { "name" : "checkPermission" ,
@@ -125,6 +150,20 @@
     ]
   },
   {
+    "name" : "java.util.concurrent.locks.LockSupport",
+    "allDeclaredMethods" : true,
+    "justification" : "The LockSupport uses sun.misc.Unsafe"
+  },
+  {
+    "name" : "sun.nio.fs.NativeBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
     "name" : "sun.nio.ch.SocketChannelImpl",
     "methods" : [
         { "name" : "toString" ,
@@ -180,6 +219,12 @@
         ]}
     ]
   },
+  {
+    "name" : "com.oracle.svm.core.handles.ObjectHandlesImpl",
+    "allDeclaredMethods" : true,
+    "justification" : "Internal SVM implementation of JNI object handles"
+  },
+
   {
     "name" : "com.oracle.svm.core.posix.linux.LinuxPhysicalMemory$PhysicalMemorySupportImpl",
     "methods" : [
