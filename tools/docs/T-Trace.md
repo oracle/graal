@@ -7,6 +7,10 @@ pointcuts on already deployed applications running at full speed.
 **T-Trace** further blurs the difference between various DevOps tasks -
 code once, apply your insights anytime, anywhere!
 
+Find out what **T-Trace** offers from a [tools change log](../CHANGELOG.md),
+by checking the [T-Trace Hacker's manual](T-Trace-Manual.md)
+or by reading on...
+
 ## Tracing in any Language and any Framework
 
 The traditional tracing solution requires every developer to modify their own code 
