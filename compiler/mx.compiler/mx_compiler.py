@@ -863,6 +863,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
         if len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the VM because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
+    args = jdk.processArgs(args, addDefaultArgs=addDefaultArgs)
+
     # The default for CompilationFailureAction in the code is Silent as this is
     # what we want for GraalVM. When using Graal via mx (e.g. in the CI gates)
     # Diagnose is a more useful "default" value.
@@ -874,7 +876,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
 
-    return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
+    return argsPrefix + args
 
 def _check_bootstrap_config(args):
     """
