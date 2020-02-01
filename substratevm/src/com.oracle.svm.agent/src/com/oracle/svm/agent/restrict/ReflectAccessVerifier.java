@@ -70,6 +70,10 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return className == null || typeAccessChecker.getConfiguration().get(className) != null;
     }
 
+    public boolean verifyGetPackageInfo(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
+        return verifyForName(env, callerClass, className);
+    }
+
     public boolean verifyGetField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle name, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
