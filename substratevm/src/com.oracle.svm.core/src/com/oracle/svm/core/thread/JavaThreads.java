@@ -105,7 +105,7 @@ public abstract class JavaThreads {
     /** The default group for new Threads that are attached without an explicit group. */
     final ThreadGroup mainGroup;
     /** The root group for all threads. */
-    final ThreadGroup systemGroup;
+    public final ThreadGroup systemGroup;
     /**
      * The preallocated thread object for the main thread, to avoid expensive allocations and
      * ThreadGroup operations immediately at startup.
