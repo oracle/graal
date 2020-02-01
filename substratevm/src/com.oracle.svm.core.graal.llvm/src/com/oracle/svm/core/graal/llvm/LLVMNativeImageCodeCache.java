@@ -622,10 +622,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public String[] getCCInputFiles(Path tempDirectory, String imageName) {
-        String bitcodeFileName = getLinkedPath().toString();
-        String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-        return new String[]{relocatableFileName, bitcodeFileName};
+    public Path[] getCCInputFiles(Path tempDirectory, String imageName) {
+        Path bitcodeFileName = getLinkedPath();
+        Path relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix());
+        return new Path[]{relocatableFileName, bitcodeFileName};
     }
 
     @Override

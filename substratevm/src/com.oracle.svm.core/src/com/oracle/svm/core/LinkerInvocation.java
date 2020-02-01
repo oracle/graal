@@ -29,11 +29,11 @@ import java.util.List;
 
 public interface LinkerInvocation {
 
-    List<String> getInputFiles();
+    List<Path> getInputFiles();
 
-    void addInputFile(String filename);
+    void addInputFile(Path filename);
 
-    void addInputFile(int index, String filename);
+    void addInputFile(int index, Path filename);
 
     List<String> getLibPaths();
 
@@ -56,10 +56,6 @@ public interface LinkerInvocation {
     void addLinkedLibrary(String libname);
 
     void addLinkedLibrary(int index, String libname);
-
-    String getCompilerCommand();
-
-    void setCompilerCommand(String command);
 
     List<String> getCommand();
 
