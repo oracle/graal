@@ -39,7 +39,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import java.util.Collection;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -941,8 +940,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 }
                 if (!constant.isCompressed()) { // the result is expected to be uncompressed
                     Register baseReg = getBaseRegister(crb);
-                    assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
-                    masm.leaq(resultReg, new AMD64Address(baseReg, resultReg, Scale.fromShift(getShift())));
+                    boolean preserveFlagsRegister = true;
+                    emitUncompressWithBaseRegister(masm, resultReg, baseReg, getShift(), preserveFlagsRegister);
                 }
             }
         }
