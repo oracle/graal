@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <llvm/api/toolchain.h>
 #include <polyglot.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +38,10 @@ static void should_not_reach() {
   abort();
 }
 
+// llvm/api/toolchain.h
+void *toolchain_api_tool(const void *name) {should_not_reach();}
+void *toolchain_api_paths(const void *name) {should_not_reach();}
+void *toolchain_api_identifier(void) {should_not_reach();}
 // polyglot.h
 void *polyglot_import(const char *name){ should_not_reach(); }
 void polyglot_export(const char *name, void *value){ should_not_reach(); }

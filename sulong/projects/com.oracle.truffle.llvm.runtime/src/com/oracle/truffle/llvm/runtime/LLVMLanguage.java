@@ -88,7 +88,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      * should be passed directly using binary sources instead.
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
-    public static final String LLVM_PRINT_TOOLCHAIN_PATH_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
     static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
     static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";

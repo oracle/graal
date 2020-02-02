@@ -504,6 +504,7 @@ suite = {
       ],
       "headers" : [
         "include/polyglot.h",
+        "include/llvm/api/toolchain.h",
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
