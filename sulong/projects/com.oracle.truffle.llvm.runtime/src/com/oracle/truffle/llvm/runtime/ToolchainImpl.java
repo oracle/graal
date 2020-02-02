@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,10 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.api.Toolchain;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class ToolchainImpl implements Toolchain {
 
@@ -80,12 +84,33 @@ public final class ToolchainImpl implements Toolchain {
         }
     }
 
+    @Override
+    public List<TruffleFile> getPaths(String pathName) {
+        if (toolchainConfig == null) {
+            return null;
+        }
+
+        switch (pathName) {
+            case "PATH":
+                return Collections.unmodifiableList(Arrays.asList(getRoot().resolve("bin")));
+            case "LD_LIBRARY_PATH":
+                return Collections.unmodifiableList(Arrays.asList(getLLVMHome().resolve("lib")));
+            default:
+                return null;
+        }
+    }
+
     protected TruffleFile getRoot() {
         TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
         String toolchainRoot = toolchainConfig.getToolchainRootOverride();
         return toolchainRoot != null //
                         ? env.getInternalTruffleFile(toolchainRoot)
-                        : env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
+                        : getLLVMHome();
+    }
+
+    private TruffleFile getLLVMHome() {
+        TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
+        return env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
     }
 
     @Override
