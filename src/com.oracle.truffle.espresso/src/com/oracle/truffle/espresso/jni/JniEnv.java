@@ -2546,8 +2546,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(String name) {
+        Meta meta = getMeta();
         if (name == null || name.contains(".")) {
-            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, name);
+            throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
         }
 
         String internalName = name;
@@ -2555,14 +2556,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // Force 'L' type.
             internalName = "L" + name + ";";
         }
-        internalName = internalName.replace(".", "/");
         if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), true)) {
-            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, name);
+            throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
         }
-
-        Symbol<Type> type = getTypes().fromClassGetName(internalName);
-
-        assert getMeta().Class_forName_String.isStatic();
 
         StaticObject protectionDomain = StaticObject.NULL;
         StaticObject loader = StaticObject.NULL;
@@ -2572,22 +2568,30 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             Klass callerKlass = caller.getMirrorKlass();
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && Type.ClassLoader_NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) getMeta().ClassLoader_NativeLibrary_getFromClass.invokeDirect(null);
+                StaticObject result = (StaticObject) meta.ClassLoader_NativeLibrary_getFromClass.invokeDirect(null);
                 loader = result.getMirrorKlass().getDefiningClassLoader();
                 protectionDomain = Target_java_lang_Class.getProtectionDomain0(result);
             }
         } else {
-            loader = (StaticObject) getMeta().ClassLoader_getSystemClassLoader.invokeDirect(null);
+            loader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
         }
 
-        Klass foundKlass = getRegistries().loadKlass(type, loader);
-        if (foundKlass == null) {
-            throw getMeta().throwEx(getMeta().NoClassDefFoundError);
+        StaticObject guestClass = StaticObject.NULL;
+        try {
+            String dotName = name.replace('/', '.');
+            guestClass = (StaticObject) meta.Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
+        } catch (EspressoException e) {
+            if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.ClassNotFoundException)) {
+                throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
+            }
+            throw e;
         }
-        foundKlass.mirror().setHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN, protectionDomain);
-        foundKlass.safeInitialize();
 
-        return foundKlass.mirror();
+        guestClass.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, protectionDomain);
+        guestClass.getMirrorKlass().safeInitialize();
+
+        return guestClass;
     }
 
     /**
