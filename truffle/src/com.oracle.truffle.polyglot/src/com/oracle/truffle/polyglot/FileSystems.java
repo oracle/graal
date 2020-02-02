@@ -74,6 +74,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
 import java.nio.charset.Charset;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.io.FileSystem;
 
 final class FileSystems {
@@ -137,6 +138,21 @@ final class FileSystems {
         DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
     }
 
+    static String getRelativePathInLanguageHome(TruffleFile file) {
+        FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
+        Path path = EngineAccessor.LANGUAGE.getPath(file);
+        for (LanguageCache cache : LanguageCache.languages().values()) {
+            final String languageHome = cache.getLanguageHome();
+            if (languageHome != null) {
+                Path languageHomePath = fs.parsePath(languageHome);
+                if (path.startsWith(languageHomePath)) {
+                    return languageHomePath.relativize(path).toString();
+                }
+            }
+        }
+        return null;
+    }
+
     private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
         return new NIOFileSystem(fileSystemProvider);
     }
@@ -190,6 +206,32 @@ final class FileSystems {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
             this.delegate = newDelegate;
             this.factory = new ImageExecutionTimeFactory();
+        }
+
+        String pathToString(Path path) {
+            if (delegate != INVALID_FILESYSTEM) {
+                return path.toString();
+            }
+            verifyImageState();
+            return ((PreInitializePath) path).resolve(newDefaultFileSystem()).toString();
+        }
+
+        URI absolutePathtoURI(Path path) {
+            if (delegate != INVALID_FILESYSTEM) {
+                return path.toUri();
+            }
+            verifyImageState();
+            Path resolved = ((PreInitializePath) path).resolve(newDefaultFileSystem());
+            if (!resolved.isAbsolute()) {
+                throw new IllegalArgumentException("Path must be absolute.");
+            }
+            return resolved.toUri();
+        }
+
+        private static void verifyImageState() {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                throw new IllegalStateException("Reintroducing absolute path into an image heap.");
+            }
         }
 
         @Override
@@ -376,30 +418,37 @@ final class FileSystems {
         }
 
         private final class PreInitializePath implements Path {
-            private Object delegatePath;
+
+            private volatile Object delegatePath;
 
             PreInitializePath(Path delegatePath) {
                 this.delegatePath = delegatePath;
             }
 
             private Path getDelegate() {
-                if (delegatePath instanceof Path) {
-                    return (Path) delegatePath;
-                } else if (delegatePath instanceof ImageHeapPath) {
-                    ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
+                Path result = resolve(delegate);
+                delegatePath = result;
+                return result;
+            }
+
+            private Path resolve(FileSystem fs) {
+                Object current = delegatePath;
+                if (current instanceof Path) {
+                    return (Path) current;
+                } else if (current instanceof ImageHeapPath) {
+                    ImageHeapPath imageHeapPath = (ImageHeapPath) current;
                     String languageId = imageHeapPath.languageId;
                     String path = imageHeapPath.path;
                     Path result;
                     String newLanguageHome;
                     if (languageId != null && (newLanguageHome = LanguageCache.languages().get(languageId).getLanguageHome()) != null) {
-                        result = delegate.parsePath(newLanguageHome).resolve(path);
+                        result = fs.parsePath(newLanguageHome).resolve(path);
                     } else {
-                        result = delegate.parsePath(path);
+                        result = fs.parsePath(path);
                     }
-                    delegatePath = result;
                     return result;
                 } else {
-                    throw new IllegalStateException("Unknown delegate " + String.valueOf(delegatePath));
+                    throw new IllegalStateException("Unknown delegate " + String.valueOf(current));
                 }
             }
 
