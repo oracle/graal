@@ -66,9 +66,6 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
                ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
                args
 
-    def dimensions(self, cwd, args, code, out):
-        return super(GraalVm, self).dimensions(cwd, args, code, out)
-
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         """Run 'java' workloads."""
         self.extract_vm_info(args)

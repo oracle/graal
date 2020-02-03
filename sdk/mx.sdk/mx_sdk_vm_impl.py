@@ -73,7 +73,7 @@ else:
 def unicode_utf8(string):
     if sys.version_info[0] < 3:
         if isinstance(string, str):
-            return unicode(string, 'utf-8')
+            return unicode(string, 'utf-8') # pylint: disable=undefined-variable
     elif isinstance(string, bytes):
         return str(string)
     return string
@@ -661,8 +661,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         if installer:
             # Register pre-installed components
             components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
-            for components in installables.values():
-                main_component = min(components, key=lambda c: c.priority)
+            for installable_components in installables.values():
+                main_component = min(installable_components, key=lambda c: c.priority)
                 _add(layout, components_dir + main_component.installable_id + '.component', """string:Bundle-Name={name}
 Bundle-Symbolic-Name={id}
 Bundle-Version={version}
@@ -745,9 +745,6 @@ x-GraalVM-Component-Distribution=bundled
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
-    def __init__(self, args, dist):
-        super(BaseGraalVmLayoutDistributionTask, self).__init__(args, dist)
-
     def build(self):
         assert isinstance(self.subject, BaseGraalVmLayoutDistribution)
         super(BaseGraalVmLayoutDistributionTask, self).build()
