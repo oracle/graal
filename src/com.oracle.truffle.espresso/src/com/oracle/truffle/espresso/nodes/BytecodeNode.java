@@ -907,9 +907,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             continue loop;
                         }
 
-                        // i could overflow if high == Integer.MAX_VALUE. This loops take
-                        // that
-                        // into account
+                        // i could overflow if high == Integer.MAX_VALUE.
+                        // This loops take that into account.
                         for (int i = low; i != high + 1; ++i) {
                             if (i == index) {
                                 // Key found.
@@ -2011,76 +2010,74 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekAndReleaseObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
 
-        // @formatter:off
         switch (field.getKind()) {
-            case Boolean :
+            case Boolean:
                 boolean booleanValue = peekInt(frame, top - 1) == 1;
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
                 }
                 InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
                 break;
-            case Byte :
+            case Byte:
                 byte byteValue = (byte) peekInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
                 }
                 InterpreterToVM.setFieldByte(byteValue, receiver, field);
                 break;
-            case Char :
+            case Char:
                 char charValue = (char) peekInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
                 }
                 InterpreterToVM.setFieldChar(charValue, receiver, field);
                 break;
-            case Short :
+            case Short:
                 short shortValue = (short) peekInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
                 }
                 InterpreterToVM.setFieldShort(shortValue, receiver, field);
                 break;
-            case Int :
+            case Int:
                 int intValue = peekInt(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
                 }
                 InterpreterToVM.setFieldInt(intValue, receiver, field);
                 break;
-            case Double :
+            case Double:
                 double doubleValue = peekDouble(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
                 }
                 InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
                 break;
-            case Float :
+            case Float:
                 float floatValue = peekFloat(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
                 }
                 InterpreterToVM.setFieldFloat(floatValue, receiver, field);
                 break;
-            case Long :
+            case Long:
                 long longValue = peekLong(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
                 }
                 InterpreterToVM.setFieldLong(longValue, receiver, field);
                 break;
-            case Object :
+            case Object:
                 StaticObject value = peekAndReleaseObject(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
                 }
                 InterpreterToVM.setFieldObject(value, receiver, field);
                 break;
-            default :
+            default:
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
-        // @formatter:on
         return -field.getKind().getSlotCount();
     }
 
