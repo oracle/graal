@@ -47,7 +47,6 @@ import org.graalvm.tools.lsp.server.types.MarkupKind;
 
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
@@ -63,7 +62,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
@@ -77,7 +75,6 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class CompletionRequestHandler extends AbstractRequestHandler {
 
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, CompletionRequestHandler.class);
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private static final LSPLibrary LSP_INTEROP = LSPLibrary.getFactory().getUncached();
 
@@ -95,25 +92,25 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private final SourceCodeEvaluator sourceCodeEvaluator;
     private final LanguageTriggerCharacters languageCompletionTriggerCharacters;
 
-    public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
+    public CompletionRequestHandler(TruffleInstrument.Env envMain, TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
                     SourceCodeEvaluator sourceCodeEvaluator, LanguageTriggerCharacters completionTriggerCharacters) {
-        super(env, surrogateMap, executor);
+        super(envMain, env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
         this.languageCompletionTriggerCharacters = completionTriggerCharacters;
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int column, CompletionContext completionContext) throws DiagnosticsNotification {
-        LOG.log(Level.FINER, "Start finding completions for {0}:{1}:{2}", new Object[]{uri, line, column});
+        logger.log(Level.FINER, "Start finding completions for {0}:{1}:{2}", new Object[]{uri, line, column});
 
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         if (surrogate == null) {
-            LOG.info("Completion requested in an unknown document: " + uri);
+            logger.info("Completion requested in an unknown document: " + uri);
             return emptyList;
         }
         Source source = surrogate.getSource();
 
         if (!SourceUtils.isLineValid(line, source) || !SourceUtils.isColumnValid(line, column, source)) {
-            LOG.fine("line or column is out of range, line=" + line + ", column=" + column);
+            logger.fine("line or column is out of range, line=" + line + ", column=" + column);
             return emptyList;
         }
 
@@ -125,9 +122,9 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         } else {
             // Try fixing the source code, parse again, then create the completions
 
-            SourceFix sourceFix = SourceUtils.removeLastTextInsertion(surrogate, column);
+            SourceFix sourceFix = SourceUtils.removeLastTextInsertion(surrogate, column, logger);
             if (sourceFix == null) {
-                LOG.fine("Unable to fix unparsable source code. No completion possible.");
+                logger.fine("Unable to fix unparsable source code. No completion possible.");
                 return emptyList;
             }
 
@@ -212,7 +209,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private Node findNearestNode(SourceWrapper sourceWrapper, int line, int column) {
-        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, column, env);
+        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, column, env, logger);
         return nearestNodeHolder.getNode();
     }
 
@@ -244,7 +241,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                                                 DiagnosticSeverity.Information, null, "Graal", null));
             }
         } else {
-            LOG.fine("No object property completion possible. Caret is not directly at the end of a source section. Line: " + line + ", column: " + column);
+            logger.fine("No object property completion possible. Caret is not directly at the end of a source section. Line: " + line + ", column: " + column);
         }
     }
 
@@ -305,7 +302,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 }
                 size = INTEROP.getArraySize(keys);
             } catch (Exception ex) {
-                LOG.log(Level.INFO, ex.getLocalizedMessage(), ex);
+                logger.log(Level.INFO, ex.getLocalizedMessage(), ex);
                 continue;
             }
             for (long i = 0; i < size; i++) {
@@ -324,7 +321,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 } catch (ThreadDeath td) {
                     throw td;
                 } catch (Throwable t) {
-                    LOG.log(Level.CONFIG, variables.toString(), t);
+                    logger.log(Level.CONFIG, variables.toString(), t);
                     continue;
                 }
                 CompletionItem completion = CompletionItem.create(key);
@@ -367,7 +364,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         Object keys = null;
         if (InteropUtils.isPrimitive(object)) {
             // TODO: box the primitive when such API is available
-            LOG.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
+            logger.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
             return false;
         } else {
             boxedObject = object;
@@ -379,7 +376,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         }
 
         if (keys == null || !INTEROP.hasArrayElements(keys)) {
-            LOG.fine("No completions found for object: " + boxedObject);
+            logger.fine("No completions found for object: " + boxedObject);
             return false;
         }
 
@@ -403,7 +400,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
-                LOG.log(Level.CONFIG, boxedObject.toString(), t);
+                logger.log(Level.CONFIG, boxedObject.toString(), t);
                 continue;
             }
             CompletionItem completion = CompletionItem.create(key);

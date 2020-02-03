@@ -65,8 +65,8 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public CoverageRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
-        super(env, surrogateMap, contextAwareExecutor);
+    public CoverageRequestHandler(Env envMain, Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
+        super(envMain, env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 

@@ -40,7 +40,7 @@ public class TextDocumentContentChangeTest {
 
     private static void assertDocumentChanges(String oldText, String replacement, Range range, String expectedText) {
         TextDocumentContentChangeEvent event = TextDocumentContentChangeEvent.create(replacement).setRange(range).setRangeLength(replacement.length());
-        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event), createSource(oldText), null);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event), createSource(oldText), null, null);
         assertEquals(expectedText, actualText);
     }
 
@@ -111,7 +111,7 @@ public class TextDocumentContentChangeTest {
         TextDocumentContentChangeEvent event6 = TextDocumentContentChangeEvent.create(replacement6).setRange(Range.create(Position.create(1, 7), Position.create(1, 7))).setRangeLength(
                         replacement6.length());
 
-        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4, event5, event6), createSource(oldText), null);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4, event5, event6), createSource(oldText), null, null);
         assertEquals("abc\n####hij\n", actualText);
     }
 }

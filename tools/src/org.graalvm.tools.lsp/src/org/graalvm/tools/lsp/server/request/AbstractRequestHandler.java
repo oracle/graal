@@ -42,6 +42,7 @@ import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NearestSections;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -55,12 +56,14 @@ public abstract class AbstractRequestHandler {
     protected final TextDocumentSurrogateMap surrogateMap;
     protected final PrintWriter err;
     protected final ContextAwareExecutor contextAwareExecutor;
+    protected final TruffleLogger logger;
 
-    AbstractRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
+    AbstractRequestHandler(TruffleInstrument.Env mainEnv, TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
         this.env = env;
-        this.err = new PrintWriter(env.err(), true);
+        this.err = new PrintWriter(mainEnv.err(), true);
         this.surrogateMap = surrogateMap;
         this.contextAwareExecutor = contextAwareExecutor;
+        this.logger = mainEnv.getLogger("");
     }
 
     public final InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?>... tag) {

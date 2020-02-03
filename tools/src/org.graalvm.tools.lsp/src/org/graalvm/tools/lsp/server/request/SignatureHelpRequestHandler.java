@@ -34,7 +34,6 @@ import java.util.logging.Level;
 import org.graalvm.tools.api.lsp.LSPLibrary;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.types.ParameterInformation;
 import org.graalvm.tools.lsp.server.types.SignatureHelp;
@@ -45,7 +44,6 @@ import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -63,7 +61,6 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SignatureHelpRequestHandler.class);
     private static final String PROP_DOCUMENTATION = "documentation";
     private static final String PROP_PARAMETERS = "parameters";
     private static final String PROP_LABEL = "label";
@@ -74,9 +71,9 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
     private final CompletionRequestHandler completionHandler;
     private final LanguageTriggerCharacters signatureTriggerCharacters;
 
-    public SignatureHelpRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator,
+    public SignatureHelpRequestHandler(Env envMain, Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator,
                     CompletionRequestHandler completionHandler, LanguageTriggerCharacters signatureTriggerCharacters) {
-        super(env, surrogateMap, contextAwareExecutor);
+        super(envMain, env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
         this.completionHandler = completionHandler;
         this.signatureTriggerCharacters = signatureTriggerCharacters;
@@ -131,12 +128,12 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
                                 }
                             }
                             Object nodeObject = nodeAtCaret.getNodeObject();
-                            Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject);
+                            Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject, logger);
                             // TODO: Support multiple signatures, the active one and find the active
                             // parameter
                             return SignatureHelp.create(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
                         } catch (UnsupportedMessageException e) {
-                            LOG.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
+                            logger.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
                         } catch (InteropException e) {
                             e.printStackTrace(err);
                         }
@@ -155,18 +152,18 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
         } else if (paramLabelObject instanceof TruffleObject && INTEROP.hasArrayElements(paramLabelObject)) {
             long size = INTEROP.getArraySize(paramLabelObject);
             if (size < 2) {
-                LOG.fine("ERROR: Insufficient number of label indexes: " + size + " from " + paramLabelObject);
+                logger.fine("ERROR: Insufficient number of label indexes: " + size + " from " + paramLabelObject);
                 return null;
             }
             Object i1Obj = INTEROP.readArrayElement(paramLabelObject, 0);
             Object i2Obj = INTEROP.readArrayElement(paramLabelObject, 1);
             if (!INTEROP.fitsInInt(i1Obj) || !INTEROP.fitsInInt(i2Obj)) {
-                LOG.fine("ERROR: Label indexes of " + paramLabelObject + " are not numbers: " + i1Obj + ", " + i2Obj);
+                logger.fine("ERROR: Label indexes of " + paramLabelObject + " are not numbers: " + i1Obj + ", " + i2Obj);
                 return null;
             }
             paramLabel = label.substring(INTEROP.asInt(i1Obj), INTEROP.asInt(i2Obj));
         } else {
-            LOG.fine("ERROR: Unknown label object: " + paramLabelObject + " in " + param);
+            logger.fine("ERROR: Unknown label object: " + paramLabelObject + " in " + param);
             return null;
         }
         ParameterInformation info = ParameterInformation.create(paramLabel, null);
