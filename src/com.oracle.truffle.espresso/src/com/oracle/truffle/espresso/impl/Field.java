@@ -140,7 +140,6 @@ public final class Field extends Member<Type> implements FieldRef {
     public Object get(StaticObject self) {
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
         // @formatter:off
-        // Checkstyle: stop
         switch (getKind()) {
             case Boolean : return InterpreterToVM.getFieldBoolean(self, this);
             case Byte    : return InterpreterToVM.getFieldByte(self, this);
@@ -154,14 +153,12 @@ public final class Field extends Member<Type> implements FieldRef {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public void set(StaticObject self, Object value) {
         assert value != null;
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
         // @formatter:off
-        // Checkstyle: stop
         switch (getKind()) {
             case Boolean : InterpreterToVM.setFieldBoolean((boolean) value, self, this); break;
             case Byte    : InterpreterToVM.setFieldByte((byte) value, self, this);       break;
@@ -175,7 +172,6 @@ public final class Field extends Member<Type> implements FieldRef {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public Klass resolveTypeKlass() {

@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 // @formatter:off
-// Checkstyle: stop
 /**
  * Thread state manipulation:
  *
@@ -63,8 +62,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  *     }
  */
 // @formatter:on
-// Checkstyle: resume
-
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
     private static final java.lang.reflect.Method isInterrupted;

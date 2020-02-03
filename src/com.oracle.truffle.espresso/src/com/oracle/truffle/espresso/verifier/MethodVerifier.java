@@ -2391,7 +2391,6 @@ public final class MethodVerifier implements ContextAccess {
 
     private static Operand fromJVMType(byte jvmType) {
         // @formatter:off
-        // Checkstyle: stop
         switch (jvmType) {
             case 4  : return new ArrayOperand(Byte);
             case 5  : return new ArrayOperand(Char);
@@ -2404,7 +2403,6 @@ public final class MethodVerifier implements ContextAccess {
             default:
                 throw EspressoError.shouldNotReachHere();
         }
-        // Checkstyle: resume
         // @formatter:on
     }
 
@@ -2426,22 +2424,20 @@ public final class MethodVerifier implements ContextAccess {
      */
     private Operand kindToOperand(Symbol<Type> type) {
         // @formatter:off
-        // Checkstyle: stop
         switch (Types.getJavaKind(type)) {
-            case Boolean:return Byte;
-            case Byte   :return Byte;
-            case Short  :return Short;
-            case Char   :return Char;
-            case Int    :return Int;
-            case Float  :return Float;
-            case Long   :return Long;
-            case Double :return Double;
-            case Void   :return Void;
-            case Object :return spawnFromType(type);
+            case Boolean: return Byte;
+            case Byte   : return Byte;
+            case Short  : return Short;
+            case Char   : return Char;
+            case Int    : return Int;
+            case Float  : return Float;
+            case Long   : return Long;
+            case Double : return Double;
+            case Void   : return Void;
+            case Object : return spawnFromType(type);
             default:
                 throw EspressoError.shouldNotReachHere();
         }
-        // Checkstyle: resume
         // @formatter:on
     }
 

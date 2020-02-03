@@ -322,7 +322,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
-            // Checkstyle: stop
             switch (kind) {
                 case Boolean : args[i] = varargs.popBoolean();   break;
                 case Byte    : args[i] = varargs.popByte();      break;
@@ -334,10 +333,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 case Double  : args[i] = varargs.popDouble();    break;
                 case Object  : args[i] = varargs.popObject();    break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
             }
             // @formatter:on
-            // Checkstyle: resume
         }
         return args;
     }
@@ -1829,7 +1828,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             assert componentKind.isPrimitive();
             int length = GetArrayLength(array);
             // @formatter:off
-            // Checkstyle: stop
             switch (componentKind) {
                 case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr);  break;
                 case Byte    : SetByteArrayRegion(array, 0, length, bufPtr);     break;
@@ -1842,7 +1840,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 default      : throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
-            // Checkstyle: resume
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
             assert nativeBuffers.containsKey(bufPtr);
@@ -2412,7 +2409,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         ByteBuffer region = allocateDirect(length, componentKind);
         long address = byteBufferAddress(region);
         // @formatter:off
-        // Checkstyle: stop
         switch (componentKind) {
             case Boolean : GetBooleanArrayRegion(array, 0, length, address);  break;
             case Byte    : GetByteArrayRegion(array, 0, length, address);     break;
@@ -2428,7 +2424,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
 
         return address;
     }

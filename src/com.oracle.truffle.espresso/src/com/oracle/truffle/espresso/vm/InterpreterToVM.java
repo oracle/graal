@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -366,7 +367,6 @@ public final class InterpreterToVM implements ContextAccess {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
         // @formatter:off
-        // Checkstyle: stop
         switch (jvmPrimitiveType) {
             case 4  : return StaticObject.wrap(new boolean[length]);
             case 5  : return StaticObject.wrap(new char[length]);
@@ -376,10 +376,11 @@ public final class InterpreterToVM implements ContextAccess {
             case 9  : return StaticObject.wrap(new short[length]);
             case 10 : return StaticObject.wrap(new int[length]);
             case 11 : return StaticObject.wrap(new long[length]);
-            default : throw EspressoError.shouldNotReachHere();
+            default :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     /**
