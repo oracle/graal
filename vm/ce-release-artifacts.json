@@ -50,12 +50,12 @@
 			{
 				"os": "linux",
 				"arch": "amd64",
-				"name_template": "{name}-{version}-{date}-{os}-{arch}"
+				"name_template": "{name}-{version}-{os}-{arch}"
 			},
 			{
 				"os": "darwin",
 				"arch": "amd64",
-				"name_template": "{name}-{version}-{date}-macos-{arch}"
+				"name_template": "{name}-{version}-macos-{arch}"
 			}
 		]
 	},
