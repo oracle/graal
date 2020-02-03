@@ -291,6 +291,36 @@ With Ruby: 42
 Write your **T-Trace** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
+### Trully Polyglot - T-Tracing with R
+
+The same instrument can be written in the R language opening tracing and
+aspect based programing to our friendly statistical community. Just create
+`agent-r.R` script:
+
+```R
+cat("R: Initializing T-Trace script\n")
+
+agent@on('source', function(env) {
+    cat("R: observed loading of ", env$name, "\n")
+})
+
+cat("R: Hooks are ready!\n")
+```
+
+and use it to trace your `test.R` program:
+
+```bash
+$ graalvm/bin/Rscript --agentscript=agent-r.R --experimental-options test.R
+R: Initializing T-Trace script
+R: Hooks are ready!
+R: observed loading of test.R
+```
+
+The only change is the R language. All the other [T-Trace](T-Trace.md)
+features and 
+[APIs](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION)
+remain the same.
+
 ### Inspecting Values
 
 **T-Trace** not only allows one to trace where the program execution is
