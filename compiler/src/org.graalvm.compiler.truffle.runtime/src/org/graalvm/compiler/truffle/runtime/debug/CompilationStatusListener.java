@@ -29,7 +29,10 @@ import com.oracle.truffle.api.instrumentation.CompilationState;
 import com.oracle.truffle.api.instrumentation.CompilationStateBackdoor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.runtime.*;
+import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -79,18 +82,19 @@ public final class CompilationStatusListener extends AbstractGraalTruffleRuntime
 
     public synchronized CompilationState sampleCompilationState() {
         /*
-         * I'd like to track queue size and running count by using the listener as normal, but I can't find a way to
-         * make that work - I think the key problem is that compilations dequeued may either be queued or running and
-         * I can't tell which. We'll work to improve that if this is to be merged.
+         * I'd like to track queue size and running count by using the listener as normal, but I
+         * can't find a way to make that work - I think the key problem is that compilations
+         * dequeued may either be queued or running and I can't tell which. We'll work to improve
+         * that if this is to be merged.
          */
 
         return new CompilationStateImpl(
-                runtime.getCompilationQueueSize(),
-                runtime.getCompilationsRunning(),
-                finished.get(),
-                failures.get(),
-                dequeues.get(),
-                deoptimizations.get());
+                        runtime.getCompilationQueueSize(),
+                        runtime.getCompilationsRunning(),
+                        finished.get(),
+                        failures.get(),
+                        dequeues.get(),
+                        deoptimizations.get());
     }
 
 }

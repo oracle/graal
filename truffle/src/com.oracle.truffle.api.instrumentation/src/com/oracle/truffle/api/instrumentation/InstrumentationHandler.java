@@ -1073,7 +1073,7 @@ final class InstrumentationHandler {
         return !contextsBindings.isEmpty();
     }
 
-    private CompilationState sampleCompilationState(AbstractInstrumenter instrumenter) {
+    private static CompilationState sampleCompilationState() {
         if (TRACE) {
             trace("BEGIN: Sampling compilation state%n");
         }
@@ -2199,7 +2199,7 @@ final class InstrumentationHandler {
 
         @Override
         public CompilationState sampleCompilationState() {
-            return InstrumentationHandler.this.sampleCompilationState(this);
+            return InstrumentationHandler.sampleCompilationState();
         }
 
         private void verifySourceOnly(SourceSectionFilter filter) {
