@@ -10,7 +10,10 @@ let initializeAgent = function (tracer) {
         }
         const req = args[0];
         const res = args[1];
-        const span = tracer.startSpan(req.url);
+        const span = tracer.startSpan("request");
+        span.setTag("span.kind", "server");
+        span.setTag("http.url", req.url);
+        span.setTag("http.method", req.method);
         res.id = ++counter;
         res.span = span;
         console.log(`agent: handling #${res.id} request for ${req.url}`);

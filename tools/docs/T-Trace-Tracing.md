@@ -22,7 +22,10 @@ let initializeAgent = function (tracer) {
         }
         const req = args[0];
         const res = args[1];
-        const span = tracer.startSpan(req.url);
+        const span = tracer.startSpan("request");
+        span.setTag("span.kind", "server");
+        span.setTag("http.url", req.url);
+        span.setTag("http.method", req.method);
         res.id = ++counter;
         res.span = span;
         console.log(`agent: handling #${res.id} request for ${req.url}`);
@@ -56,10 +59,13 @@ add `id` and `span` attributes to it in the `enter` handler of the `emit` functi
 from the source `events.js`. Then it is possible to use them in the `return` handler
 of the `end` function.
 
-With such instrument, it is just a matter of selecting the right `ttrace`
-pointcuts - declaratively, selectively, precisely, accuratelly
-(via specifying the right tags and filtering on function names, location in
-sources and other characteristics) and the OpenTracing will happen
-automatically and only on demand, without modifying the application code
-at all.
+The [T-Trace](T-Trace.md) provides access to `frame` variables and their fields.
+As such the instrument can read value of `req.url` or `req.method` and provide
+them as `span.setTag` values to the OpenTracing server.
 
+With such instrument, it is just a matter of being able to enable it
+at the right time. See [embedding into node.js](T-Trace-Embedding.md)
+section to see how to create an *admin server* and apply any trace scripts
+(including OpenTracing based ones) dynamically - when needed.
+
+For more ideas consult [T-Trace hacker's manual](T-Trace-Manual.md).
