@@ -99,6 +99,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        initializeCompiler(callTarget);
         final TruffleInlining callNodeProvider = new TruffleInlining(callTarget, new NoInliningPolicy());
         final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         final Class<?> partialEvaluatorClass = partialEvaluator.getClass().getSuperclass();

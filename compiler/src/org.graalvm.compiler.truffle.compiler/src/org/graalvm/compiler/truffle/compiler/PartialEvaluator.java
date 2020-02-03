@@ -153,11 +153,12 @@ public abstract class PartialEvaluator {
     protected final ResolvedJavaMethod callInlinedAgnosticMethod;
     private final ResolvedJavaMethod callIndirectMethod;
     private final ResolvedJavaMethod callRootMethod;
-    private GraphBuilderConfiguration configForParsing;     // TODO return final
+    private final GraphBuilderConfiguration configPrototype;
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
     private final KnownTruffleTypes knownTruffleTypes;
     private final ResolvedJavaMethod callBoundary;
+    private volatile GraphBuilderConfiguration configForParsing;
 
     /**
      * Holds instrumentation options initialized in
@@ -192,7 +193,7 @@ public abstract class PartialEvaluator {
         this.callRootMethod = findRequiredMethod(type, methods, "callRoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
-        this.configForParsing = createGraphBuilderConfig(configForRoot, true);
+        this.configPrototype = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
     }
@@ -203,7 +204,7 @@ public abstract class PartialEvaluator {
                         instrumentationCfg.instrumentBranches ||
                         instrumentationCfg.instrumentBoundaries ||
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
-        configForParsing = configForParsing.copy().withNodeSourcePosition(configForParsing.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
+        configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
     }
 
@@ -215,6 +216,9 @@ public abstract class PartialEvaluator {
         if (instrumentation == null) {
             synchronized (this) {
                 if (instrumentation == null) {
+                    if (instrumentationCfg == null) {
+                        throw new IllegalStateException("PartialEvaluator is not yet initialized");
+                    }
                     long[] accessTable = new long[instrumentationCfg.instrumentationTableSize];
                     instrumentation = new InstrumentPhase.Instrumentation(accessTable);
                 }
@@ -257,7 +261,28 @@ public abstract class PartialEvaluator {
         return providers;
     }
 
+    /**
+     * Returns the root {@link GraphBuilderConfiguration}. The root configuration provides plugins
+     * used by this {@link PartialEvaluator} but it's not configured with engine options. The root
+     * configuration should be used in image generation time where the {@link PartialEvaluator} is
+     * not yet initialized with engine options. In execution time the {@link #getConfigForParsing}
+     * should be used.
+     */
+    public GraphBuilderConfiguration getRootConfig() {
+        return configPrototype;
+    }
+
+    /**
+     * Returns the {@link GraphBuilderConfiguration} used by parsing. The returned configuration is
+     * configured with engine options. In the image generation time the {@link PartialEvaluator} is
+     * not yet initialized and the {@link #getRootConfig} should be used instead.
+     *
+     * @throws IllegalStateException when called on non initialized {@link PartialEvaluator}
+     */
     public GraphBuilderConfiguration getConfigForParsing() {
+        if (configForParsing == null) {
+            throw new IllegalStateException("PartialEvaluator is not yet initialized");
+        }
         return configForParsing;
     }
 
