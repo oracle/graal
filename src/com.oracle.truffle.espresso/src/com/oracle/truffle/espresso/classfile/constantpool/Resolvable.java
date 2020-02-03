@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public interface Resolvable extends PoolConstant {

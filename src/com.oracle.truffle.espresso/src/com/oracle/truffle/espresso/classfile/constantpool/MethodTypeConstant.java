@@ -24,7 +24,9 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -33,6 +35,10 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodTypeConstant extends PoolConstant {
+
+    static MethodTypeConstant create(int descriptorIndex) {
+        return new Index(descriptorIndex);
+    }
 
     default Tag tag() {
         return Tag.METHODTYPE;

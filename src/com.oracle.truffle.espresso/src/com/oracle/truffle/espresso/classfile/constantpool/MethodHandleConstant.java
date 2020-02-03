@@ -24,7 +24,9 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -34,6 +36,11 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodHandleConstant extends PoolConstant {
+
+    static MethodHandleConstant create(int refKind, int refIndex) {
+        return new Index(refKind, refIndex);
+    }
+
     default Tag tag() {
         return Tag.METHODHANDLE;
     }
@@ -180,16 +187,16 @@ public interface MethodHandleConstant extends PoolConstant {
 
             Symbol<Name> memberName = pool.memberAt(refIndex).getName(pool);
             if (Name.CLINIT.equals(memberName)) {
-                throw ClassfileParser.classFormatError("Ill-formed constant: " + tag());
+                throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
 
             // If the value is 8 (REF_newInvokeSpecial), the name of the method represented by a
             // CONSTANT_Methodref_info structure must be <init>.
             if (Name.INIT.equals(memberName) && kind != RefKind.NEWINVOKESPECIAL) {
-                throw ClassfileParser.classFormatError("Ill-formed constant: " + tag());
+                throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
             if (getRefKind() == null) {
-                throw ClassfileParser.classFormatError("Ill-formed constant: " + tag());
+                throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
 
             // If the value of the reference_kind item is 5 (REF_invokeVirtual), 6
@@ -201,7 +208,7 @@ public interface MethodHandleConstant extends PoolConstant {
                                 kind == RefKind.INVOKESTATIC ||
                                 kind == RefKind.INVOKESPECIAL ||
                                 kind == RefKind.INVOKEINTERFACE) {
-                    throw ClassfileParser.classFormatError("Ill-formed constant: " + tag());
+                    throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
                 }
             }
 
@@ -251,7 +258,7 @@ public interface MethodHandleConstant extends PoolConstant {
             }
 
             if (!valid) {
-                throw ClassfileParser.classFormatError("Ill-formed constant: " + tag());
+                throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
 
         }

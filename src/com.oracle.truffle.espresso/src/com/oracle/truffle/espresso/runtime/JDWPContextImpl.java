@@ -34,7 +34,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -551,8 +551,8 @@ public final class JDWPContextImpl implements JDWPContext {
             if (bci != -1) {
                 Method method = espressoRootNode.getMethod();
                 BytecodeStream bs = new BytecodeStream(method.getOriginalCode());
-                LineNumberTable lineNumberTable = method.getLineNumberTable();
-                if (lineNumberTable == LineNumberTable.EMPTY) {
+                LineNumberTableAttribute lineNumberTable = method.getLineNumberTable();
+                if (lineNumberTable == LineNumberTableAttribute.EMPTY) {
                     return false;
                 }
 

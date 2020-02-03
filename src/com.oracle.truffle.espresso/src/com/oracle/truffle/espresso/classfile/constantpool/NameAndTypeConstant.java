@@ -22,12 +22,17 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public interface NameAndTypeConstant extends PoolConstant {
+
+    static NameAndTypeConstant create(int nameIndex, int typeIndex) {
+        return new Indexes(nameIndex, typeIndex);
+    }
 
     /**
      * Gets the name of this name+descriptor pair constant.
@@ -68,7 +73,7 @@ public interface NameAndTypeConstant extends PoolConstant {
         private final char nameIndex;
         private final char typeIndex;
 
-        public Indexes(int nameIndex, int typeIndex) {
+        Indexes(int nameIndex, int typeIndex) {
             this.nameIndex = PoolConstant.u2(nameIndex);
             this.typeIndex = PoolConstant.u2(typeIndex);
         }

@@ -22,9 +22,15 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public final class LongConstant implements PoolConstant {
+
+    public static LongConstant create(long value) {
+        // TODO: cache ?
+        return new LongConstant(value);
+    }
 
     @Override
     public Tag tag() {

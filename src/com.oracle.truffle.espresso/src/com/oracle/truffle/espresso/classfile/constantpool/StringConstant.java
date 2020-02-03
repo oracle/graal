@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -30,6 +32,14 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface StringConstant extends PoolConstant {
+
+    static StringConstant create(int utf8Index) {
+        return new Index(utf8Index);
+    }
+
+    static StringConstant preResolved(StaticObject resolved) {
+        return new PreResolved(resolved);
+    }
 
     @Override
     default Tag tag() {

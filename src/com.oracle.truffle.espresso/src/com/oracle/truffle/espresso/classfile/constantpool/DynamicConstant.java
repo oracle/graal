@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public interface DynamicConstant extends BootstrapMethodConstant {
+
+    static DynamicConstant create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
+        return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
+    }
 
     default Tag tag() {
         return Tag.DYNAMIC;

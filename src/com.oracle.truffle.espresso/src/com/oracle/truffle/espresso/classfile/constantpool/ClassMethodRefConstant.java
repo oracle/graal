@@ -27,8 +27,9 @@ import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -40,6 +41,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
+
+    static ClassMethodRefConstant create(int classIndex, int nameAndTypeIndex) {
+        return new Indexes(classIndex, nameAndTypeIndex);
+    }
 
     @Override
     default Tag tag() {
@@ -207,7 +212,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                 int len = descriptor.length();
                 // descriptor.endsWith(")V");
                 if (len <= 2 || (descriptor.byteAt(len - 2) != ')' || descriptor.byteAt(len - 1) != 'V')) {
-                    throw ClassfileParser.classFormatError("<init> method should have ()V signature");
+                    throw ConstantPool.classFormatError("<init> method should have ()V signature");
                 }
             }
         }

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile.constantpool;
+package com.oracle.truffle.espresso.classfile;
 
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 
 /**
  * Immutable constant pool implementation backed by an array of constants.
@@ -62,7 +62,7 @@ final class ConstantPoolImpl extends ConstantPool {
         try {
             return constants[index];
         } catch (IndexOutOfBoundsException exception) {
-            throw ClassfileParser.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
+            throw ConstantPool.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
         }
     }
 

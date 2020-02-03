@@ -26,8 +26,8 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.impl.Klass;

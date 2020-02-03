@@ -28,7 +28,9 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -40,6 +42,22 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
  * Interface denoting a class entry in a constant pool.
  */
 public interface ClassConstant extends PoolConstant {
+
+    static ClassConstant create(int classNameIndex) {
+        return new Index(classNameIndex);
+    }
+
+    static ClassConstant preResolved(Klass klass) {
+        return new PreResolved(klass);
+    }
+
+    static ClassConstant withString(Symbol<Name> name) {
+        return new WithString(name);
+    }
+
+    static Resolvable.ResolvedConstant resolved(Klass klass) {
+        return new Resolved(klass);
+    }
 
     @Override
     default Tag tag() {

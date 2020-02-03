@@ -28,6 +28,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class QuickNode extends EspressoInstrumentableQuickNode {

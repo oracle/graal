@@ -22,12 +22,18 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 /**
  * #4.4.4.
  */
 public final class IntegerConstant implements PoolConstant {
+
+    public static IntegerConstant create(int value) {
+        // TODO: cache values between [-127, 128] ?
+        return new IntegerConstant(value);
+    }
 
     @Override
     public Tag tag() {

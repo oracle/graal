@@ -27,7 +27,9 @@ import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -40,6 +42,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
+
+    static InterfaceMethodRefConstant create(int classIndex, int nameAndTypeIndex) {
+        return new Indexes(classIndex, nameAndTypeIndex);
+    }
 
     @Override
     default Tag tag() {

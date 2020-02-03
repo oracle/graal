@@ -27,7 +27,9 @@ import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveFieldCount;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.constantpool.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -39,6 +41,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public interface FieldRefConstant extends MemberRefConstant {
+
+    static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
+        return new Indexes(classIndex, nameAndTypeIndex);
+    }
 
     @Override
     default Tag tag() {
