@@ -1517,11 +1517,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    @SuppressWarnings("unused")
-    private static boolean isReturn(int opcode) {
-        return opcode >= IRETURN && opcode <= RETURN;
-    }
-
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode) {
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
