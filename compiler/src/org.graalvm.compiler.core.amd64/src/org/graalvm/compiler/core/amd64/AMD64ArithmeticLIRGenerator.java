@@ -795,7 +795,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
          * registers.
          */
         AMD64Kind fromKind = (AMD64Kind) from.getPlatformKind();
-        switch ((AMD64Kind) to.getPlatformKind()) {
+        AMD64Kind toKind = (AMD64Kind) to.getPlatformKind();
+        switch (toKind) {
             case DWORD:
                 switch (fromKind) {
                     case SINGLE:
@@ -821,7 +822,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 }
                 break;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(toKind + " " + fromKind);
     }
 
     @Override
