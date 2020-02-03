@@ -286,12 +286,12 @@ public final class DebuggerController implements ContextsListener {
         susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
     }
 
-    public void resume(Object thread, boolean sessionClosed) {
+    public boolean resume(Object thread, boolean sessionClosed) {
         JDWPLogger.log("Called resume thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
 
         if (threadSuspension.getSuspensionCount(thread) == 0) {
             // already running, so nothing to do
-            return;
+            return true;
         }
 
         threadSuspension.resumeThread(thread);
@@ -323,8 +323,10 @@ public final class DebuggerController implements ContextsListener {
                 lock.notifyAll();
                 threadSuspension.removeHardSuspendedThread(thread);
             }
+            return true;
         } else {
             JDWPLogger.log("Not resuming thread: %s with suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
+            return false;
         }
     }
 
@@ -340,7 +342,9 @@ public final class DebuggerController implements ContextsListener {
         JDWPLogger.log("Called resumeAll:", JDWPLogger.LogLevel.THREAD);
 
         for (Object thread : getContext().getAllGuestThreads()) {
-            resume(thread, sessionClosed);
+            while (threadSuspension.getSuspensionCount(thread) > 0) {
+                resume(thread, sessionClosed);
+            }
         }
     }
 
