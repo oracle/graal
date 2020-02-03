@@ -2,8 +2,6 @@
 #Version 
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
-meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess()
- anno 0 java.lang.Deprecated()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
@@ -204,8 +202,6 @@ meth public abstract java.lang.Class<?> getType()
 CLSS public com.oracle.truffle.api.object.ObjectType
 cons public init()
 meth public boolean equals(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
-meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
- anno 0 java.lang.Deprecated()
 meth public int hashCode(com.oracle.truffle.api.object.DynamicObject)
 meth public java.lang.Class<?> dispatch()
 meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObject)

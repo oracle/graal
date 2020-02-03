@@ -45,7 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 public abstract class TRegexExecutorNode extends Node {
 
-    @CompilationFinal private TRegexExecRootNode root;
+    @CompilationFinal protected TRegexExecRootNode root;
 
     public void setRoot(TRegexExecRootNode root) {
         this.root = root;

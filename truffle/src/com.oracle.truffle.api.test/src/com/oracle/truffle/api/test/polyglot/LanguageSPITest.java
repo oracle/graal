@@ -1406,7 +1406,7 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithInvalidScopes() {
-        setupTopScopes(new ProxyLegacyInteropObject() {
+        setupTopScopes(new TruffleObject() {
         });
         Context c = Context.create();
         assertEquals(0, findScopeInvokes);

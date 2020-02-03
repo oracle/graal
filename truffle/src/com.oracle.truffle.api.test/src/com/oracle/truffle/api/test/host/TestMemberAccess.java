@@ -308,14 +308,14 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject arrayClass = asTruffleHostSymbol(Array.class);
         TruffleObject newInstanceMethod = (TruffleObject) INTEROP.readMember(arrayClass, "newInstance");
         TruffleObject stringArray = (TruffleObject) INTEROP.execute(newInstanceMethod, asTruffleHostSymbol(String.class), 2);
-        assertTrue(HostInteropTest.isArray(stringArray));
+        assertTrue(INTEROP.hasArrayElements(stringArray));
     }
 
     @Test
     public void testArrayOutOfBoundsAccess() throws InteropException {
         Object[] array = new Object[1];
         TruffleObject arrayObject = asTruffleObject(array);
-        assertTrue(HostInteropTest.isArray(arrayObject));
+        assertTrue(INTEROP.hasArrayElements(arrayObject));
         INTEROP.readArrayElement(arrayObject, 0);
         try {
             INTEROP.readArrayElement(arrayObject, 1);

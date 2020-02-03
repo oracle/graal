@@ -54,15 +54,15 @@ for more details about instrumenting branches and boundaries.
 
 `--engine.TraceSplitting` prints guest-language splitting decisions for each compilation.
 
-`--vm.Dgraal.TraceTruffleTransferToInterpreter=true` prints on transfer to interpreter.
+`--engine.TraceTransferToInterpreter` prints on transfer to interpreter.
 
-`--vm.Dgraal.TraceTrufflePerformanceWarnings=true` prints code which may not be ideal for performance.
+`--engine.TracePerformanceWarnings=(call|instanceof|store|all)` prints code which may not be ideal for performance. The `call` enables warinings when partial evaluation cannot inline the virtual runtime call. The `instanceof` enables warninigs when partial evaluation cannot resolve virtual instanceof to an exact type. The `store` enables warninigs when store location argument is not a partial evaluation constant.
 
-`--vm.Dgraal.TruffleCompilationStatistics=true` prints at the end of the process lots of information on what Truffle has compiled and how long it took and where.
+`--engine.CompilationStatistics` prints at the end of the process lots of information on what Truffle has compiled and how long it took and where.
 
-`--vm.Dgraal.TruffleCompilationStatisticDetails=true` prints more information.
+`--engine.CompilationStatisticDetails` prints more information.
 
-`--vm.Dgraal.PrintTruffleExpansionHistogram=true` prints at the end of each compilation a histogram of AST interpreter method calls.
+`--engine.PrintExpansionHistogram` prints at the end of each compilation a histogram of AST interpreter method calls.
 
 `--vm.Dgraal.TruffleInstrumentBoundaries=true` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised.
 

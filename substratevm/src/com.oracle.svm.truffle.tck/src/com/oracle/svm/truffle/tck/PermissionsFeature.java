@@ -190,7 +190,9 @@ public class PermissionsFeature implements Feature {
                 UserError.abort("Cannot load ReflectionProxy type");
             }
             whiteList = parser.getLoadedWhiteList();
-            Set<AnalysisMethod> importantMethods = findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check"));
+            Set<AnalysisMethod> importantMethods = new HashSet<>();
+            importantMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+            importantMethods.addAll(findMethods(bigbang, sun.misc.Unsafe.class, (m) -> m.isPublic()));
             if (!importantMethods.isEmpty()) {
                 Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();

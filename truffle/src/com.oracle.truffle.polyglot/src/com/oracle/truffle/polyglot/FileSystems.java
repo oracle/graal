@@ -74,6 +74,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
 import java.nio.charset.Charset;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.io.FileSystem;
 
 final class FileSystems {
@@ -120,7 +121,7 @@ final class FileSystems {
         if (fileSystem.getClass() == LanguageHomeFileSystem.class) {
             Path path = EngineAccessor.LANGUAGE.getPath(file);
             LanguageHomeFileSystem lhfs = (LanguageHomeFileSystem) fileSystem;
-            return !lhfs.inLanguageHome(lhfs.toAbsolutePathInternal(path));
+            return !lhfs.inLanguageHome(lhfs.toNormalizedAbsolutePath(path));
         }
         return false;
     }
@@ -135,6 +136,21 @@ final class FileSystems {
      */
     static void resetDefaultFileSystemProvider() {
         DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
+    }
+
+    static String getRelativePathInLanguageHome(TruffleFile file) {
+        FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
+        Path path = EngineAccessor.LANGUAGE.getPath(file);
+        for (LanguageCache cache : LanguageCache.languages().values()) {
+            final String languageHome = cache.getLanguageHome();
+            if (languageHome != null) {
+                Path languageHomePath = fs.parsePath(languageHome);
+                if (path.startsWith(languageHomePath)) {
+                    return languageHomePath.relativize(path).toString();
+                }
+            }
+        }
+        return null;
     }
 
     private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
@@ -190,6 +206,32 @@ final class FileSystems {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
             this.delegate = newDelegate;
             this.factory = new ImageExecutionTimeFactory();
+        }
+
+        String pathToString(Path path) {
+            if (delegate != INVALID_FILESYSTEM) {
+                return path.toString();
+            }
+            verifyImageState();
+            return ((PreInitializePath) path).resolve(newDefaultFileSystem()).toString();
+        }
+
+        URI absolutePathtoURI(Path path) {
+            if (delegate != INVALID_FILESYSTEM) {
+                return path.toUri();
+            }
+            verifyImageState();
+            Path resolved = ((PreInitializePath) path).resolve(newDefaultFileSystem());
+            if (!resolved.isAbsolute()) {
+                throw new IllegalArgumentException("Path must be absolute.");
+            }
+            return resolved.toUri();
+        }
+
+        private static void verifyImageState() {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                throw new IllegalStateException("Reintroducing absolute path into an image heap.");
+            }
         }
 
         @Override
@@ -376,30 +418,37 @@ final class FileSystems {
         }
 
         private final class PreInitializePath implements Path {
-            private Object delegatePath;
+
+            private volatile Object delegatePath;
 
             PreInitializePath(Path delegatePath) {
                 this.delegatePath = delegatePath;
             }
 
             private Path getDelegate() {
-                if (delegatePath instanceof Path) {
-                    return (Path) delegatePath;
-                } else if (delegatePath instanceof ImageHeapPath) {
-                    ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
+                Path result = resolve(delegate);
+                delegatePath = result;
+                return result;
+            }
+
+            private Path resolve(FileSystem fs) {
+                Object current = delegatePath;
+                if (current instanceof Path) {
+                    return (Path) current;
+                } else if (current instanceof ImageHeapPath) {
+                    ImageHeapPath imageHeapPath = (ImageHeapPath) current;
                     String languageId = imageHeapPath.languageId;
                     String path = imageHeapPath.path;
                     Path result;
                     String newLanguageHome;
                     if (languageId != null && (newLanguageHome = LanguageCache.languages().get(languageId).getLanguageHome()) != null) {
-                        result = delegate.parsePath(newLanguageHome).resolve(path);
+                        result = fs.parsePath(newLanguageHome).resolve(path);
                     } else {
-                        result = delegate.parsePath(path);
+                        result = fs.parsePath(path);
                     }
-                    delegatePath = result;
                     return result;
                 } else {
-                    throw new IllegalStateException("Unknown delegate " + String.valueOf(delegatePath));
+                    throw new IllegalStateException("Unknown delegate " + String.valueOf(current));
                 }
             }
 
@@ -891,7 +940,7 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Path absolutePath = toAbsolutePathInternal(path);
+            Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
                 if (modes.contains(AccessMode.WRITE)) {
                     throw new IOException("Read-only file");
@@ -915,7 +964,7 @@ final class FileSystems {
             }
             if (!write) {
                 assert read;
-                Path absolutePath = toAbsolutePathInternal(inPath);
+                Path absolutePath = toNormalizedAbsolutePath(inPath);
                 if (inLanguageHome(absolutePath)) {
                     return fullIO.newByteChannel(absolutePath, options, attrs);
                 }
@@ -925,7 +974,7 @@ final class FileSystems {
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path absoluteDir = toAbsolutePathInternal(dir);
+            Path absoluteDir = toNormalizedAbsolutePath(dir);
             if (inLanguageHome(absoluteDir)) {
                 return fullIO.newDirectoryStream(absoluteDir, filter);
             }
@@ -934,7 +983,7 @@ final class FileSystems {
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            Path absolutePath = toAbsolutePathInternal(path);
+            Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
                 return fullIO.readAttributes(absolutePath, attributes, options);
             }
@@ -943,11 +992,16 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return toAbsolutePathInternal(path);
+            return fullIO.toAbsolutePath(path);
         }
 
-        private Path toAbsolutePathInternal(Path path) {
-            return fullIO.toAbsolutePath(path);
+        private Path toNormalizedAbsolutePath(Path path) {
+            if (path.isAbsolute()) {
+                return path;
+            }
+            boolean needsToNormalize = !isNormalized(path);
+            Path absolutePath = fullIO.toAbsolutePath(path);
+            return needsToNormalize ? absolutePath.normalize() : absolutePath;
         }
 
         @Override
@@ -990,6 +1044,16 @@ final class FileSystems {
                 }
             }
             return res;
+        }
+
+        private static boolean isNormalized(Path path) {
+            for (Path name : path) {
+                String strName = name.toString();
+                if (".".equals(strName) || "..".equals(strName)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

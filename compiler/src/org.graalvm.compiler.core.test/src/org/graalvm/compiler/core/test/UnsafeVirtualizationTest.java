@@ -304,6 +304,74 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    public static long unsafeSnippet19(long l1, long l2, boolean c) {
+        byte[] t = new byte[16];
+        if (l1 < l2) {
+            UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        } else {
+            UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l2);
+        }
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet20(long l1, int i2, boolean c) {
+        byte[] t = new byte[16];
+        if (l1 < i2) {
+            UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        } else {
+            UNSAFE.putInt(t, getUnsafeByteArrayOffset(0), i2);
+        }
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet21(long l1, boolean c) {
+        byte[] t = new byte[16];
+        if (l1 < 0) {
+            UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        } else {
+            sideEffect();
+        }
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet22(long l1, double d1, boolean c) {
+        byte[] t = new byte[16];
+        if (l1 < d1) {
+            UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        } else {
+            UNSAFE.putDouble(t, getUnsafeByteArrayOffset(0), d1);
+        }
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet23(long l1, short s1, float f1, byte[][] box, boolean c) {
+        byte[] t = new byte[16];
+        UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        if (s1 < f1) {
+            UNSAFE.putShort(t, getUnsafeByteArrayOffset(12), (short) 0);
+        }
+        // escape
+        box[0] = t;
+        UNSAFE.putFloat(t, getUnsafeByteArrayOffset(12), f1);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
     @Test
     public void testUnsafePEA01() {
         performTest("unsafeSnippet1", false, true, 1.0);
@@ -397,6 +465,31 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public void testUnsafePEA18() {
         Assume.assumeTrue(getBackend().getTarget().arch.supportsUnalignedMemoryAccess());
         performTest("unsafeSnippet18", false, false, 0x01020304);
+    }
+
+    @Test
+    public void testUnsafePEA19() {
+        performTest("unsafeSnippet19", true, true, 0x0102030405060708L, 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA20() {
+        performTest("unsafeSnippet20", false, false, 0x0102030405060708L, 0x01020304);
+    }
+
+    @Test
+    public void testUnsafePEA21() {
+        performTest("unsafeSnippet21", true, true, 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA22() {
+        performTest("unsafeSnippet22", false, false, 0x0102030405060708L, Double.longBitsToDouble(0x0506070801020304L));
+    }
+
+    @Test
+    public void testUnsafePEA23() {
+        performTest("unsafeSnippet23", false, false, 0x0102030405060708L, (short) 0x0102, Float.intBitsToFloat(0x01020304), new byte[1][]);
     }
 
     private void performTest(String snippet, boolean shouldEscapeRead, boolean shouldEscapeWrite, Object... args) {

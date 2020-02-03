@@ -44,7 +44,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
@@ -56,7 +55,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
  * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
  * {@link DominatorTree} and the node splitting algorithm implemented in {@link DFANodeSplit}.
  */
-final class GraphNode implements Comparable<GraphNode>, IndexedState {
+final class GraphNode implements Comparable<GraphNode> {
 
     private static final short[] NO_DOM_CHILDREN = new short[0];
 
@@ -80,8 +79,8 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = new StateSet<>(graph, StateSetBackingSetFactory.SORTED_ARRAY);
-        backEdges = new StateSet<>(graph);
+        predecessorSet = StateSet.create(graph, StateSetBackingSetFactory.SORTED_ARRAY);
+        backEdges = StateSet.create(graph);
         domChildren = NO_DOM_CHILDREN;
     }
 
@@ -118,7 +117,6 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         return getId() - o.getId();
     }
 
-    @Override
     public short getId() {
         return dfaNode.getId();
     }

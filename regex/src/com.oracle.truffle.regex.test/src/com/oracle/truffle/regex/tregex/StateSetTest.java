@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,25 +48,35 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+
 public class StateSetTest {
 
     private static final int INDEX_SIZE = 0xFF;
+    static final int MAX_SMALL_STATE_INDEX_SIZE = 64;
     private static final int SWITCH_TO_BITSET_THRESHOLD = 4;
 
     private ShortStateIndex index;
+    private ShortStateIndex smallIndex;
     private List<ShortState> tooManyForStateList;
 
     @Before
     public void setUp() {
         index = new ShortStateIndex(INDEX_SIZE);
+        smallIndex = new ShortStateIndex(MAX_SMALL_STATE_INDEX_SIZE);
         tooManyForStateList = new ArrayList<>();
         for (int i = 1; i <= SWITCH_TO_BITSET_THRESHOLD + 1; i++) {
             tooManyForStateList.add(new ShortState(i));
         }
     }
 
+    private StateSetChecker<ShortState> stateSetCreate() {
+        return new StateSetChecker<>(StateSet.create(index), StateSet.create(smallIndex));
+    }
+
     private StateSet<ShortState> bitSet(int... elems) {
-        StateSet<ShortState> result = new StateSet<>(index);
+        StateSetChecker<ShortState> result = stateSetCreate();
 
         // force the use of a bit set instead of a state list
         result.addAll(tooManyForStateList);
@@ -83,7 +90,7 @@ public class StateSetTest {
     }
 
     private StateSet<ShortState> stateList(int... elems) {
-        StateSet<ShortState> result = new StateSet<>(index);
+        StateSet<ShortState> result = stateSetCreate();
 
         assert elems.length <= SWITCH_TO_BITSET_THRESHOLD;
 
@@ -104,7 +111,7 @@ public class StateSetTest {
         Assert.assertEquals("hash codes of equal StateSets should be equal", usingBitSet.hashCode(), usingStateList.hashCode());
     }
 
-    private static class ShortState implements IndexedState {
+    private static class ShortState {
 
         private final short id;
 
@@ -112,7 +119,6 @@ public class StateSetTest {
             this.id = (short) id;
         }
 
-        @Override
         public short getId() {
             return id;
         }
@@ -130,6 +136,11 @@ public class StateSetTest {
         @Override
         public int getNumberOfStates() {
             return index.length;
+        }
+
+        @Override
+        public short getId(ShortState state) {
+            return state.getId();
         }
 
         @Override

@@ -84,8 +84,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         CompressEncoding encoding = compression.getEncoding();
-        Scale scale = Scale.fromShift(encoding.getShift());
-        if (scale == null) {
+        if (!Scale.isScaleShiftSupported(encoding.getShift())) {
             return false;
         }
 
@@ -117,6 +116,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
             addr.setBase(other);
         }
 
+        Scale scale = Scale.fromShift(encoding.getShift());
         addr.setScale(scale);
         addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());

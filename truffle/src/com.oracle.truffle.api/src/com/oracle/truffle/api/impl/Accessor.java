@@ -141,8 +141,6 @@ public abstract class Accessor {
 
         public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
 
-        public abstract boolean isTaggedWith(Node node, Class<?> tag);
-
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);
@@ -191,6 +189,8 @@ public abstract class Accessor {
         public abstract SourceBuilder newBuilder(String language, File origin);
 
         public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);
+
+        public abstract void invalidateAfterPreinitialiation(Source source);
     }
 
     public abstract static class DumpSupport {
@@ -280,7 +280,7 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean inContextPreInitialization(Object polyglotLanguageContext);
+        public abstract boolean inContextPreInitialization(Object polyglotObject);
 
         public abstract Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext);
 
@@ -412,6 +412,14 @@ public abstract class Accessor {
         public abstract Set<String> getInternalIds();
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
+
+        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
+
+        public abstract void onSourceCreated(Source source);
+
+        public abstract String getReinitializedPath(TruffleFile truffleFile);
+
+        public abstract URI getReinitializedURI(TruffleFile truffleFile);
     }
 
     public abstract static class LanguageSupport {

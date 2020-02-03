@@ -528,7 +528,7 @@ public class Environment implements Feedback, CommandInput {
         this.fileOperations = fileOperations;
     }
 
-    public void close() throws IOException {
+    public boolean close() throws IOException {
         if (out != null) {
             out.flush();
         }
@@ -536,7 +536,9 @@ public class Environment implements Feedback, CommandInput {
             err.flush();
         }
         if (fileOperations != null) {
-            fileOperations.flush();
+            return fileOperations.flush();
+        } else {
+            return false;
         }
     }
 

@@ -108,8 +108,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>A non-null {@link TruffleLanguage language} is passed in the root node constructor.
  * <li>{@link #isInstrumentable()} is overridden and returns <code>true</code>.
  * <li>{@link #getSourceSection()} is overridden and returns a non-null value.
- * <li>The AST contains at least one node that is annotated with
- * {@link com.oracle.truffle.api.instrumentation.Instrumentable}.
+ * <li>The AST contains at least one node that implements
+ * {@link com.oracle.truffle.api.instrumentation.InstrumentableNode}.
  * <li>It is recommended that children of instrumentable root nodes are tagged with
  * <code>StandardTags</code>.
  * </ul>

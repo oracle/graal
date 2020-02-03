@@ -77,6 +77,7 @@ import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.commands.UpgradeCommand;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.os.WindowsJVMWrapper;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
@@ -275,7 +276,7 @@ public class ComponentInstaller extends Launcher {
 
     SimpleGetopt createOptions(LinkedList<String> cmdline) {
         SimpleGetopt go = createOptionsObject(globalOptions).ignoreUnknownOptions(true);
-        go.setParameters(cmdline);
+        go.setParameters(new LinkedList<>(cmdline));
         for (String s : commands.keySet()) {
             go.addCommandOptions(s, commands.get(s).supportedOptions());
         }
@@ -289,7 +290,10 @@ public class ComponentInstaller extends Launcher {
         forSoftwareChannels(true, (ch) -> {
             ch.init(input, feedback);
         });
+        return go;
+    }
 
+    SimpleGetopt interpretOptions(SimpleGetopt go) {
         List<String> unknownOptions = go.getUnknownOptions();
         if (env.hasOption(Commands.OPTION_HELP) && go.getCommand() == null) {
             unknownOptions.add("help");
@@ -316,14 +320,15 @@ public class ComponentInstaller extends Launcher {
         // setOutput(new EnvStream(true, new ByteArrayOutputStream(100)));
         // setError(new EnvStream(true, new ByteArrayOutputStream(100)));
 
-        launch(cmdline);
-
         if (cmdline.size() < 1) {
             env = SIMPLE_ENV;
             printDefaultHelp(OptionCategory.USER);
             return 1;
         }
         SimpleGetopt go = createOptions(cmdline);
+        launch(cmdline);
+        go = interpretOptions(go);
+
         if (go == null) {
             return 0;
         }
@@ -460,7 +465,9 @@ public class ComponentInstaller extends Launcher {
         } finally {
             if (env != null) {
                 try {
-                    env.close();
+                    if (env.close()) {
+                        retcode = CommonConstants.WINDOWS_RETCODE_DELAYED_OPERATION;
+                    }
                 } catch (IOException ex) {
                 }
             }
@@ -557,18 +564,23 @@ public class ComponentInstaller extends Launcher {
         if (s == null) {
             return null;
         }
+        boolean useAsFile = false;
+
         try {
             URI check = URI.create(s);
             if (check.getScheme() == null || check.getScheme().length() < 2) {
-                Path p = SystemUtils.fromUserString(s);
-                // convert plain filename to file:// URL.
-                if (Files.isReadable(p)) {
-                    return p.toFile().toURI().toString();
-                }
+                useAsFile = true;
             }
         } catch (IllegalArgumentException ex) {
             // expected, use the argument as it is.
-            ex.printStackTrace();
+            useAsFile = true;
+        }
+        if (useAsFile) {
+            Path p = SystemUtils.fromUserString(s);
+            // convert plain filename to file:// URL.
+            if (Files.isReadable(p) || Files.isDirectory(p)) {
+                return p.toFile().toURI().toString();
+            }
         }
         return s;
     }
@@ -795,6 +807,13 @@ public class ComponentInstaller extends Launcher {
 
     public void launch(List<String> args) {
         maybeNativeExec(args, false, new LinkedHashMap<>());
+        // // Uncomment for debugging jvmmode launcher
+        // if (System.getProperty("test.wrap") != null) {
+        // maybeExec(args, false, Collections.emptyMap(), VMType.Native);
+        // System.exit(
+        // executeJVMMode(System.getProperty("java.class.path"), args, args) // NOI18N
+        // );
+        // }
     }
 
     public Map<String, String> parseUnknownOptions(List<String> uOpts) {
@@ -832,4 +851,36 @@ public class ComponentInstaller extends Launcher {
     protected OptionDescriptor findOptionDescriptor(String group, String key) {
         return null;
     }
+
+    /**
+     * Will act as a wrapper for an installer executing in JVM mode. NOTE: this method is <b>only
+     * called in AOT mode</b>. Unlike the default implementation, this will not replace the existing
+     * process, but rather execute a child process with env variables set up, then will perform the
+     * post-processing.
+     * 
+     * @param jvmArgs JVM arguments for the process
+     * @param remainingArgs program arguments
+     * @param polyglotOptions useless
+     */
+    @Override
+    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
+        if (SystemUtils.isWindows()) {
+            int retcode = executeJVMMode(classpath, jvmArgs, remainingArgs);
+            System.exit(retcode);
+        } else {
+            super.executeJVM(classpath, jvmArgs, remainingArgs, polyglotOptions);
+        }
+    }
+
+    int executeJVMMode(String classpath, List<String> jvmArgs, List<String> remainingArgs) {
+        WindowsJVMWrapper jvmWrapper = new WindowsJVMWrapper(env,
+                        env.getFileOperations(), env.getGraalHomePath());
+        jvmWrapper.vm(getGraalVMBinaryPath("java").toString(), jvmArgs).mainClass(getMainClass()).classpath(classpath).args(remainingArgs);
+        try {
+            return jvmWrapper.execute();
+        } catch (IOException ex) {
+            throw env.failure("ERR_InvokingJvmMode", ex, ex.getMessage());
+        }
+    }
+
 }

@@ -1718,9 +1718,7 @@ public abstract class TruffleLanguage<C> {
          * Tests whether an exception is a host exception thrown by a Java Interop method
          * invocation.
          *
-         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
-         * messages} sent to Java objects that involve the invocation of a Java method or
-         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). The host exception may be
+         * Host exceptions may be thrown by interoperability messages. The host exception may be
          * unwrapped using {@link #asHostException(Throwable)}.
          *
          * @param exception the {@link Throwable} to test
@@ -1737,10 +1735,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Unwraps a host exception thrown by a Java method invocation.
          *
-         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
-         * messages} sent to Java objects that involve the invocation of a Java method or
-         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). Host exceptions can be
-         * identified using {@link #isHostException(Throwable)} .
+         * Host exceptions may be thrown by interoperability messages. The host exception may be
+         * unwrapped using {@link #asHostException(Throwable)}.
          *
          * @param exception the host exception to unwrap
          * @return the original Java exception

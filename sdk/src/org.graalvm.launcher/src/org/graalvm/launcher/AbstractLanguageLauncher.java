@@ -96,7 +96,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
-            nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
+            maybeNativeExec(args, false, polyglotOptions);
         }
 
         parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);

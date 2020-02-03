@@ -40,19 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 
 public final class AddToSetVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    private final ASTNodeSet<RegexASTNode> set;
+    private final StateSet<RegexASTNode> set;
 
-    private AddToSetVisitor(ASTNodeSet<RegexASTNode> set) {
+    private AddToSetVisitor(StateSet<RegexASTNode> set) {
         this.set = set;
     }
 
-    public static void addCharacterClasses(ASTNodeSet<RegexASTNode> set, RegexASTNode runRoot) {
+    public static void addCharacterClasses(StateSet<RegexASTNode> set, RegexASTNode runRoot) {
         new AddToSetVisitor(set).run(runRoot);
     }
 

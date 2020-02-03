@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
@@ -47,18 +53,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.util.LaTexExport;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -97,8 +96,8 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
 
     private void drawLookBehindEntries() {
         for (CharacterClass cc : lbEntries) {
-            for (Group lbe : cc.getLookBehindEntries()) {
-                writeln(String.format("\\draw[->,dotted] (n%d) to[in=north] (n%d);", cc.getId(), lbe.getId()));
+            for (LookBehindAssertion lbe : cc.getLookBehindEntries()) {
+                writeln(String.format("\\draw[->,dotted] (n%d) to[in=north] (n%d);", cc.getId(), lbe.getGroup().getId()));
             }
         }
     }
@@ -202,10 +201,5 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
         if (characterClass.hasLookBehindEntries()) {
             lbEntries.add(characterClass);
         }
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        writeln(node(matchFound));
     }
 }

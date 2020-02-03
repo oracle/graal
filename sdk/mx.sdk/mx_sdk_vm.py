@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -80,9 +80,9 @@ _graalvm_components_by_name = dict()
 _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
-    ('jvm-la-inline', [], ['--jvm', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 30),
+    ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 40)
+    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40)
 ]
 
 

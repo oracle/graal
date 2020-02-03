@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import java.util.concurrent.Callable;
-
 final class AssertUtils {
 
     private AssertUtils() {
@@ -101,10 +99,6 @@ final class AssertUtils {
         return String.format("Invariant contract violation for receiver %s and arguments %s.", formatValue(receiver), formatArgs(args));
     }
 
-    static String violationInvariant(Object receiver, Object arg) {
-        return String.format("Invariant contract violation for receiver %s and argument %s.", formatValue(receiver), formatValue(arg));
-    }
-
     static String violationInvariant(Object receiver, String arg) {
         return String.format("Invariant contract violation for receiver %s and identifier %s.", formatValue(receiver), arg);
     }
@@ -156,17 +150,6 @@ final class AssertUtils {
         assert receiver != null : violationPre(receiver);
         assert validArgument(receiver, receiver);
         return true;
-    }
-
-    static boolean notThrows(Callable<?> r) {
-        try {
-            r.call();
-            return true;
-        } catch (InteropException e) {
-            return false;
-        } catch (Exception e) {
-            return true;
-        }
     }
 
 }

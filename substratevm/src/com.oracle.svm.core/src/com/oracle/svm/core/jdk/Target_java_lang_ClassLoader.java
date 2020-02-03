@@ -244,7 +244,7 @@ final class Target_java_lang_ClassLoader {
     @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     Class<?> loadClass(Target_java_lang_Module module, String name) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
+        return ClassForNameSupport.forNameOrNull(name, false);
     }
 
     @Substitute //

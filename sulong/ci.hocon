@@ -1,4 +1,7 @@
 sulong-common: ${common} ${oraclejdk8} {
+    environment: {
+        TRUFFLE_STRICT_OPTION_DEPRECATION: "true"
+    }
     setup: [
         [cd, "./sulong"]
     ]

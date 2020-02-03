@@ -230,9 +230,6 @@ public class TruffleTypes {
     public static final String GenerateWrapper_IncomingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.IncomingConverter";
     public static final String GenerateWrapper_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper";
     public static final String GenerateWrapper_OutgoingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.OutgoingConverter";
-    public static final String Instrumentable_Name = "com.oracle.truffle.api.instrumentation.Instrumentable";
-    public static final String InstrumentableFactory_Name = "com.oracle.truffle.api.instrumentation.InstrumentableFactory";
-    public static final String InstrumentableFactory_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode";
     public static final String InstrumentableNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode";
     public static final String InstrumentableNode_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode";
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
@@ -247,9 +244,6 @@ public class TruffleTypes {
     public final DeclaredType GenerateWrapper = c.getDeclaredTypeOptional(GenerateWrapper_Name);
     public final DeclaredType GenerateWrapper_IncomingConverter = c.getDeclaredTypeOptional(GenerateWrapper_IncomingConverter_Name);
     public final DeclaredType GenerateWrapper_OutgoingConverter = c.getDeclaredTypeOptional(GenerateWrapper_OutgoingConverter_Name);
-    public final DeclaredType Instrumentable = c.getDeclaredTypeOptional(Instrumentable_Name);
-    public final DeclaredType InstrumentableFactory = c.getDeclaredTypeOptional(InstrumentableFactory_Name);
-    public final DeclaredType InstrumentableFactory_WrapperNode = c.getDeclaredTypeOptional(InstrumentableFactory_WrapperNode_Name);
     public final DeclaredType InstrumentableNode = c.getDeclaredTypeOptional(InstrumentableNode_Name);
     public final DeclaredType InstrumentableNode_WrapperNode = c.getDeclaredTypeOptional(InstrumentableNode_WrapperNode_Name);
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);
@@ -274,22 +268,6 @@ public class TruffleTypes {
     public final DeclaredType DynamicObject = c.getDeclaredTypeOptional(DynamicObject_Name);
     public final DeclaredType ObjectType = c.getDeclaredTypeOptional(ObjectType_Name);
     public final DeclaredType Layout_ImplicitCast = c.getDeclaredTypeOptional(Layout_ImplicitCast_Name);
-
-    // Interop API
-    public static final String MessageResolution_Name = "com.oracle.truffle.api.interop.MessageResolution";
-    public static final String InteropMessage_Name = "com.oracle.truffle.api.interop.Message";
-    public static final String TruffleObject_Name = "com.oracle.truffle.api.interop.TruffleObject";
-    public static final String CanResolve_Name = "com.oracle.truffle.api.interop.CanResolve";
-    public static final String Resolve_Name = "com.oracle.truffle.api.interop.Resolve";
-
-    /*
-     * Interop types may not be available when compiling the interop package itself.
-     */
-    public final DeclaredType MessageResolution = c.getDeclaredTypeOptional(MessageResolution_Name);
-    public final DeclaredType InteropMessage = c.getDeclaredTypeOptional(InteropMessage_Name);
-    public final DeclaredType TruffleObject = c.getDeclaredTypeOptional(TruffleObject_Name);
-    public final DeclaredType Resolve = c.getDeclaredTypeOptional(Resolve_Name);
-    public final DeclaredType CanResolve = c.getDeclaredTypeOptional(CanResolve_Name);
 
     // Checkstyle: resume
 }

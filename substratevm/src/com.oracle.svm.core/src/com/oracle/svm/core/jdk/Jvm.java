@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 //Checkstyle: stop
@@ -48,4 +50,8 @@ public class Jvm {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int JVM_ActiveProcessorCount();
+
+    @Platforms(Platform.WINDOWS.class)
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native VoidPointer JVM_RegisterSignal(int sig, VoidPointer handler);
 }

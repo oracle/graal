@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -54,7 +55,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -155,8 +155,9 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.GLibc;
-import com.oracle.svm.core.c.libc.MuslLibc;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.Libc;
+import com.oracle.svm.core.c.libc.MuslLibc;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -222,6 +223,7 @@ import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -443,22 +445,15 @@ public class NativeImageGenerator {
                     ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
 
                     doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
-                } finally {
+                } catch (Throwable t) {
                     try {
-                        /*
-                         * Make sure we clean up after ourselves even in the case of an exception.
-                         */
-                        if (deleteTempDirectory) {
-                            deleteAll(tempDirectory());
-                        }
-                        featureHandler.forEachFeature(Feature::cleanup);
-                    } catch (Throwable e) {
-                        /*
-                         * Suppress subsequent errors so that we unwind the original error brought
-                         * us here.
-                         */
+                        cleanup();
+                    } catch (Throwable ecleanup) {
+                        t.addSuppressed(ecleanup);
                     }
+                    throw t;
                 }
+                cleanup();
             }).get();
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
@@ -472,6 +467,11 @@ public class NativeImageGenerator {
         } finally {
             shutdownPoolSafe();
         }
+    }
+
+    private void cleanup() {
+        deleteTempDirectory();
+        featureHandler.forEachFeature(Feature::cleanup);
     }
 
     protected static void setSystemPropertiesForImageEarly() {
@@ -725,6 +725,13 @@ public class NativeImageGenerator {
                     }
                 }
 
+                /*
+                 * Libraries defined via @CLibrary annotations are added at the end of the list of
+                 * libraries so that the written object file AND the static JDK libraries can depend
+                 * on them.
+                 */
+                nativeLibraries.processAnnotated();
+
                 AfterAnalysisAccessImpl postConfig = new AfterAnalysisAccessImpl(featureHandler, loader, bigbang, debug);
                 featureHandler.forEachFeature(feature -> feature.afterAnalysis(postConfig));
 
@@ -838,6 +845,11 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.hostVM(), aWordTypes);
 
                 prepareLibC();
+
+                CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
+                compilerInvoker.verifyCompiler();
+                ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
+
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializationSupport);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
@@ -1653,7 +1665,7 @@ public class NativeImageGenerator {
     }
 
     private Path tempDirectory;
-    private boolean deleteTempDirectory;
+    private volatile boolean deleteTempDirectory;
 
     public synchronized Path tempDirectory() {
         if (tempDirectory == null) {
@@ -1674,19 +1686,34 @@ public class NativeImageGenerator {
         return tempDirectory.toAbsolutePath();
     }
 
-    private static void deleteAll(Path path) {
+    private void deleteTempDirectory() {
+        if (!deleteTempDirectory) {
+            return;
+        }
         try {
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            Files.walkFileTree(tempDirectory(), new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
+                    deleteImpl(file);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
+                    if (Files.isDirectory(dir) && !Files.list(dir).findAny().isPresent()) {
+                        // only delete dir if it is empty.
+                        // dirs might not be empty if a file deletion got an access denied error.
+                        deleteImpl(dir);
+                    }
                     return FileVisitResult.CONTINUE;
+                }
+
+                private void deleteImpl(Path file) throws IOException {
+                    try {
+                        Files.delete(file);
+                    } catch (AccessDeniedException e) {
+                        // we cannot do anything about access denied
+                    }
                 }
             });
         } catch (IOException ex) {

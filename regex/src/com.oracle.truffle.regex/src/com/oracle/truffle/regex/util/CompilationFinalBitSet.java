@@ -58,6 +58,7 @@ import java.util.stream.StreamSupport;
 public class CompilationFinalBitSet implements Iterable<Integer> {
 
     private static final int BYTE_RANGE = 256;
+    private static final CompilationFinalBitSet EMPTY_INSTANCE = new CompilationFinalBitSet(1);
 
     private static int wordIndex(int i) {
         return i >> 6;
@@ -83,6 +84,10 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
 
     private CompilationFinalBitSet(CompilationFinalBitSet copy) {
         this.words = Arrays.copyOf(copy.words, copy.words.length);
+    }
+
+    public static CompilationFinalBitSet getEmptyInstance() {
+        return EMPTY_INSTANCE;
     }
 
     public CompilationFinalBitSet copy() {

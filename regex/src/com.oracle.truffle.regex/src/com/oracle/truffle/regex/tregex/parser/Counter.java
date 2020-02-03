@@ -65,7 +65,13 @@ public class Counter {
     }
 
     public int dec() {
-        return count--;
+        return dec(1);
+    }
+
+    public int dec(int i) {
+        int ret = count;
+        count -= i;
+        return ret;
     }
 
     public static class ThresholdCounter extends Counter {
@@ -100,10 +106,28 @@ public class Counter {
         }
 
         @Override
+        public int inc(int i) {
+            int c = count;
+            if (c <= Integer.MAX_VALUE - i) {
+                count = c + i;
+            }
+            return count;
+        }
+
+        @Override
         public int dec() {
             int c = count;
             if (c > Integer.MIN_VALUE) {
                 count = c - 1;
+            }
+            return count;
+        }
+
+        @Override
+        public int dec(int i) {
+            int c = count;
+            if (c >= Integer.MIN_VALUE + i) {
+                count = c - i;
             }
             return count;
         }

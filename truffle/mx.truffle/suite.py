@@ -165,6 +165,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
+        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.instrumentation",
       ],
@@ -305,22 +306,10 @@ suite = {
       "workingSets" : "Truffle,Codegen",
     },
 
-    "com.oracle.truffle.dsl.processor.interop" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.dsl.processor"
-      ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle,Codegen",
-    },
-
     "com.oracle.truffle.api.interop" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.library",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -930,8 +919,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["truffle:ANTLR4",
                         "com.oracle.truffle.dsl.processor",
-                        "com.oracle.truffle.object.dsl.processor",
-                        "com.oracle.truffle.dsl.processor.interop"],
+                        "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,

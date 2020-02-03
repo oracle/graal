@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.tregex.automaton;
 import java.util.PrimitiveIterator;
 
 /**
- * A set of short values to be used as backing set by {@link StateSet}.
+ * A set of short values to be used as backing set by {@link StateSetImpl}.
  */
 public interface StateSetBackingSet extends Iterable<Integer> {
 

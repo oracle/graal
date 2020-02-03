@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -220,6 +220,11 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     @Override
+    public short getId(NFAState state) {
+        return state.getId();
+    }
+
+    @Override
     public NFAState getState(int id) {
         return states[id];
     }
@@ -263,13 +268,13 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     @TruffleBoundary
     public JsonValue toJson(boolean forward) {
         boolean anchoredFinalStateReachable = false;
-        CompilationFinalBitSet bitSet = new CompilationFinalBitSet(transitions.length);
+        CompilationFinalBitSet reachable = new CompilationFinalBitSet(transitions.length);
         for (NFAState s : states) {
             if (s == null || s == dummyInitialState) {
                 continue;
             }
             for (NFAStateTransition t : s.getNext(forward)) {
-                bitSet.set(t.getId());
+                reachable.set(t.getId());
                 if (t.getTarget(forward).isAnchoredFinalState(forward)) {
                     anchoredFinalStateReachable = true;
                 }
@@ -278,7 +283,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         final boolean afsReachable = anchoredFinalStateReachable;
         return Json.obj(Json.prop("states",
                         Arrays.stream(states).map(x -> x == null || x == dummyInitialState || (x.isAnchoredFinalState(forward) && !afsReachable) ? Json.nullValue() : x.toJson(forward))),
-                        Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || !bitSet.get(x.getId()) ? Json.nullValue() : x.toJson(forward))),
+                        Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || !reachable.get(x.getId()) ? Json.nullValue() : x.toJson(forward))),
                         Json.prop("anchoredEntry", forward ? fwdEntryToJson(anchoredEntry) : revEntryToJson(reverseAnchoredEntry)),
                         Json.prop("unAnchoredEntry", forward ? fwdEntryToJson(unAnchoredEntry) : revEntryToJson(reverseUnAnchoredEntry)),
                         Json.prop("preCalculatedResults", Json.array(preCalculatedResults)));

@@ -121,7 +121,7 @@ public class RemoveUnwindPhase extends Phase {
         StructuredGraph graph = bytecodeExceptionNode.graph();
 
         ThrowBytecodeExceptionNode throwNode = graph.add(new ThrowBytecodeExceptionNode(bytecodeExceptionNode.getExceptionKind(), bytecodeExceptionNode.getArguments()));
-        throwNode.setStateBefore(bytecodeExceptionNode.stateAfter());
+        throwNode.setStateBefore(bytecodeExceptionNode.createStateDuring());
 
         FixedWithNextNode predecessor = (FixedWithNextNode) bytecodeExceptionNode.predecessor();
         GraphUtil.killCFG(bytecodeExceptionNode);

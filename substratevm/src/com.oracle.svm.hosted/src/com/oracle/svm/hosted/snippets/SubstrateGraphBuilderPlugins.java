@@ -68,8 +68,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -88,6 +90,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
@@ -158,7 +161,7 @@ public class SubstrateGraphBuilderPlugins {
         registerKnownIntrinsicsPlugins(plugins, analysis);
         registerStackValuePlugins(snippetReflection, plugins);
         registerArraysPlugins(plugins, analysis);
-        registerArrayPlugins(plugins);
+        registerArrayPlugins(plugins, snippetReflection, analysis);
         registerClassPlugins(plugins);
         registerEdgesPlugins(metaAccess, plugins, analysis);
         registerJFRThrowablePlugins(plugins, replacements);
@@ -530,13 +533,38 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerArrayPlugins(InvocationPlugins plugins) {
+    private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
         r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode length) {
                 b.addPush(JavaKind.Object, new SubstrateDynamicNewArrayNode(clazz, length));
                 return true;
+            }
+        });
+        r.register2("newInstance", Class.class, int[].class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
+                if (analysis) {
+                    /*
+                     * There is no Graal node for dynamic multi array allocation, and it is also not
+                     * necessary for performance reasons. But when the arguments are constant, we
+                     * can register the array types as instantiated so that the allocation succeeds
+                     * at run time without manual registration.
+                     */
+                    ValueNode dimensionCountNode = GraphUtil.arrayLength(dimensionsNode, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, b.getConstantReflection());
+                    if (clazzNode.isConstant() && !clazzNode.isNullConstant() && dimensionCountNode != null && dimensionCountNode.isConstant()) {
+                        Class<?> clazz = snippetReflection.asObject(Class.class, clazzNode.asJavaConstant());
+                        int dimensionCount = dimensionCountNode.asJavaConstant().asInt();
+
+                        AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
+                        for (int i = 0; i < dimensionCount; i++) {
+                            type = type.getArrayClass();
+                            type.registerAsAllocated(clazzNode);
+                        }
+                    }
+                }
+                return false;
             }
         });
 

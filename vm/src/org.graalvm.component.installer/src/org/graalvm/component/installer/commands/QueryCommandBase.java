@@ -24,6 +24,8 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.io.File;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -157,12 +159,17 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     @SuppressWarnings("unused")
     void printDetails(ComponentParam param, ComponentInfo info) {
-        final String org;
+        String org;
         URL u = info.getRemoteURL();
         if (u == null) {
             org = ""; // NOI18N
         } else if (u.getProtocol().equals("file")) { // NOI18N
-            org = u.getFile();
+            try {
+                org = new File(u.toURI()).getAbsolutePath();
+            } catch (URISyntaxException ex) {
+                // should not happen
+                org = u.toString();
+            }
         } else {
             org = u.getHost();
         }

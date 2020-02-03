@@ -364,7 +364,8 @@ GraalTags = Tags([
     'build',
     'benchmarktest',
     'truffletck',
-    'relocations'
+    'relocations',
+    "nativeimagehelp"
 ])
 
 
@@ -538,6 +539,22 @@ def svm_gate_body(args, tasks):
                         remove_tree(reloc_test_path)
                 else:
                     mx.log('Skipping relocations test. Reason: Only tested on Linux.')
+
+    with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
+        if t:
+            mx.log('Running mx native-image --help output check.')
+            # This check works by scanning stdout for the 'Usage' keyword. If that keyword does not appear, it means something broke mx native-image --help.
+            def help_stdout_check(output):
+                if 'Usage' in output:
+                    help_stdout_check.found_usage = True
+
+            help_stdout_check.found_usage = False
+            # mx native-image --help is definitely broken if a non zero code is returned.
+            mx.run(['mx', 'native-image', '--help'], out=help_stdout_check, nonZeroIsFatal=True)
+            if not help_stdout_check.found_usage:
+                mx.abort('mx native-image --help does not seem to output the proper message. This can happen if you add extra arguments the mx native-image call without checking if an argument was --help or --help-extra.')
+
+            mx.log('mx native-image --help output check detected no errors.')
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
@@ -897,7 +914,7 @@ def _helloworld(native_image, javac_command, path, build_only, args):
     for key, value in javaProperties.items():
         args.append("-D" + key + "=" + value)
 
-    native_image(["-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
+    native_image(["--native-image-info", "-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
     if not build_only:
         expected_output = [output + os.linesep]
@@ -1214,6 +1231,7 @@ if mx.is_linux() and mx.get_arch() == "amd64":
             dir_name=False,
             license_files=[],
             third_party_license_files=[],
+            dependencies=['svm'],
             support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT']
         ))
 
@@ -1372,8 +1390,9 @@ def native_image_on_jvm(args, **kwargs):
                 if hasattr(cpEntry, "getJavaProperties"):
                     for key, value in cpEntry.getJavaProperties().items():
                         javaProperties[key] = value
-    for key, value in javaProperties.items():
-        args.append("-D" + key + "=" + value)
+    if not any(arg.startswith('--help') for arg in args):
+        for key, value in javaProperties.items():
+            args.append("-D" + key + "=" + value)
 
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 

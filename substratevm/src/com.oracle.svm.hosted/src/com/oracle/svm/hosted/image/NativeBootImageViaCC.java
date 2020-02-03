@@ -38,7 +38,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -50,6 +49,7 @@ import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -201,10 +201,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class WindowsCCLinkerInvocation extends CCLinkerInvocation {
 
-        WindowsCCLinkerInvocation() {
-            setCompilerCommand("CL");
-        }
-
         @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
@@ -226,24 +222,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(getCompilerCommand());
-
+            cmd.addAll(getCompilerCommand());
             setOutputKind(cmd);
 
             // Add debugging info
             cmd.add("/Zi");
 
             if (removeUnusedSymbols()) {
-                additionalPreOptions.add("/OPT:REF");
+                cmd.add("/OPT:REF");
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 cmd.add("/PDBSTRIPPED");
             }
 
-            cmd.add("/Fe" + outputFile.toString());
-
-            cmd.addAll(inputFilenames);
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
                 cmd.add(staticLibrary.toString());
             }
@@ -291,12 +283,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
 
-        /*
-         * Libraries defined via @CLibrary annotations are added at the end of the list of libraries
-         * so that the written object file AND the static JDK libraries can depend on them.
-         */
-        nativeLibs.processAnnotated();
-
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
@@ -310,12 +296,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addLinkedLibrary(library);
         }
 
-        for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
+        for (Path filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
         }
 
         for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
-            inv.addInputFile(staticLibraryPath.toString());
+            inv.addInputFile(staticLibraryPath);
         }
 
         return inv;

@@ -140,7 +140,7 @@ final class AgentObject implements TruffleObject {
         Instrumenter instrumenter = obj.env.getInstrumenter();
         switch (member) {
             case "on": {
-                AgentType type = AgentType.find((String) args[0]);
+                AgentType type = AgentType.find(convertToString(interop, args[0]));
                 switch (type) {
                     case SOURCE: {
                         SourceFilter filter = SourceFilter.newBuilder().sourceIs(obj.excludeSources).includeInternal(false).build();
@@ -183,7 +183,7 @@ final class AgentObject implements TruffleObject {
             }
             case "off": {
                 CompilerDirectives.transferToInterpreter();
-                AgentType type = AgentType.find((String) args[0]);
+                AgentType type = AgentType.find(convertToString(interop, args[0]));
                 obj.removeHandle(type, args[1]);
                 break;
             }
@@ -191,6 +191,11 @@ final class AgentObject implements TruffleObject {
                 throw UnknownIdentifierException.create(member);
         }
         return obj;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static String convertToString(InteropLibrary interop, Object obj) throws UnsupportedMessageException {
+        return interop.asString(obj);
     }
 
     private static SourceSectionFilter createFilter(AgentObject obj, Object[] args) throws IllegalArgumentException, UnsupportedMessageException {
