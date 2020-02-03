@@ -48,11 +48,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -2439,7 +2441,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             assert componentKind.isPrimitive();
             int length = GetArrayLength(array);
             // @formatter:off
-            // Checkstyle: stop
             switch (componentKind) {
                 case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr);   break;
                 case Byte    : SetByteArrayRegion(array, 0, length, carrayPtr);      break;
@@ -2452,7 +2453,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 default      : throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
-            // Checkstyle: resume
         }
         if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
             assert nativeBuffers.containsKey(carrayPtr);
@@ -2546,19 +2546,52 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Host(Class.class) StaticObject FindClass(String name) {
+        Meta meta = getMeta();
         if (name == null || name.contains(".")) {
-            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, name);
+            throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
         }
-        StaticObject internalName = getMeta().toGuestString(name.replace("/", "."));
-        assert getMeta().Class_forName_String.isStatic();
+
+        String internalName = name;
+        if (!name.startsWith("[")) {
+            // Force 'L' type.
+            internalName = "L" + name + ";";
+        }
+        if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), true)) {
+            throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
+        }
+
+        StaticObject protectionDomain = StaticObject.NULL;
+        StaticObject loader = StaticObject.NULL;
+
+        StaticObject caller = getVM().JVM_GetCallerClass(0); // security stack walk
+        if (StaticObject.notNull(caller)) {
+            Klass callerKlass = caller.getMirrorKlass();
+            loader = callerKlass.getDefiningClassLoader();
+            if (StaticObject.isNull(loader) && Type.ClassLoader_NativeLibrary.equals(callerKlass.getType())) {
+                StaticObject result = (StaticObject) meta.ClassLoader_NativeLibrary_getFromClass.invokeDirect(null);
+                loader = result.getMirrorKlass().getDefiningClassLoader();
+                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result);
+            }
+        } else {
+            loader = (StaticObject) meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
+        }
+
+        StaticObject guestClass = StaticObject.NULL;
         try {
-            return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
+            String dotName = name.replace('/', '.');
+            guestClass = (StaticObject) meta.Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
         } catch (EspressoException e) {
-            if (InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().ClassNotFoundException)) {
-                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, e.getMessage());
+            if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.ClassNotFoundException)) {
+                throw meta.throwExWithMessage(NoClassDefFoundError.class, name);
             }
             throw e;
         }
+
+        guestClass.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, protectionDomain);
+        guestClass.getMirrorKlass().safeInitialize();
+
+        return guestClass;
     }
 
     /**

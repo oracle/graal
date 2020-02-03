@@ -235,6 +235,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
         public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
         public static final Symbol<Name> tid = StaticSymbols.putName("tid");
+        public static final Symbol<Name> getFromClass = StaticSymbols.putName("getFromClass");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -330,6 +331,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> PermissionCollection = StaticSymbols.putType(PermissionCollection.class);
 
         public static final Symbol<Type> ClassLoader = StaticSymbols.putType(java.lang.ClassLoader.class);
+        public static final Symbol<Type> ClassLoader_NativeLibrary = StaticSymbols.putType("Ljava/lang/ClassLoader$NativeLibrary;");
         public static final Symbol<Type> sun_misc_Launcher_ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
         public static final Symbol<Type> Null = StaticSymbols.putType("LNull;");
 
