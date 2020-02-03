@@ -93,11 +93,14 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 }
 
 fragment LETTER : [a-zA-Z];
+fragment NONDIGIT : [a-zA-Z_];
 fragment DIGIT : [0-9];
 fragment CR : '\r';
 fragment LF : '\n';
 fragment SINGLECOMMA : '\'';
 fragment QUOTE : '"';
+fragment CCHAR : ~['\\\r\n] | SIMPLE_ESCAPE_SEQUENCE;
+fragment SIMPLE_ESCAPE_SEQUENCE : '\\' ['"?abfnrtv\\];
 
 // Token declarations here.
 LAPR : '(';
@@ -133,10 +136,14 @@ FLOAT : 'float';
 DOUBLE : 'double';
 CHAR : 'char';
 TYPEOF: 'typeof';
-IDENT : LETTER (LETTER | DIGIT)*;
+IDENT : NONDIGIT (NONDIGIT | DIGIT)*; // C Standard "6.4.2 Identifiers" (still missing "6.4.3 Universal character names")
 NUMBER : DIGIT+;
 FLOATNUMBER : DIGIT+ '.' DIGIT+ ( [eE] [+-] DIGIT+ )?;
-CHARCONST : SINGLECOMMA (LETTER|DIGIT) SINGLECOMMA;
+CHARCONST :  SINGLECOMMA CCHAR SINGLECOMMA       // C Standard "6.4.4.4 Character constants"
+          |  'L' SINGLECOMMA CCHAR SINGLECOMMA
+          |  'u' SINGLECOMMA CCHAR SINGLECOMMA
+          |  'U' SINGLECOMMA CCHAR SINGLECOMMA
+          ;
 
 
 WS  : [ \t\r\n]+ -> skip ;
