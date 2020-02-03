@@ -155,7 +155,7 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // iterating through the transitions in priority order and stopping on the first transition
         // to a final state.
         for (int i = 0; i < maxTransitionIndex(state); i++) {
-            NFAStateTransition t = state.getNext()[i];
+            NFAStateTransition t = state.getSuccessors()[i];
             NFAState target = t.getTarget();
             int targetId = t.getTarget().getId();
             int markIndex = targetId >> 6;
@@ -172,7 +172,7 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private static int maxTransitionIndex(NFAState state) {
-        return state.hasTransitionToUnAnchoredFinalState(true) ? state.getTransitionToUnAnchoredFinalStateId(true) + 1 : state.getNext().length;
+        return state.hasTransitionToUnAnchoredFinalState(true) ? state.getTransitionToUnAnchoredFinalStateId(true) + 1 : state.getSuccessors().length;
     }
 
     private void findNextStatesAtEnd(TRegexNFAExecutorLocals locals) {

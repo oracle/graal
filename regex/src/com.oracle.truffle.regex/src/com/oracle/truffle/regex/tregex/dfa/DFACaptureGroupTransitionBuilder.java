@@ -45,7 +45,7 @@ import java.util.Arrays;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
@@ -65,19 +65,19 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private int[] requiredStatesIndexMap = null;
     private DFACaptureGroupLazyTransition lazyTransition = null;
 
-    DFACaptureGroupTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitions, DFAGenerator dfaGen) {
-        super(matcherBuilder, transitions);
+    DFACaptureGroupTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFAState> targetStateSet, CodePointSet matcherBuilder, DFAGenerator dfaGen) {
+        super(transitions, targetStateSet, matcherBuilder);
+        this.dfaGen = dfaGen;
+    }
+
+    DFACaptureGroupTransitionBuilder(CodePointSet matcherBuilder, TransitionSet<NFAState, NFAStateTransition> transitions, DFAGenerator dfaGen) {
+        super(transitions, matcherBuilder);
         this.dfaGen = dfaGen;
     }
 
     @Override
     public DFAStateTransitionBuilder createNodeSplitCopy() {
         return new DFACaptureGroupTransitionBuilder(getMatcherBuilder(), getTransitionSet(), dfaGen);
-    }
-
-    @Override
-    public DFACaptureGroupTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CodePointSet mergedMatcher) {
-        return new DFACaptureGroupTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()), dfaGen);
     }
 
     public void setLazyTransition(DFACaptureGroupLazyTransition lazyTransition) {
@@ -97,7 +97,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private StateSet<NFAState> getRequiredStates() {
         if (requiredStates == null) {
             requiredStates = StateSet.create(dfaGen.getNfa());
-            for (NFAStateTransition nfaTransition : getTransitionSet()) {
+            for (NFAStateTransition nfaTransition : getTransitionSet().getTransitions()) {
                 requiredStates.add(nfaTransition.getSource());
             }
         }
@@ -122,17 +122,17 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         Arrays.fill(newOrder, -1);
         boolean[] used = new boolean[newOrder.length];
         int[] copySource = new int[getRequiredStates().size()];
-        ObjectArrayBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
-        ObjectArrayBuffer indexClears = compilationBuffer.getObjectBuffer2();
+        ObjectArrayBuffer<byte[]> indexUpdates = compilationBuffer.getObjectBuffer1();
+        ObjectArrayBuffer<byte[]> indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
-        for (NFAStateTransition nfaTransition : getTransitionSet()) {
+        for (NFAStateTransition nfaTransition : getTransitionSet().getTransitions()) {
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getStateIndex(getRequiredStatesIndexMap(), nfaTransition.getSource());
                 int targetIndex = getStateIndex(targetStatesIndexMap, nfaTransition.getTarget());
                 if (dfaGen.getEngineOptions().isDumpAutomata()) {
                     partialTransitionDebugInfo.mapResultToNFATransition(targetIndex, nfaTransition);
                 }
-                assert !(nfaTransition.getTarget().isForwardFinalState()) || targetIndex == DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX;
+                assert !(nfaTransition.getTarget().isFinalState()) || targetIndex == DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX;
                 if (!used[sourceIndex]) {
                     used[sourceIndex] = true;
                     newOrder[targetIndex] = sourceIndex;
@@ -259,7 +259,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         }
 
         public void mapResultToNFATransition(int resultNumber, NFAStateTransition transition) {
-            resultToTransitionMap[resultNumber] = transition.getId();
+            resultToTransitionMap[resultNumber] = (short) transition.getId();
         }
 
         @Override

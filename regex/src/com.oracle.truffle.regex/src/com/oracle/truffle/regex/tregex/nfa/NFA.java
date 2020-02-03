@@ -102,15 +102,15 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         for (NFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
-            if (s.getNext() == null) {
+            if (s.getSuccessors() == null) {
                 continue;
             }
-            for (NFAStateTransition t : s.getNext()) {
+            for (NFAStateTransition t : s.getSuccessors()) {
                 assert this.transitions[t.getId()] == null || (s == dummyInitialState && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
             if (s == dummyInitialState) {
-                for (NFAStateTransition t : s.getPrev()) {
+                for (NFAStateTransition t : s.getPredecessors()) {
                     assert this.transitions[t.getId()] == null;
                     this.transitions[t.getId()] = t;
                 }
@@ -127,7 +127,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public boolean hasReverseUnAnchoredEntry() {
-        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPrev().length > 0;
+        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPredecessors().length > 0;
     }
 
     public RegexAST getAst() {
@@ -238,10 +238,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public void setInitialLoopBack(boolean enable) {
-        if (getUnAnchoredInitialState().getNext().length == 0) {
+        if (getUnAnchoredInitialState().getSuccessors().length == 0) {
             return;
         }
-        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext()[getUnAnchoredInitialState().getNext().length - 1];
+        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getSuccessors()[getUnAnchoredInitialState().getSuccessors().length - 1];
         if (enable) {
             if (lastInitTransition != initialLoopBack) {
                 getUnAnchoredInitialState().addLoopBackNext(initialLoopBack);
@@ -273,7 +273,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
             if (s == null || s == dummyInitialState) {
                 continue;
             }
-            for (NFAStateTransition t : s.getNext(forward)) {
+            for (NFAStateTransition t : s.getSuccessors(forward)) {
                 reachable.set(t.getId());
                 if (t.getTarget(forward).isAnchoredFinalState(forward)) {
                     anchoredFinalStateReachable = true;

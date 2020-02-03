@@ -67,6 +67,10 @@ public class IntArrayBuffer extends AbstractArrayBuffer {
     private static final int[] EMPTY = {};
     protected int[] buf;
 
+    public IntArrayBuffer() {
+        this(8);
+    }
+
     public IntArrayBuffer(int initialSize) {
         buf = new int[initialSize];
     }
@@ -90,6 +94,11 @@ public class IntArrayBuffer extends AbstractArrayBuffer {
             grow(length * 2);
         }
         buf[length++] = c;
+    }
+
+    public void addAll(IntArrayBuffer o) {
+        ensureCapacity(length + o.length);
+        System.arraycopy(o.buf, 0, buf, length, o.length);
     }
 
     public int[] toArray() {

@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -53,7 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 /**
  * Provides information about a transition from one NFAState to another state.
  */
-public class NFAStateTransition implements JsonConvertible {
+public class NFAStateTransition implements AbstractTransition<NFAState, NFAStateTransition>, JsonConvertible {
 
     private final short id;
     @CompilationFinal private NFAState source;
@@ -67,10 +68,12 @@ public class NFAStateTransition implements JsonConvertible {
         this.groupBoundaries = groupBoundaries;
     }
 
-    public short getId() {
+    @Override
+    public int getId() {
         return id;
     }
 
+    @Override
     public NFAState getSource() {
         return source;
     }
@@ -79,12 +82,9 @@ public class NFAStateTransition implements JsonConvertible {
         this.source = source;
     }
 
+    @Override
     public NFAState getTarget() {
         return target;
-    }
-
-    public NFAState getTarget(boolean forward) {
-        return forward ? target : source;
     }
 
     public NFAState getSource(boolean forward) {

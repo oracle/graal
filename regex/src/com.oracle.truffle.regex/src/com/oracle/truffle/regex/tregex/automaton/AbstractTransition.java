@@ -50,4 +50,8 @@ public interface AbstractTransition<S extends AbstractState<S, T>, T extends Abs
     S getSource();
 
     S getTarget();
+
+    default S getTarget(boolean forward) {
+        return forward ? getTarget() : getSource();
+    }
 }

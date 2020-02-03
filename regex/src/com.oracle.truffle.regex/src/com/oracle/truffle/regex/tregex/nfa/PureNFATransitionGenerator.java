@@ -58,7 +58,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
 public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisitor {
 
     private final PureNFAGenerator nfaGen;
-    private final ObjectArrayBuffer transitionBuffer = new ObjectArrayBuffer(8);
+    private final ObjectArrayBuffer<PureNFATransition> transitionBuffer = new ObjectArrayBuffer<>(8);
     private final ShortArrayBuffer traversedLookAroundsBuffer = new ShortArrayBuffer(8);
     private PureNFAState curState;
 

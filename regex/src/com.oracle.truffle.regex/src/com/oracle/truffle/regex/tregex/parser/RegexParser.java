@@ -521,7 +521,7 @@ public final class RegexParser {
         curSequence = (Sequence) curTerm.getParent();
         curGroup = curSequence.getParent();
 
-        ObjectArrayBuffer buf = compilationBuffer.getObjectBuffer1();
+        ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
         int size = curSequence.size();
         for (int i = curTerm.getSeqIndex() + 1; i < size; i++) {
             buf.add(curSequence.getLastTerm());
@@ -543,7 +543,7 @@ public final class RegexParser {
             ((Group) curTerm).setLoop(true);
         }
         for (int i = buf.length() - 1; i >= 0; i--) {
-            curSequence.add((Term) buf.get(i));
+            curSequence.add(buf.get(i));
         }
     }
 

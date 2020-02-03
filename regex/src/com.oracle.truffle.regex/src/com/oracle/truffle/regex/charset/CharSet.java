@@ -476,7 +476,7 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         assert size() > 1;
         CharRangesBuffer rest = compilationBuffer.getCharRangesBuffer1();
         ByteArrayBuffer highBytes = compilationBuffer.getByteArrayBuffer();
-        ObjectArrayBuffer bitSets = compilationBuffer.getObjectBuffer1();
+        ObjectArrayBuffer<CompilationFinalBitSet> bitSets = compilationBuffer.getObjectBuffer1();
         int lowestRangeOnCurPlane = 0;
         boolean lowestRangeCanBeDeleted = !rangeCrossesPlanes(0);
         int curPlane = highByte(getHi(0));

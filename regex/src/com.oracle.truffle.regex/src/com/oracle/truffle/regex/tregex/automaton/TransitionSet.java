@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,52 +40,39 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-
-import java.util.Collection;
-
 /**
- * Represents a set of NFA transitions to be used in {@link TransitionBuilder}.
- *
- * The set of NFA transitions implicitly also represents a set of NFA <em>target states</em>, which
- * should be used to determine equality between instances of this class.
+ * This class represents a power-set automaton state transition fragment to be used by
+ * {@link StateTransitionCanonicalizer}.<br>
+ * A transition in a power-set automaton consists of a set of transitions of the NFA that the
+ * power-set automaton is being built from.
  */
-public interface TransitionSet extends JsonConvertible {
+public class TransitionSet<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
 
-    /**
-     * Create a merged set of {@code this} and {@code other} by copying {@code this} and adding the
-     * contents of {@code other} to the copy.
-     * 
-     * @param other the {@link TransitionSet} to be merged with the copy. Implementing classes may
-     *            accept objects of their own type only.
-     * @return the merged set. <strong>MUST</strong> be of the same type as {@code this}!
-     */
-    TransitionSet createMerged(TransitionSet other);
+    private final T[] transitions;
+    private final StateSet<S> targetStateSet;
 
-    /**
-     * Add the contents of {@code other} to {@code this}, analogous to
-     * {@link java.util.Set#addAll(Collection)}.
-     * 
-     * @param other the {@link TransitionSet} to be merged with {@code this}. Implementing classes
-     *            may accept objects of their own type only.
-     */
-    void addAll(TransitionSet other);
+    public TransitionSet(T[] transitions, StateSet<S> targetStateSet) {
+        this.transitions = transitions;
+        this.targetStateSet = targetStateSet;
+    }
 
-    /**
-     * Returns the hash code value for this object.
-     *
-     * The hash should be calculated from the <strong>set of target states</strong> represented by
-     * this transition set!
-     */
-    @Override
-    int hashCode();
+    public T[] getTransitions() {
+        return transitions;
+    }
 
-    /**
-     * Checks if this transition set is equal to another.
-     *
-     * Two transition sets should be treated as equal if and only if their <strong>set of target
-     * states</strong> is equal!
-     */
-    @Override
-    boolean equals(Object obj);
+    public StateSet<S> getTargetStateSet() {
+        return targetStateSet;
+    }
+
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
+    public int size() {
+        return transitions.length;
+    }
+
+    public T getTransition(int i) {
+        return transitions[i];
+    }
 }

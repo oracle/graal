@@ -43,6 +43,8 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
 /**
@@ -54,7 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
  * {@link BackReference} or {@link Group}). <em>Quantifier</em>s are handled by the
  * {@link Group#isLoop()} flag of {@link Group}s.
  */
-public abstract class Term extends RegexASTNode {
+public abstract class Term extends RegexASTNode implements AbstractState<Term, ASTTransition> {
 
     private short seqIndex = 0;
     private Token.Quantifier quantifier;

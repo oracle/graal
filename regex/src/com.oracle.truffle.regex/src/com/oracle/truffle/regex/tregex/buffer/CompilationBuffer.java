@@ -58,8 +58,8 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  */
 public class CompilationBuffer {
 
-    private ObjectArrayBuffer objectBuffer1;
-    private ObjectArrayBuffer objectBuffer2;
+    private ObjectArrayBuffer<Object> objectBuffer1;
+    private ObjectArrayBuffer<Object> objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
     private ShortArrayBuffer shortArrayBuffer;
     private CharRangesBuffer charRangesBuffer1;
@@ -69,20 +69,22 @@ public class CompilationBuffer {
     private IntRangesBuffer intRangesBuffer2;
     private IntRangesBuffer intRangesBuffer3;
 
-    public ObjectArrayBuffer getObjectBuffer1() {
+    @SuppressWarnings("unchecked")
+    public <T> ObjectArrayBuffer<T> getObjectBuffer1() {
         if (objectBuffer1 == null) {
-            objectBuffer1 = new ObjectArrayBuffer();
+            objectBuffer1 = new ObjectArrayBuffer<>();
         }
         objectBuffer1.clear();
-        return objectBuffer1;
+        return (ObjectArrayBuffer<T>) objectBuffer1;
     }
 
-    public ObjectArrayBuffer getObjectBuffer2() {
+    @SuppressWarnings("unchecked")
+    public <T> ObjectArrayBuffer<T> getObjectBuffer2() {
         if (objectBuffer2 == null) {
-            objectBuffer2 = new ObjectArrayBuffer();
+            objectBuffer2 = new ObjectArrayBuffer<>();
         }
         objectBuffer2.clear();
-        return objectBuffer2;
+        return (ObjectArrayBuffer<T>) objectBuffer2;
     }
 
     public ByteArrayBuffer getByteArrayBuffer() {

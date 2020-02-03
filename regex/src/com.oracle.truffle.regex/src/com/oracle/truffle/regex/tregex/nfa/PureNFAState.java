@@ -45,7 +45,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
@@ -59,7 +59,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
  * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
  * to either {@link CharacterClass}es or {@link BackReference}s.
  */
-public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition> {
+public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
 
     private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
@@ -108,5 +108,15 @@ public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition>
 
     public void removeLoopBackNext() {
         setSuccessors(Arrays.copyOf(getSuccessors(), getSuccessors().length + 1));
+    }
+
+    @Override
+    protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
+        for (PureNFATransition t : (forward ? getSuccessors() : getPredecessors())) {
+            if (t.getTarget(forward).isUnAnchoredFinalState(forward)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

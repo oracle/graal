@@ -374,10 +374,6 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            if (getBackwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength()));
-                return result == null ? NoMatchResult.getInstance() : new SingleIndexArrayResult(result);
-            }
             final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength()));
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
@@ -395,6 +391,11 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromStart(start);
+            }
+            if (getForwardExecutor().isSimpleCG()) {
+                int[] result = (int[]) forwardEntryNode.execute(input, fromIndexArg, start, inputLength);
+                assert result != null;
+                return new SingleIndexArrayResult(result);
             }
             if (captureGroupEntryNode != null) {
                 return new LazyCaptureGroupsResult(input, start, inputLength, null, captureGroupCallTarget);
