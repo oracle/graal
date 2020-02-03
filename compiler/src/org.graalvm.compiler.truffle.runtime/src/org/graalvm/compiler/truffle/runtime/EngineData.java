@@ -346,7 +346,7 @@ public final class EngineData {
     }
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
-    private Predicate<RootNode> computeCompilationPredicate(String expression) {
+    private static Predicate<RootNode> computeCompilationPredicate(String expression) {
         if (expression == null) {
             return rootNode -> true;
         }

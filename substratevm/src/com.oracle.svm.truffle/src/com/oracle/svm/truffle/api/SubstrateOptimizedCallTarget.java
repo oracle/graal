@@ -129,7 +129,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return getAddress();
     }
 
-
     @Override
     public void setAddress(long address, ResolvedJavaMethod method) {
         this.address = address;

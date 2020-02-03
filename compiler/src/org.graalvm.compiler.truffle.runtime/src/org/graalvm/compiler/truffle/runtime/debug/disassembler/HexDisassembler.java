@@ -31,6 +31,7 @@ public class HexDisassembler implements Disassembler {
 
     private static final int BYTES_PER_LINE = 32;
 
+    @Override
     public String disassemble(MachineCodeAccessor machineCodeAccessor) {
         final StringBuilder builder = new StringBuilder();
         int p = 0;

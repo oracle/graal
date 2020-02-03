@@ -34,6 +34,7 @@ import java.nio.file.StandardOpenOption;
  */
 public class ElfDisassembler implements Disassembler {
 
+    @Override
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final String elfFile = machineCode.fileName(".elf");
         Files.write(Paths.get(elfFile), ElfCoreWriter.writeElf(machineCode), StandardOpenOption.CREATE_NEW);

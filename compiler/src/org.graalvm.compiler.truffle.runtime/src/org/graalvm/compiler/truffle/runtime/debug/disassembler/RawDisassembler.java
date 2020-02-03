@@ -35,6 +35,7 @@ import java.nio.file.StandardOpenOption;
  */
 public class RawDisassembler implements Disassembler {
 
+    @Override
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final String rawFile = machineCode.fileName(".raw");
         Files.write(Paths.get(rawFile), machineCode.getBytes(), StandardOpenOption.CREATE_NEW);

@@ -99,7 +99,7 @@ public class MachineCode {
         });
     }
 
-    private Disassembler createDisassembler(DisassemblyFormatType disassemblyFormat) {
+    private static Disassembler createDisassembler(DisassemblyFormatType disassemblyFormat) {
         switch (disassemblyFormat) {
             case HEX:
                 return new HexDisassembler();

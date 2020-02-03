@@ -48,6 +48,7 @@ public class ObjdumpDisassembler implements Disassembler {
     private static final Pattern ADDRESS_PATTERN = Pattern.compile("^([0-9a-f]+):\\s");
     private static final Pattern RELATIVE_CODE_ADDRESS_PATTERN = Pattern.compile("<\\.text\\+0x([0-9a-f]+)>");
 
+    @Override
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
         final Process process = new ProcessBuilder()
                 .command("objdump", "--no-show-raw-insn", "-d", "/dev/stdin")

@@ -580,7 +580,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    final boolean acceptForCompilation(RootNode rootNode) {
+    final static boolean acceptForCompilation(RootNode rootNode) {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         if (!callTarget.engine.compilation) {
             return false;
