@@ -291,11 +291,16 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitByte(Prefix.REXW);
     }
 
+    private static boolean isInvalidEncoding(Register reg) {
+        return Register.None.equals(reg) || AMD64.rip.equals(reg);
+    }
+
     protected final void prefix(Register reg) {
         prefix(reg, false);
     }
 
     protected final void prefix(Register reg, boolean byteinst) {
+        assert !isInvalidEncoding(reg);
         int regEnc = reg.encoding;
         if (regEnc >= 8) {
             emitByte(Prefix.REXB);
@@ -305,6 +310,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected final void prefixq(Register reg) {
+        assert !isInvalidEncoding(reg);
         if (reg.encoding < 8) {
             emitByte(Prefix.REXW);
         } else {
@@ -317,6 +323,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected final void prefix(Register dst, boolean dstIsByte, Register src, boolean srcIsByte) {
+        assert !isInvalidEncoding(dst) && !isInvalidEncoding(src);
         int dstEnc = dst.encoding;
         int srcEnc = src.encoding;
         if (dstEnc < 8) {
@@ -339,6 +346,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * in the prefix.
      */
     protected final void prefixq(Register reg, Register rm) {
+        assert !isInvalidEncoding(reg) && !isInvalidEncoding(rm);
         int regEnc = reg.encoding;
         int rmEnc = rm.encoding;
         if (regEnc < 8) {
@@ -357,7 +365,8 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected static boolean needsRex(Register reg) {
-        return reg.encoding >= MinEncodingNeedsRex || AMD64.rip.equals(reg);
+        // rip is excluded implicitly.
+        return reg.encoding >= MinEncodingNeedsRex;
     }
 
     protected static boolean needsRex(Register src, boolean srcIsByte) {
@@ -403,6 +412,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected void prefix(AMD64Address adr, Register reg, boolean byteinst) {
+        assert !isInvalidEncoding(reg);
         if (reg.encoding < 8) {
             if (needsRex(adr.getBase())) {
                 if (needsRex(adr.getIndex())) {
@@ -435,6 +445,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected void prefixq(AMD64Address adr, Register src) {
+        assert !isInvalidEncoding(src);
         if (src.encoding < 8) {
             if (needsRex(adr.getBase())) {
                 if (needsRex(adr.getIndex())) {
@@ -472,6 +483,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * field. The X bit must be 0.
      */
     protected static int getRXB(Register reg, Register rm) {
+        assert !isInvalidEncoding(rm) && !isInvalidEncoding(reg);
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         rxb |= (rm == null ? 0 : rm.encoding & 0x08) >> 3;
         return rxb;
@@ -485,11 +497,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
      */
     protected static int getRXB(Register reg, AMD64Address rm) {
+        assert !isInvalidEncoding(reg);
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
-        if (!rm.getIndex().equals(Register.None)) {
+        if (!isInvalidEncoding(rm.getIndex())) {
             rxb |= (rm.getIndex().encoding & 0x08) >> 2;
         }
-        if (!rm.getBase().equals(Register.None)) {
+        if (!isInvalidEncoding(rm.getBase())) {
             rxb |= (rm.getBase().encoding & 0x08) >> 3;
         }
         return rxb;
@@ -502,6 +515,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      */
     protected final void emitModRM(int reg, Register rm) {
         assert (reg & 0x07) == reg;
+        assert !isInvalidEncoding(rm);
         emitByte(0xC0 | (reg << 3) | (rm.encoding & 0x07));
     }
 
@@ -511,6 +525,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * Format: [ 11 reg r/m ]
      */
     protected final void emitModRM(Register reg, Register rm) {
+        assert !isInvalidEncoding(reg);
         emitModRM(reg.encoding & 0x07, rm);
     }
 
@@ -522,7 +537,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * @param force4Byte use 4 byte encoding for displacements that would normally fit in a byte
      */
     protected final void emitOperandHelper(Register reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize) {
-        assert !reg.equals(Register.None);
+        assert !isInvalidEncoding(reg);
         emitOperandHelper(encode(reg), addr, force4Byte, additionalInstructionSize, DEFAULT_DISP8_SCALE);
     }
 
@@ -531,12 +546,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize) {
-        assert !reg.equals(Register.None);
+        assert !isInvalidEncoding(reg);
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, DEFAULT_DISP8_SCALE);
     }
 
     protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
-        assert !reg.equals(Register.None);
+        assert !isInvalidEncoding(reg);
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, evexDisp8Scale);
     }
 
