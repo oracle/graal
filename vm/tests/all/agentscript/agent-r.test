@@ -1,0 +1,14 @@
+> cat > ${TMP_DIR}/test.R
+< cat('Ahoj')
+> Rscript --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.R
+R: Initializing T-Trace script
+R: Hooks are ready!
+R: observed loading of.*test.R
+Ahoj
+> cat > ${TMP_DIR}/test.js
+< print('hi js!')
+> polyglot --jvm --agentscript=agent-r.R --experimental-options ${TMP_DIR}/test.js
+R: Initializing T-Trace script
+R: Hooks are ready!
+R: observed loading of.*test.js
+hi js!
