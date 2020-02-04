@@ -935,7 +935,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
-            b.addPush(JavaKind.Object, new BoxNode(value, resultType, kind));
+            b.addPush(JavaKind.Object, BoxNode.create(value, resultType, kind));
             return true;
         }
 

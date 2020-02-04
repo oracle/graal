@@ -31,9 +31,10 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -48,22 +49,13 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class UnboxNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
+@NodeInfo(cycles = CYCLES_2, size = SIZE_2, allowedUsageTypes = {InputType.Memory, InputType.Value})
+public final class UnboxNode extends AbstractBoxNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<UnboxNode> TYPE = NodeClass.create(UnboxNode.class);
-    @Input protected ValueNode value;
-    protected final JavaKind boxingKind;
 
-    @Override
-    public ValueNode getValue() {
-        return value;
-    }
-
-    public UnboxNode(ValueNode value, JavaKind boxingKind) {
-        super(TYPE, StampFactory.forKind(boxingKind.getStackKind()));
-        this.value = value;
-        this.boxingKind = boxingKind;
+    public UnboxNode(ValueNode value, JavaKind boxingKind, FieldLocationIdentity location) {
+        super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), location);
     }
 
     public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, JavaKind boxingKind) {
@@ -71,11 +63,12 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
         if (synonym != null) {
             return synonym;
         }
-        return new UnboxNode(value, boxingKind);
+        return new UnboxNode(value, boxingKind, AbstractBoxNode.createLocationIdentity(metaAccess, boxingKind));
     }
 
-    public JavaKind getBoxingKind() {
-        return boxingKind;
+    @Override
+    public ValueNode getValue() {
+        return value;
     }
 
     @Override
@@ -123,4 +116,5 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
         }
         return null;
     }
+
 }

@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
@@ -75,6 +76,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -141,8 +143,8 @@ public class SubstrateGraphKit extends GraphKit {
         return unique((FloatingNode) loadIndexed);
     }
 
-    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind) {
-        return append(new UnboxNode(boxed, targetKind));
+    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
+        return append(new UnboxNode(boxed, targetKind, BoxNode.createLocationIdentity(metaAccess, targetKind)));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
@@ -228,7 +230,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createBoxing(ValueNode value, JavaKind kind, ResolvedJavaType targetType) {
-        return append(new BoxNode(value, targetType, kind));
+        return append(BoxNode.create(value, targetType, kind));
     }
 
     public ValueNode createReturn(ValueNode retValue, JavaKind returnKind) {

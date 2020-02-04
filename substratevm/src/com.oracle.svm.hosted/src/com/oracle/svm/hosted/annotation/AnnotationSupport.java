@@ -407,8 +407,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                      * elimination to clean things up).
                      */
                     ResolvedJavaType boxedAttributeType = providers.getMetaAccess().lookupJavaType(attributeType.getJavaKind().toBoxedJavaClass());
-                    ourAttribute = kit.append(new BoxNode(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
-                    otherAttribute = kit.append(new BoxNode(otherAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    ourAttribute = kit.append(BoxNode.create(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    otherAttribute = kit.append(BoxNode.create(otherAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
                 ValueNode attributeEqual;
@@ -469,7 +469,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 if (attributeType.isPrimitive()) {
                     /* Box primitive types. */
                     ResolvedJavaType boxedAttributeType = providers.getMetaAccess().lookupJavaType(attributeType.getJavaKind().toBoxedJavaClass());
-                    ourAttribute = kit.append(new BoxNode(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    ourAttribute = kit.append(BoxNode.create(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
                 ValueNode attributeHashCode;

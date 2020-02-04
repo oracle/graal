@@ -40,6 +40,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
@@ -63,6 +64,13 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer);
+        this.readElimination = readElimination;
+        this.cleanupPhase = cleanupPhase;
+    }
+
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
+                    SchedulePhase.SchedulingStrategy strategy) {
+        super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer, false, strategy);
         this.readElimination = readElimination;
         this.cleanupPhase = cleanupPhase;
     }
