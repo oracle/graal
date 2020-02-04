@@ -33,18 +33,21 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -189,7 +192,7 @@ public class AgentObjectTest {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
             };
-            agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
+            agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -268,13 +271,22 @@ public class AgentObjectTest {
                 }
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
+                assertNotEquals("Subset of the source found", -1, ctx.characters().indexOf("LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))"));
+
+                assertEquals(14, ctx.column());
+                assertEquals(14, ctx.startColumn());
+                assertEquals(2, ctx.endColumn());
+
+                assertEquals(2, ctx.line());
+                assertEquals(2, ctx.startLine());
+                assertEquals(4, ctx.endLine());
             };
 
             CountDownLatch await = new CountDownLatch(1);
             Throwable[] err = {null};
             registerIn.execute(() -> {
                 try {
-                    agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
+                    agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null, null));
                 } catch (Throwable t) {
                     err[0] = t;
                 } finally {
@@ -312,7 +324,7 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ctx, frame) -> {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, AgentObjectFactory.createConfig(false, false, true, (name) -> "foo".equals(name)));
+            }, AgentObjectFactory.createConfig(false, false, true, (name) -> "foo".equals(name), null));
             agentAPI.on("close", () -> {
                 finished[0] = true;
             });
@@ -340,6 +352,58 @@ public class AgentObjectTest {
         assertTrue("Closed now", finished[0]);
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void onEnterCallbackWithFilterOnSourceName() throws Exception {
+        boolean[] finished = {false};
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] functionName = {null};
+            agentAPI.on("enter", (ctx, frame) -> {
+                if (ctx.name().isEmpty()) {
+                    return;
+                }
+                assertNull("No function entered yet", functionName[0]);
+                functionName[0] = ctx.name();
+            }, AgentObjectFactory.createConfig(false, false, true, null, new SourceNameCheck("foo.px")));
+            agentAPI.on("close", () -> {
+                finished[0] = true;
+            });
+
+            // @formatter:off
+            Source foo = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  )\n" +
+                ")",
+                "foo.px"
+            ).build();
+            // @formatter:on
+            c.eval(foo);
+            // @formatter:off
+            Source bar = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(bar,\n" +
+                "    CALL(foo)\n" +
+                "  ),\n" +
+                "  CALL(bar)\n" +
+                ")",
+                "bar.px"
+            ).build();
+            // @formatter:on
+            c.eval(bar);
+
+            assertEquals("Function foo has been called", "foo", functionName[0]);
+
+            assertFalse("Not closed yet", finished[0]);
+        }
+        assertTrue("Closed now", finished[0]);
+    }
+
     @Test
     public void onStatementCallback() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
@@ -352,7 +416,7 @@ public class AgentObjectTest {
                 Object index = frame.get("loopIndex0");
                 assertTrue("Number as expected: " + index, index instanceof Number);
                 loopIndexSum[0] += ((Number) index).intValue();
-            }, AgentObjectFactory.createConfig(false, true, false, null));
+            }, AgentObjectFactory.createConfig(false, true, false, null, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -382,10 +446,10 @@ public class AgentObjectTest {
             int[] expressionReturnCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
-            }, AgentObjectFactory.createConfig(true, false, false, null));
+            }, AgentObjectFactory.createConfig(true, false, false, null, null));
             agentAPI.on("return", (ev, frame) -> {
                 expressionReturnCounter[0]++;
-            }, AgentObjectFactory.createConfig(true, false, false, null));
+            }, AgentObjectFactory.createConfig(true, false, false, null, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -435,10 +499,10 @@ public class AgentObjectTest {
             int[] expressionCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
-            }, AgentObjectFactory.createConfig(true, false, false, null));
+            }, AgentObjectFactory.createConfig(true, false, false, null, null));
             agentAPI.on("return", (ev, frame) -> {
                 expressionCounter[0]++;
-            }, AgentObjectFactory.createConfig(true, false, false, null));
+            }, AgentObjectFactory.createConfig(true, false, false, null, null));
 
             agentAPI.on("close", () -> {
                 closeCounter[0]++;
@@ -460,7 +524,7 @@ public class AgentObjectTest {
 
             String[][] max = {new String[0]};
             LinkedList<String> stack = new LinkedList<>();
-            final AgentScriptAPI.OnConfig allRoots = AgentObjectFactory.createConfig(false, false, true, null);
+            final AgentScriptAPI.OnConfig allRoots = AgentObjectFactory.createConfig(false, false, true, null, null);
             agentAPI.on("enter", (ev, frame) -> {
                 stack.push(ev.name());
                 if (stack.size() > max[0].length) {
@@ -521,11 +585,27 @@ public class AgentObjectTest {
             Set<String> names = new TreeSet<>();
             agentAPI.on("enter", (ctx, frame) -> {
                 names.addAll(frame.keySet());
-            }, createConfig(true, false, false, (name) -> "mul".equals(name)));
+            }, createConfig(true, false, false, (name) -> "mul".equals(name), null));
 
             c.eval(sampleScript);
 
             Assert.assertArrayEquals("THIS, a and b found", new Object[]{"THIS", "a", "b"}, names.toArray());
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static class SourceNameCheck implements Predicate {
+        private final String name;
+
+        SourceNameCheck(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public boolean test(Object obj) {
+            Map src = (Map) obj;
+            Object srcName = src.get("name");
+            return name.equals(srcName);
         }
     }
 

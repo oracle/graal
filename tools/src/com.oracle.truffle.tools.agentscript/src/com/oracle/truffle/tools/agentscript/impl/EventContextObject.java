@@ -33,12 +33,18 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
 final class EventContextObject implements TruffleObject {
+    private static final ArrayObject MEMBERS = ArrayObject.array(
+                    "name", "source", "characters",
+                    "line", "startLine", "endLine",
+                    "column", "startColumn", "endColumn");
     private final EventContext context;
     @CompilerDirectives.CompilationFinal private String name;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
 
     EventContextObject(EventContext context) {
         this.context = context;
@@ -66,26 +72,62 @@ final class EventContextObject implements TruffleObject {
 
     @ExportMessage
     static Object getMembers(EventContextObject obj, boolean includeInternal) {
-        return ArrayObject.array("name");
+        return MEMBERS;
     }
 
     @ExportMessage
-    static Object readMember(EventContextObject obj, String member) throws UnknownIdentifierException {
+    Object readMember(String member) throws UnknownIdentifierException {
+        int index;
         switch (member) {
             case "name":
-                if (obj.name == null) {
+                if (name == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    obj.name = obj.context.getInstrumentedNode().getRootNode().getName();
+                    name = context.getInstrumentedNode().getRootNode().getName();
                 }
-                return obj.name;
+                return name;
+            case "characters":
+                CompilerDirectives.transferToInterpreter();
+                return context.getInstrumentedSourceSection().getCharacters().toString();
+            case "source":
+                return new SourceEventObject(context.getInstrumentedSourceSection().getSource());
+            case "line":
+            case "startLine":
+                index = 0;
+                break;
+            case "endLine":
+                index = 1;
+                break;
+            case "column":
+            case "startColumn":
+                index = 2;
+                break;
+            case "endColumn":
+                index = 3;
+                break;
             default:
                 throw UnknownIdentifierException.create(member);
         }
+        if (values == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            values = valuesForContext();
+        }
+        return values[index];
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private int[] valuesForContext() {
+        final SourceSection section = context.getInstrumentedSourceSection();
+        return new int[]{
+                        section.getStartLine(),
+                        section.getEndLine(),
+                        section.getStartColumn(),
+                        section.getEndColumn()
+        };
     }
 
     @ExportMessage
     static boolean isMemberReadable(EventContextObject obj, String member) {
-        return "name".equals(member);
+        return MEMBERS.contains(member);
     }
 
 }

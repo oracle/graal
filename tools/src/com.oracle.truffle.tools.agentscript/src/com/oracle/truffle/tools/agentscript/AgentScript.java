@@ -55,7 +55,7 @@ public interface AgentScript {
      * <p>
      * {@codesnippet AgentScriptAPI}
      */
-    String VERSION = "0.3";
+    String VERSION = "0.4";
 
     /**
      * Loads an agent script file into the system. The script file may be written in any GraalVM
