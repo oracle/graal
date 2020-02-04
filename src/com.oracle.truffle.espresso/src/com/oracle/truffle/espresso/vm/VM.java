@@ -1517,7 +1517,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(peterssen): Cache guest j.l.reflect.Parameter constructor.
         // Calling the constructor is just for validation, manually setting the fields would
         // be faster.
-        Method parameterInit = getMeta().java_lang_reflect_Parameter.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void,
+        Method parameterInit = getMeta().java_lang_reflect_Parameter.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(Type._void,
                         /* name */ Type.java_lang_String,
                         /* modifiers */ Type._int,
                         /* executable */ Type.java_lang_reflect_Executable,
@@ -1635,7 +1635,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Host(typeName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         Meta meta = getMeta();
         StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
-        meta.java_lang_AssertionStatusDirectives.lookupMethod(Name.INIT, Signature._void).invokeDirect(instance);
+        meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirect(instance);
         meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateArray(0));
         meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateArray(0));
         meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateArray(0));
@@ -1942,7 +1942,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw meta.throwExWithMessage(IllegalArgumentException.class, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
-        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(/* returns */Type._void,
+        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(/* returns */Type._void,
                         /* t */ Type.java_lang_Thread,
                         /* state */ Type._int,
                         /* lockObj */ Type.java_lang_Object,
@@ -2067,7 +2067,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
         StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
@@ -2079,7 +2079,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
         StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
@@ -2088,7 +2088,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
         StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;

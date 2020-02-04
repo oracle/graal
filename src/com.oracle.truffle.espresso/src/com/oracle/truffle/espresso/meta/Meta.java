@@ -153,7 +153,7 @@ public final class Meta implements ContextAccess {
         java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
 
         java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
-        java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
+        java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
 
         java_lang_Exception = knownKlass(Type.java_lang_Exception);
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
@@ -180,7 +180,7 @@ public final class Meta implements ContextAccess {
         java_lang_IncompatibleClassChangeError = knownKlass(Type.java_lang_IncompatibleClassChangeError);
 
         java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
-        java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name.INIT, Signature._void_Exception);
+        java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
 
         java_lang_ClassLoader = knownKlass(Type.java_lang_ClassLoader);
         java_lang_ClassLoader$NativeLibrary = knownKlass(Type.java_lang_ClassLoader$NativeLibrary);
@@ -233,7 +233,7 @@ public final class Meta implements ContextAccess {
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name.INIT, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name._init_, Signature._void_long_int);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
@@ -254,7 +254,7 @@ public final class Meta implements ContextAccess {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
-        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
+        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.lookupDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         java_lang_Thread_exit = java_lang_Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.lookupDeclaredMethod(Name.run, Signature._void);
@@ -275,7 +275,7 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Reference$ReferenceHandler = knownKlass(Type.java_lang_ref_Reference$ReferenceHandler);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
-        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
+        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
 
         sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
@@ -287,7 +287,7 @@ public final class Meta implements ContextAccess {
 
         java_security_ProtectionDomain = knownKlass(Type.java_security_ProtectionDomain);
         java_security_ProtectionDomain_impliesCreateAccessControlContext = java_security_ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
-        java_security_ProtectionDomain_init_CodeSource_PermissionCollection = java_security_ProtectionDomain.lookupDeclaredMethod(Name.INIT, Signature.CodeSource_PermissionCollection);
+        java_security_ProtectionDomain_init_CodeSource_PermissionCollection = java_security_ProtectionDomain.lookupDeclaredMethod(Name._init_, Signature._void_CodeSource_PermissionCollection);
 
         java_security_AccessControlContext = knownKlass(Type.java_security_AccessControlContext);
         java_security_AccessControlContext_context = java_security_AccessControlContext.lookupDeclaredField(Name.context, Type.java_security_ProtectionDomain_array);
@@ -297,7 +297,7 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
         java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
 
         java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
         HIDDEN_VMINDEX = java_lang_invoke_MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
@@ -321,7 +321,7 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.lookupDeclaredField(Name.form, Type.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
-        java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
+        java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
 
         java_lang_invoke_CallSite = knownKlass(Type.java_lang_invoke_CallSite);
         java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.lookupDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
@@ -329,14 +329,14 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_LambdaForm = knownKlass(Type.java_lang_invoke_LambdaForm);
         java_lang_invoke_LambdaForm_vmentry = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.vmentry, Type.java_lang_invoke_MemberName);
         java_lang_invoke_LambdaForm_isCompiled = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
-        java_lang_invoke_LambdaForm_compileToBytecode = java_lang_invoke_LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
+        java_lang_invoke_LambdaForm_compileToBytecode = java_lang_invoke_LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.MemberName);
 
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
-        java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
-        java_lang_invoke_MethodHandleNatives_linkCallSite = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkCallSite = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant,
-                        Signature.linkMethodHandleConstant_signature);
-        java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
+                        Signature.MethodHandle_Class_int_Class_String_Object);
+        java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_Class_Class);
 
         java_lang_ref_Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
         java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
@@ -720,7 +720,7 @@ public final class Meta implements ContextAccess {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
         return ex;
     }
 
@@ -728,7 +728,7 @@ public final class Meta implements ContextAccess {
         assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
+        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
         return ex;
     }
 
@@ -737,7 +737,7 @@ public final class Meta implements ContextAccess {
         assert StaticObject.isNull(message) || klass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
@@ -745,7 +745,7 @@ public final class Meta implements ContextAccess {
         assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
+        klass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
         return ex;
     }
 
@@ -753,7 +753,7 @@ public final class Meta implements ContextAccess {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, toGuestString(message));
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, toGuestString(message));
         return ex;
     }
 
@@ -762,7 +762,7 @@ public final class Meta implements ContextAccess {
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
@@ -770,7 +770,7 @@ public final class Meta implements ContextAccess {
         assert java_lang_Throwable.isAssignableFrom(exKlass);
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
@@ -779,7 +779,7 @@ public final class Meta implements ContextAccess {
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
         return ex;
     }
 
@@ -787,7 +787,7 @@ public final class Meta implements ContextAccess {
         assert java_lang_Throwable.isAssignableFrom(exKlass);
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
         return ex;
     }
 

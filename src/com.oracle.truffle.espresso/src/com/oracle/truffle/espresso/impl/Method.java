@@ -508,7 +508,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isConstructor() {
-        return Name.INIT.equals(getName());
+        return Name._init_.equals(getName());
     }
 
     public boolean isDefault() {
@@ -567,7 +567,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * Determines if this method is {@link java.lang.Object#Object()}.
      */
     public boolean isJavaLangObjectInit() {
-        return getDeclaringKlass().isJavaLangObject() && Name.INIT.equals(getName());
+        return getDeclaringKlass().isJavaLangObject() && Name._init_.equals(getName());
     }
 
     // region Meta.Method
@@ -624,7 +624,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isClassInitializer() {
-        return Name.CLINIT.equals(getName()) && isStatic();
+        return Name._clinit_.equals(getName()) && isStatic();
     }
 
     @Override

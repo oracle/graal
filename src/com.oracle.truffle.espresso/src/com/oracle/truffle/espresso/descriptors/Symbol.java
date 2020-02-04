@@ -137,8 +137,9 @@ public final class Symbol<T> extends ByteSequence {
         }
 
         // general
-        public static final Symbol<Name> INIT = StaticSymbols.putName("<init>");
-        public static final Symbol<Name> CLINIT = StaticSymbols.putName("<clinit>");
+        public static final Symbol<Name> _init_ = StaticSymbols.putName("<init>");
+        public static final Symbol<Name> _clinit_ = StaticSymbols.putName("<clinit>");
+
         // Boxing and String
         public static final Symbol<Name> value = StaticSymbols.putName("value");
         public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");

@@ -280,7 +280,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             // target klass is receiver's klass
             targetKlass = receiver.getKlass();
             // no need to resolve if method is private or <init>
-            if (reflectedMethod.isPrivate() || Name.INIT.equals(reflectedMethod.getName())) {
+            if (reflectedMethod.isPrivate() || Name._init_.equals(reflectedMethod.getName())) {
                 method = reflectedMethod;
             } else {
                 // resolve based on the receiver

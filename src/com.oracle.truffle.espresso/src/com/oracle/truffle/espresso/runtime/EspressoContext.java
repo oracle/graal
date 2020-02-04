@@ -344,8 +344,8 @@ public final class EspressoContext {
         // Init memoryError instances
         StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
         StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
-        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
         stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
         stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
@@ -378,7 +378,7 @@ public final class EspressoContext {
      */
     private void createMainThread() {
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private
+        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name._init_, Signature._void) // private
                                                                                     // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
@@ -392,13 +392,13 @@ public final class EspressoContext {
 
         // Guest Thread.currentThread() must work as this point.
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
                         .invokeDirect(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));
 
         meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
@@ -430,7 +430,7 @@ public final class EspressoContext {
         threadManager.registerThread(hostThread, guestThread);
 
         meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_Runnable) //
+                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable) //
                         .invokeDirect(guestThread,
                                         /* group */ mainThreadGroup,
                                         /* runnable */ StaticObject.NULL);

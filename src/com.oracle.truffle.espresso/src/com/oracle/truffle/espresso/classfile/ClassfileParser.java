@@ -455,7 +455,7 @@ public final class ClassfileParser {
         int extraFlags = methodFlags;
         boolean isClinit = false;
         boolean isInit = false;
-        if (name.equals(Name.CLINIT)) {
+        if (name.equals(Name._clinit_)) {
             // Class and interface initialization methods (3.9) are called
             // implicitly by the Java virtual machine; the value of their
             // access_flags item is ignored except for the settings of the
@@ -463,7 +463,7 @@ public final class ClassfileParser {
             methodFlags &= (ACC_STRICT | ACC_STATIC);
             // extraFlags = INITIALIZER | methodFlags;
             isClinit = true;
-        } else if (name.equals(Name.INIT)) {
+        } else if (name.equals(Name._init_)) {
             isInit = true;
         }
 

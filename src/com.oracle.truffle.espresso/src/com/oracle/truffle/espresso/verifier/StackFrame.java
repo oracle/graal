@@ -456,7 +456,7 @@ final class Locals {
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
-            if (mv.getMethodName() == Name.INIT) {
+            if (Name._init_.equals(mv.getMethodName())) {
                 registers[index++] = new UninitReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
             } else {
                 registers[index++] = new ReferenceOperand(mv.getThisKlass(), mv.getThisKlass());

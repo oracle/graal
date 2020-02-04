@@ -208,7 +208,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
+        Method fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.java_lang_Class,
                         /* name */ Type.java_lang_String,
                         /* type */ Type.java_lang_Class,
@@ -263,7 +263,7 @@ public final class Target_java_lang_Class {
          */
         klass.verify();
         for (Method m : klass.getDeclaredConstructors()) {
-            if (Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic())) {
+            if (Name._init_.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
             }
         }
@@ -275,7 +275,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
+        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.java_lang_Class,
                         /* parameterTypes */ Type.java_lang_Class_array,
                         /* checkedExceptions */ Type.java_lang_Class_array,
@@ -367,7 +367,7 @@ public final class Target_java_lang_Class {
         for (Method m : klass.getDeclaredMethods()) {
             if ((!publicOnly || m.isPublic()) &&
                             // Filter out <init> and <clinit> from reflection.
-                            !Name.INIT.equals(m.getName()) && !Name.CLINIT.equals(m.getName())) {
+                            !Name._init_.equals(m.getName()) && !Name._clinit_.equals(m.getName())) {
                 collectedMethods.add(m);
             }
         }
@@ -379,7 +379,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Method constructor.
         // Calling the constructor is just for validation, manually setting the fields would
         // be faster.
-        Method methodInit = meta.java_lang_reflect_Method.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
+        Method methodInit = meta.java_lang_reflect_Method.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
                         /* declaringClass */ Type.java_lang_Class,
                         /* name */ Type.java_lang_String,
                         /* parameterTypes */ Type.java_lang_Class_array,

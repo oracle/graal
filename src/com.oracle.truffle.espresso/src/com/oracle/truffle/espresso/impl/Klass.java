@@ -412,7 +412,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        Method clinit = lookupDeclaredMethod(Name.CLINIT, Signature._void);
+        Method clinit = lookupDeclaredMethod(Name._clinit_, Signature._void);
         if (clinit != null && clinit.isStatic()) {
             return clinit;
         }

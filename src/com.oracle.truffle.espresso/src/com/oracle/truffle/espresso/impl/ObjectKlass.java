@@ -429,7 +429,7 @@ public final class ObjectKlass extends Klass {
     public Method[] getDeclaredConstructors() {
         List<Method> constructors = new ArrayList<>();
         for (Method m : getDeclaredMethods()) {
-            if (Name.INIT.equals(m.getName())) {
+            if (Name._init_.equals(m.getName())) {
                 constructors.add(m);
             }
         }
