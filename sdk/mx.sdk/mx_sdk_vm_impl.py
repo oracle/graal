@@ -716,9 +716,10 @@ x-GraalVM-Component-Distribution=bundled
         if parent_release_file is not None and exists(parent_release_file):
             with open(parent_release_file, 'r') as f:
                 for line in f:
-                    assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
-                    k, v = line.strip().split('=', 1)
-                    _metadata_dict[k] = v
+                    if line.strip() != '':  # on Windows, the release file might have extra line terminators
+                        assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
+                        k, v = line.strip().split('=', 1)
+                        _metadata_dict[k] = v
 
         _metadata_dict.setdefault('JAVA_VERSION', quote(_src_jdk.version))
         _metadata_dict.setdefault('OS_NAME', quote(get_graalvm_os()))
