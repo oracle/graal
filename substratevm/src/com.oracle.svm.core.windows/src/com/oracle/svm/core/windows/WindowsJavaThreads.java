@@ -182,7 +182,7 @@ class WindowsParkEvent extends ParkEvent {
     @Override
     protected void condTimedWait(long delayNanos) {
         final int maxTimeout = 0x10_000_000;
-        long delayMillis = Math.max(0, TimeUtils.roundNanosToMillis(delayNanos));
+        long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
         do { // at least once to consume potential unpark
             int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
             int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
