@@ -1102,7 +1102,7 @@ def _file_needs_build(newest_input, filepath, contents_getter):
         return filepath + " does not exist"
     if newest_input and ts.isOlderThan(newest_input):
         return "{} is older than {}".format(ts, newest_input)
-    with open(filepath, 'r') as f:
+    with io.open(filepath, mode='r', encoding='utf-8') as f:
         on_disk = unicode_utf8(f.read())
     if contents_getter() != on_disk:
         return "content not up to date"
