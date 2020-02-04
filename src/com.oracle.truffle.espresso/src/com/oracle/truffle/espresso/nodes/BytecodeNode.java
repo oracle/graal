@@ -1061,7 +1061,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     throw (EspressoException) ((e instanceof StackOverflowError) ? getContext().getStackOverflow() : e);
                 } else if (e instanceof OutOfMemoryError) {
                     CompilerDirectives.transferToInterpreter();
-                    exceptionToHandle = Meta.initEx(getMeta().OutOfMemoryError);
+                    exceptionToHandle = Meta.initEx(getMeta().java_lang_OutOfMemoryError);
                 } else {
                     exceptionToHandle = ((EspressoException) e).getExceptionObject();
                 }
@@ -1716,14 +1716,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
-        StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
+        StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
 
-        StaticObject memberName = (StaticObject) meta.MethodHandleNatives_linkCallSite.invokeDirect(
+        StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                         null,
                         accessingKlass.mirror(),
                         bootstrapmethodMethodHandle,
                         name, methodType,
-                        StaticObject.createArray(meta.Object_array, args),
+                        StaticObject.createArray(meta.java_lang_Object_array, args),
                         appendix);
 
         StaticObject unboxedAppendix = appendix.get(0);
@@ -1760,9 +1760,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         } catch (Throwable e) {
             throw meta.throwEx(BootstrapMethodError.class);
         }
-        return (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
-                        rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                        rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
     }
     // endregion Bytecode quickening
 
@@ -1924,7 +1924,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (StaticObject.isNull(value)) {
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = getMeta();
-            throw meta.throwEx(meta.NullPointerException);
+            throw meta.throwEx(meta.java_lang_NullPointerException);
         }
         return value;
     }

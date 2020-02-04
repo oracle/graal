@@ -140,14 +140,14 @@ public interface MethodHandleConstant extends PoolConstant {
             StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
             StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
 
-            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
-                            rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                            rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
 
             Klass mklass = target.getDeclaringKlass();
             StaticObject mname = meta.toGuestString(target.getName());
 
-            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
+            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));
@@ -166,14 +166,14 @@ public interface MethodHandleConstant extends PoolConstant {
             StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
             StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
 
-            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
-                            rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                            rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
 
             Klass mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).classIndex);
 
             StaticObject mname = meta.toGuestString(ref.getName(pool));
-            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
+            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));

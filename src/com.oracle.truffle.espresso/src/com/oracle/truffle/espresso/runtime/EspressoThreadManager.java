@@ -112,7 +112,7 @@ class EspressoThreadManager implements ContextAccess {
         });
 
         if (finalizerThreadId == -1) {
-            if (getMeta().FinalizerThread.isAssignableFrom(guest.getKlass())) {
+            if (getMeta().java_lang_ref_Finalizer$FinalizerThread.isAssignableFrom(guest.getKlass())) {
                 synchronized (threadLock) {
                     if (finalizerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -124,7 +124,7 @@ class EspressoThreadManager implements ContextAccess {
             }
         }
         if (referenceHandlerThreadId == -1) {
-            if (getMeta().ReferenceHandler.isAssignableFrom(guest.getKlass())) {
+            if (getMeta().java_lang_ref_Reference$ReferenceHandler.isAssignableFrom(guest.getKlass())) {
                 synchronized (threadLock) {
                     if (finalizerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();

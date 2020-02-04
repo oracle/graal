@@ -141,7 +141,7 @@ public interface MemberRefConstant extends PoolConstant {
             return true;
         }
         // MagicAccessorImpl marks internal reflection classes that have access to eveything.
-        if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+        if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
 
@@ -185,7 +185,7 @@ public interface MemberRefConstant extends PoolConstant {
             return true;
         }
         // MagicAccessorImpl marks internal reflection classes that have access to everything.
-        if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+        if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
 

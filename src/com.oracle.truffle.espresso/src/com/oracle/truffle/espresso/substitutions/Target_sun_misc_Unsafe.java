@@ -78,7 +78,7 @@ public final class Target_sun_misc_Unsafe {
         Meta meta = context.getMeta();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();
@@ -1054,7 +1054,7 @@ public final class Target_sun_misc_Unsafe {
         Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
-        Field parkBlocker = context.getMeta().Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.Object);
+        Field parkBlocker = context.getMeta().java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
         StaticObject guestBlocker = thread.getField(parkBlocker);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {

@@ -86,7 +86,7 @@ public final class Field extends Member<Type> implements FieldRef {
     private Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
         super(null, name);
         this.holder = holder;
-        this.linkedField = new LinkedField(new ParserField(0, name, Type.Object, null), holder.getLinkedKlass(), -1);
+        this.linkedField = new LinkedField(new ParserField(0, name, Type.java_lang_Object, null), holder.getLinkedKlass(), -1);
         this.slot = hiddenSlot;
         this.fieldIndex = hiddenIndex;
     }
@@ -199,7 +199,7 @@ public final class Field extends Member<Type> implements FieldRef {
         while (target == null) {
             target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
             if (target == null) {
-                curField = (StaticObject) meta.Field_root.get(curField);
+                curField = (StaticObject) meta.java_lang_reflect_Field_root.get(curField);
             }
         }
         return target;

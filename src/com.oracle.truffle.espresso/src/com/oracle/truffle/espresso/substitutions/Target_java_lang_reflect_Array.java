@@ -65,11 +65,11 @@ public final class Target_java_lang_reflect_Array {
     public static Object newArray(@Host(Class.class) StaticObject componentType, int length) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType)) {
-            throw meta.throwEx(meta.NullPointerException);
+            throw meta.throwEx(meta.java_lang_NullPointerException);
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
 
         if (component.isPrimitive()) {
@@ -111,11 +111,11 @@ public final class Target_java_lang_reflect_Array {
     public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
-            throw meta.throwEx(meta.NullPointerException);
+            throw meta.throwEx(meta.java_lang_NullPointerException);
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
         final int[] dimensions = dimensionsArray.unwrap();
         int finalDimensions = dimensions.length;
@@ -123,11 +123,11 @@ public final class Target_java_lang_reflect_Array {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw meta.throwEx(meta.NegativeArraySizeException);
+                throw meta.throwEx(meta.java_lang_NegativeArraySizeException);
             }
         }
         if (dimensions.length == 1) {
@@ -344,7 +344,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw meta.throwEx(meta.NullPointerException);
+            throw meta.throwEx(meta.java_lang_NullPointerException);
         }
         if (array.isArray()) {
             // @formatter:off
@@ -365,7 +365,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -387,7 +387,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw meta.throwEx(meta.NullPointerException);
+            throw meta.throwEx(meta.java_lang_NullPointerException);
         }
         if (array.isArray()) {
             // @formatter:off
@@ -407,7 +407,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
     }
 

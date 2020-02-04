@@ -58,7 +58,7 @@ public class MainLauncherRootNode extends RootNode {
             printStackTrace(e);
             return StaticObject.NULL;
         } finally {
-            main.getMeta().Shutdown_shutdown.invokeDirect(null);
+            main.getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
         }
     }
 
@@ -70,7 +70,7 @@ public class MainLauncherRootNode extends RootNode {
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
         Meta meta = context.getMeta();
-        return meta.String.allocateArray(args.length, new IntFunction<StaticObject>() {
+        return meta.java_lang_String.allocateArray(args.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return meta.toGuestString(args[i]);

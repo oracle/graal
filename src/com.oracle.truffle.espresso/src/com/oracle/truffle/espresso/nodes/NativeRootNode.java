@@ -86,9 +86,9 @@ public final class NativeRootNode extends EspressoMethodNode {
             unpacked[argIndex++] = javaToNative(env, env.getNativePointer(), Type._long);
         }
         if (getMethod().isStatic()) {
-            unpacked[argIndex++] = javaToNative(env, getMethod().getDeclaringKlass().mirror(), Type.Class); // class
+            unpacked[argIndex++] = javaToNative(env, getMethod().getDeclaringKlass().mirror(), Type.java_lang_Class); // class
         } else {
-            unpacked[argIndex++] = javaToNative(env, args[0], Type.Object); // receiver
+            unpacked[argIndex++] = javaToNative(env, args[0], Type.java_lang_Object); // receiver
         }
         int skipReceiver = getMethod().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {

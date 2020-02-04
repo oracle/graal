@@ -327,11 +327,11 @@ public final class InterpreterToVM implements ContextAccess {
     public StaticObject newMultiArray(Klass component, int... dimensions) {
         Meta meta = getMeta();
         if (component == meta._void) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw meta.throwEx(meta.NegativeArraySizeException);
+                throw meta.throwEx(meta.java_lang_NegativeArraySizeException);
             }
         }
         return newMultiArrayWithoutChecks(component, dimensions);
@@ -408,7 +408,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
-        throw getMeta().throwEx(getMeta().ClassCastException);
+        throw getMeta().throwEx(getMeta().java_lang_ClassCastException);
     }
 
     public static StaticObject newObject(Klass klass) {
@@ -426,7 +426,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
-        assert getMeta().String == guestString.getKlass();
+        assert getMeta().java_lang_String == guestString.getKlass();
         return getStrings().intern(guestString);
     }
 
@@ -470,7 +470,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
-        throwable.setField(meta.Throwable_backtrace, throwable);
+        throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
         return throwable;
     }
 
@@ -497,7 +497,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (!skipThrowableInit) {
                 return false;
             }
-            if (!(m.getName() == Symbol.Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+            if (!(m.getName() == Symbol.Name.INIT) || !m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
                 skipThrowableInit = false;
             }
             return skipThrowableInit;

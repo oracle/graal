@@ -48,7 +48,7 @@ public final class ArrayKlass extends Klass {
         super(componentType.getContext(),
                         null, // TODO(peterssen): Internal, , or / name?
                         componentType.getTypes().arrayOf(componentType.getType()),
-                        componentType.getMeta().Object,
+                        componentType.getMeta().java_lang_Object,
                         componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
@@ -179,7 +179,7 @@ public final class ArrayKlass extends Klass {
         int otherDim = other.getDimension();
         if (otherDim > thisDim) {
             Klass thisElemental = this.getElementalType();
-            return thisElemental == getMeta().Object || thisElemental == getMeta().Serializable || thisElemental == getMeta().Cloneable;
+            return thisElemental == getMeta().java_lang_Object || thisElemental == getMeta().java_io_Serializable || thisElemental == getMeta().java_lang_Cloneable;
         } else if (thisDim == otherDim) {
             Klass klass = getElementalType();
             Klass other1 = other.getElementalType();

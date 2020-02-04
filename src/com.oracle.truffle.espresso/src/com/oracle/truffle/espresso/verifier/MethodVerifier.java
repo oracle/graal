@@ -362,12 +362,12 @@ public final class MethodVerifier implements ContextAccess {
 
     // We want to be able to share this instance between context, so its resolution must be
     // context-agnostic.
-    static final ReferenceOperand jlObject = new ReferenceOperand(Type.Object, null) {
+    static final ReferenceOperand jlObject = new ReferenceOperand(Type.java_lang_Object, null) {
         @Override
         Klass getKlass() {
             // this particular j.l.Object instance does not cache its resolved klass, as most
             // getKlass calls checks beforehand for Type Object.
-            return EspressoLanguage.getCurrentContext().getMeta().Object;
+            return EspressoLanguage.getCurrentContext().getMeta().java_lang_Object;
         }
     };
 
@@ -497,11 +497,11 @@ public final class MethodVerifier implements ContextAccess {
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
 
-        jlClass = new ReferenceOperand(Type.Class, thisKlass);
-        jlString = new ReferenceOperand(Type.String, thisKlass);
-        jliMethodType = new ReferenceOperand(Type.MethodType, thisKlass);
-        jliMethodHandle = new ReferenceOperand(Type.MethodHandle, thisKlass);
-        jlThrowable = new ReferenceOperand(Type.Throwable, thisKlass);
+        jlClass = new ReferenceOperand(Type.java_lang_Class, thisKlass);
+        jlString = new ReferenceOperand(Type.java_lang_String, thisKlass);
+        jliMethodType = new ReferenceOperand(Type.java_lang_invoke_MethodType, thisKlass);
+        jliMethodHandle = new ReferenceOperand(Type.java_lang_invoke_MethodHandle, thisKlass);
+        jlThrowable = new ReferenceOperand(Type.java_lang_Throwable, thisKlass);
 
         thisOperand = new ReferenceOperand(thisKlass, thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -959,7 +959,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             if (handler.catchTypeCPI() != 0) {
                 Klass catchType = pool.resolvedKlassAt(thisKlass, handler.catchTypeCPI());
-                if (!getMeta().Throwable.isAssignableFrom(catchType)) {
+                if (!getMeta().java_lang_Throwable.isAssignableFrom(catchType)) {
                     throw new VerifyError("Illegal exception handler catch type: " + catchType);
                 }
             }
@@ -1560,7 +1560,7 @@ public final class MethodVerifier implements ContextAccess {
                         throw new VerifyError("Encountered RETURN, but method return type is not void: " + returnOperand);
                     }
                     // Only j.l.Object.<init> can omit calling another initializer.
-                    if (isInstanceInit(methodName) && thisKlass.getType() != Type.Object) {
+                    if (isInstanceInit(methodName) && thisKlass.getType() != Type.java_lang_Object) {
                         if (!calledConstructor) {
                             throw new VerifyError("Did not call super() or this() in constructor " + thisKlass.getType() + "." + methodName);
                         }
@@ -2233,7 +2233,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private boolean isMagicAccessor() {
-        return getMeta().MagicAccessorImpl.isAssignableFrom(thisOperand.getKlass());
+        return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(thisOperand.getKlass());
     }
 
     /**
@@ -2272,7 +2272,7 @@ public final class MethodVerifier implements ContextAccess {
                 try {
                     field = pool.resolvedFieldAt(thisKlass, fieldCPI);
                 } catch (EspressoException e) {
-                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                    if (getMeta().java_lang_IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                         throw new VerifyError(EspressoException.getMessage(e.getExceptionObject()));
                     }
                     throw e;
@@ -2323,7 +2323,7 @@ public final class MethodVerifier implements ContextAccess {
                 try {
                     method = pool.resolvedMethodAt(thisKlass, methodCPI);
                 } catch (EspressoException e) {
-                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                    if (getMeta().java_lang_IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                         throw new VerifyError(EspressoException.getMessage(e.getExceptionObject()));
                     }
                     throw e;
@@ -2338,7 +2338,7 @@ public final class MethodVerifier implements ContextAccess {
                     return;
                 }
                 if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(methodHolderType))) {
-                    if (stackOp.isArrayType() && methodHolderType == Type.Object && method.getName() == Name.clone) {
+                    if (stackOp.isArrayType() && methodHolderType == Type.java_lang_Object && method.getName() == Name.clone) {
                         // Special case: Arrays pretend to implement Object.clone().
                         return;
                     }

@@ -332,11 +332,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         Meta meta = self.getKlass().getMeta();
-        if (!meta.Cloneable.isAssignableFrom(self.getKlass())) {
+        if (!meta.java_lang_Cloneable.isAssignableFrom(self.getKlass())) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
-        if (InterpreterToVM.instanceOf(self, meta.Reference)) {
+        if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_Reference)) {
             // HotSpot 8202260: The semantics of cloning a Reference object is not clearly defined.
             // In addition, it is questionable whether it should be supported due to its tight
             // interaction with garbage collector.
@@ -350,10 +350,10 @@ public final class VM extends NativeEnv implements ContextAccess {
             // A Reference object cannot be meaningfully cloned.
 
             // Non-strong references are not cloneable.
-            if (InterpreterToVM.instanceOf(self, meta.WeakReference) //
-                            || InterpreterToVM.instanceOf(self, meta.SoftReference) //
-                            || InterpreterToVM.instanceOf(self, meta.FinalReference) //
-                            || InterpreterToVM.instanceOf(self, meta.PhantomReference)) {
+            if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference)) {
 
                 throw meta.throwExWithMessage(java.lang.CloneNotSupportedException.class, self.getKlass().getName().toString());
             }
@@ -597,7 +597,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (index < 0) {
             throw meta.throwEx(IndexOutOfBoundsException.class);
         }
-        StaticObject ste = meta.StackTraceElement.allocateInstance();
+        StaticObject ste = meta.java_lang_StackTraceElement.allocateInstance();
         StackTrace frames = EspressoException.getFrames(self, meta);
         if (frames == null || index >= frames.size) {
             throw meta.throwEx(IndexOutOfBoundsException.class);
@@ -609,7 +609,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         int bci = stackElement.getBCI();
 
-        meta.StackTraceElement_init.invokeDirect(
+        meta.java_lang_StackTraceElement_init.invokeDirect(
                         /* this */ ste,
                         /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(method.getName()),
@@ -1034,7 +1034,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // InternalError was recorded.
         StaticObject internalError = exception[0];
         if (internalError != null) {
-            assert InterpreterToVM.instanceOf(internalError, meta.InternalError);
+            assert InterpreterToVM.instanceOf(internalError, meta.java_lang_InternalError);
             throw new EspressoException(internalError);
         }
 
@@ -1061,15 +1061,15 @@ public final class VM extends NativeEnv implements ContextAccess {
                                 return null;
                             }
                         });
-        return StaticObject.createArray(getMeta().Class_Array, result.toArray(StaticObject.EMPTY_ARRAY));
+        return StaticObject.createArray(getMeta().java_lang_Class_array, result.toArray(StaticObject.EMPTY_ARRAY));
     }
 
     private static boolean isIgnoredBySecurityStackWalk(Method m, Meta meta) {
         Klass holderKlass = m.getDeclaringKlass();
-        if (holderKlass == meta.Method && m.getName() == Name.invoke) {
+        if (holderKlass == meta.java_lang_reflect_Method && m.getName() == Name.invoke) {
             return true;
         }
-        if (meta.MethodAccessorImpl.isAssignableFrom(holderKlass)) {
+        if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holderKlass)) {
             return true;
         }
         if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m, meta) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
@@ -1079,16 +1079,16 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private boolean isAuthorized(StaticObject context, Klass klass) {
-        if (!StaticObject.isNull(getMeta().System.getStatics().getField(getMeta().System_securityManager))) {
-            if (getMeta().ProtectionDomain_impliesCreateAccessControlContext == null) {
+        if (!StaticObject.isNull(getMeta().java_lang_System.getStatics().getField(getMeta().java_lang_System_securityManager))) {
+            if (getMeta().java_security_ProtectionDomain_impliesCreateAccessControlContext == null) {
                 return true;
             }
-            if ((boolean) getMeta().AccessControlContext_isAuthorized.invokeDirect(context)) {
+            if ((boolean) getMeta().java_security_AccessControlContext_isAuthorized.get(context)) {
                 return true;
             }
             StaticObject pd = Target_java_lang_Class.getProtectionDomain0(klass.mirror());
             if (pd != StaticObject.NULL) {
-                return (boolean) getMeta().ProtectionDomain_impliesCreateAccessControlContext.invokeDirect(pd);
+                return (boolean) getMeta().java_security_ProtectionDomain_impliesCreateAccessControlContext.invokeDirect(pd);
             }
         }
         return true;
@@ -1097,21 +1097,21 @@ public final class VM extends NativeEnv implements ContextAccess {
     private @Host(AccessControlContext.class) StaticObject createACC(@Host(ProtectionDomain[].class) StaticObject context,
                     boolean isPriviledged,
                     @Host(AccessControlContext.class) StaticObject priviledgedContext) {
-        Klass accKlass = getMeta().AccessControlContext;
+        Klass accKlass = getMeta().java_security_AccessControlContext;
         StaticObject acc = accKlass.allocateInstance();
-        acc.setField(getMeta().ACC_context, context);
-        acc.setField(getMeta().ACC_privilegedContext, priviledgedContext);
-        acc.setBooleanField(getMeta().ACC_isPrivileged, isPriviledged);
-        if (getMeta().ACC_isAuthorized != null) {
-            acc.setBooleanField(getMeta().ACC_isAuthorized, true);
+        acc.setField(getMeta().java_security_AccessControlContext_context, context);
+        acc.setField(getMeta().java_security_AccessControlContext_privilegedContext, priviledgedContext);
+        acc.setBooleanField(getMeta().java_security_AccessControlContext_isPrivileged, isPriviledged);
+        if (getMeta().java_security_AccessControlContext_isAuthorized != null) {
+            acc.setBooleanField(getMeta().java_security_AccessControlContext_isAuthorized, true);
         }
         return acc;
     }
 
     private @Host(AccessControlContext.class) StaticObject createDummyACC() {
-        Klass pdKlass = getMeta().ProtectionDomain;
+        Klass pdKlass = getMeta().java_security_ProtectionDomain;
         StaticObject pd = pdKlass.allocateInstance();
-        getMeta().ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
+        getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
         StaticObject context = StaticObject.wrap(new StaticObject[]{pd});
         return createACC(context, false, StaticObject.NULL);
     }
@@ -1251,10 +1251,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             result = (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
-            if (getMeta().Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
-                            !getMeta().RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                StaticObject wrapper = getMeta().PrivilegedActionException.allocateInstance();
-                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
+            if (getMeta().java_lang_Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
+                            !getMeta().java_lang_RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                StaticObject wrapper = getMeta().java_security_PrivilegedActionException.allocateInstance();
+                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
                 throw new EspressoException(wrapper);
             }
             throw e;
@@ -1302,7 +1302,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return createACC(StaticObject.NULL, isPrivileged[0], context == null ? StaticObject.NULL : context);
         }
 
-        StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
+        StaticObject guestContext = StaticObject.createArray(getMeta().java_security_ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
         return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
     }
 
@@ -1310,7 +1310,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@Host(Class.class) StaticObject cls) {
-        return getContext().getCurrentThread().getField(getMeta().Thread_inheritedAccessControlContext);
+        return getContext().getCurrentThread().getField(getMeta().java_lang_Thread_inheritedAccessControlContext);
     }
 
     @VmImpl
@@ -1323,13 +1323,13 @@ public final class VM extends NativeEnv implements ContextAccess {
                     Klass holder = m.getDeclaringKlass();
                     Meta meta = holder.getMeta();
                     // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
-                    if (meta.MethodAccessorImpl.isAssignableFrom(holder) || meta.ConstructorAccessorImpl.isAssignableFrom(holder)) {
+                    if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holder) || meta.sun_reflect_ConstructorAccessorImpl.isAssignableFrom(holder)) {
                         return null;
                     }
 
                     StaticObject loader = holder.getDefiningClassLoader();
                     // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
-                    if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
+                    if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher$ExtClassLoader.equals(loader.getKlass().getType())) {
                         return loader;
                     }
                 }
@@ -1436,13 +1436,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static @Host(java.lang.reflect.Method.class) StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Method.class) StaticObject seed) {
         Meta meta = seed.getKlass().getMeta();
-        assert InterpreterToVM.instanceOf(seed, meta.Method);
+        assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Method);
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
             target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
-                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
             }
         }
         return curMethod;
@@ -1450,13 +1450,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static @Host(java.lang.reflect.Field.class) StaticObject getGuestReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
         Meta meta = seed.getKlass().getMeta();
-        assert InterpreterToVM.instanceOf(seed, meta.Field);
+        assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Field);
         StaticObject curField = seed;
         Field target = null;
         while (target == null) {
             target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
             if (target == null) {
-                curField = (StaticObject) meta.Field_root.get(curField);
+                curField = (StaticObject) meta.java_lang_reflect_Field_root.get(curField);
             }
         }
         return curField;
@@ -1464,13 +1464,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static @Host(java.lang.reflect.Constructor.class) StaticObject getGuestReflectiveConstructorRoot(@Host(java.lang.reflect.Constructor.class) StaticObject seed) {
         Meta meta = seed.getKlass().getMeta();
-        assert InterpreterToVM.instanceOf(seed, meta.Constructor);
+        assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Constructor);
         StaticObject curConstructor = seed;
         Method target = null;
         while (target == null) {
             target = (Method) curConstructor.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (target == null) {
-                curConstructor = (StaticObject) meta.Constructor_root.get(curConstructor);
+                curConstructor = (StaticObject) meta.java_lang_reflect_Constructor_root.get(curConstructor);
             }
         }
         return curConstructor;
@@ -1479,7 +1479,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Parameter[].class) StaticObject JVM_GetMethodParameters(@Host(Object.class) StaticObject executable) {
-        assert getMeta().Executable.isAssignableFrom(executable.getKlass());
+        assert getMeta().java_lang_reflect_Executable.isAssignableFrom(executable.getKlass());
         StaticObject parameterTypes = (StaticObject) executable.getKlass().lookupMethod(Name.getParameterTypes, Signature.Class_array).invokeDirect(executable);
         int numParams = parameterTypes.length();
         if (numParams == 0) {
@@ -1487,9 +1487,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         Method method;
-        if (getMeta().Method.isAssignableFrom(executable.getKlass())) {
+        if (getMeta().java_lang_reflect_Method.isAssignableFrom(executable.getKlass())) {
             method = Method.getHostReflectiveMethodRoot(executable);
-        } else if (getMeta().Constructor.isAssignableFrom(executable.getKlass())) {
+        } else if (getMeta().java_lang_reflect_Constructor.isAssignableFrom(executable.getKlass())) {
             method = Method.getHostReflectiveConstructorRoot(executable);
         } else {
             throw EspressoError.shouldNotReachHere();
@@ -1505,11 +1505,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         for (MethodParametersAttribute.Entry entry : methodParameters.getEntries()) {
             int nameIndex = entry.getNameIndex();
             if (nameIndex < 0 || nameIndex >= cpLength) {
-                throw getMeta().throwExWithMessage(getMeta().IllegalArgumentException,
+                throw getMeta().throwExWithMessage(getMeta().java_lang_IllegalArgumentException,
                                 getMeta().toGuestString("Constant pool index out of bounds"));
             }
             if (nameIndex != 0 && method.getConstantPool().tagAt(nameIndex) != ConstantPool.Tag.UTF8) {
-                throw getMeta().throwExWithMessage(getMeta().IllegalArgumentException,
+                throw getMeta().throwExWithMessage(getMeta().java_lang_IllegalArgumentException,
                                 getMeta().toGuestString("Wrong type at constant pool index"));
             }
         }
@@ -1517,17 +1517,17 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(peterssen): Cache guest j.l.reflect.Parameter constructor.
         // Calling the constructor is just for validation, manually setting the fields would
         // be faster.
-        Method parameterInit = getMeta().Parameter.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void,
-                        /* name */ Type.String,
+        Method parameterInit = getMeta().java_lang_reflect_Parameter.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(Type._void,
+                        /* name */ Type.java_lang_String,
                         /* modifiers */ Type._int,
-                        /* executable */ Type.Executable,
+                        /* executable */ Type.java_lang_reflect_Executable,
                         /* index */ Type._int));
 
-        return getMeta().Parameter.allocateArray(numParams, new IntFunction<StaticObject>() {
+        return getMeta().java_lang_reflect_Parameter.allocateArray(numParams, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 MethodParametersAttribute.Entry entry = methodParameters.getEntries()[index];
-                StaticObject instance = getMeta().Parameter.allocateInstance();
+                StaticObject instance = getMeta().java_lang_reflect_Parameter.allocateInstance();
                 // For a 0 index, give an empty name.
                 String hostName = "";
                 if (entry.getNameIndex() != 0) {
@@ -1547,11 +1547,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(byte[].class) StaticObject JVM_GetMethodTypeAnnotations(@Host(java.lang.reflect.Executable.class) StaticObject guestReflectionMethod) {
         // guestReflectionMethod can be either a Method or a Constructor.
-        if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Method)) {
+        if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Method)) {
             StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
             assert methodRoot != null;
             return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Constructor)) {
+        } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Constructor)) {
             StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
             assert constructorRoot != null;
             return (StaticObject) constructorRoot.getHiddenField(constructorRoot.getKlass().getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
@@ -1563,7 +1563,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(byte[].class) StaticObject JVM_GetFieldTypeAnnotations(@Host(java.lang.reflect.Field.class) StaticObject guestReflectionField) {
-        assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().Field);
+        assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().java_lang_reflect_Field);
         StaticObject fieldRoot = getGuestReflectiveFieldRoot(guestReflectionField);
         assert fieldRoot != null;
         return (StaticObject) fieldRoot.getHiddenField(fieldRoot.getKlass().getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
@@ -1571,28 +1571,28 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private StaticObject guestBox(Object elem) {
         if (elem instanceof Integer) {
-            return (StaticObject) getMeta().Integer_valueOf.invokeDirect(null, (int) elem);
+            return (StaticObject) getMeta().java_lang_Integer_valueOf.invokeDirect(null, (int) elem);
         }
         if (elem instanceof Boolean) {
-            return (StaticObject) getMeta().Boolean_valueOf.invokeDirect(null, (boolean) elem);
+            return (StaticObject) getMeta().java_lang_Boolean_valueOf.invokeDirect(null, (boolean) elem);
         }
         if (elem instanceof Byte) {
-            return (StaticObject) getMeta().Byte_valueOf.invokeDirect(null, (byte) elem);
+            return (StaticObject) getMeta().java_lang_Byte_valueOf.invokeDirect(null, (byte) elem);
         }
         if (elem instanceof Character) {
-            return (StaticObject) getMeta().Character_valueOf.invokeDirect(null, (char) elem);
+            return (StaticObject) getMeta().java_lang_Character_valueOf.invokeDirect(null, (char) elem);
         }
         if (elem instanceof Short) {
-            return (StaticObject) getMeta().Short_valueOf.invokeDirect(null, (short) elem);
+            return (StaticObject) getMeta().java_lang_Short_valueOf.invokeDirect(null, (short) elem);
         }
         if (elem instanceof Float) {
-            return (StaticObject) getMeta().Float_valueOf.invokeDirect(null, (float) elem);
+            return (StaticObject) getMeta().java_lang_Float_valueOf.invokeDirect(null, (float) elem);
         }
         if (elem instanceof Double) {
-            return (StaticObject) getMeta().Double_valueOf.invokeDirect(null, (double) elem);
+            return (StaticObject) getMeta().java_lang_Double_valueOf.invokeDirect(null, (double) elem);
         }
         if (elem instanceof Long) {
-            return (StaticObject) getMeta().Long_valueOf.invokeDirect(null, (long) elem);
+            return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) elem);
         }
 
         throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
@@ -1617,7 +1617,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         for (int i = 0; i < packages.length; i++) {
             array[i] = getMeta().toGuestString(packages[i]);
         }
-        StaticObject result = StaticObject.createArray(getMeta().String.getArrayClass(), array);
+        StaticObject result = StaticObject.createArray(getMeta().java_lang_String.getArrayClass(), array);
         return result;
     }
 
@@ -1634,14 +1634,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(typeName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         Meta meta = getMeta();
-        StaticObject instance = meta.AssertionStatusDirectives.allocateInstance();
-        meta.AssertionStatusDirectives.lookupMethod(Name.INIT, Signature._void).invokeDirect(instance);
-        meta.AssertionStatusDirectives_classes.set(instance, meta.String.allocateArray(0));
-        meta.AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateArray(0));
-        meta.AssertionStatusDirectives_packages.set(instance, meta.String.allocateArray(0));
-        meta.AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateArray(0));
+        StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
+        meta.java_lang_AssertionStatusDirectives.lookupMethod(Name.INIT, Signature._void).invokeDirect(instance);
+        meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateArray(0));
+        meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateArray(0));
+        meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateArray(0));
+        meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateArray(0));
         boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
-        meta.AssertionStatusDirectives_deflt.set(instance, ea);
+        meta.java_lang_AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
     }
 
@@ -1768,7 +1768,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.notNull(loader)) {
             Meta meta = getMeta();
             if (meta.sun_reflect_DelegatingClassLoader.isAssignableFrom(loader.getKlass())) {
-                return loader.getField(meta.ClassLoader_parent);
+                return loader.getField(meta.java_lang_ClassLoader_parent);
             }
         }
         return loader;
@@ -1776,12 +1776,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private boolean isTrustedLoader(StaticObject loader) {
         StaticObject nonDelLoader = nonReflectionClassLoader(loader);
-        StaticObject systemLoader = (StaticObject) getMeta().ClassLoader_getSystemClassLoader.invokeDirect(null);
+        StaticObject systemLoader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
         while (StaticObject.notNull(systemLoader)) {
             if (systemLoader == nonDelLoader) {
                 return true;
             }
-            systemLoader = systemLoader.getField(getMeta().ClassLoader_parent);
+            systemLoader = systemLoader.getField(getMeta().java_lang_ClassLoader_parent);
         }
         return false;
     }
@@ -1790,7 +1790,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         final StaticObject[] threads = getContext().getActiveThreads();
-        return getMeta().Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
+        return getMeta().java_lang_Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 return threads[index];
@@ -1918,7 +1918,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass component = infoArray.getKlass().getComponentType();
-        if (component == null || !meta.management_ThreadInfo.equals(component)) {
+        if (component == null || !meta.java_lang_management_ThreadInfo.equals(component)) {
             throw meta.throwExWithMessage(IllegalArgumentException.class, "infoArray element type is not ThreadInfo class");
         }
     }
@@ -1942,16 +1942,16 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw meta.throwExWithMessage(IllegalArgumentException.class, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
-        Method init = meta.management_ThreadInfo.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(/* returns */Type._void,
-                        /* t */ Type.Thread,
+        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(/* returns */Type._void,
+                        /* t */ Type.java_lang_Thread,
                         /* state */ Type._int,
-                        /* lockObj */ Type.Object,
-                        /* lockOwner */Type.Thread,
+                        /* lockObj */ Type.java_lang_Object,
+                        /* lockOwner */Type.java_lang_Thread,
                         /* blockedCount */Type._long,
                         /* blockedTime */Type._long,
                         /* waitedCount */Type._long,
                         /* waitedTime */Type._long,
-                        /* StackTraceElement[] */ Type.StackTraceElement_array));
+                        /* StackTraceElement[] */ Type.java_lang_StackTraceElement_array));
 
         StaticObject[] activeThreads = getContext().getActiveThreads();
         StaticObject currentThread = getContext().getCurrentThread();
@@ -1960,7 +1960,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if ((long) meta.Thread_tid.get(activeThreads[j]) == id) {
+                if ((long) meta.java_lang_Thread_tid.get(activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }
@@ -1970,7 +1970,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
             } else {
 
-                int threadStatus = thread.getIntField(meta.Thread_threadStatus);
+                int threadStatus = thread.getIntField(meta.java_lang_Thread_threadStatus);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
                 int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
@@ -1995,17 +1995,17 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                 StaticObject stackTrace;
                 if (maxDepth != 0 && thread == currentThread) {
-                    stackTrace = (StaticObject) getMeta().Throwable_getStackTrace.invokeDirect(getMeta().newThrowable());
+                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(getMeta().newThrowable());
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
                         stackTrace = StaticObject.wrap(unwrapped);
                     }
                 } else {
-                    stackTrace = meta.StackTraceElement.allocateArray(0);
+                    stackTrace = meta.java_lang_StackTraceElement.allocateArray(0);
                 }
 
-                StaticObject threadInfo = meta.management_ThreadInfo.allocateInstance();
+                StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance();
                 init.invokeDirect( /* this */ threadInfo,
                                 /* t */ thread,
                                 /* state */ threadStatus,
@@ -2026,13 +2026,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
-        return getMeta().String.allocateArray(0);
+        return getMeta().java_lang_String.allocateArray(0);
     }
 
     @JniImpl
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused) {
-        Klass memoryPoolMXBean = getMeta().loadKlass(Type.MemoryPoolMXBean, StaticObject.NULL);
+        Klass memoryPoolMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL);
         return memoryPoolMXBean.allocateArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
@@ -2049,7 +2049,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool) {
-        Klass memoryManagerMXBean = getMeta().loadKlass(Type.MemoryManagerMXBean, StaticObject.NULL);
+        Klass memoryManagerMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL);
         return memoryManagerMXBean.allocateArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
@@ -2067,8 +2067,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -2079,8 +2079,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -2088,8 +2088,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
-        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
-        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -2113,7 +2113,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             case JMM_THREAD_DAEMON_COUNT:
                 int daemonCount = 0;
                 for (StaticObject t : getContext().getActiveThreads()) {
-                    if ((boolean) getMeta().Thread_daemon.get(t)) {
+                    if ((boolean) getMeta().java_lang_Thread_daemon.get(t)) {
                         ++daemonCount;
                     }
                 }
@@ -2178,7 +2178,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw getMeta().throwEx(NullPointerException.class);
         }
         if (StaticObject.notNull(names)) {
-            if (!names.getKlass().equals(getMeta().String.array())) {
+            if (!names.getKlass().equals(getMeta().java_lang_String.array())) {
                 throw getMeta().throwExWithMessage(IllegalArgumentException.class, "Array element type is not String class");
             }
 

@@ -261,15 +261,15 @@ public final class EspressoContext {
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
-        initializeKnownClass(Type.Object);
+        initializeKnownClass(Type.java_lang_Object);
 
         for (Symbol<Type> type : Arrays.asList(
-                        Type.String,
-                        Type.System,
-                        Type.ThreadGroup,
-                        Type.Thread,
-                        Type.Class,
-                        Type.Method)) {
+                        Type.java_lang_String,
+                        Type.java_lang_System,
+                        Type.java_lang_ThreadGroup,
+                        Type.java_lang_Thread,
+                        Type.java_lang_Class,
+                        Type.java_lang_reflect_Method)) {
             initializeKnownClass(type);
         }
 
@@ -282,7 +282,7 @@ public final class EspressoContext {
             @SuppressWarnings("rawtypes")
             @Override
             public void run() {
-                final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
+                final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
@@ -292,7 +292,7 @@ public final class EspressoContext {
                         do {
                             head = (EspressoReference) referenceQueue.remove();
                             assert head != null;
-                        } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
+                        } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
 
                         lock.getLock().lock();
                         try {
@@ -302,17 +302,17 @@ public final class EspressoContext {
                             EspressoReference prev = head;
                             EspressoReference ref;
                             while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                                if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
+                                if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
                                     continue;
                                 }
-                                meta.Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
                                 casNextIfNullAndMaybeClear(ref);
                                 prev = ref;
                             }
 
-                            meta.Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                            StaticObject obj = meta.Reference_pending.getAndSetObject(meta.Reference.getStatics(), head.getGuestReference());
-                            meta.Reference_discovered.set(prev.getGuestReference(), obj);
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                            StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
 
                             getVM().JVM_MonitorNotify(lock);
                         } finally {
@@ -326,37 +326,37 @@ public final class EspressoContext {
             }
         });
 
-        meta.System_initializeSystemClass.invokeDirect(null);
+        meta.java_lang_System_initializeSystemClass.invokeDirect(null);
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(
-                        Type.OutOfMemoryError,
-                        Type.NullPointerException,
-                        Type.ClassCastException,
-                        Type.ArrayStoreException,
-                        Type.ArithmeticException,
-                        Type.StackOverflowError,
-                        Type.IllegalMonitorStateException,
-                        Type.IllegalArgumentException)) {
+                        Type.java_lang_OutOfMemoryError,
+                        Type.java_lang_NullPointerException,
+                        Type.java_lang_ClassCastException,
+                        Type.java_lang_ArrayStoreException,
+                        Type.java_lang_ArithmeticException,
+                        Type.java_lang_StackOverflowError,
+                        Type.java_lang_IllegalMonitorStateException,
+                        Type.java_lang_IllegalArgumentException)) {
             initializeKnownClass(type);
         }
 
         // Init memoryError instances
-        StaticObject stackOverflowErrorInstance = meta.StackOverflowError.allocateInstance();
-        StaticObject outOfMemoryErrorInstance = meta.OutOfMemoryError.allocateInstance();
-        meta.StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-        meta.OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+        StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
+        StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
+        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
         stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
-        stackOverflowErrorInstance.setField(meta.Throwable_backtrace, stackOverflowErrorInstance);
+        stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
         outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
-        outOfMemoryErrorInstance.setField(meta.Throwable_backtrace, outOfMemoryErrorInstance);
+        outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
 
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
         // Create application (system) class loader.
-        meta.ClassLoader_getSystemClassLoader.invokeDirect(null);
+        meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
 
         EspressoLogger.log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
         initVMDoneMs = System.currentTimeMillis();
@@ -366,10 +366,10 @@ public final class EspressoContext {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
-        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().Cleaner)) {
+        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().sun_misc_Cleaner)) {
             wrapper.clear();
         }
-        ref.compareAndSwapField(meta.Reference_next, StaticObject.NULL, ref);
+        ref.compareAndSwapField(meta.java_lang_ref_Reference_next, StaticObject.NULL, ref);
     }
 
     /**
@@ -377,31 +377,32 @@ public final class EspressoContext {
      * HotSpot's implementation.
      */
     private void createMainThread() {
-        StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
-        meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
+        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
+        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private
+                                                                                    // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
-        StaticObject mainThread = meta.Thread.allocateInstance();
+        StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
-        mainThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
+        mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-        mainThreadGroup = meta.ThreadGroup.allocateInstance();
+        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
         threadManager.registerMainThread(Thread.currentThread(), mainThread);
 
         // Guest Thread.currentThread() must work as this point.
-        meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
+        meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
                         .invokeDirect(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));
 
-        meta.Thread // public Thread(ThreadGroup group, String name)
+        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+        mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         mainThreadCreated = true;
     }
@@ -419,24 +420,24 @@ public final class EspressoContext {
             // already a live guest thread for this host thread
             return;
         }
-        StaticObject guestThread = meta.Thread.allocateInstance();
+        StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
-        guestThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
+        guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
         guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
 
         // register the new guest thread
         threadManager.registerThread(hostThread, guestThread);
 
-        meta.Thread // public Thread(ThreadGroup group, String name)
+        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_Runnable) //
                         .invokeDirect(guestThread,
                                         /* group */ mainThreadGroup,
                                         /* runnable */ StaticObject.NULL);
-        guestThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+        guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         // now add to the main thread group
-        meta.ThreadGroup // public void add(Thread t)
+        meta.java_lang_ThreadGroup // public void add(Thread t)
                         .lookupDeclaredMethod(Name.add, Signature._void_Thread).invokeDirect(mainThreadGroup,
                                         /* thread */ guestThread);
     }
