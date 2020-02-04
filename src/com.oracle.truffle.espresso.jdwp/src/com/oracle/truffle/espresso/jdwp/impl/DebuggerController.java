@@ -75,6 +75,7 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
+    private final Map<Object, MonitorContendedEnterEvent> monitorContendedExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
 
     private JDWPOptions options;
@@ -348,30 +349,31 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public void suspend(Object thread) {
-        JDWPLogger.log("suspend called for thread: %s with suspension count %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
+    public void suspend(Object guestThread) {
+        JDWPLogger.log("suspend called for guestThread: %s with suspension count %d", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread), threadSuspension.getSuspensionCount(guestThread));
 
-        if (threadSuspension.getSuspensionCount(thread) > 0) {
+        if (threadSuspension.getSuspensionCount(guestThread) > 0) {
             // already suspended, so only increase the suspension count
-            threadSuspension.suspendThread(thread);
+            threadSuspension.suspendThread(guestThread);
             return;
         }
 
         try {
-            JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(thread).getState());
-            JDWPLogger.log("calling underlying suspend method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-            debuggerSession.suspend(getContext().asHostThread(thread));
+            JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(guestThread).getState());
+            JDWPLogger.log("calling underlying suspend method for guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
+            debuggerSession.suspend(getContext().asHostThread(guestThread));
 
-            boolean suspended = threadSuspension.getSuspensionCount(thread) != 0;
+            boolean suspended = threadSuspension.getSuspensionCount(guestThread) != 0;
             JDWPLogger.log("suspend success: %b", JDWPLogger.LogLevel.THREAD, suspended);
 
             // quite often the Debug API will not call back the onSuspend method in time,
-            // even if the thread is executing. If the thread is blocked or waiting we still need
+            // even if the guestThread is executing. If the guestThread is blocked or waiting we
+            // still need
             // to suspend it, thus we manage this with a hard suspend mechanism
-            threadSuspension.addHardSuspendedThread(thread);
-            suspendedInfos.put(thread, new UnknownSuspendedInfo(thread, getContext()));
+            threadSuspension.addHardSuspendedThread(guestThread);
+            suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
         } catch (Exception e) {
-            JDWPLogger.log("not able to suspend thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
+            JDWPLogger.log("not able to suspend guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
         }
     }
 
@@ -449,6 +451,10 @@ public final class DebuggerController implements ContextsListener {
 
     public void prepareMethodBreakpoint(MethodBreakpointEvent event) {
         methodBreakpointExpected.put(Thread.currentThread(), event);
+    }
+
+    public void prepareMonitorContendedEvent(MonitorContendedEnterEvent event) {
+        monitorContendedExpected.put(Thread.currentThread(), event);
     }
 
     public VirtualMachine getVirtualMachine() {
@@ -769,6 +775,18 @@ public final class DebuggerController implements ContextsListener {
                     @Override
                     public Void call() {
                         eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);
+                        return null;
+                    }
+                });
+            }
+
+            // check if suspended for a monitor contended event
+            MonitorContendedEnterEvent monitorEvent = monitorContendedExpected.remove(Thread.currentThread());
+            if (monitorEvent != null) {
+                jobs.add(new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        eventListener.sendMonitorContendedEvent(monitorEvent, currentThread, callFrames[0]);
                         return null;
                     }
                 });

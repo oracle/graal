@@ -189,6 +189,11 @@ public final class InterpreterToVM implements ContextAccess {
 
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj) {
+        monitorEnter(obj, null);
+    }
+
+    @TruffleBoundary
+    public static void monitorEnter(@Host(Object.class) StaticObject obj, Runnable contendedCallback) {
         final EspressoLock lock = obj.getLock();
         if (!lock.tryLock()) {
             Meta meta = obj.getKlass().getMeta();
@@ -200,6 +205,9 @@ public final class InterpreterToVM implements ContextAccess {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
+            }
+            if (contendedCallback != null) {
+                contendedCallback.run();
             }
             lock.lock();
             if (context.EnableManagement) {

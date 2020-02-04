@@ -90,4 +90,6 @@ public interface VMListener {
      * @return true only if the method has a method breakpoint, false otherwise
      */
     boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
+
+    boolean prepareMonitorContended(Object monitor);
 }

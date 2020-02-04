@@ -302,10 +302,10 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.DISPOSE_OBJECTS.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.HOLD_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.RELEASE_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);

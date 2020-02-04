@@ -252,9 +252,9 @@ final class JDWP {
                 reply.writeBoolean(true); // canWatchFieldAccess
                 reply.writeBoolean(true); // canGetBytecodes
                 reply.writeBoolean(true); // canGetSyntheticAttribute
-                reply.writeBoolean(false); // canGetOwnedMonitorInfo
-                reply.writeBoolean(false); // canGetCurrentContendedMonitor
-                reply.writeBoolean(false); // canGetMonitorInfo
+                reply.writeBoolean(true); // canGetOwnedMonitorInfo
+                reply.writeBoolean(true); // canGetCurrentContendedMonitor
+                reply.writeBoolean(true); // canGetMonitorInfo
                 return new CommandResult(reply);
             }
         }
@@ -332,9 +332,9 @@ final class JDWP {
                 reply.writeBoolean(true); // canWatchFieldAccess
                 reply.writeBoolean(true); // canGetBytecodes
                 reply.writeBoolean(true); // canGetSyntheticAttribute
-                reply.writeBoolean(false); // canGetOwnedMonitorInfo
-                reply.writeBoolean(false); // canGetCurrentContendedMonitor
-                reply.writeBoolean(false); // canGetMonitorInfo
+                reply.writeBoolean(true); // canGetOwnedMonitorInfo
+                reply.writeBoolean(true); // canGetCurrentContendedMonitor
+                reply.writeBoolean(true); // canGetMonitorInfo
                 reply.writeBoolean(CAN_REDEFINE_CLASSES); // canRedefineClasses
                 reply.writeBoolean(false); // canAddMethod
                 reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
@@ -344,8 +344,8 @@ final class JDWP {
                 reply.writeBoolean(true); // canRequestVMDeathEvent
                 reply.writeBoolean(false); // canSetDefaultStratum
                 reply.writeBoolean(CAN_GET_INSTANCE_INFO); // canGetInstanceInfo
-                reply.writeBoolean(false); // canRequestMonitorEvents
-                reply.writeBoolean(CAN_GET_MONITOR_FRAME_INFO); // canGetMonitorFrameInfo
+                reply.writeBoolean(true); // canRequestMonitorEvents
+                reply.writeBoolean(true); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
                 reply.writeBoolean(true); // canGetConstantPool
                 reply.writeBoolean(CAN_FORCE_EARLY_RETURN); // canForceEarlyReturn

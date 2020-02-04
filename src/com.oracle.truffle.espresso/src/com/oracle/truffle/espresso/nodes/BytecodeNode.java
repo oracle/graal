@@ -1008,7 +1008,20 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                         case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
-                        case MONITORENTER: monitorEnter(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                        case MONITORENTER:
+                            final StaticObject monitor = nullCheck(peekAndReleaseObject(frame, top - 1));
+                            if (instrument != null) {
+                                final int index = statementIndex;
+                                monitorEnter(frame, monitor, new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        instrument.notifyMonitorContended(frame, index, monitor);
+                                    }
+                                });
+                            } else {
+                                monitorEnter(frame, monitor);
+                            }
+                            break;
                         case MONITOREXIT:  monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
 
                         case WIDE:
@@ -1192,9 +1205,23 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         getMonitorStack(frame).exit(monitor, this);
     }
 
-    private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+    void synchronizedMethodMonitorEnter(VirtualFrame frame, StaticObject monitor) {
+        Runnable monitorCallback = instrumentation == null ? null : new Runnable() {
+            @Override
+            public void run() {
+                instrumentation.notifyMonitorContended(frame, 0, monitor);
+            }
+        };
+        InterpreterToVM.monitorEnter(monitor, monitorCallback);
+    }
+
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor, Runnable contendedCallback) {
         registerMonitor(frame, monitor);
-        InterpreterToVM.monitorEnter(monitor);
+        InterpreterToVM.monitorEnter(monitor, contendedCallback);
+    }
+
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+        monitorEnter(frame, monitor, null);
     }
 
     private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
@@ -2446,6 +2473,12 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
             if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
+                enterAt(frame, index);
+            }
+        }
+
+        public void notifyMonitorContended(VirtualFrame frame, int index, Object monitor) {
+            if (context.getJDWPListener().prepareMonitorContended(monitor)) {
                 enterAt(frame, index);
             }
         }

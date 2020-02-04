@@ -183,6 +183,9 @@ public final class RequestedJDWPEvents {
             case VM_DEATH: // no debuggers should request this event
                 eventListener.addVMDeathRequest(packet.id);
                 break;
+            case MONITOR_CONTENDED_ENTER:
+                eventListener.addMonitorEnterRequest(packet.id, filter);
+                break;
             default:
                 JDWPLogger.log("unhandled event kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
                 break;
@@ -355,6 +358,9 @@ public final class RequestedJDWPEvents {
                         break;
                     case CLASS_UNLOAD:
                         eventListener.addClassUnloadRequestId(packet.id);
+                        break;
+                    case MONITOR_CONTENDED_ENTER:
+                        eventListener.removeMonitorEnterRequest(requestId);
                         break;
                     default:
                         JDWPLogger.log("unhandled event clear kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
