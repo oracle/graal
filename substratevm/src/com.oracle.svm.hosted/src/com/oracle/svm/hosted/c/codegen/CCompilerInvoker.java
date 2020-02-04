@@ -211,7 +211,7 @@ public abstract class CCompilerInvoker {
         @Override
         protected CompilerInfo createCompilerInfo(Scanner scanner) {
             try {
-                while (scanner.findInLine("Apple LLVM version ") == null) {
+                while (scanner.findInLine("Apple.*version ") == null) {
                     scanner.nextLine();
                 }
                 scanner.useDelimiter("[. ]");
