@@ -365,16 +365,6 @@ public interface JDWPContext {
     void exit(int exitCode);
 
     /**
-     * This method is called when the VM should hold JDWP events.
-     */
-    void holdEvents();
-
-    /**
-     * This method is called when the VM should release all held JDWP events.
-     */
-    void releaseEvents();
-
-    /**
      * Returns the classpath.
      *
      * @return a list representation of each classpath entry

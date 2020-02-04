@@ -514,15 +514,6 @@ public final class JDWPContextImpl implements JDWPContext {
         // tracked here: /browse/GR-20496
     }
 
-    public void holdEvents() {
-        eventListener.holdEvents();
-    }
-
-    @Override
-    public void releaseEvents() {
-        eventListener.releaseEvents();
-    }
-
     @Override
     public List<Path> getClassPath() {
         return context.getVmProperties().classpath();

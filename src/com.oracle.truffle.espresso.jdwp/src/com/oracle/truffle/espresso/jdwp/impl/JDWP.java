@@ -301,10 +301,10 @@ final class JDWP {
         static class HOLD_EVENTS {
             public static final int ID = 15;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                context.holdEvents();
+                controller.getEventListener().holdEvents();
 
                 return new CommandResult(reply);
             }
@@ -313,10 +313,10 @@ final class JDWP {
         static class RELEASE_EVENTS {
             public static final int ID = 16;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                context.releaseEvents();
+                controller.getEventListener().releaseEvents();
 
                 return new CommandResult(reply);
             }
