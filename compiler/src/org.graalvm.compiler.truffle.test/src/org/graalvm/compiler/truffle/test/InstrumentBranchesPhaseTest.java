@@ -29,6 +29,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -77,8 +78,8 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
-    @Override
-    protected void beforeInitialization() {
+    @Before
+    public void setUp() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("engine.InstrumentBranches", "true").build());
     }
 

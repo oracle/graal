@@ -110,20 +110,19 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(TruffleCompilationThreshold, 3)) {
-            TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(factory, new TestRepeatingNode());
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-            target.call(OSR_THRESHOLD + 1);
-            assertCompiled(rootNode.getOSRTarget());
-            assertNotCompiled(target);
-            target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-            for (int i = 0; i < TruffleRuntimeOptions.getValue(TruffleCompilationThreshold) +
-                            TruffleRuntimeOptions.getValue(TruffleReplaceReprofileCount) - 1; i++) {
-                target.call(2);
-            }
-            assertCompiled(rootNode.getOSRTarget());
-            assertCompiled(target);
+        setupContext("engine.CompilationThreshold", "3");
+        TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(factory, new TestRepeatingNode());
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        target.call(OSR_THRESHOLD + 1);
+        assertCompiled(rootNode.getOSRTarget());
+        assertNotCompiled(target);
+        target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
+        for (int i = 0; i < TruffleRuntimeOptions.getValue(TruffleCompilationThreshold) +
+                        TruffleRuntimeOptions.getValue(TruffleReplaceReprofileCount) - 1; i++) {
+            target.call(2);
         }
+        assertCompiled(rootNode.getOSRTarget());
+        assertCompiled(target);
     }
 
     /*

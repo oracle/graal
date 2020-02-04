@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -35,33 +31,17 @@ import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
+/*
+ * We turn on the flag to compile every Truffle function immediately, on its first execution
+ * in the interpreter. And we wait until compilation finishes so that we really execute the
+ * compiled method. This leads to a lot of compilation, but that is the purpose of this
+ * test. It also leads to a lot of deoptimization, since the first time a method is compiled
+ * it has all nodes in the uninitialized specialization. This means that most methods are
+ * compiled multiple times, in different specialization states.
+ */
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class)
+@SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class, options = {"engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false"})
 public class SLCompileImmediatelyTestSuite {
-
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope overrideScope;
-
-    @BeforeClass
-    public static void beforeClass() {
-        assert overrideScope == null;
-        /*
-         * We turn on the flag to compile every Truffle function immediately, on its first execution
-         * in the interpreter. And we wait until compilation finishes so that we really execute the
-         * compiled method. This leads to a lot of compilation, but that is the purpose of this
-         * test. It also leads to a lot of deoptimization, since the first time a method is compiled
-         * it has all nodes in the uninitialized specialization. This means that most methods are
-         * compiled multiple times, in different specialization states.
-         */
-        overrideScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, true, SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-
-    }
-
-    @AfterClass
-    public static void afterClass() {
-        assert overrideScope != null;
-        overrideScope.close();
-    }
-
     /*
      * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
      * an empty method, this class gets included and the test suite is properly executed.

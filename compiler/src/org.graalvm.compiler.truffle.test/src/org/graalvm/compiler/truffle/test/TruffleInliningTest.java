@@ -24,8 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
-
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,12 +35,9 @@ import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
@@ -49,8 +45,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.polyglot.Context;
 
 public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
+
+    private static final String[] DEFAULT_OTIONS = {"engine.Compilation", "false"};
+
+    @Before
+    public void before() {
+        setupContext();
+    }
 
     class InlineTestRootNode extends RootNode {
 
@@ -268,15 +272,15 @@ public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
         return count[0];
     }
 
-    private TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = null;
-
-    @Before
-    public void before() {
-        scope = overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilation, false);
-    }
-
-    @After
-    public void after() {
-        scope.close();
+    @Override
+    protected Context setupContext(String... keyValuePairs) {
+        String[] newOptions;
+        if (keyValuePairs.length == 0) {
+            newOptions = DEFAULT_OTIONS;
+        } else {
+            newOptions = Arrays.copyOf(DEFAULT_OTIONS, DEFAULT_OTIONS.length + keyValuePairs.length);
+            System.arraycopy(keyValuePairs, 0, newOptions, DEFAULT_OTIONS.length, keyValuePairs.length);
+        }
+        return super.setupContext(newOptions);
     }
 }

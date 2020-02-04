@@ -39,9 +39,8 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -49,17 +48,11 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
-    // Needed to make some tests actually blow the budget
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope maxRecursiveDepthScope;
-
-    @BeforeClass
-    public static void beforeClass() {
-        maxRecursiveDepthScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining, 4);
-    }
-
-    @AfterClass
-    public static void afterClass() {
-        maxRecursiveDepthScope.close();
+    @Before
+    @Override
+    public void before() {
+        // Needed to make some tests actually blow the budget
+        setupContext("engine.InliningRecursionDepth", "4");
     }
 
     @Test

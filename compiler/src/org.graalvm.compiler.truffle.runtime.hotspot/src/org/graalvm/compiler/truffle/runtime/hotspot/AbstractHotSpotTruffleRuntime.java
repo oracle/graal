@@ -169,9 +169,26 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public HotSpotTruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            initializeTruffleCompiler(null);    // TODO
-            rethrowTruffleCompilerInitializationException();
+            boolean interrupted = false;
+            synchronized (this) {
+                while (!truffleCompilerInitialized) {
+                    rethrowTruffleCompilerInitializationException();
+                    if (initializationTask == null) {
+                        throw new IllegalStateException("Compiler not yet initialized.");
+                    }
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        // Keep waiting
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
+        assert truffleCompiler != null : "TruffleCompiler must be non null";
         return (HotSpotTruffleCompiler) truffleCompiler;
     }
 
@@ -208,6 +225,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
                                 assert initializationTask != null;
                                 initializationTask = null;
+                                lock.notifyAll();
                             }
                         }
                     });

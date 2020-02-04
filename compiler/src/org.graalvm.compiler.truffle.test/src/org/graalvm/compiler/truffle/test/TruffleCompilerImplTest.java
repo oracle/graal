@@ -43,9 +43,8 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     protected TruffleCompilerImplTest() {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", runtime.getTruffleCompiler() instanceof TruffleCompilerImpl);
-        beforeInitialization();
         TruffleCompiler compiler = runtime.newTruffleCompiler();
+        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
         this.truffleCompiler = (TruffleCompilerImpl) compiler;
     }
 
@@ -53,12 +52,6 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
         if (compilerInitialized.compareAndSet(false, true)) {
             truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
         }
-    }
-
-    /**
-     * Executed before initialization. This hook can be used to override specific flags.
-     */
-    protected void beforeInitialization() {
     }
 
     protected final void setupContext(Context newContext) {
