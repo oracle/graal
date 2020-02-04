@@ -27,10 +27,10 @@ package org.graalvm.compiler.nodes.gc;
 
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 
 public interface BarrierSet {
     void addBarriers(FixedAccessNode n);
 
-    HeapAccess.BarrierType readBarrierType(RawLoadNode load);
+    BarrierType readBarrierType(RawLoadNode load);
 }

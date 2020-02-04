@@ -29,8 +29,8 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  *
- * A special form of {@linkplain MemoryAccess} requiring a {@linkplain GuardingNode} to hold to be
- * executed.
+ * A {@linkplain MemoryAccess} that requires a {@linkplain GuardingNode} as a pre-condition to its
+ * execution.
  */
 public interface GuardedMemoryAccess extends MemoryAccess, GuardedNode {
 
