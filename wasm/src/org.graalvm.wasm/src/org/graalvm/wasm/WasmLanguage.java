@@ -88,7 +88,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                 }
             };
             final String name = "wasm-parsing-thread(" + module.name() + ")";
-            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions());
+            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
             final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
             final Thread parsingThread = new Thread(null, parsing, name, stackSize);
