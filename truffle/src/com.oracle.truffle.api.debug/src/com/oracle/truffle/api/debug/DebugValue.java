@@ -120,31 +120,6 @@ public abstract class DebugValue {
     public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
-     * Returns the underlying guest value object held by this {@link DebugValue}.
-     *
-     * @param languageInfo the unique language info object
-     * @return the guest language object or null if the language info differs from the language that
-     *         created the underlying {@link DebugValue}
-     *
-     * @since 20.1
-     */
-    public Object asGuestValue(LanguageInfo languageInfo) {
-        LanguageInfo originalLanguage = getOriginalLanguage();
-        if (originalLanguage == null) {
-            return isAllowedLanguage(languageInfo) ? get() : null;
-        }
-
-        if (languageInfo == null || !isAllowedLanguage(languageInfo) || originalLanguage.getId() != languageInfo.getId()) {
-            return null;
-        }
-        return get();
-    }
-
-    private boolean isAllowedLanguage(LanguageInfo language) {
-        return language != null ? "java".equals(language.getId()) : false;
-    }
-
-    /**
      * Returns the {@link String} value if this value represents a string. This method returns
      * <code>null</code> otherwise.
      *

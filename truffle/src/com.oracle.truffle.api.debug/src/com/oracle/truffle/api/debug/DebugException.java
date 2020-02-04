@@ -117,26 +117,6 @@ public final class DebugException extends RuntimeException {
     }
 
     /**
-     * Returns the guest language representation of the exception, or <code>null</code> if the
-     * requesting language class does not match the root node language at the throw location.
-     *
-     * @param languageClass the requesting Truffle language class object
-     * @return the throwable guest language object
-     *
-     * @since 20.1
-     */
-    public Throwable asGuestException(Class<? extends TruffleLanguage<?>> languageClass) {
-        Objects.requireNonNull(languageClass);
-        RootNode rootNode = throwLocation.getRootNode();
-        if (languageClass == null || rootNode == null) {
-            return null;
-        }
-        // check if language class of the root node corresponds to the input language
-        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
-        return language != null && language.getClass() == languageClass ? getRawException() : null;
-    }
-
-    /**
      * Unsupported, {@link DebugException} instances are not writable therefore filling the stack
      * trace has no effect for them.
      *
@@ -334,6 +314,10 @@ public final class DebugException extends RuntimeException {
             }
         }
         return catchLocation;
+    }
+
+    Node getThrowLocationNode() {
+        return throwLocation;
     }
 
     /**

@@ -104,6 +104,14 @@ meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 supr java.lang.Object
 hfds depth,frame,frameInstance,section,session
 
+CLSS public final com.oracle.truffle.api.debug.DebugLanguageAccess
+meth public com.oracle.truffle.api.frame.MaterializedFrame getRawFrame(com.oracle.truffle.api.debug.DebugStackFrame)
+meth public com.oracle.truffle.api.nodes.Node getRawNode(com.oracle.truffle.api.debug.DebugStackFrame)
+meth public java.lang.Throwable getRawException(com.oracle.truffle.api.debug.DebugException)
+meth public static com.oracle.truffle.api.debug.DebugLanguageAccess get(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
+supr java.lang.Object
+hfds languageClass
+
 CLSS public final com.oracle.truffle.api.debug.DebugScope
 meth public boolean isFunctionScope()
 meth public com.oracle.truffle.api.debug.DebugScope getParent()
