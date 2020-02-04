@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 /**

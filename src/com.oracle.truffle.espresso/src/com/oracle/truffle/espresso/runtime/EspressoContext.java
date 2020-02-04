@@ -379,7 +379,7 @@ public final class EspressoContext {
     private void createMainThread() {
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
         meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name._init_, Signature._void) // private
-                                                                                    // ThreadGroup()
+                                                                                      // ThreadGroup()
                         .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
