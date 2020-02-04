@@ -54,5 +54,5 @@ public class WasmOptions {
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
-    public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(-1);
+    public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
 }

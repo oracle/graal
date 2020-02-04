@@ -51,6 +51,9 @@ import org.graalvm.options.OptionDescriptors;
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
+    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
+    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
+
     @Override
     protected WasmContext createContext(Env env) {
         return new WasmContext(env, this);
@@ -73,7 +76,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     private void readModule(WasmContext context, WasmModule module, byte[] data) {
-        if (data.length < WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions())) {
+        int binarySize = data.length;
+        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
+        if (binarySize < asyncParsingBinarySize) {
             readModuleSynchronously(context, module, data);
         } else {
             final Runnable parsing = new Runnable() {
@@ -83,7 +88,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                 }
             };
             final String name = "wasm-parsing-thread(" + module.name() + ")";
-            final int stackSize = 0;
+            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions());
+            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
+            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
             final Thread parsingThread = new Thread(null, parsing, name, stackSize);
             final ParsingExceptionHandler handler = new ParsingExceptionHandler();
             parsingThread.setUncaughtExceptionHandler(handler);
