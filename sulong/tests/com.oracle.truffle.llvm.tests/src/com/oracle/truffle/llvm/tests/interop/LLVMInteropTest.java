@@ -1506,7 +1506,7 @@ public class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
-    public static final String FILENAME = "O0_MEM2REG." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String FILENAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

@@ -606,7 +606,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.interop.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0_MEM2REG"],
+      "variants" : ["O1"],
       "buildRef" : False,
       "buildSharedObject" : True,
       "buildEnv" : {
