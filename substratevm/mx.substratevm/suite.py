@@ -246,41 +246,6 @@ suite = {
             "spotbugs": "false",
         },
 
-        "com.oracle.svm.core.posixsubst": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core.posix",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance": "8+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "spotbugs": "false",
-        },
-
-        "com.oracle.svm.core.posixsubst.jdk11": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core.jdk11",
-                "com.oracle.svm.core.posixsubst"
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.perf",
-                    "jdk.internal.misc"
-                ],
-            },
-            "javaCompliance": "11+",
-            "overlayTarget" : "com.oracle.svm.core.posixsubst",
-            "multiReleaseJarVersion": "11",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
         "com.oracle.svm.core.windows": {
             "subDir": "src",
             "sourceDirs": ["src"],

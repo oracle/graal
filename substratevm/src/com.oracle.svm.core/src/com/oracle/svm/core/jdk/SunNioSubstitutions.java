@@ -24,13 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
-import java.io.FileDescriptor;
 import java.nio.channels.spi.SelectorProvider;
-
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -86,43 +80,6 @@ final class Target_java_nio_channels_spi_SelectorProvider_Holder {
          */
         SelectorProvider result = java.nio.channels.spi.SelectorProvider.provider();
         assert result != null;
-    }
-}
-
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-@SuppressWarnings({"unused"})
-@TargetClass(sun.nio.ch.Net.class)
-final class Target_sun_nio_ch_Net {
-
-    @Substitute
-    static int getInterface4(FileDescriptor fd) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.getInterface4(FileDescriptor)");
-    }
-
-    @Substitute
-    static int getInterface6(FileDescriptor fd) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.getInterface6(FileDescriptor)");
-    }
-
-    @Substitute
-    static void setInterface4(FileDescriptor fd, int interf) {
-        throw VMError.unsupportedFeature("Unimplemented: sun.nio.ch.Net.setInterface4(FileDescriptor, int)");
-    }
-
-    @Substitute
-    static void setInterface6(FileDescriptor fd, int index) {
-        throw VMError.unsupportedFeature("Unimplemented:  sun.nio.ch.Net.setInterface6(FileDescriptor, int)");
-    }
-}
-
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-@SuppressWarnings({"unused"})
-@TargetClass(className = "sun.nio.ch.DatagramDispatcher")
-final class Target_sun_nio_ch_DatagramDispatcher {
-
-    @Substitute
-    static int write0(FileDescriptor fd, long address, int len) {
-        throw VMError.unsupportedFeature("Unimplemented: sun.nio.ch.DatagramChannelImpl.receive0(FileDescriptor, long, int)");
     }
 }
 
