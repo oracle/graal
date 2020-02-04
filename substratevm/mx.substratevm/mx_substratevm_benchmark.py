@@ -334,7 +334,7 @@ _RENAISSANCE_EXTRA_AGENT_ARGS = [
 
 RENAISSANCE_EXTRA_PROFILE_ARGS = [
     '-Dnative-image.benchmark.extra-profile-run-arg=-r',
-    '-Dnative-image.benchmark.extra-profile-run-arg=5'
+    '-Dnative-image.benchmark.extra-profile-run-arg=3'
 ]
 
 _renaissance_config = {
