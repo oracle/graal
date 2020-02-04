@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PolyglotNativeAPIFeature implements Feature {
 
@@ -64,7 +63,7 @@ public class PolyglotNativeAPIFeature implements Feature {
                 throw new RuntimeException(e);
             }
         });
-        if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
             // on Darwin, change the `id` install name
             String id = System.getProperty("org.graalvm.polyglot.install_name_id");
             if (id == null) {

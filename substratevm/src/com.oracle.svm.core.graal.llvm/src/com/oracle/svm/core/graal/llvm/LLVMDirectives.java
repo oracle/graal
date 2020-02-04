@@ -30,7 +30,6 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
 
@@ -49,7 +48,7 @@ public class LLVMDirectives implements CContext.Directives {
     public List<String> getLibraries() {
         List<String> libraries = new ArrayList<>();
         libraries.add("m");
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
+        if (Platform.includedIn(Platform.LINUX.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
             libraries.add("atomic");
         }
         return libraries;

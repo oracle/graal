@@ -40,12 +40,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixTruffleNFIFeature implements Feature {
 
     @Override
@@ -64,10 +63,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     }
 
     private static String getErrnoGetterFunctionName() {
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             return "__errno_location";
         }
-        if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
             return "__error";
         }
         throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");

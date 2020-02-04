@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.pthread;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -50,7 +49,7 @@ public class PthreadConditionUtils {
             return status;
         }
 
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             /*
              * On Linux, CLOCK_MONOTONIC is also used in the implementation of System.nanoTime, so
              * we can safely assume that it is present.
@@ -70,7 +69,7 @@ public class PthreadConditionUtils {
          * We need the real-time clock to compute absolute deadlines when a conditional wait should
          * return, but calling System.currentTimeMillis reduces the resolution too much.
          */
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             /*
              * Linux is easy, we can just access the clock that we registered as the attribute when
              * the condition was created.

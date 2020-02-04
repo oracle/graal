@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
@@ -93,7 +92,7 @@ public class Signal {
     public interface siginfo_t extends PointerBase {
     }
 
-    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
+    @Platforms(Platform.LINUX.class)
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
@@ -297,7 +296,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
+    @Platforms(Platform.LINUX.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum LinuxSignalEnum {
@@ -308,7 +307,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
+    @Platforms(Platform.DARWIN.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum DarwinSignalEnum {
