@@ -37,11 +37,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.InvokeHandleNode;
-import com.oracle.truffle.espresso.nodes.MHInvokeBasicNodeGen;
-import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
-import com.oracle.truffle.espresso.nodes.MHLinkToNodeGen;
-import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNodeGen;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNodeGen;
+import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 
 /**
  * This class manages MethodHandle polymorphic methods dispatch. It creates and records dummy

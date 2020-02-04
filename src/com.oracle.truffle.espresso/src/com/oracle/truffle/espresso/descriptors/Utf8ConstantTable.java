@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 
 /**
  * Global Utf8Constant table.
