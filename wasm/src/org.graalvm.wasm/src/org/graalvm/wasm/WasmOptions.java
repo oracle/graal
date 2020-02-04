@@ -49,4 +49,10 @@ import org.graalvm.options.OptionStability;
 public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use: <linking-name>:<builtin-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<String> Builtins = new OptionKey<>("");
+
+    @Option(help = "The minimal binary size for which to use async parsing.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
+    public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
+
+    @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
+    public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(-1);
 }

@@ -54,4 +54,9 @@ public class WasmException extends RuntimeException {
     public WasmException(String message) {
         super(message);
     }
+
+    @TruffleBoundary
+    public WasmException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

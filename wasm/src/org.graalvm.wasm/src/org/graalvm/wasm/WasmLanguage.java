@@ -44,13 +44,13 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmEmptyRootNode;
 import org.graalvm.options.OptionDescriptors;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
-
     @Override
     protected WasmContext createContext(Env env) {
         return new WasmContext(env, this);
@@ -67,10 +67,41 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final String moduleName = request.getSource().getName();
         final byte[] data = request.getSource().getBytes().toByteArray();
         final WasmModule module = new WasmModule(moduleName, data);
-        final BinaryParser reader = new BinaryParser(this, module, data);
-        reader.readModule(context);
+        readModule(context, module, data);
         context.registerModule(module);
         return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
+    }
+
+    private void readModule(WasmContext context, WasmModule module, byte[] data) {
+        if (data.length < WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions())) {
+            readModuleSynchronously(context, module, data);
+        } else {
+            final Runnable parsing = new Runnable() {
+                @Override
+                public void run() {
+                    readModuleSynchronously(context, module, data);
+                }
+            };
+            final String name = "wasm-parsing-thread(" + module.name() + ")";
+            final int stackSize = 0;
+            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
+            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
+            parsingThread.setUncaughtExceptionHandler(handler);
+            parsingThread.start();
+            try {
+                parsingThread.join();
+                if (handler.parsingException() != null) {
+                    throw new WasmException("Asynchronous parsing failed.", handler.parsingException());
+                }
+            } catch (InterruptedException e) {
+                throw new WasmException("Asynchronous parsing interrupted.", e);
+            }
+        }
+    }
+
+    private void readModuleSynchronously(WasmContext context, WasmModule module, byte[] data) {
+        final BinaryParser reader = new BinaryParser(this, module, data);
+        reader.readModule(context);
     }
 
     @Override
@@ -83,8 +114,20 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return new WasmOptionsOptionDescriptors();
     }
 
-    public static WasmContext getCurrentContext() {
+    static WasmContext getCurrentContext() {
         return getCurrentContext(WasmLanguage.class);
     }
 
+    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
+        private Throwable parsingException = null;
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            this.parsingException = e;
+        }
+
+        public Throwable parsingException() {
+            return parsingException;
+        }
+    }
 }
