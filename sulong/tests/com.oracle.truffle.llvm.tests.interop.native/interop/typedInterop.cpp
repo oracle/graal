@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,12 @@ POLYGLOT_DECLARE_STRUCT(Point)
 extern "C" int distSquared(void *a, void *b) {
   int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
   int distY = polyglot_as_Point(b)->y - polyglot_as_Point(a)->y;
+  return distX * distX + distY * distY;
+}
+
+extern "C" int distSquaredByCopy(struct Point a, struct Point b) {
+  int distX = b.x - a.x;
+  int distY = b.y - a.y;
   return distX * distX + distY * distY;
 }
 

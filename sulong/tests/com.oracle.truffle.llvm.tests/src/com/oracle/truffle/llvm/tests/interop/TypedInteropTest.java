@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -91,6 +91,19 @@ public class TypedInteropTest extends InteropTestBase {
     @Test
     public void testDistSquared(@Inject(DistSquaredNode.class) CallTarget distSquared) {
         Object ret = distSquared.call(makePoint(3, 7), makePoint(6, 3));
+        Assert.assertEquals(25, ret);
+    }
+
+    public static class DistSquaredByCopyNode extends SulongTestNode {
+
+        public DistSquaredByCopyNode() {
+            super(testLibrary, "distSquaredByCopy");
+        }
+    }
+
+    @Test
+    public void testDistSquaredByCopy(@Inject(DistSquaredByCopyNode.class) CallTarget distSquaredByCopy) {
+        Object ret = distSquaredByCopy.call(makePoint(3, 7), makePoint(6, 3));
         Assert.assertEquals(25, ret);
     }
 
