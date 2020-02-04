@@ -130,6 +130,12 @@ public final class Symbol<T> extends ByteSequence {
     public static class Descriptor extends ModifiedUTF8 {
     }
 
+    /**
+     * Contains commonly used (name) symbols.
+     * 
+     * Symbols declared here must match exactly the field name; notable exceptions include
+     * {@link #_init_}, {@link #_clinit_} and hidden field names.
+     */
     public static final class Name extends ModifiedUTF8 {
 
         public static void init() {
@@ -205,7 +211,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
-        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
@@ -363,6 +368,17 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
     }
 
+    /**
+     * Contains commonly used (type) symbols.
+     *
+     * <p>
+     * Naming convention: Use the fully qualified type name, '_' as package separator and '$' as
+     * separator for inner classes.<br>
+     * - {@link #_long} {@ling #java_lang}<br>
+     * - {@link #java_lang_String_array}<br>
+     * - {@link #_int_array_array}<br>
+     * - {@link #java_lang_ref_Finalizer$FinalizerThread}<br>
+     */
     public static final class Type extends Descriptor {
 
         public static void init() {
@@ -412,6 +428,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> _float_array = StaticSymbols.putType(float[].class);
         public static final Symbol<Type> _double_array = StaticSymbols.putType(double[].class);
         public static final Symbol<Type> _long_array = StaticSymbols.putType(long[].class);
+
+        public static final Symbol<Type> _int_array_array = StaticSymbols.putType(int[][].class);
 
         // Boxed types.
         public static final Symbol<Type> java_lang_Boolean = StaticSymbols.putType(Boolean.class);
@@ -536,6 +554,17 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType(java.lang.management.ThreadInfo.class);
     }
 
+    /**
+     * Contains commonly used (signature) symbols.
+     *
+     * <p>
+     * Naming convention: Use the concatenation of the return type (first) and the parameter types,
+     * separated by '_'. Always use unqualified type names.<br>
+     * {@link #Object}<br>
+     * {@link #_void_String_array}<br>
+     * {@link #Thread$State_int}<br>
+     * {@link #_void}<br>
+     */
     public static final class Signature extends Descriptor {
 
         public static void init() {
@@ -585,27 +614,26 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> Object_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object_array);
 
-        public static final Symbol<Signature> MethodType_cons = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
-        public static final Symbol<Signature> fromMethodDescriptorString_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);
+        public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
+        public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);
 
-        public static final Symbol<Signature> compileToBytecode = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName);
+        public static final Symbol<Signature> MemberName = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName);
 
-        public static final Symbol<Signature> linkMethod_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName, Type.java_lang_Class, Type._int, Type.java_lang_Class,
-                        Type.java_lang_String, Type.java_lang_Object, Type.java_lang_Object_array);
-        public static final Symbol<Signature> linkMethodHandleConstant_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandle, Type.java_lang_Class, Type._int, Type.java_lang_Class,
-                        Type.java_lang_String, Type.java_lang_Object);
-        public static final Symbol<Signature> linkCallSite_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName, Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object,
-                        Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object_array);
-        public static final Symbol<Signature> fixMethodType_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Object);
-        public static final Symbol<Signature> lookup_signature = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
+        public static final Symbol<Signature> MemberName_Class_int_Class_String_Object_Object_array = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName, Type.java_lang_Class, Type._int,
+                        Type.java_lang_Class, Type.java_lang_String, Type.java_lang_Object, Type.java_lang_Object_array);
+        public static final Symbol<Signature> MethodHandle_Class_int_Class_String_Object = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandle, Type.java_lang_Class, Type._int,
+                        Type.java_lang_Class, Type.java_lang_String, Type.java_lang_Object);
+        public static final Symbol<Signature> MemberName_Object_Object_Object_Object_Object_Object_array = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName, Type.java_lang_Object,
+                        Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object_array);
+        public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
 
-        public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
-        public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
+        public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
+        public static final Symbol<Signature> _void_ThreadGroup = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
 
-        public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
+        public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 
         // java.management
         public static final Symbol<Signature> MemoryPoolMXBean_String_boolean_long_long = StaticSymbols.putSignature(Type.java_lang_management_MemoryPoolMXBean, Type.java_lang_String, Type._boolean,
