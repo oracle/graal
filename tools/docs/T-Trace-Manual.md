@@ -10,7 +10,7 @@ code once, apply your insights anytime, anywhere!
 Any moderately skilled hacker can easily create own 
 so called [T-Trace](T-Trace.md) snippets and dynamically apply them to
 the actual programs. That provides ultimate insights into
-execution and behavior of once application without compromising the speed 
+execution and behavior of one's application without compromising the speed
 of the execution. Let's get started with an obligatory Hello World example.
 
 ### Hello World!
