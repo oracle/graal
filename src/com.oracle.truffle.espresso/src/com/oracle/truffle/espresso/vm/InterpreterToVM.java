@@ -404,18 +404,25 @@ public final class InterpreterToVM implements ContextAccess {
         return typeToCheck.isAssignableFrom(instance.getKlass());
     }
 
-    public StaticObject checkCast(StaticObject instance, Klass klass) {
+    @Throws(ClassCastException.class)
+    public static StaticObject checkCast(StaticObject instance, Klass klass) {
         if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
-        throw getMeta().throwEx(getMeta().java_lang_ClassCastException);
+        Meta meta = klass.getMeta();
+        throw meta.throwException(meta.java_lang_ClassCastException);
     }
 
-    public static StaticObject newObject(Klass klass) {
+    @Throws({InstantiationError.class, InstantiationException.class})
+    public static StaticObject newObject(Klass klass, boolean throwsError) {
         // TODO(peterssen): Accept only ObjectKlass.
         assert klass != null && !klass.isArray() && !klass.isPrimitive() : klass;
         if (klass.isAbstract() || klass.isInterface()) {
-            throw klass.getMeta().throwEx(InstantiationError.class);
+            Meta meta = klass.getMeta();
+            throw meta.throwException(
+                            throwsError
+                                            ? meta.java_lang_InstantiationError
+                                            : meta.java_lang_InstantiationException);
         }
         klass.safeInitialize();
         return new StaticObject((ObjectKlass) klass);
