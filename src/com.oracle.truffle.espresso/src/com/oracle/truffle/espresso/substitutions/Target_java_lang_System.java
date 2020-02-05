@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -56,8 +55,7 @@ public final class Target_java_lang_System {
             throw meta.throwException(meta.java_lang_ArrayStoreException);
         } catch (ArrayIndexOutOfBoundsException e) {
             // System.arraycopy javadoc states it throws IndexOutOfBoundsException, the
-            // implementation throws
-            // ArrayIndexOutOfBoundsException (IooBE subclass).
+            // actual implementation throws ArrayIndexOutOfBoundsException (IooBE subclass).
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
