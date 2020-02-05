@@ -30,6 +30,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -77,14 +78,15 @@ public final class CoverageEventNode extends ExecutionEventNode {
             return;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        getLock().lock();
+        Lock lock = getLock();
+        lock.lock();
         try {
             if (entered) {
                 return;
             }
             entered = true;
         } finally {
-            getLock().unlock();
+            lock.unlock();
         }
         putSection2Uri(frame.materialize());
     }

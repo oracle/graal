@@ -35,17 +35,14 @@ import java.util.regex.Matcher;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
-import org.graalvm.tools.lsp.exceptions.InvalidCoverageScriptURI;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
-import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
-import org.graalvm.tools.lsp.server.utils.RunScriptUtils;
 import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.SourceWrapper;
@@ -325,19 +322,8 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         return EvaluationResult.createEvaluationSectionNotReached();
     }
 
-    public TextDocumentSurrogate createSurrogateForTestFile(TextDocumentSurrogate surrogateOfOpenedFile, URI runScriptUriFallback) throws DiagnosticsNotification {
-        URI runScriptUri;
-        try {
-            runScriptUri = RunScriptUtils.extractScriptPath(surrogateOfOpenedFile);
-        } catch (InvalidCoverageScriptURI e) {
-            throw DiagnosticsNotification.create(surrogateOfOpenedFile.getUri(),
-                            Diagnostic.create(Range.create(0, e.getIndex(), 0, e.getLength()), e.getReason(), DiagnosticSeverity.Error, null, "Graal LSP", null));
-        }
-
-        if (runScriptUri == null) {
-            runScriptUri = runScriptUriFallback != null ? runScriptUriFallback : surrogateOfOpenedFile.getUri();
-        }
-
+    public TextDocumentSurrogate createSurrogateForTestFile(TextDocumentSurrogate surrogateOfOpenedFile, URI runScriptUriFallback) {
+        URI runScriptUri = runScriptUriFallback != null ? runScriptUriFallback : surrogateOfOpenedFile.getUri();
         final String langIdOfTestFile = findLanguageOfTestFile(runScriptUri, surrogateOfOpenedFile.getLanguageId());
         LanguageInfo languageInfo = env.getLanguages().get(langIdOfTestFile);
         assert languageInfo != null;
