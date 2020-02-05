@@ -794,8 +794,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
          * Conversions between integer to floating point types require moves between CPU and FPU
          * registers.
          */
-        AMD64Kind fromKind = (AMD64Kind) from.getPlatformKind();
-        AMD64Kind toKind = (AMD64Kind) to.getPlatformKind();
+        AMD64Kind fromKind = scalarKind((AMD64Kind) from.getPlatformKind());
+        AMD64Kind toKind = scalarKind((AMD64Kind) to.getPlatformKind());
         switch (toKind) {
             case DWORD:
                 switch (fromKind) {
@@ -823,6 +823,20 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 break;
         }
         throw GraalError.shouldNotReachHere(toKind + " " + fromKind);
+    }
+
+    private static AMD64Kind scalarKind(AMD64Kind kind) {
+        AMD64Kind resultKind = kind;
+        if (kind.isXMM() && kind.getVectorLength() > 1) {
+            if (kind.getSizeInBytes() == AMD64Kind.SINGLE.getSizeInBytes()) {
+                resultKind = AMD64Kind.SINGLE;
+            } else if (kind.getSizeInBytes() == AMD64Kind.DOUBLE.getSizeInBytes()) {
+                resultKind = AMD64Kind.DOUBLE;
+            } else {
+                GraalError.shouldNotReachHere("no equal size scalar kind for " + kind);
+            }
+        }
+        return resultKind;
     }
 
     @Override
