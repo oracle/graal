@@ -39,7 +39,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
 import org.junit.Assert;
-import org.junit.Before;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -50,11 +49,6 @@ import org.graalvm.polyglot.Context;
 public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
 
     private static final String[] DEFAULT_OTIONS = {"engine.Compilation", "false"};
-
-    @Before
-    public void before() {
-        setupContext();
-    }
 
     class InlineTestRootNode extends RootNode {
 

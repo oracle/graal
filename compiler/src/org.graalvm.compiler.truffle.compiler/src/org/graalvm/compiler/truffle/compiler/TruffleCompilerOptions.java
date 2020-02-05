@@ -135,99 +135,153 @@ public final class TruffleCompilerOptions {
      * Deprecated by {@link PolyglotCompilerOptions#ExcludeAssertions}.
      */
     @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(ExcludeAssertions.getDefaultValue());
+    static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(ExcludeAssertions.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InlineAcrossTruffleBoundary}.
+     */
     @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(InlineAcrossTruffleBoundary.getDefaultValue());
+    static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(InlineAcrossTruffleBoundary.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#TracePerformanceWarnings}.
+     */
     @Option(help = "Print potential performance problems", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceTrufflePerformanceWarnings = new OptionKey<>(false);
+    static final OptionKey<Boolean> TraceTrufflePerformanceWarnings = new OptionKey<>(false);
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#PrintExpansionHistogram}.
+     */
     @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(PrintExpansionHistogram.getDefaultValue());
+    static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(PrintExpansionHistogram.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#EnableInfopoints}.
      */
     @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(EnableInfopoints.getDefaultValue());
+    static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(EnableInfopoints.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#IterativePartialEscape}.
+     */
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(IterativePartialEscape.getDefaultValue());
+    static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(IterativePartialEscape.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranches}.
      */
     @Option(help = "Instrument branches and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(InstrumentBranches.getDefaultValue());
+    static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(InstrumentBranches.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranchesPerInlineSite}.
      */
     @Option(help = "Instrument branches by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(InstrumentBranchesPerInlineSite.getDefaultValue());
+    static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(InstrumentBranchesPerInlineSite.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundaries}.
      */
     @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(InstrumentBoundaries.getDefaultValue());
+    static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(InstrumentBoundaries.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundariesPerInlineSite}.
      */
     @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(InstrumentBoundariesPerInlineSite.getDefaultValue());
+    static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(InstrumentBoundariesPerInlineSite.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentFilter}.
+     */
     @Option(help = "Method filter for host methods in which to add instrumentation.")
-    public static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>(InstrumentFilter.getDefaultValue());
+    static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>(InstrumentFilter.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InstrumentationTableSize}.
+     */
     @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(InstrumentationTableSize.getDefaultValue());
+    static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(InstrumentationTableSize.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#MaximumGraalNodeCount}.
+     */
     @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.")
-    public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(MaximumGraalNodeCount.getDefaultValue());
+    static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(MaximumGraalNodeCount.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#MaximumInlineNodeCount}.
+     */
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
-    public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(MaximumInlineNodeCount.getDefaultValue());
+    static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(MaximumInlineNodeCount.getDefaultValue());
 
     /**
      * Deprecated with no replacement.
      */
     @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
+    static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
 
     // Language agnostic inlining
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#TraceInliningDetails}.
+     */
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TraceTruffleInliningDetails = new OptionKey<>(TraceInliningDetails.getDefaultValue());
+    static final OptionKey<Boolean> TraceTruffleInliningDetails = new OptionKey<>(TraceInliningDetails.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningPolicy}.
+     */
     @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", type = OptionType.Expert)
-    public static final OptionKey<String> TruffleInliningPolicy = new OptionKey<>(InliningPolicy.getDefaultValue());
+    static final OptionKey<String> TruffleInliningPolicy = new OptionKey<>(InliningPolicy.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningExpansionBudget}.
+     */
     @Option(help = "The base expansion budget for language-agnostic inlining.", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(InliningExpansionBudget.getDefaultValue());
+    static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(InliningExpansionBudget.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningInliningBudget}.
+     */
     @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(InliningInliningBudget.getDefaultValue());
+    static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(InliningInliningBudget.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningCutoffCountPenalty}.
+     */
     @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Double> TruffleInliningCutoffCountPenalty = new OptionKey<>(InliningCutoffCountPenalty.getDefaultValue());
+    static final OptionKey<Double> TruffleInliningCutoffCountPenalty = new OptionKey<>(InliningCutoffCountPenalty.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningNodeCountPenalty}.
+     */
     @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Double> TruffleInliningNodeCountPenalty = new OptionKey<>(InliningNodeCountPenalty.getDefaultValue());
+    static final OptionKey<Double> TruffleInliningNodeCountPenalty = new OptionKey<>(InliningNodeCountPenalty.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityFactor}.
+     */
     @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Double> TruffleInliningExpandAllProximityFactor = new OptionKey<>(InliningExpandAllProximityFactor.getDefaultValue());
+    static final OptionKey<Double> TruffleInliningExpandAllProximityFactor = new OptionKey<>(InliningExpandAllProximityFactor.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityBonus}.
+     */
     @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Integer> TruffleInliningExpandAllProximityBonus = new OptionKey<>(InliningExpandAllProximityBonus.getDefaultValue());
+    static final OptionKey<Integer> TruffleInliningExpandAllProximityBonus = new OptionKey<>(InliningExpandAllProximityBonus.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningExpansionCounterPressure}.
+     */
     @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Integer> TruffleInliningExpansionCounterPressure = new OptionKey<>(InliningExpansionCounterPressure.getDefaultValue());
+    static final OptionKey<Integer> TruffleInliningExpansionCounterPressure = new OptionKey<>(InliningExpansionCounterPressure.getDefaultValue());
 
+    /**
+     * Deprecated by {@link PolyglotCompilerOptions#InliningInliningCounterPressure}.
+     */
     @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    public static final OptionKey<Integer> TruffleInliningInliningCounterPressure = new OptionKey<>(InliningInliningCounterPressure.getDefaultValue());
+    static final OptionKey<Integer> TruffleInliningInliningCounterPressure = new OptionKey<>(InliningInliningCounterPressure.getDefaultValue());
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -246,7 +300,7 @@ public final class TruffleCompilerOptions {
         }
         Pair<? extends OptionKey<?>, Function<Object, ?>> compilerOptionKeyPair = Lazy.POLYGLOT_TO_COMPILER.get(optionKey);
         if (compilerOptionKeyPair != null) {
-            return (T) compilerOptionKeyPair.getRight().apply(getValue(compilerOptionKeyPair.getLeft()));
+            return (T) compilerOptionKeyPair.getRight().apply(compilerOptionKeyPair.getLeft().getValue(getOptions()));
         }
         return optionKey.getDefaultValue();
     }
@@ -274,13 +328,6 @@ public final class TruffleCompilerOptions {
             optionValues = result;
         }
         return result;
-    }
-
-    /**
-     * Gets the value of a given Truffle option key.
-     */
-    public static <T> T getValue(OptionKey<T> key) {
-        return key.getValue(getOptions());
     }
 
     /**

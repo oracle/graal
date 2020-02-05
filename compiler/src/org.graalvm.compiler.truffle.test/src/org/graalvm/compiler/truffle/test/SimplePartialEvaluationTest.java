@@ -33,8 +33,6 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
 import org.graalvm.compiler.truffle.test.nodes.BlockTestNode;
@@ -63,28 +61,21 @@ import org.graalvm.compiler.truffle.test.nodes.explosion.LoopExplosionPhiNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.NestedExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.TwoMergesExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.UnrollingTestNode;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
+import org.graalvm.polyglot.Context;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
-
-    @BeforeClass
-    public static void setup() {
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        immediateCompilationScope.close();
+    @Before
+    public void setup() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").build());
     }
 
     public static Object constant42() {
@@ -674,7 +665,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void allowedRecursion() {
         /* Recursion depth just below the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(TruffleCompilerOptions.getValue(PEGraphDecoder.Options.InliningDepthError) - 5);
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getOptions()) - 5);
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "allowedRecursion", result));
     }
 
@@ -682,7 +673,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void tooDeepRecursion() {
         /* Recursion depth just above the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(TruffleCompilerOptions.getValue(PEGraphDecoder.Options.InliningDepthError));
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getOptions()));
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "tooDeepRecursion", result));
     }
 

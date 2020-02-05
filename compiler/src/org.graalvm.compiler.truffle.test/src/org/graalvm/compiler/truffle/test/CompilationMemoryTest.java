@@ -31,29 +31,15 @@ import com.oracle.truffle.api.test.GCUtils;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class CompilationMemoryTest {
-
-    private TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope optionScope;
+public class CompilationMemoryTest extends TestWithPolyglotOptions {
 
     @Before
     public void setUp() {
-        optionScope = TruffleRuntimeOptions.overrideOptions(
-                        SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
-                        SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-    }
-
-    @After
-    public void tearDown() {
-        if (optionScope != null) {
-            optionScope.close();
-        }
+        setupContext("engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false");
     }
 
     @Test
