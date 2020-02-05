@@ -79,9 +79,15 @@ public interface VMEventListener extends VMListener {
 
     void methodBreakpointHit(MethodBreakpointEvent methodEvent, Object currentThread, CallFrame callFrame);
 
-    void addMonitorEnterRequest(int requestId, RequestFilter filter);
+    void addMonitorContendedEnterRequest(int requestId, RequestFilter filter);
 
-    void removeMonitorEnterRequest(int requestId);
+    void removeMonitorContendedEnterRequest(int requestId);
 
-    void sendMonitorContendedEvent(MonitorContendedEnterEvent monitorEvent, Object currentThread, CallFrame callFrame);
+    void sendMonitorContendedEnterEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame callFrame);
+
+    void addMonitorContendedEnteredRequest(int requestId, RequestFilter filter);
+
+    void removeMonitorContendedEnteredRequest(int requestId);
+
+    void sendMonitorContendedEnteredEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame callFrame);
 }

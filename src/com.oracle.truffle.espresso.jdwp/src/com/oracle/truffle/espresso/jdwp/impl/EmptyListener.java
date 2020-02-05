@@ -70,6 +70,11 @@ public final class EmptyListener implements VMListener {
     }
 
     @Override
+    public boolean prepareMonitorContendedEntered(Object monitor) {
+        return false;
+    }
+
+    @Override
     public void holdEvents() {
 
     }

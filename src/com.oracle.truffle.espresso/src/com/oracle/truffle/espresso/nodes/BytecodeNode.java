@@ -1012,10 +1012,16 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             final StaticObject monitor = nullCheck(peekAndReleaseObject(frame, top - 1));
                             if (instrument != null) {
                                 final int index = statementIndex;
+
                                 monitorEnter(frame, monitor, new Runnable() {
                                     @Override
                                     public void run() {
                                         instrument.notifyMonitorContended(frame, index, monitor);
+                                    }
+                                }, new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        instrument.notifyMonitorContendedEntered(frame, index, monitor);
                                     }
                                 });
                             } else {
@@ -1206,22 +1212,28 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     }
 
     void synchronizedMethodMonitorEnter(VirtualFrame frame, StaticObject monitor) {
-        Runnable monitorCallback = instrumentation == null ? null : new Runnable() {
+        Runnable monitorContendedEnterCallback = instrumentation == null ? null : new Runnable() {
             @Override
             public void run() {
                 instrumentation.notifyMonitorContended(frame, 0, monitor);
             }
         };
-        InterpreterToVM.monitorEnter(monitor, monitorCallback);
+        Runnable monitorContendedEnteredCallback = instrumentation == null ? null : new Runnable() {
+            @Override
+            public void run() {
+                instrumentation.notifyMonitorContendedEntered(frame, 0, monitor);
+            }
+        };
+        InterpreterToVM.monitorEnter(monitor, monitorContendedEnterCallback, monitorContendedEnteredCallback);
     }
 
-    private void monitorEnter(VirtualFrame frame, StaticObject monitor, Runnable contendedCallback) {
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor, Runnable monitorContendedEnterCallback, Runnable monitorContendedEnteredCallback) {
         registerMonitor(frame, monitor);
-        InterpreterToVM.monitorEnter(monitor, contendedCallback);
+        InterpreterToVM.monitorEnter(monitor, monitorContendedEnterCallback, monitorContendedEnteredCallback);
     }
 
     private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
-        monitorEnter(frame, monitor, null);
+        monitorEnter(frame, monitor, null, null);
     }
 
     private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
@@ -2479,6 +2491,12 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         public void notifyMonitorContended(VirtualFrame frame, int index, Object monitor) {
             if (context.getJDWPListener().prepareMonitorContended(monitor)) {
+                enterAt(frame, index);
+            }
+        }
+
+        public void notifyMonitorContendedEntered(VirtualFrame frame, int index, Object monitor) {
+            if (context.getJDWPListener().prepareMonitorContendedEntered(monitor)) {
                 enterAt(frame, index);
             }
         }

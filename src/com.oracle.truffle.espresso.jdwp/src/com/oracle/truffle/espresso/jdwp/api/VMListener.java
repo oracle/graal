@@ -92,4 +92,6 @@ public interface VMListener {
     boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
 
     boolean prepareMonitorContended(Object monitor);
+
+    boolean prepareMonitorContendedEntered(Object monitor);
 }

@@ -184,7 +184,10 @@ public final class RequestedJDWPEvents {
                 eventListener.addVMDeathRequest(packet.id);
                 break;
             case MONITOR_CONTENDED_ENTER:
-                eventListener.addMonitorEnterRequest(packet.id, filter);
+                eventListener.addMonitorContendedEnterRequest(packet.id, filter);
+                break;
+            case MONITOR_CONTENDED_ENTERED:
+                eventListener.addMonitorContendedEnteredRequest(packet.id, filter);
                 break;
             default:
                 JDWPLogger.log("unhandled event kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
@@ -360,7 +363,10 @@ public final class RequestedJDWPEvents {
                         eventListener.addClassUnloadRequestId(packet.id);
                         break;
                     case MONITOR_CONTENDED_ENTER:
-                        eventListener.removeMonitorEnterRequest(requestId);
+                        eventListener.removeMonitorContendedEnterRequest(requestId);
+                        break;
+                    case MONITOR_CONTENDED_ENTERED:
+                        eventListener.removeMonitorContendedEnteredRequest(requestId);
                         break;
                     default:
                         JDWPLogger.log("unhandled event clear kind %d", JDWPLogger.LogLevel.PACKET, eventKind);

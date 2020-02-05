@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class MonitorContendedEnterEvent {
+public class MonitorEvent {
 
     private final Object monitor;
     private final RequestFilter filter;
 
-    public MonitorContendedEnterEvent(Object monitor, RequestFilter filter) {
+    public MonitorEvent(Object monitor, RequestFilter filter) {
         this.monitor = monitor;
         this.filter = filter;
     }

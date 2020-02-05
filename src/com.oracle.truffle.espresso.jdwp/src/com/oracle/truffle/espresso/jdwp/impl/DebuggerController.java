@@ -75,7 +75,8 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
-    private final Map<Object, MonitorContendedEnterEvent> monitorContendedExpected = new HashMap<>();
+    private final Map<Object, MonitorEvent> monitorContendedExpected = new HashMap<>();
+    private final Map<Object, MonitorEvent> monitorContendedEnteredExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
 
     private JDWPOptions options;
@@ -453,8 +454,12 @@ public final class DebuggerController implements ContextsListener {
         methodBreakpointExpected.put(Thread.currentThread(), event);
     }
 
-    public void prepareMonitorContendedEvent(MonitorContendedEnterEvent event) {
+    public void prepareMonitorContendedEvent(MonitorEvent event) {
         monitorContendedExpected.put(Thread.currentThread(), event);
+    }
+
+    public void prepareMonitorContendedEnteredEvent(MonitorEvent event) {
+        monitorContendedEnteredExpected.put(Thread.currentThread(), event);
     }
 
     public VirtualMachine getVirtualMachine() {
@@ -780,13 +785,24 @@ public final class DebuggerController implements ContextsListener {
                 });
             }
 
-            // check if suspended for a monitor contended event
-            MonitorContendedEnterEvent monitorEvent = monitorContendedExpected.remove(Thread.currentThread());
-            if (monitorEvent != null) {
+            // check if suspended for a monitor contended enter event
+            MonitorEvent monitorEnterEvent = monitorContendedExpected.remove(Thread.currentThread());
+            if (monitorEnterEvent != null) {
                 jobs.add(new Callable<Void>() {
                     @Override
                     public Void call() {
-                        eventListener.sendMonitorContendedEvent(monitorEvent, currentThread, callFrames[0]);
+                        eventListener.sendMonitorContendedEnterEvent(monitorEnterEvent, currentThread, callFrames[0]);
+                        return null;
+                    }
+                });
+            }
+            // check if suspended for a monitor contended entered event
+            MonitorEvent monitorEnteredEvent = monitorContendedEnteredExpected.remove(Thread.currentThread());
+            if (monitorEnteredEvent != null) {
+                jobs.add(new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        eventListener.sendMonitorContendedEnteredEvent(monitorEnteredEvent, currentThread, callFrames[0]);
                         return null;
                     }
                 });

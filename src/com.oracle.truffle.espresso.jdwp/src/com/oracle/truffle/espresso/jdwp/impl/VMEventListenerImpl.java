@@ -54,6 +54,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorContendedRequests = new HashMap<>();
+    private final HashMap<Integer, RequestFilter> monitorContendedEnteredRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
     private static volatile int fieldBreakpointCount;
     private final StableBoolean methodBreakpointsActive = new StableBoolean(false);
@@ -548,7 +549,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void sendMonitorContendedEvent(MonitorContendedEnterEvent monitorEvent, Object currentThread, CallFrame currentFrame) {
+    public void sendMonitorContendedEnterEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(monitorEvent.getFilter().getSuspendPolicy());
@@ -578,14 +579,12 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void addMonitorEnterRequest(int requestId, RequestFilter filter) {
-        System.out.println("adding request: " + requestId);
+    public void addMonitorContendedEnterRequest(int requestId, RequestFilter filter) {
         monitorContendedRequests.put(requestId, filter);
     }
 
     @Override
-    public void removeMonitorEnterRequest(int requestId) {
-        System.out.println("removing request: " + requestId);
+    public void removeMonitorContendedEnterRequest(int requestId) {
         monitorContendedRequests.remove(requestId);
     }
 
@@ -599,8 +598,67 @@ public final class VMEventListenerImpl implements VMEventListener {
             RequestFilter filter = entry.getValue();
             if (currentThread == filter.getThread()) {
                 // monitor is contended on a requested thread
-                MonitorContendedEnterEvent event = new MonitorContendedEnterEvent(monitor, filter);
+                MonitorEvent event = new MonitorEvent(monitor, filter);
                 debuggerController.prepareMonitorContendedEvent(event);
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void sendMonitorContendedEnteredEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame currentFrame) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+        stream.writeByte(monitorEvent.getFilter().getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(RequestedJDWPEvents.MONITOR_CONTENDED_ENTERED);
+        stream.writeInt(monitorEvent.getFilter().getRequestId());
+        stream.writeLong(currentFrame.getThreadId());
+        // tagged object ID
+        Object monitor = monitorEvent.getMonitor();
+        stream.writeByte(context.getTag(monitor));
+        stream.writeLong(context.getIds().getIdAsLong(monitor));
+
+        // location
+        stream.writeByte(currentFrame.getTypeTag());
+        stream.writeLong(currentFrame.getClassId());
+        stream.writeLong(currentFrame.getMethodId());
+        long codeIndex = currentFrame.getCodeIndex();
+        stream.writeLong(codeIndex);
+        JDWPLogger.log("Sending monitor contended entered event", JDWPLogger.LogLevel.STEPPING);
+
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
+    }
+
+    @Override
+    public void addMonitorContendedEnteredRequest(int requestId, RequestFilter filter) {
+        monitorContendedEnteredRequests.put(requestId, filter);
+    }
+
+    @Override
+    public void removeMonitorContendedEnteredRequest(int requestId) {
+        monitorContendedEnteredRequests.remove(requestId);
+    }
+
+    @Override
+    public boolean prepareMonitorContendedEntered(Object monitor) {
+        if (monitorContendedEnteredRequests.isEmpty()) {
+            return false;
+        }
+        Object currentThread = context.asGuestThread(Thread.currentThread());
+        for (Map.Entry<Integer, RequestFilter> entry : monitorContendedEnteredRequests.entrySet()) {
+            RequestFilter filter = entry.getValue();
+            if (currentThread == filter.getThread()) {
+                // monitor is contended on a requested thread
+                MonitorEvent event = new MonitorEvent(monitor, filter);
+                debuggerController.prepareMonitorContendedEnteredEvent(event);
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 return true;
             }
