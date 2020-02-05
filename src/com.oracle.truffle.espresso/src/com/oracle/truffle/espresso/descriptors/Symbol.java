@@ -134,7 +134,7 @@ public final class Symbol<T> extends ByteSequence {
 
     /**
      * Contains commonly used (name) symbols.
-     * 
+     *
      * Symbols declared here must match exactly the field name; notable exceptions include
      * {@link #_init_}, {@link #_clinit_} and hidden field names.
      */
@@ -203,6 +203,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
         public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
+        public static final Symbol<Name> message = StaticSymbols.putName("message");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
         // j.l.Thread
@@ -451,6 +452,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_AssertionError = StaticSymbols.putType(AssertionError.class);
 
         public static final Symbol<Type> java_lang_NullPointerException = StaticSymbols.putType(NullPointerException.class);
+        public static final Symbol<Type> java_lang_ArrayIndexOutOfBoundsException = StaticSymbols.putType(ArrayIndexOutOfBoundsException.class);
+        public static final Symbol<Type> java_lang_StringIndexOutOfBoundsException = StaticSymbols.putType(StringIndexOutOfBoundsException.class);
+        public static final Symbol<Type> java_lang_IndexOutOfBoundsException = StaticSymbols.putType(IndexOutOfBoundsException.class);
         public static final Symbol<Type> java_lang_ClassCastException = StaticSymbols.putType(ClassCastException.class);
         public static final Symbol<Type> java_lang_ArrayStoreException = StaticSymbols.putType(ArrayStoreException.class);
         public static final Symbol<Type> java_lang_ArithmeticException = StaticSymbols.putType(ArithmeticException.class);
