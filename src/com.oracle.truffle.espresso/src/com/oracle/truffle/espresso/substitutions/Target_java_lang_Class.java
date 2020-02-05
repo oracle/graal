@@ -85,7 +85,7 @@ public final class Target_java_lang_Class {
             case "void":
                 return meta._void.mirror();
             default:
-                throw meta.throwExWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
     }
 
@@ -111,12 +111,12 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         if (StaticObject.isNull(name)) {
-            throw meta.throwExWithMessage(meta.java_lang_NullPointerException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, name);
         }
 
         String hostName = Meta.toHostString(name);
         if (hostName.indexOf('/') >= 0) {
-            throw meta.throwExWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         hostName = hostName.replace('.', '/');
@@ -126,7 +126,7 @@ public final class Target_java_lang_Class {
         }
 
         if (!Validation.validTypeDescriptor(ByteSequence.create(hostName), false)) {
-            throw meta.throwExWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
@@ -140,7 +140,7 @@ public final class Target_java_lang_Class {
             }
 
             if (klass == null) {
-                throw meta.throwExWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
             }
 
             if (initialize) {

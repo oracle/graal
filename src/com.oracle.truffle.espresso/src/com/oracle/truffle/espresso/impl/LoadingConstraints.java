@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -265,6 +266,7 @@ final class LoadingConstraints implements ContextAccess {
     }
 
     private LinkageError linkageError(String message) {
-        throw getContext().getMeta().throwExWithMessage(LinkageError.class, message);
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, message);
     }
 }

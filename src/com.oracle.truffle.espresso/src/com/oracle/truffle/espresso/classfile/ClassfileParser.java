@@ -214,7 +214,7 @@ public final class ClassfileParser {
             // Warn that some unexpected host-guest exception conversion happened.
             System.err.println("Unexpected host exception " + e + " thrown during class parsing, re-throwing as guest exception.");
             e.printStackTrace();
-            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw context.getMeta().throwExceptionWithMessage(e.getClass(), e.getMessage());
         }
     }
 

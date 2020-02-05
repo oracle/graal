@@ -78,7 +78,7 @@ public final class Target_sun_misc_Unsafe {
         Meta meta = context.getMeta();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();
@@ -695,7 +695,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(clazz)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         Klass klass = clazz.getMirrorKlass();
         return !klass.isInitialized();
@@ -934,10 +934,10 @@ public final class Target_sun_misc_Unsafe {
      * been.
      */
     @TruffleBoundary
+    @Throws(InstantiationException.class)
     @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) { // throws
-        // InstantiationException;
-        return InterpreterToVM.newObject(clazz.getMirrorKlass());
+    public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+        return InterpreterToVM.newObject(clazz.getMirrorKlass(), false);
     }
 
     /**
@@ -1011,7 +1011,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         object.getLock().lock();
     }
@@ -1020,7 +1020,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         object.getLock().unlock();
     }
@@ -1184,7 +1184,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         return object.getLock().tryLock();
     }

@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -61,7 +61,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         Method target = methodLookup(receiver, vtableIndex);
         if (!target.hasCode()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw receiver.getKlass().getMeta().throwEx(AbstractMethodError.class);
+            Meta meta = receiver.getKlass().getMeta();
+            throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }
@@ -81,7 +82,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         if (receiverKlass.isArray()) {
             return receiverKlass.getSuperKlass().vtableLookup(vtableIndex);
         }
-        return ((ObjectKlass) receiverKlass).vtableLookup(vtableIndex);
+        return receiverKlass.vtableLookup(vtableIndex);
     }
 
     @Override

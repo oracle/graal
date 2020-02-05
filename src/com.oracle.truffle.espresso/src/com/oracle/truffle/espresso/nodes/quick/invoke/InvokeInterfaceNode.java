@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -75,7 +76,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
         if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw receiver.getKlass().getMeta().throwEx(IllegalAccessError.class);
+            Meta meta = receiver.getKlass().getMeta();
+            throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method;
     }
