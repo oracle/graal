@@ -128,10 +128,10 @@ public class BinaryParser extends BinaryStreamParser {
                     readFunctionSection();
                     break;
                 case Section.TABLE:
-                    readTableSection();
+                    readTableSection(context);
                     break;
                 case Section.MEMORY:
-                    readMemorySection();
+                    readMemorySection(context);
                     break;
                 case Section.GLOBAL:
                     readGlobalSection(context);
@@ -261,7 +261,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readTableSection() {
+    private void readTableSection(WasmContext context) {
         int numTables = readVectorLength();
         Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module.");
         // Since in the current version of WebAssembly supports at most one table instance per
@@ -274,14 +274,14 @@ public class BinaryParser extends BinaryStreamParser {
             switch (limitsPrefix) {
                 case LimitsPrefix.NO_MAX: {
                     int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                    module.symbolTable().allocateTable(WasmLanguage.getCurrentContext(), initSize, -1);
+                    module.symbolTable().allocateTable(context, initSize, -1);
                     break;
                 }
                 case LimitsPrefix.WITH_MAX: {
                     int initSize = readUnsignedInt32();  // initial size (in number of entries)
                     int maxSize = readUnsignedInt32();  // max size (in number of entries)
                     Assert.assertIntLessOrEqual(initSize, maxSize, "Initial table size must be smaller or equal than maximum size");
-                    module.symbolTable().allocateTable(WasmLanguage.getCurrentContext(), initSize, maxSize);
+                    module.symbolTable().allocateTable(context, initSize, maxSize);
                     break;
                 }
                 default:
@@ -290,7 +290,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readMemorySection() {
+    private void readMemorySection(WasmContext context) {
         int numMemories = readVectorLength();
         Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module.");
         // Since in the current version of WebAssembly supports at most one table instance per
@@ -303,7 +303,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Read initial size (in Wasm pages).
                     int initSize = readUnsignedInt32();
                     int maxSize = -1;
-                    module.symbolTable().allocateMemory(WasmLanguage.getCurrentContext(), initSize, maxSize);
+                    module.symbolTable().allocateMemory(context, initSize, maxSize);
                     break;
                 }
                 case LimitsPrefix.WITH_MAX: {
@@ -311,7 +311,7 @@ public class BinaryParser extends BinaryStreamParser {
                     int initSize = readUnsignedInt32();
                     // Read max size (in Wasm pages).
                     int maxSize = readUnsignedInt32();
-                    module.symbolTable().allocateMemory(WasmLanguage.getCurrentContext(), initSize, maxSize);
+                    module.symbolTable().allocateMemory(context, initSize, maxSize);
                     break;
                 }
                 default:
@@ -1162,7 +1162,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
             instruction = read1();
             Assert.assertByteEqual(instruction, (byte) Instructions.END, "Global initialization must end with END");
-            final int address = module.symbolTable().declareGlobal(WasmLanguage.getCurrentContext(), globalIndex, type, mutability);
+            final int address = module.symbolTable().declareGlobal(context, globalIndex, type, mutability);
             if (isInitialized) {
                 globals.storeLong(address, value);
                 context.linker().resolveGlobalInitialization(module, globalIndex);
@@ -1378,7 +1378,7 @@ public class BinaryParser extends BinaryStreamParser {
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
     @SuppressWarnings("unused")
-    void resetGlobalState() {
+    void resetGlobalState(WasmContext context) {
         int globalIndex = 0;
         if (tryJumpToSection(Section.IMPORT)) {
             int numImports = readVectorLength();
@@ -1438,7 +1438,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         if (tryJumpToSection(Section.GLOBAL)) {
-            final GlobalRegistry globals = WasmLanguage.getCurrentContext().globals();
+            final GlobalRegistry globals = context.globals();
             int numGlobals = readVectorLength();
             int startingGlobalIndex = globalIndex;
             for (; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {
