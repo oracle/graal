@@ -46,8 +46,8 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     public static final NodeClass<FixedAccessNode> TYPE = NodeClass.create(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
-
     @Input(InputType.Association) AddressNode address;
+    @OptionalInput(Memory) MemoryNode lastLocationAccess;
     protected final LocationIdentity location;
 
     protected boolean nullCheck;
@@ -110,8 +110,6 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
-
-    @OptionalInput(Memory) MemoryNode lastLocationAccess;
 
     @Override
     public MemoryNode getLastLocationAccess() {

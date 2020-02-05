@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
@@ -44,7 +43,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -66,8 +64,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
-    @OptionalInput(Memory) MemoryNode lastLocationAccess;
-
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
         this(TYPE, address, location, stamp, null, barrierType, false, null);
     }
@@ -76,17 +72,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
                     FrameState stateBefore) {
         super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
         this.lastLocationAccess = null;
-    }
-
-    @Override
-    public MemoryNode getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryNode newlla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(newlla));
-        lastLocationAccess = newlla;
     }
 
     @Override

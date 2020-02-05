@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -37,7 +36,6 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
@@ -48,7 +46,6 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
     public static final NodeClass<AbstractWriteNode> TYPE = NodeClass.create(AbstractWriteNode.class);
     @Input ValueNode value;
     @OptionalInput(InputType.State) FrameState stateAfter;
-    @OptionalInput(InputType.Memory) Node lastLocationAccess;
 
     @Override
     public FrameState stateAfter() {
@@ -79,18 +76,6 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
     @Override
     public boolean isAllowedUsageType(InputType type) {
         return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
-    }
-
-    @Override
-    public MemoryNode getLastLocationAccess() {
-        return (MemoryNode) lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryNode lla) {
-        Node newLla = ValueNodeUtil.asNode(lla);
-        updateUsages(lastLocationAccess, newLla);
-        lastLocationAccess = newLla;
     }
 
     public abstract Stamp getAccessStamp(NodeView view);
