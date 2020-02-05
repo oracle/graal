@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -85,9 +86,9 @@ public final class NativeRootNode extends EspressoMethodNode {
             unpacked[argIndex++] = javaToNative(env, env.getNativePointer(), Type._long);
         }
         if (getMethod().isStatic()) {
-            unpacked[argIndex++] = javaToNative(env, getMethod().getDeclaringKlass().mirror(), Type.Class); // class
+            unpacked[argIndex++] = javaToNative(env, getMethod().getDeclaringKlass().mirror(), Type.java_lang_Class); // class
         } else {
-            unpacked[argIndex++] = javaToNative(env, args[0], Type.Object); // receiver
+            unpacked[argIndex++] = javaToNative(env, args[0], Type.java_lang_Object); // receiver
         }
         int skipReceiver = getMethod().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {
@@ -108,6 +109,7 @@ public final class NativeRootNode extends EspressoMethodNode {
             Object result = executeNative.execute(boundNative, unpackedArgs);
             return processResult(env, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             env.getHandles().popFramesIncluding(nativeFrame);

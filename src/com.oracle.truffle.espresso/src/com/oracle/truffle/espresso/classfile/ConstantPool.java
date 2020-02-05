@@ -408,7 +408,7 @@ public abstract class ConstantPool {
                 case CLASS: {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
-                        if (classSpecifier.getKlass().getType() == Type.Class) {
+                        if (classSpecifier.getKlass().getType() == Type.java_lang_Class) {
                             entries[i] = ClassConstant.preResolved(classSpecifier.getMirrorKlass());
                         } else {
                             entries[i] = ClassConstant.withString(context.getNames().lookup(Meta.toHostString(patches[i])));

@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.lang.management.MemoryUsage;
-import java.lang.management.ThreadInfo;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -48,6 +45,10 @@ import com.oracle.truffle.espresso.substitutions.Host;
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
+ *
+ * Naming convention:
+ *
+ *
  */
 public final class Meta implements ContextAccess {
 
@@ -61,21 +62,21 @@ public final class Meta implements ContextAccess {
         context.setBootstrapMeta(this);
 
         // Core types.
-        Object = knownKlass(Type.Object);
-        Cloneable = knownKlass(Type.Cloneable);
-        Serializable = knownKlass(Type.Serializable);
-        ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
+        java_lang_Object = knownKlass(Type.java_lang_Object);
+        java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
+        java_io_Serializable = knownKlass(Type.java_io_Serializable);
+        ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
 
-        Class = knownKlass(Type.Class);
-        HIDDEN_MIRROR_KLASS = Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
-        HIDDEN_SIGNERS = Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
-        String = knownKlass(Type.String);
-        Class_Array = Class.array();
-        Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
-        Class_forName_String_boolean_ClassLoader = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
-        HIDDEN_PROTECTION_DOMAIN = Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+        java_lang_Class = knownKlass(Type.java_lang_Class);
+        HIDDEN_MIRROR_KLASS = java_lang_Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = java_lang_Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
+        java_lang_String = knownKlass(Type.java_lang_String);
+        java_lang_Class_array = java_lang_Class.array();
+        java_lang_Class_forName_String = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
+        java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
+        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
 
-        Object_array = Object.array();
+        java_lang_Object_array = java_lang_Object.array();
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -98,278 +99,279 @@ public final class Meta implements ContextAccess {
         _long_array = _long.array();
 
         // Boxed types.
-        Boolean = knownKlass(Type.Boolean);
-        Byte = knownKlass(Type.Byte);
-        Character = knownKlass(Type.Character);
-        Short = knownKlass(Type.Short);
-        Float = knownKlass(Type.Float);
-        Integer = knownKlass(Type.Integer);
-        Double = knownKlass(Type.Double);
-        Long = knownKlass(Type.Long);
-        Void = knownKlass(Type.Void);
+        java_lang_Boolean = knownKlass(Type.java_lang_Boolean);
+        java_lang_Byte = knownKlass(Type.java_lang_Byte);
+        java_lang_Character = knownKlass(Type.java_lang_Character);
+        java_lang_Short = knownKlass(Type.java_lang_Short);
+        java_lang_Float = knownKlass(Type.java_lang_Float);
+        java_lang_Integer = knownKlass(Type.java_lang_Integer);
+        java_lang_Double = knownKlass(Type.java_lang_Double);
+        java_lang_Long = knownKlass(Type.java_lang_Long);
+        java_lang_Void = knownKlass(Type.java_lang_Void);
 
         BOXED_PRIMITIVE_KLASSES = new ObjectKlass[]{
-                        Boolean,
-                        Byte,
-                        Character,
-                        Short,
-                        Float,
-                        Integer,
-                        Double,
-                        Long,
-                        Void
+                        java_lang_Boolean,
+                        java_lang_Byte,
+                        java_lang_Character,
+                        java_lang_Short,
+                        java_lang_Float,
+                        java_lang_Integer,
+                        java_lang_Double,
+                        java_lang_Long,
+                        java_lang_Void
         };
 
-        Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
-        Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
-        Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
-        Short_valueOf = Short.lookupDeclaredMethod(Name.valueOf, Signature.Short_short);
-        Float_valueOf = Float.lookupDeclaredMethod(Name.valueOf, Signature.Float_float);
-        Integer_valueOf = Integer.lookupDeclaredMethod(Name.valueOf, Signature.Integer_int);
-        Double_valueOf = Double.lookupDeclaredMethod(Name.valueOf, Signature.Double_double);
-        Long_valueOf = Long.lookupDeclaredMethod(Name.valueOf, Signature.Long_long);
+        java_lang_Boolean_valueOf = java_lang_Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
+        java_lang_Byte_valueOf = java_lang_Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
+        java_lang_Character_valueOf = java_lang_Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
+        java_lang_Short_valueOf = java_lang_Short.lookupDeclaredMethod(Name.valueOf, Signature.Short_short);
+        java_lang_Float_valueOf = java_lang_Float.lookupDeclaredMethod(Name.valueOf, Signature.Float_float);
+        java_lang_Integer_valueOf = java_lang_Integer.lookupDeclaredMethod(Name.valueOf, Signature.Integer_int);
+        java_lang_Double_valueOf = java_lang_Double.lookupDeclaredMethod(Name.valueOf, Signature.Double_double);
+        java_lang_Long_valueOf = java_lang_Long.lookupDeclaredMethod(Name.valueOf, Signature.Long_long);
 
-        Boolean_value = Boolean.lookupDeclaredField(Name.value, Type._boolean);
-        Byte_value = Byte.lookupDeclaredField(Name.value, Type._byte);
-        Character_value = Character.lookupDeclaredField(Name.value, Type._char);
-        Short_value = Short.lookupDeclaredField(Name.value, Type._short);
-        Float_value = Float.lookupDeclaredField(Name.value, Type._float);
-        Integer_value = Integer.lookupDeclaredField(Name.value, Type._int);
-        Double_value = Double.lookupDeclaredField(Name.value, Type._double);
-        Long_value = Long.lookupDeclaredField(Name.value, Type._long);
+        java_lang_Boolean_value = java_lang_Boolean.lookupDeclaredField(Name.value, Type._boolean);
+        java_lang_Byte_value = java_lang_Byte.lookupDeclaredField(Name.value, Type._byte);
+        java_lang_Character_value = java_lang_Character.lookupDeclaredField(Name.value, Type._char);
+        java_lang_Short_value = java_lang_Short.lookupDeclaredField(Name.value, Type._short);
+        java_lang_Float_value = java_lang_Float.lookupDeclaredField(Name.value, Type._float);
+        java_lang_Integer_value = java_lang_Integer.lookupDeclaredField(Name.value, Type._int);
+        java_lang_Double_value = java_lang_Double.lookupDeclaredField(Name.value, Type._double);
+        java_lang_Long_value = java_lang_Long.lookupDeclaredField(Name.value, Type._long);
 
-        String_value = String.lookupDeclaredField(Name.value, Type._char_array);
-        EspressoError.guarantee(String_value != null && Type._char_array.equals(String_value.getType()), "String.value must be a char[]");
+        java_lang_String_value = java_lang_String.lookupDeclaredField(Name.value, Type._char_array);
+        EspressoError.guarantee(java_lang_String_value != null && Type._char_array.equals(java_lang_String_value.getType()), "String.value must be a char[]");
 
-        String_hash = String.lookupDeclaredField(Name.hash, Type._int);
-        String_hashCode = String.lookupDeclaredMethod(Name.hashCode, Signature._int);
-        String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
+        java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
+        java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
+        java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
 
-        Throwable = knownKlass(Type.Throwable);
-        Throwable_getStackTrace = Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
-        HIDDEN_FRAMES = Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
-        Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
-        Throwable_cause = Throwable.lookupField(Name.cause, Type.Throwable);
+        java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
+        java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
+        HIDDEN_FRAMES = java_lang_Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
+        java_lang_Throwable_backtrace = java_lang_Throwable.lookupField(Name.backtrace, Type.java_lang_Object);
+        java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
 
-        StackTraceElement = knownKlass(Type.StackTraceElement);
-        StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
+        java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
+        java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
 
-        Exception = knownKlass(Type.Exception);
-        InvocationTargetException = knownKlass(Type.InvocationTargetException);
-        NegativeArraySizeException = knownKlass(Type.NegativeArraySizeException);
-        IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
-        NullPointerException = knownKlass(Type.NullPointerException);
-        ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
-        NoClassDefFoundError = knownKlass(Type.NoClassDefFoundError);
-        InterruptedException = knownKlass(Type.InterruptedException);
-        RuntimeException = knownKlass(Type.RuntimeException);
-        IllegalMonitorStateException = knownKlass(Type.IllegalMonitorStateException);
+        java_lang_Exception = knownKlass(Type.java_lang_Exception);
+        java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
+        java_lang_NegativeArraySizeException = knownKlass(Type.java_lang_NegativeArraySizeException);
+        java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
+        java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
+        java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
+        java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
+        java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
+        java_lang_RuntimeException = knownKlass(Type.java_lang_RuntimeException);
+        java_lang_IllegalMonitorStateException = knownKlass(Type.java_lang_IllegalMonitorStateException);
 
-        StackOverflowError = knownKlass(Type.StackOverflowError);
-        OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
-        ClassCastException = knownKlass(Type.ClassCastException);
-        AbstractMethodError = knownKlass(Type.AbstractMethodError);
-        InternalError = knownKlass(Type.InternalError);
-        VerifyError = knownKlass(Type.VerifyError);
+        java_lang_StackOverflowError = knownKlass(Type.java_lang_StackOverflowError);
+        java_lang_OutOfMemoryError = knownKlass(Type.java_lang_OutOfMemoryError);
+        java_lang_ClassCastException = knownKlass(Type.java_lang_ClassCastException);
+        java_lang_AbstractMethodError = knownKlass(Type.java_lang_AbstractMethodError);
+        java_lang_InternalError = knownKlass(Type.java_lang_InternalError);
+        java_lang_VerifyError = knownKlass(Type.java_lang_VerifyError);
 
-        Error = knownKlass(Type.Error);
-        NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
-        NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
-        IllegalAccessError = knownKlass(Type.IllegalAccessError);
-        IncompatibleClassChangeError = knownKlass(Type.IncompatibleClassChangeError);
+        java_lang_Error = knownKlass(Type.java_lang_Error);
+        java_lang_NoSuchFieldError = knownKlass(Type.java_lang_NoSuchFieldError);
+        java_lang_NoSuchMethodError = knownKlass(Type.java_lang_NoSuchMethodError);
+        java_lang_IllegalAccessError = knownKlass(Type.java_lang_IllegalAccessError);
+        java_lang_IncompatibleClassChangeError = knownKlass(Type.java_lang_IncompatibleClassChangeError);
 
-        PrivilegedActionException = knownKlass(Type.PrivilegedActionException);
-        PrivilegedActionException_init_Exception = PrivilegedActionException.lookupDeclaredMethod(Name.INIT, Signature._void_Exception);
+        java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
+        java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
 
-        ClassLoader = knownKlass(Type.ClassLoader);
-        ClassLoader_NativeLibrary = knownKlass(Type.ClassLoader_NativeLibrary);
-        ClassLoader_NativeLibrary_getFromClass = ClassLoader_NativeLibrary.lookupDeclaredMethod(Name.getFromClass, Signature.Class);
-        ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
-        ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
-        ClassLoader_parent = ClassLoader.lookupDeclaredField(Name.parent, Type.ClassLoader);
+        java_lang_ClassLoader = knownKlass(Type.java_lang_ClassLoader);
+        java_lang_ClassLoader$NativeLibrary = knownKlass(Type.java_lang_ClassLoader$NativeLibrary);
+        java_lang_ClassLoader$NativeLibrary_getFromClass = java_lang_ClassLoader$NativeLibrary.lookupDeclaredMethod(Name.getFromClass, Signature.Class);
+        java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
+        java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
+        java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
 
         // Guest reflection.
-        Executable = knownKlass(Type.Executable);
-        Constructor = knownKlass(Type.Constructor);
-        HIDDEN_CONSTRUCTOR_KEY = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
-        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
-        Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
-        Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
-        Constructor_signature = Constructor.lookupDeclaredField(Name.signature, Type.String);
-        MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
+        java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
+        java_lang_reflect_Constructor = knownKlass(Type.java_lang_reflect_Constructor);
+        HIDDEN_CONSTRUCTOR_KEY = java_lang_reflect_Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
+        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Constructor_clazz = java_lang_reflect_Constructor.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Constructor_root = java_lang_reflect_Constructor.lookupDeclaredField(Name.root, Type.java_lang_reflect_Constructor);
+        java_lang_reflect_Constructor_parameterTypes = java_lang_reflect_Constructor.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
+        java_lang_reflect_Constructor_signature = java_lang_reflect_Constructor.lookupDeclaredField(Name.signature, Type.java_lang_String);
+        sun_reflect_MagicAccessorImpl = knownKlass(Type.sun_reflect_MagicAccessorImpl);
         sun_reflect_DelegatingClassLoader = knownKlass(Type.sun_reflect_DelegatingClassLoader);
 
-        Method = knownKlass(Type.Method);
-        HIDDEN_METHOD_KEY = Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
-        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        Method_root = Method.lookupDeclaredField(Name.root, Type.Method);
-        Method_clazz = Method.lookupDeclaredField(Name.clazz, Type.Class);
-        Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
-        Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
+        java_lang_reflect_Method = knownKlass(Type.java_lang_reflect_Method);
+        HIDDEN_METHOD_KEY = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
+        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Method_root = java_lang_reflect_Method.lookupDeclaredField(Name.root, Type.java_lang_reflect_Method);
+        java_lang_reflect_Method_clazz = java_lang_reflect_Method.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Method_override = java_lang_reflect_Method.lookupDeclaredField(Name.override, Type._boolean);
+        java_lang_reflect_Method_parameterTypes = java_lang_reflect_Method.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
 
-        MethodAccessorImpl = knownKlass(Type.MethodAccessorImpl);
-        ConstructorAccessorImpl = knownKlass(Type.ConstructorAccessorImpl);
+        sun_reflect_MethodAccessorImpl = knownKlass(Type.sun_reflect_MethodAccessorImpl);
+        sun_reflect_ConstructorAccessorImpl = knownKlass(Type.sun_reflect_ConstructorAccessorImpl);
 
-        Parameter = knownKlass(Type.Parameter);
+        java_lang_reflect_Parameter = knownKlass(Type.java_lang_reflect_Parameter);
 
-        Field = knownKlass(Type.Field);
-        HIDDEN_FIELD_KEY = Field.lookupHiddenField(Name.HIDDEN_FIELD_KEY);
-        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Field.lookupHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-        Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
-        Field_class = Field.lookupDeclaredField(Name.clazz, Type.Class);
-        Field_name = Field.lookupDeclaredField(Name.name, Type.String);
-        Field_type = Field.lookupDeclaredField(Name.type, Type.Class);
+        java_lang_reflect_Field = knownKlass(Type.java_lang_reflect_Field);
+        HIDDEN_FIELD_KEY = java_lang_reflect_Field.lookupHiddenField(Name.HIDDEN_FIELD_KEY);
+        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Field.lookupHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        java_lang_reflect_Field_root = java_lang_reflect_Field.lookupDeclaredField(Name.root, java_lang_reflect_Field.getType());
+        java_lang_reflect_Field_class = java_lang_reflect_Field.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_reflect_Field_name = java_lang_reflect_Field.lookupDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_reflect_Field_type = java_lang_reflect_Field.lookupDeclaredField(Name.type, Type.java_lang_Class);
 
-        Shutdown = knownKlass(Type.Shutdown);
-        Shutdown_shutdown = Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
+        java_lang_reflect_Shutdown = knownKlass(Type.java_lang_Shutdown);
+        java_lang_reflect_Shutdown_shutdown = java_lang_reflect_Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
 
-        Buffer = knownKlass(Type.Buffer);
+        java_nio_Buffer = knownKlass(Type.java_nio_Buffer);
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
-        Buffer_address = Buffer.lookupDeclaredField(Name.address, Type._long);
-        Buffer_capacity = Buffer.lookupDeclaredField(Name.capacity, Type._int);
+        java_nio_Buffer_address = java_nio_Buffer.lookupDeclaredField(Name.address, Type._long);
+        java_nio_Buffer_capacity = java_nio_Buffer.lookupDeclaredField(Name.capacity, Type._int);
 
-        ByteBuffer = knownKlass(Type.ByteBuffer);
-        ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
+        java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name.INIT, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name._init_, Signature._void_long_int);
 
-        Thread = knownKlass(Type.Thread);
-        HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
-        HIDDEN_INTERRUPTED = Thread.lookupHiddenField(Name.HIDDEN_INTERRUPTED);
-        HIDDEN_DEATH = Thread.lookupHiddenField(Name.HIDDEN_DEATH);
-        HIDDEN_DEATH_THROWABLE = Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
-        HIDDEN_SUSPEND_LOCK = Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
+        java_lang_Thread = knownKlass(Type.java_lang_Thread);
+        HIDDEN_HOST_THREAD = java_lang_Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_IS_ALIVE = java_lang_Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
+        HIDDEN_INTERRUPTED = java_lang_Thread.lookupHiddenField(Name.HIDDEN_INTERRUPTED);
+        HIDDEN_DEATH = java_lang_Thread.lookupHiddenField(Name.HIDDEN_DEATH);
+        HIDDEN_DEATH_THROWABLE = java_lang_Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
+        HIDDEN_SUSPEND_LOCK = java_lang_Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
 
         if (context.EnableManagement) {
-            HIDDEN_THREAD_BLOCKED_OBJECT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
-            HIDDEN_THREAD_BLOCKED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
-            HIDDEN_THREAD_WAITED_COUNT = Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
+            HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
         } else {
             HIDDEN_THREAD_BLOCKED_OBJECT = null;
             HIDDEN_THREAD_BLOCKED_COUNT = null;
             HIDDEN_THREAD_WAITED_COUNT = null;
         }
 
-        ThreadGroup = knownKlass(Type.ThreadGroup);
-        ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
-        Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
-        Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
-        Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
-        Thread_threadStatus = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
-        Thread_tid = Thread.lookupDeclaredField(Name.tid, Type._long);
+        java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
+        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.lookupDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
+        java_lang_Thread_dispatchUncaughtException = java_lang_Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+        java_lang_Thread_exit = java_lang_Thread.lookupDeclaredMethod(Name.exit, Signature._void);
+        java_lang_Thread_run = java_lang_Thread.lookupDeclaredMethod(Name.run, Signature._void);
+        java_lang_Thread_threadStatus = java_lang_Thread.lookupDeclaredField(Name.threadStatus, Type._int);
+        java_lang_Thread_tid = java_lang_Thread.lookupDeclaredField(Name.tid, Type._long);
 
-        Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
-        Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
-        Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
-        Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
-        Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
-        Thread_inheritedAccessControlContext = Thread.lookupDeclaredField(Name.inheritedAccessControlContext, Type.AccessControlContext);
-        Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
-        Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
-        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
+        java_lang_Thread_group = java_lang_Thread.lookupDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+        java_lang_Thread_name = java_lang_Thread.lookupDeclaredField(Name.name, java_lang_String.getType());
+        java_lang_Thread_priority = java_lang_Thread.lookupDeclaredField(Name.priority, _int.getType());
+        java_lang_Thread_blockerLock = java_lang_Thread.lookupDeclaredField(Name.blockerLock, java_lang_Object.getType());
+        java_lang_Thread_daemon = java_lang_Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.lookupDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
+        java_lang_Thread_checkAccess = java_lang_Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
+        java_lang_Thread_stop = java_lang_Thread.lookupDeclaredMethod(Name.stop, Signature._void);
+        java_lang_ThreadGroup_maxPriority = java_lang_ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
 
-        FinalizerThread = knownKlass(Type.FinalizerThread);
-        ReferenceHandler = knownKlass(Type.ReferenceHandler);
+        java_lang_ref_Finalizer$FinalizerThread = knownKlass(Type.java_lang_ref_Finalizer$FinalizerThread);
+        java_lang_ref_Reference$ReferenceHandler = knownKlass(Type.java_lang_ref_Reference$ReferenceHandler);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
-        VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
+        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
 
         sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
-        constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.Object);
+        sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
 
-        System = knownKlass(Type.System);
-        System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
-        System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
-        System_securityManager = System.lookupDeclaredField(Name.security, Type.SecurityManager);
+        java_lang_System = knownKlass(Type.java_lang_System);
+        java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
+        java_lang_System_exit = java_lang_System.lookupDeclaredMethod(Name.exit, Signature._void_int);
+        java_lang_System_securityManager = java_lang_System.lookupDeclaredField(Name.security, Type.java_lang_SecurityManager);
 
-        ProtectionDomain = knownKlass(Type.ProtectionDomain);
-        ProtectionDomain_impliesCreateAccessControlContext = ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
-        ProtectionDomain_init_CodeSource_PermissionCollection = ProtectionDomain.lookupDeclaredMethod(Name.INIT, Signature.CodeSource_PermissionCollection);
+        java_security_ProtectionDomain = knownKlass(Type.java_security_ProtectionDomain);
+        java_security_ProtectionDomain_impliesCreateAccessControlContext = java_security_ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
+        java_security_ProtectionDomain_init_CodeSource_PermissionCollection = java_security_ProtectionDomain.lookupDeclaredMethod(Name._init_, Signature._void_CodeSource_PermissionCollection);
 
-        AccessControlContext = knownKlass(Type.AccessControlContext);
-        AccessControlContext_isAuthorized = AccessControlContext.lookupDeclaredMethod(Name.isAuthorized, Signature._boolean);
-        ACC_context = AccessControlContext.lookupDeclaredField(Name.context, Type.ProtectionDomain_array);
-        ACC_privilegedContext = AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.AccessControlContext);
-        ACC_isPrivileged = AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
-        ACC_isAuthorized = AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
+        java_security_AccessControlContext = knownKlass(Type.java_security_AccessControlContext);
+        java_security_AccessControlContext_context = java_security_AccessControlContext.lookupDeclaredField(Name.context, Type.java_security_ProtectionDomain_array);
+        java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.java_security_AccessControlContext);
+        java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
+        java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
 
-        MethodType = knownKlass(Type.MethodType);
-        MethodType_toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        MethodType_fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
+        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
 
-        MemberName = knownKlass(Type.MemberName);
-        HIDDEN_VMINDEX = MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
-        HIDDEN_VMTARGET = MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
-        MemberName_getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
-        MemberName_clazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
-        MemberName_name = MemberName.lookupDeclaredField(Name.name, Type.String);
-        MemberName_type = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
-        MemberName_flags = MemberName.lookupDeclaredField(Name.flags, Type._int);
+        java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
+        HIDDEN_VMINDEX = java_lang_invoke_MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
+        HIDDEN_VMTARGET = java_lang_invoke_MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
+        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
+        java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
+        java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.lookupDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.lookupDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
+        java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.lookupDeclaredField(Name.flags, Type._int);
 
-        MethodHandle = knownKlass(Type.MethodHandle);
-        invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
-        invoke = MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_ObjectArray);
-        invokeBasic = MethodHandle.lookupDeclaredMethod(Name.invokeBasic, Signature.Object_ObjectArray);
-        invokeWithArguments = MethodHandle.lookupDeclaredMethod(Name.invokeWithArguments, Signature.Object_ObjectArray);
-        linkToInterface = MethodHandle.lookupDeclaredMethod(Name.linkToInterface, Signature.Object_ObjectArray);
-        linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
-        linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
-        linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
-        MethodHandle_type = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
-        MethodHandle_form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
+        java_lang_invoke_MethodHandle = knownKlass(Type.java_lang_invoke_MethodHandle);
+        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invoke, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeBasic, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.invokeWithArguments, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToInterface, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.lookupDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
+        java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.lookupDeclaredField(Name.form, Type.java_lang_invoke_LambdaForm);
 
-        MethodHandles = knownKlass(Type.MethodHandles);
-        lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
+        java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
+        java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
 
-        CallSite = knownKlass(Type.CallSite);
-        CallSite_target = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
+        java_lang_invoke_CallSite = knownKlass(Type.java_lang_invoke_CallSite);
+        java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.lookupDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
 
-        LambdaForm = knownKlass(Type.LambdaForm);
-        LambdaForm_vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
-        LambdaForm_isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
-        LambdaForm_compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
+        java_lang_invoke_LambdaForm = knownKlass(Type.java_lang_invoke_LambdaForm);
+        java_lang_invoke_LambdaForm_vmentry = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.vmentry, Type.java_lang_invoke_MemberName);
+        java_lang_invoke_LambdaForm_isCompiled = java_lang_invoke_LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
+        java_lang_invoke_LambdaForm_compileToBytecode = java_lang_invoke_LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.MemberName);
 
-        MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
-        MethodHandleNatives_linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
-        MethodHandleNatives_linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
-        MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
-        MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
+        java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
+        java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkCallSite = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
+                        Signature.MemberName_Object_Object_Object_Object_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant,
+                        Signature.MethodHandle_Class_int_Class_String_Object);
+        java_lang_invoke_MethodHandleNatives_findMethodHandleType = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_Class_Class);
 
-        Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
-        Finalizer_register = Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
+        java_lang_ref_Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
+        java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
 
         // References
-        Reference = knownKlass(java.lang.ref.Reference.class);
-        Reference_referent = Reference.lookupDeclaredField(Name.referent, Type.Object);
+        java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_referent = java_lang_ref_Reference.lookupDeclaredField(Name.referent, Type.java_lang_Object);
 
-        Reference_discovered = Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
-        Reference_pending = Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
-        Reference_next = Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
-        Reference_queue = Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
-        Reference_lock = Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference_Lock);
-        ReferenceQueue = knownKlass(java.lang.ref.ReferenceQueue.class);
-        ReferenceQueue_NULL = ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
+        java_lang_ref_Reference_discovered = java_lang_ref_Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_next = java_lang_ref_Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_queue = java_lang_ref_Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
+        java_lang_ref_Reference_lock = java_lang_ref_Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference$Lock);
+        java_lang_ref_ReferenceQueue = knownKlass(Type.java_lang_ref_ReferenceQueue);
+        java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
 
-        WeakReference = knownKlass(java.lang.ref.WeakReference.class);
-        SoftReference = knownKlass(java.lang.ref.SoftReference.class);
-        PhantomReference = knownKlass(java.lang.ref.PhantomReference.class);
-        FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        Cleaner = knownKlass(Type.sun_misc_Cleaner);
-        HIDDEN_HOST_REFERENCE = Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
+        java_lang_ref_WeakReference = knownKlass(Type.java_lang_ref_WeakReference);
+        java_lang_ref_SoftReference = knownKlass(Type.java_lang_ref_SoftReference);
+        java_lang_ref_PhantomReference = knownKlass(Type.java_lang_ref_PhantomReference);
+        java_lang_ref_FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
+        sun_misc_Cleaner = knownKlass(Type.sun_misc_Cleaner);
+        HIDDEN_HOST_REFERENCE = java_lang_ref_Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
-        AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
-        AssertionStatusDirectives_classes = AssertionStatusDirectives.lookupField(Name.classes, Type.String_array);
-        AssertionStatusDirectives_classEnabled = AssertionStatusDirectives.lookupField(Name.classEnabled, Type._boolean_array);
-        AssertionStatusDirectives_packages = AssertionStatusDirectives.lookupField(Name.packages, Type.String_array);
-        AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
-        AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
+        java_lang_AssertionStatusDirectives = knownKlass(Type.java_lang_AssertionStatusDirectives);
+        java_lang_AssertionStatusDirectives_classes = java_lang_AssertionStatusDirectives.lookupField(Name.classes, Type.java_lang_String_array);
+        java_lang_AssertionStatusDirectives_classEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.classEnabled, Type._boolean_array);
+        java_lang_AssertionStatusDirectives_packages = java_lang_AssertionStatusDirectives.lookupField(Name.packages, Type.java_lang_String_array);
+        java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
+        java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
         sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         // java.management
-        MemoryUsage = knownKlass(MemoryUsage.class);
+        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
         sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
         // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
         sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
@@ -378,23 +380,23 @@ public final class Meta implements ContextAccess {
         // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
         sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector, Signature.GarbageCollectorMXBean_String_String);
 
-        management_ThreadInfo = knownKlass(ThreadInfo.class);
+        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
     }
 
     // Checkstyle: stop field name check
 
-    public final ObjectKlass Object;
-    public final ArrayKlass Object_array;
+    public final ObjectKlass java_lang_Object;
+    public final ArrayKlass java_lang_Object_array;
 
-    public final ObjectKlass String;
-    public final ObjectKlass Class;
+    public final ObjectKlass java_lang_String;
+    public final ObjectKlass java_lang_Class;
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
-    public final Field constantPoolOop;
-    public final ArrayKlass Class_Array;
-    public final Method Class_forName_String;
-    public final Method Class_forName_String_boolean_ClassLoader;
+    public final Field sun_reflect_ConstantPool_constantPoolOop;
+    public final ArrayKlass java_lang_Class_array;
+    public final Method java_lang_Class_forName_String;
+    public final Method java_lang_Class_forName_String_boolean_ClassLoader;
 
     // Primitives.
     public final PrimitiveKlass _boolean;
@@ -417,152 +419,152 @@ public final class Meta implements ContextAccess {
     public final ArrayKlass _long_array;
 
     // Boxed primitives.
-    public final ObjectKlass Boolean;
-    public final ObjectKlass Byte;
-    public final ObjectKlass Character;
-    public final ObjectKlass Short;
-    public final ObjectKlass Integer;
-    public final ObjectKlass Float;
-    public final ObjectKlass Double;
-    public final ObjectKlass Long;
-    public final ObjectKlass Void;
+    public final ObjectKlass java_lang_Boolean;
+    public final ObjectKlass java_lang_Byte;
+    public final ObjectKlass java_lang_Character;
+    public final ObjectKlass java_lang_Short;
+    public final ObjectKlass java_lang_Integer;
+    public final ObjectKlass java_lang_Float;
+    public final ObjectKlass java_lang_Double;
+    public final ObjectKlass java_lang_Long;
+    public final ObjectKlass java_lang_Void;
 
     // Boxing conversions.
-    public final Method Boolean_valueOf;
-    public final Method Byte_valueOf;
-    public final Method Character_valueOf;
-    public final Method Short_valueOf;
-    public final Method Float_valueOf;
-    public final Method Integer_valueOf;
-    public final Method Double_valueOf;
-    public final Method Long_valueOf;
+    public final Method java_lang_Boolean_valueOf;
+    public final Method java_lang_Byte_valueOf;
+    public final Method java_lang_Character_valueOf;
+    public final Method java_lang_Short_valueOf;
+    public final Method java_lang_Float_valueOf;
+    public final Method java_lang_Integer_valueOf;
+    public final Method java_lang_Double_valueOf;
+    public final Method java_lang_Long_valueOf;
 
-    public final Field Boolean_value;
-    public final Field Byte_value;
-    public final Field Character_value;
-    public final Field Short_value;
-    public final Field Float_value;
-    public final Field Integer_value;
-    public final Field Double_value;
-    public final Field Long_value;
+    public final Field java_lang_Boolean_value;
+    public final Field java_lang_Byte_value;
+    public final Field java_lang_Character_value;
+    public final Field java_lang_Short_value;
+    public final Field java_lang_Float_value;
+    public final Field java_lang_Integer_value;
+    public final Field java_lang_Double_value;
+    public final Field java_lang_Long_value;
 
     // Guest String.
-    public final Field String_value;
-    public final Field String_hash;
-    public final Method String_hashCode;
-    public final Method String_length;
+    public final Field java_lang_String_value;
+    public final Field java_lang_String_hash;
+    public final Method java_lang_String_hashCode;
+    public final Method java_lang_String_length;
 
-    public final ObjectKlass ClassLoader;
-    public final Field ClassLoader_parent;
-    public final ObjectKlass ClassLoader_NativeLibrary;
-    public final Method ClassLoader_NativeLibrary_getFromClass;
-    public final Method ClassLoader_findNative;
-    public final Method ClassLoader_getSystemClassLoader;
+    public final ObjectKlass java_lang_ClassLoader;
+    public final Field java_lang_ClassLoader_parent;
+    public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
+    public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
+    public final Method java_lang_ClassLoader_findNative;
+    public final Method java_lang_ClassLoader_getSystemClassLoader;
 
-    public final ObjectKlass AssertionStatusDirectives;
-    public final Field AssertionStatusDirectives_classes;
-    public final Field AssertionStatusDirectives_classEnabled;
-    public final Field AssertionStatusDirectives_packages;
-    public final Field AssertionStatusDirectives_packageEnabled;
-    public final Field AssertionStatusDirectives_deflt;
+    public final ObjectKlass java_lang_AssertionStatusDirectives;
+    public final Field java_lang_AssertionStatusDirectives_classes;
+    public final Field java_lang_AssertionStatusDirectives_classEnabled;
+    public final Field java_lang_AssertionStatusDirectives_packages;
+    public final Field java_lang_AssertionStatusDirectives_packageEnabled;
+    public final Field java_lang_AssertionStatusDirectives_deflt;
 
-    public final ObjectKlass Executable;
+    public final ObjectKlass java_lang_reflect_Executable;
 
-    public final ObjectKlass Constructor;
+    public final ObjectKlass java_lang_reflect_Constructor;
     public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_CONSTRUCTOR_KEY;
-    public final Field Constructor_clazz;
-    public final Field Constructor_root;
-    public final Field Constructor_parameterTypes;
-    public final Field Constructor_signature;
+    public final Field java_lang_reflect_Constructor_clazz;
+    public final Field java_lang_reflect_Constructor_root;
+    public final Field java_lang_reflect_Constructor_parameterTypes;
+    public final Field java_lang_reflect_Constructor_signature;
 
-    public final ObjectKlass MagicAccessorImpl;
+    public final ObjectKlass sun_reflect_MagicAccessorImpl;
     public final ObjectKlass sun_reflect_DelegatingClassLoader;
 
-    public final ObjectKlass Method;
+    public final ObjectKlass java_lang_reflect_Method;
     public final Field HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_METHOD_KEY;
-    public final Field Method_root;
-    public final Field Method_clazz;
-    public final Field Method_override;
-    public final Field Method_parameterTypes;
+    public final Field java_lang_reflect_Method_root;
+    public final Field java_lang_reflect_Method_clazz;
+    public final Field java_lang_reflect_Method_override;
+    public final Field java_lang_reflect_Method_parameterTypes;
 
-    public final ObjectKlass MethodAccessorImpl;
-    public final ObjectKlass ConstructorAccessorImpl;
+    public final ObjectKlass sun_reflect_MethodAccessorImpl;
+    public final ObjectKlass sun_reflect_ConstructorAccessorImpl;
 
-    public final ObjectKlass Parameter;
+    public final ObjectKlass java_lang_reflect_Parameter;
 
-    public final ObjectKlass Field;
+    public final ObjectKlass java_lang_reflect_Field;
     public final Field HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_FIELD_KEY;
-    public final Field Field_root;
-    public final Field Field_class;
-    public final Field Field_name;
-    public final Field Field_type;
+    public final Field java_lang_reflect_Field_root;
+    public final Field java_lang_reflect_Field_class;
+    public final Field java_lang_reflect_Field_name;
+    public final Field java_lang_reflect_Field_type;
 
-    public final Method Shutdown_shutdown;
-    public final ObjectKlass Shutdown;
+    public final ObjectKlass java_lang_reflect_Shutdown;
+    public final Method java_lang_reflect_Shutdown_shutdown;
 
-    public final ObjectKlass Exception;
-    public final ObjectKlass InvocationTargetException;
-    public final ObjectKlass NegativeArraySizeException;
-    public final ObjectKlass IllegalArgumentException;
-    public final ObjectKlass IllegalMonitorStateException;
-    public final ObjectKlass NullPointerException;
-    public final ObjectKlass ClassNotFoundException;
-    public final ObjectKlass NoClassDefFoundError;
-    public final ObjectKlass InterruptedException;
-    public final ObjectKlass RuntimeException;
-    public final ObjectKlass StackOverflowError;
-    public final ObjectKlass OutOfMemoryError;
-    public final ObjectKlass ClassCastException;
-    public final ObjectKlass AbstractMethodError;
-    public final ObjectKlass InternalError;
-    public final ObjectKlass VerifyError;
+    public final ObjectKlass java_lang_Exception;
+    public final ObjectKlass java_lang_reflect_InvocationTargetException;
+    public final ObjectKlass java_lang_NegativeArraySizeException;
+    public final ObjectKlass java_lang_IllegalArgumentException;
+    public final ObjectKlass java_lang_IllegalMonitorStateException;
+    public final ObjectKlass java_lang_NullPointerException;
+    public final ObjectKlass java_lang_ClassNotFoundException;
+    public final ObjectKlass java_lang_NoClassDefFoundError;
+    public final ObjectKlass java_lang_InterruptedException;
+    public final ObjectKlass java_lang_RuntimeException;
+    public final ObjectKlass java_lang_StackOverflowError;
+    public final ObjectKlass java_lang_OutOfMemoryError;
+    public final ObjectKlass java_lang_ClassCastException;
+    public final ObjectKlass java_lang_AbstractMethodError;
+    public final ObjectKlass java_lang_InternalError;
+    public final ObjectKlass java_lang_VerifyError;
 
-    public final ObjectKlass Throwable;
-    public final Method Throwable_getStackTrace;
+    public final ObjectKlass java_lang_Throwable;
+    public final Method java_lang_Throwable_getStackTrace;
     public final Field HIDDEN_FRAMES;
-    public final Field Throwable_backtrace;
-    public final Field Throwable_cause;
+    public final Field java_lang_Throwable_backtrace;
+    public final Field java_lang_Throwable_cause;
 
-    public final ObjectKlass Error;
-    public final ObjectKlass NoSuchFieldError;
-    public final ObjectKlass NoSuchMethodError;
-    public final ObjectKlass IllegalAccessError;
-    public final ObjectKlass IncompatibleClassChangeError;
+    public final ObjectKlass java_lang_Error;
+    public final ObjectKlass java_lang_NoSuchFieldError;
+    public final ObjectKlass java_lang_NoSuchMethodError;
+    public final ObjectKlass java_lang_IllegalAccessError;
+    public final ObjectKlass java_lang_IncompatibleClassChangeError;
 
-    public final ObjectKlass StackTraceElement;
-    public final Method StackTraceElement_init;
+    public final ObjectKlass java_lang_StackTraceElement;
+    public final Method java_lang_StackTraceElement_init;
 
-    public final ObjectKlass PrivilegedActionException;
-    public final Method PrivilegedActionException_init_Exception;
+    public final ObjectKlass java_security_PrivilegedActionException;
+    public final Method java_security_PrivilegedActionException_init_Exception;
 
     // Array support.
-    public final ObjectKlass Cloneable;
-    public final ObjectKlass Serializable;
+    public final ObjectKlass java_lang_Cloneable;
+    public final ObjectKlass java_io_Serializable;
 
     public final ObjectKlass sun_nio_ch_DirectBuffer;
-    public final ObjectKlass Buffer;
-    public final Field Buffer_address;
-    public final Field Buffer_capacity;
+    public final ObjectKlass java_nio_Buffer;
+    public final Field java_nio_Buffer_address;
+    public final Field java_nio_Buffer_capacity;
 
-    public final ObjectKlass ByteBuffer;
-    public final Method ByteBuffer_wrap;
+    public final ObjectKlass java_nio_ByteBuffer;
+    public final Method java_nio_ByteBuffer_wrap;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
 
-    public final ObjectKlass ThreadGroup;
-    public final Method ThreadGroup_remove;
-    public final Method Thread_dispatchUncaughtException;
-    public final Field ThreadGroup_maxPriority;
-    public final ObjectKlass Thread;
-    public final Field Thread_threadStatus;
-    public final Field Thread_tid;
-    public final Method Thread_exit;
-    public final Method Thread_run;
-    public final Method Thread_checkAccess;
-    public final Method Thread_stop;
+    public final ObjectKlass java_lang_ThreadGroup;
+    public final Method java_lang_ThreadGroup_remove;
+    public final Method java_lang_Thread_dispatchUncaughtException;
+    public final Field java_lang_ThreadGroup_maxPriority;
+    public final ObjectKlass java_lang_Thread;
+    public final Field java_lang_Thread_threadStatus;
+    public final Field java_lang_Thread_tid;
+    public final Method java_lang_Thread_exit;
+    public final Method java_lang_Thread_run;
+    public final Method java_lang_Thread_checkAccess;
+    public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_IS_ALIVE;
     public final Field HIDDEN_INTERRUPTED;
@@ -573,106 +575,106 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
-    public final Field Thread_group;
-    public final Field Thread_name;
-    public final Field Thread_priority;
-    public final Field Thread_blockerLock;
-    public final Field Thread_daemon;
-    public final Field Thread_inheritedAccessControlContext;
+    public final Field java_lang_Thread_group;
+    public final Field java_lang_Thread_name;
+    public final Field java_lang_Thread_priority;
+    public final Field java_lang_Thread_blockerLock;
+    public final Field java_lang_Thread_daemon;
+    public final Field java_lang_Thread_inheritedAccessControlContext;
 
-    public final ObjectKlass FinalizerThread;
-    public final ObjectKlass ReferenceHandler;
+    public final ObjectKlass java_lang_ref_Finalizer$FinalizerThread;
+    public final ObjectKlass java_lang_ref_Reference$ReferenceHandler;
 
     public final ObjectKlass sun_misc_VM;
-    public final Method VM_toThreadState;
+    public final Method sun_misc_VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
 
-    public final ObjectKlass System;
-    public final Method System_initializeSystemClass;
-    public final Method System_exit;
-    public final Field System_securityManager;
+    public final ObjectKlass java_lang_System;
+    public final Method java_lang_System_initializeSystemClass;
+    public final Method java_lang_System_exit;
+    public final Field java_lang_System_securityManager;
 
-    public final ObjectKlass ProtectionDomain;
-    public final Method ProtectionDomain_impliesCreateAccessControlContext;
-    public final Method ProtectionDomain_init_CodeSource_PermissionCollection;
+    public final ObjectKlass java_security_ProtectionDomain;
+    public final Method java_security_ProtectionDomain_impliesCreateAccessControlContext;
+    public final Method java_security_ProtectionDomain_init_CodeSource_PermissionCollection;
 
-    public final ObjectKlass AccessControlContext;
-    public final Method AccessControlContext_isAuthorized;
-    public final Field ACC_context;
-    public final Field ACC_privilegedContext;
-    public final Field ACC_isPrivileged;
-    public final Field ACC_isAuthorized;
+    public final ObjectKlass java_security_AccessControlContext;
+    public final Field java_security_AccessControlContext_context;
+    public final Field java_security_AccessControlContext_privilegedContext;
+    public final Field java_security_AccessControlContext_isPrivileged;
+    public final Field java_security_AccessControlContext_isAuthorized;
 
-    public final ObjectKlass MethodType;
-    public final Method MethodType_toMethodDescriptorString;
+    public final ObjectKlass java_lang_invoke_MethodType;
+    public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
+    public final Method java_lang_invoke_MethodType_fromMethodDescriptorString;
 
-    public final ObjectKlass MemberName;
-    public final Method MemberName_getSignature;
-    public final Method MethodType_fromMethodDescriptorString;
+    public final ObjectKlass java_lang_invoke_MemberName;
+    public final Method java_lang_invoke_MemberName_getSignature;
+
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;
-    public final Field MemberName_clazz;
-    public final Field MemberName_name;
-    public final Field MemberName_type;
-    public final Field MemberName_flags;
+    public final Field java_lang_invoke_MemberName_clazz;
+    public final Field java_lang_invoke_MemberName_name;
+    public final Field java_lang_invoke_MemberName_type;
+    public final Field java_lang_invoke_MemberName_flags;
 
-    public final ObjectKlass MethodHandle;
-    public final Method invoke;
-    public final Method invokeExact;
-    public final Method invokeBasic;
-    public final Method invokeWithArguments;
-    public final Method linkToInterface;
-    public final Method linkToSpecial;
-    public final Method linkToStatic;
-    public final Method linkToVirtual;
-    public final Field MethodHandle_type;
-    public final Field MethodHandle_form;
+    public final ObjectKlass java_lang_invoke_MethodHandle;
+    public final Method java_lang_invoke_MethodHandle_invoke;
+    public final Method java_lang_invoke_MethodHandle_invokeExact;
+    public final Method java_lang_invoke_MethodHandle_invokeBasic;
+    public final Method java_lang_invoke_MethodHandle_invokeWithArguments;
+    public final Method java_lang_invoke_MethodHandle_linkToInterface;
+    public final Method java_lang_invoke_MethodHandle_linkToSpecial;
+    public final Method java_lang_invoke_MethodHandle_linkToStatic;
+    public final Method java_lang_invoke_MethodHandle_linkToVirtual;
+    public final Field java_lang_invoke_MethodHandle_type;
+    public final Field java_lang_invoke_MethodHandle_form;
 
-    public final ObjectKlass MethodHandles;
-    public final Method lookup;
+    public final ObjectKlass java_lang_invoke_MethodHandles;
+    public final Method java_lang_invoke_MethodHandles_lookup;
 
-    public final ObjectKlass CallSite;
-    public final Field CallSite_target;
+    public final ObjectKlass java_lang_invoke_CallSite;
+    public final Field java_lang_invoke_CallSite_target;
 
-    public final ObjectKlass LambdaForm;
-    public final Field LambdaForm_vmentry;
-    public final Field LambdaForm_isCompiled;
-    public final Method LambdaForm_compileToBytecode;
+    public final ObjectKlass java_lang_invoke_LambdaForm;
+    public final Field java_lang_invoke_LambdaForm_vmentry;
+    public final Field java_lang_invoke_LambdaForm_isCompiled;
+    public final Method java_lang_invoke_LambdaForm_compileToBytecode;
 
-    public final ObjectKlass MethodHandleNatives;
-    public final Method MethodHandleNatives_linkMethod;
-    public final Method MethodHandleNatives_linkMethodHandleConstant;
-    public final Method MethodHandleNatives_findMethodHandleType;
-    public final Method MethodHandleNatives_linkCallSite;
+    public final ObjectKlass java_lang_invoke_MethodHandleNatives;
+    public final Method java_lang_invoke_MethodHandleNatives_linkMethod;
+    public final Method java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant;
+    public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
 
     // References
-    public final ObjectKlass Finalizer;
-    public final Method Finalizer_register;
-    public final ObjectKlass Reference;
-    public final Field Reference_referent;
-    public final Field Reference_discovered;
-    public final Field Reference_pending;
-    public final Field Reference_next;
-    public final Field Reference_queue;
-    public final Field Reference_lock;
-    public final ObjectKlass WeakReference;
-    public final ObjectKlass SoftReference;
-    public final ObjectKlass PhantomReference;
-    public final ObjectKlass FinalReference;
-    public final ObjectKlass Cleaner;
+    public final ObjectKlass java_lang_ref_Finalizer;
+    public final Method java_lang_ref_Finalizer_register;
+    public final ObjectKlass java_lang_ref_Reference;
+    public final Field java_lang_ref_Reference_referent;
+    public final Field java_lang_ref_Reference_discovered;
+    public final Field java_lang_ref_Reference_pending;
+    public final Field java_lang_ref_Reference_next;
+    public final Field java_lang_ref_Reference_queue;
+    public final Field java_lang_ref_Reference_lock;
+    public final ObjectKlass java_lang_ref_WeakReference;
+    public final ObjectKlass java_lang_ref_SoftReference;
+    public final ObjectKlass java_lang_ref_PhantomReference;
+    public final ObjectKlass java_lang_ref_FinalReference;
+    public final ObjectKlass sun_misc_Cleaner;
 
     public final Field HIDDEN_HOST_REFERENCE;
 
-    public final ObjectKlass ReferenceQueue;
-    public final Field ReferenceQueue_NULL;
+    public final ObjectKlass java_lang_ref_ReferenceQueue;
+    public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
 
-    public final ObjectKlass MemoryUsage;
+    public final ObjectKlass java_lang_management_MemoryUsage;
     public final ObjectKlass sun_management_ManagementFactory;
     public final Method sun_management_ManagementFactory_createMemoryPool;
     public final Method sun_management_ManagementFactory_createMemoryManager;
     public final Method sun_management_ManagementFactory_createGarbageCollector;
-    public final ObjectKlass management_ThreadInfo;
+    public final ObjectKlass java_lang_management_ThreadInfo;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -719,32 +721,32 @@ public final class Meta implements ContextAccess {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
         return ex;
     }
 
     public static StaticObject initExWithMessage(ObjectKlass klass, String message) {
-        assert klass.getMeta().Throwable.isAssignableFrom(klass);
+        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
+        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
         return ex;
     }
 
     public static StaticObject initExWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
-        assert klass.getMeta().Throwable.isAssignableFrom(klass);
-        assert StaticObject.isNull(message) || klass.getMeta().String.isAssignableFrom(message.getKlass());
+        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
+        assert StaticObject.isNull(message) || klass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
     public static StaticObject initEx(ObjectKlass klass) {
-        assert klass.getMeta().Throwable.isAssignableFrom(klass);
+        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name.INIT, Signature._void).invokeDirect(ex);
+        klass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
         return ex;
     }
 
@@ -752,98 +754,98 @@ public final class Meta implements ContextAccess {
         assert Throwable.class.isAssignableFrom(clazz);
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, toGuestString(message));
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, toGuestString(message));
         return ex;
     }
 
     public StaticObject initExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
     public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
     public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
         return ex;
     }
 
     public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
-        assert Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
         return ex;
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwEx(ObjectKlass exKlass) {
-        assert Throwable.isAssignableFrom(exKlass);
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
         throw new EspressoException(initEx(exKlass));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwEx(java.lang.Class<?> clazz) {
         assert Throwable.class.isAssignableFrom(clazz);
         throw new EspressoException(initEx(clazz));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwEx(StaticObject throwable) {
         throw new EspressoException(throwable);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
         throw new EspressoException(initExWithMessage(clazz, message));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(clazz, cause));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
-        assert Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(message) || String.isAssignableFrom(message.getKlass());
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
+        assert StaticObject.isNull(message) || java_lang_String.isAssignableFrom(message.getKlass());
         throw new EspressoException(initExWithMessage(exKlass, message));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(exKlass, cause));
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
-        assert Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
+        assert java_lang_Throwable.isAssignableFrom(exKlass);
+        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
     }
 
@@ -862,7 +864,7 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
-    public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
+    ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         assert !hostClass.isPrimitive();
         // Resolve non-primitive classes using BCL.
@@ -886,7 +888,7 @@ public final class Meta implements ContextAccess {
     }
 
     public StaticObject newThrowable() {
-        return initEx(Throwable);
+        return initEx(java_lang_Throwable);
     }
 
     /**
@@ -945,7 +947,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        char[] value = ((StaticObject) meta.String_value.get(str)).unwrap();
+        char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
         return HostJava.createString(value);
     }
 
@@ -956,11 +958,11 @@ public final class Meta implements ContextAccess {
         }
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
-        StaticObject guestString = String.allocateInstance();
-        String_value.set(guestString, StaticObject.wrap(value));
-        String_hash.set(guestString, hash);
+        StaticObject guestString = java_lang_String.allocateInstance();
+        java_lang_String_value.set(guestString, StaticObject.wrap(value));
+        java_lang_String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
-        assert hostString.hashCode() == (int) String_hashCode.invokeDirect(guestString);
+        assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
         return guestString;
     }
 
@@ -1021,7 +1023,7 @@ public final class Meta implements ContextAccess {
             if (guestObject.isArray()) {
                 return guestObject.unwrap();
             }
-            if (guestObject.getKlass() == String) {
+            if (guestObject.getKlass() == java_lang_String) {
                 return toHostString(guestObject);
             }
             return unboxGuest((StaticObject) object);
@@ -1077,21 +1079,21 @@ public final class Meta implements ContextAccess {
 
     public Object unboxGuest(StaticObject boxed) {
         Klass klass = boxed.getKlass();
-        if (klass == Boolean) {
+        if (klass == java_lang_Boolean) {
             return unboxBoolean(boxed);
-        } else if (klass == Byte) {
+        } else if (klass == java_lang_Byte) {
             return unboxByte(boxed);
-        } else if (klass == Character) {
+        } else if (klass == java_lang_Character) {
             return unboxCharacter(boxed);
-        } else if (klass == Short) {
+        } else if (klass == java_lang_Short) {
             return unboxShort(boxed);
-        } else if (klass == Float) {
+        } else if (klass == java_lang_Float) {
             return unboxFloat(boxed);
-        } else if (klass == Integer) {
+        } else if (klass == java_lang_Integer) {
             return unboxInteger(boxed);
-        } else if (klass == Double) {
+        } else if (klass == java_lang_Double) {
             return unboxDouble(boxed);
-        } else if (klass == Long) {
+        } else if (klass == java_lang_Long) {
             return unboxLong(boxed);
         } else {
             return boxed;
@@ -1099,59 +1101,59 @@ public final class Meta implements ContextAccess {
     }
 
     public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Boolean) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Boolean) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (boolean) Boolean_value.get(boxed);
+        return (boolean) java_lang_Boolean_value.get(boxed);
     }
 
     public byte unboxByte(@Host(Byte.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Byte) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Byte) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (byte) Byte_value.get(boxed);
+        return (byte) java_lang_Byte_value.get(boxed);
     }
 
     public char unboxCharacter(@Host(Character.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Character) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Character) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (char) Character_value.get(boxed);
+        return (char) java_lang_Character_value.get(boxed);
     }
 
     public short unboxShort(@Host(Short.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Short) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Short) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (short) Short_value.get(boxed);
+        return (short) java_lang_Short_value.get(boxed);
     }
 
     public float unboxFloat(@Host(Float.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Float) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Float) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (float) Float_value.get(boxed);
+        return (float) java_lang_Float_value.get(boxed);
     }
 
     public int unboxInteger(@Host(Integer.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Integer) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Integer) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (int) Integer_value.get(boxed);
+        return (int) java_lang_Integer_value.get(boxed);
     }
 
     public double unboxDouble(@Host(Double.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Double) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Double) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (double) Double_value.get(boxed);
+        return (double) java_lang_Double_value.get(boxed);
     }
 
     public long unboxLong(@Host(Long.class) StaticObject boxed) {
-        if (StaticObject.isNull(boxed) || boxed.getKlass() != Long) {
-            throw throwEx(IllegalArgumentException);
+        if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Long) {
+            throw throwEx(java_lang_IllegalArgumentException);
         }
-        return (long) Long_value.get(boxed);
+        return (long) java_lang_Long_value.get(boxed);
     }
 
     // endregion Guest Unboxing
@@ -1159,35 +1161,35 @@ public final class Meta implements ContextAccess {
     // region Guest
 
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
-        return (StaticObject) Boolean_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Boolean_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Byte.class) StaticObject boxByte(byte value) {
-        return (StaticObject) Byte_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Byte_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Character.class) StaticObject boxCharacter(char value) {
-        return (StaticObject) Character_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Character_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Short.class) StaticObject boxShort(short value) {
-        return (StaticObject) Short_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Short_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Float.class) StaticObject boxFloat(float value) {
-        return (StaticObject) Float_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Float_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Integer.class) StaticObject boxInteger(int value) {
-        return (StaticObject) Integer_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Integer_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Double.class) StaticObject boxDouble(double value) {
-        return (StaticObject) Double_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Double_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Long.class) StaticObject boxLong(long value) {
-        return (StaticObject) Long_valueOf.invokeDirect(null, value);
+        return (StaticObject) java_lang_Long_valueOf.invokeDirect(null, value);
     }
 
     // endregion Guest boxing

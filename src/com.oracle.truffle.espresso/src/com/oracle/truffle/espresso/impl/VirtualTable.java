@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 /**
  * Helper for creating virtual tables in ObjectKlass.
@@ -46,7 +46,7 @@ public final class VirtualTable {
             tmp = new ArrayList<>();
         }
         for (Method m : declaredMethods) {
-            if (!m.isStatic() && m.getName() != Symbol.Name.CLINIT && m.getName() != Symbol.Name.INIT) {
+            if (!m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
                 // Do not bloat the vtable with methods that cannot be called through
                 // virtual invocation.
                 checkOverride(superKlass, m, tmp, thisKlass, overrides);

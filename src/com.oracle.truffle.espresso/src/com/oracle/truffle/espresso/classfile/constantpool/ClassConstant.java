@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
-
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -37,11 +35,14 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.object.DebugCounter;
 
 /**
  * Interface denoting a class entry in a constant pool.
  */
 public interface ClassConstant extends PoolConstant {
+
+    /* static final */ DebugCounter CLASS_RESOLVE_COUNT = DebugCounter.create("ClassConstant.resolve calls");
 
     static ClassConstant create(int classNameIndex) {
         return new Index(classNameIndex);
@@ -113,7 +114,7 @@ public interface ClassConstant extends PoolConstant {
          */
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveKlassCount.inc();
+            CLASS_RESOLVE_COUNT.inc();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = getName(pool);
             try {
@@ -123,14 +124,14 @@ public interface ClassConstant extends PoolConstant {
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(klassName));
+                    throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }
 
                 return new Resolved(klass);
 
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                if (pool.getContext().getMeta().ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                if (pool.getContext().getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                     throw pool.getContext().getMeta().throwExWithMessage(NoClassDefFoundError.class, klassName.toString());
                 }
                 throw e;
@@ -182,7 +183,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveKlassCount.inc();
+            CLASS_RESOLVE_COUNT.inc();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = getName(pool);
             try {
@@ -191,7 +192,7 @@ public interface ClassConstant extends PoolConstant {
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(klassName));
+                    throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }
 
                 return new Resolved(klass);

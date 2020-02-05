@@ -38,7 +38,7 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     public EspressoException(@Host(Throwable.class) StaticObject exception) {
         assert StaticObject.notNull(exception);
-        assert InterpreterToVM.instanceOf(exception, exception.getKlass().getMeta().Throwable);
+        assert InterpreterToVM.instanceOf(exception, exception.getKlass().getMeta().java_lang_Throwable);
         this.exception = exception;
     }
 

@@ -112,7 +112,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
             return true;
         }
-        return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
+        return (klass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
     }
 
     public final ObjectKlass[] getSuperInterfaces() {
@@ -158,7 +158,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private synchronized void mirrorCreate() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = new StaticObject(getMeta().Class, this);
+            this.mirrorCache = new StaticObject(getMeta().java_lang_Class, this);
         }
     }
 
@@ -412,7 +412,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        Method clinit = lookupDeclaredMethod(Name.CLINIT, Signature._void);
+        Method clinit = lookupDeclaredMethod(Name._clinit_, Signature._void);
         if (clinit != null && clinit.isStatic()) {
             return clinit;
         }
@@ -435,7 +435,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             initialize();
         } catch (EspressoException e) {
             StaticObject cause = e.getExceptionObject();
-            if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
+            if (!InterpreterToVM.instanceOf(cause, getMeta().java_lang_Error)) {
                 throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
             } else {
                 throw e;
@@ -451,13 +451,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         if (isArray()) {
             Klass component = getComponentType();
-            if (this == getMeta().Object.array() || component.isPrimitive()) {
-                return getMeta().Object;
+            if (this == getMeta().java_lang_Object.array() || component.isPrimitive()) {
+                return getMeta().java_lang_Object;
             }
             return component.getSupertype().array();
         }
         if (isInterface()) {
-            return getMeta().Object;
+            return getMeta().java_lang_Object;
         }
         return getSuperKlass();
     }
@@ -646,20 +646,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     Symbol<Signature> signature,
                     MethodHandleIntrinsics.PolySigIntrinsics methodHandleId) {
         if (methodHandleId == InvokeGeneric) {
-            return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, methodHandleId);
+            return (methodName == Name.invoke ? getMeta().java_lang_invoke_MethodHandle_invoke : getMeta().java_lang_invoke_MethodHandle_invokeExact).findIntrinsic(signature, methodHandleId);
         } else if (methodHandleId == InvokeBasic) {
-            return getMeta().invokeBasic.findIntrinsic(signature, methodHandleId);
+            return getMeta().java_lang_invoke_MethodHandle_invokeBasic.findIntrinsic(signature, methodHandleId);
         } else {
             Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
             switch (methodHandleId) {
                 case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().linkToInterface, basicSignature, methodHandleId);
+                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToInterface, basicSignature, methodHandleId);
                 case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().linkToSpecial, basicSignature, methodHandleId);
+                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToSpecial, basicSignature, methodHandleId);
                 case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().linkToStatic, basicSignature, methodHandleId);
+                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToStatic, basicSignature, methodHandleId);
                 case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().linkToVirtual, basicSignature, methodHandleId);
+                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToVirtual, basicSignature, methodHandleId);
                 default:
                     throw EspressoError.shouldNotReachHere();
             }

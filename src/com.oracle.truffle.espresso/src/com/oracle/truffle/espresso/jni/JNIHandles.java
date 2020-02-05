@@ -198,7 +198,7 @@ final class GlobalHandles {
         assert obj != null;
         assert obj instanceof StaticObject || obj instanceof WeakReference;
         if (top >= objects.length) {
-            objects = Arrays.copyOf(objects, 2 * objects.length);
+            objects = Arrays.copyOf(objects, Math.multiplyExact(objects.length, 2), Object[].class);
         }
         assert top > 0;
 
@@ -276,8 +276,7 @@ final class LocalHandles {
     public int pushFrame(int capacity) {
         if (frameCount == frameStack.length) {
             int[] oldArray = frameStack;
-            frameStack = new int[Math.multiplyExact(oldArray.length, 2)];
-            System.arraycopy(oldArray, 0, frameStack, 0, oldArray.length);
+            frameStack = Arrays.copyOf(oldArray, Math.multiplyExact(oldArray.length, 2));
         }
         frameStack[frameCount] = top;
         frameCount++;

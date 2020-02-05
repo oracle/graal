@@ -140,14 +140,14 @@ public interface MethodHandleConstant extends PoolConstant {
             StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
             StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
 
-            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
-                            rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                            rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
 
             Klass mklass = target.getDeclaringKlass();
             StaticObject mname = meta.toGuestString(target.getName());
 
-            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
+            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));
@@ -166,14 +166,14 @@ public interface MethodHandleConstant extends PoolConstant {
             StaticObject[] ptypes = resolveSignatureParameters(accessingKlass, parsed, meta);
             StaticObject rtype = resolveReturnType(accessingKlass, parsed, meta);
 
-            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
-                            rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                            rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
 
             Klass mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).classIndex);
 
             StaticObject mname = meta.toGuestString(ref.getName(pool));
-            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
+            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));
@@ -186,13 +186,13 @@ public interface MethodHandleConstant extends PoolConstant {
             RefKind kind = getRefKind();
 
             Symbol<Name> memberName = pool.memberAt(refIndex).getName(pool);
-            if (Name.CLINIT.equals(memberName)) {
+            if (Name._clinit_.equals(memberName)) {
                 throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
 
             // If the value is 8 (REF_newInvokeSpecial), the name of the method represented by a
             // CONSTANT_Methodref_info structure must be <init>.
-            if (Name.INIT.equals(memberName) && kind != RefKind.NEWINVOKESPECIAL) {
+            if (Name._init_.equals(memberName) && kind != RefKind.NEWINVOKESPECIAL) {
                 throw ConstantPool.classFormatError("Ill-formed constant: " + tag());
             }
             if (getRefKind() == null) {
@@ -203,7 +203,7 @@ public interface MethodHandleConstant extends PoolConstant {
             // (REF_invokeStatic), 7 (REF_invokeSpecial), or 9 (REF_invokeInterface), the name of
             // the method represented by a CONSTANT_Methodref_info structure or a
             // CONSTANT_InterfaceMethodref_info structure must not be <init> or <clinit>.
-            if (memberName.equals(Name.INIT) || memberName.equals(Name.CLINIT)) {
+            if (memberName.equals(Name._init_) || memberName.equals(Name._clinit_)) {
                 if (kind == RefKind.INVOKEVIRTUAL ||
                                 kind == RefKind.INVOKESTATIC ||
                                 kind == RefKind.INVOKESPECIAL ||

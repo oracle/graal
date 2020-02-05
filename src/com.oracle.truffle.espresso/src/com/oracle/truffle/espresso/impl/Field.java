@@ -86,7 +86,7 @@ public final class Field extends Member<Type> implements FieldRef {
     private Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
         super(null, name);
         this.holder = holder;
-        this.linkedField = new LinkedField(new ParserField(0, name, Type.Object, null), holder.getLinkedKlass(), -1);
+        this.linkedField = new LinkedField(new ParserField(0, name, Type.java_lang_Object, null), holder.getLinkedKlass(), -1);
         this.slot = hiddenSlot;
         this.fieldIndex = hiddenIndex;
     }
@@ -140,7 +140,6 @@ public final class Field extends Member<Type> implements FieldRef {
     public Object get(StaticObject self) {
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
         // @formatter:off
-        // Checkstyle: stop
         switch (getKind()) {
             case Boolean : return InterpreterToVM.getFieldBoolean(self, this);
             case Byte    : return InterpreterToVM.getFieldByte(self, this);
@@ -154,14 +153,12 @@ public final class Field extends Member<Type> implements FieldRef {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public void set(StaticObject self, Object value) {
         assert value != null;
         assert getDeclaringKlass().isAssignableFrom(self.getKlass());
         // @formatter:off
-        // Checkstyle: stop
         switch (getKind()) {
             case Boolean : InterpreterToVM.setFieldBoolean((boolean) value, self, this); break;
             case Byte    : InterpreterToVM.setFieldByte((byte) value, self, this);       break;
@@ -175,7 +172,6 @@ public final class Field extends Member<Type> implements FieldRef {
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public Klass resolveTypeKlass() {
@@ -203,7 +199,7 @@ public final class Field extends Member<Type> implements FieldRef {
         while (target == null) {
             target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
             if (target == null) {
-                curField = (StaticObject) meta.Field_root.get(curField);
+                curField = (StaticObject) meta.java_lang_reflect_Field_root.get(curField);
             }
         }
         return target;

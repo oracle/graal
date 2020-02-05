@@ -100,7 +100,7 @@ public final class LinkedKlass {
         // Super interfaces are not checked for finalizers; a default .finalize method will be
         // resolved to Object.finalize, making the finalizer not observable.
         this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
-        assert !this.hasFinalizer || !Type.Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
+        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
 
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;

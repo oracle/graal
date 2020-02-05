@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
-
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -112,7 +110,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          */
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveMethodCount.inc();
+            METHODREF_RESOLVE_COUNT.inc();
             EspressoContext context = pool.getContext();
             Meta meta = context.getMeta();
 
@@ -123,7 +121,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             // 1. If C is not an interface, interface method resolution throws an
             // IncompatibleClassChangeError.
             if (!holderInterface.isInterface()) {
-                throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(name));
             }
 
             Symbol<Signature> signature = getSignature(pool);
@@ -131,13 +129,13 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             Method method = ((ObjectKlass) holderInterface).lookupInterfaceMethod(name, signature);
 
             if (method == null) {
-                throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method)) {
                 System.err.println(EspressoOptions.INCEPTION_NAME + " Interface method access check of: " + method.getName() + " in " + holderInterface.getType() + " from " +
                                 accessingKlass.getType() + " throws IllegalAccessError");
-                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
+                throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
             }
 
             method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());

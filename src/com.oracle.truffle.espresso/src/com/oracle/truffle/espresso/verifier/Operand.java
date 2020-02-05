@@ -231,7 +231,7 @@ class ReferenceOperand extends Operand {
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
-                if (thisKlass.getMeta().ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                     throw new NoClassDefFoundError(type.toString());
                 }
                 throw e;
@@ -246,7 +246,7 @@ class ReferenceOperand extends Operand {
     @Override
     boolean compliesWith(Operand other) {
         if (other.isReference()) {
-            if (type == null || other.getType() == Type.Object) {
+            if (type == null || other.getType() == Type.java_lang_Object) {
                 return true;
             }
             if (other.getType() == null) {
@@ -337,17 +337,17 @@ final class ArrayOperand extends Operand {
     boolean compliesWith(Operand other) {
         if (other.isArrayType()) {
             if (other.getDimensions() < getDimensions()) {
-                return other.getElemental().isReference() && (other.getElemental().getType() == Type.Object ||
-                                other.getElemental().getType() == Type.Cloneable ||
-                                other.getElemental().getType() == Type.Serializable);
+                return other.getElemental().isReference() && (other.getElemental().getType() == Type.java_lang_Object ||
+                                other.getElemental().getType() == Type.java_lang_Cloneable ||
+                                other.getElemental().getType() == Type.java_io_Serializable);
             } else if (other.getDimensions() == getDimensions()) {
                 return elemental.compliesWith(other.getElemental());
             }
             return false;
         }
-        return (other == Invalid) || (other.isReference() && (other.getType() == Type.Object ||
-                        other.getType() == Type.Cloneable ||
-                        other.getType() == Type.Serializable));
+        return (other == Invalid) || (other.isReference() && (other.getType() == Type.java_lang_Object ||
+                        other.getType() == Type.java_lang_Cloneable ||
+                        other.getType() == Type.java_io_Serializable));
     }
 
     @Override
@@ -380,7 +380,7 @@ final class ArrayOperand extends Operand {
         if (smallestElemental.isPrimitive()) {
             return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
         }
-        if (smallestElemental.getType() == Type.Cloneable || smallestElemental.getType() == Type.Serializable) {
+        if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
             return new ArrayOperand(smallestElemental, Math.min(thisDim, otherDim));
         }
         return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));

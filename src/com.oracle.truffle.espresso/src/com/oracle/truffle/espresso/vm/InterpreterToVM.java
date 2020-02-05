@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -34,7 +35,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -326,11 +327,11 @@ public final class InterpreterToVM implements ContextAccess {
     public StaticObject newMultiArray(Klass component, int... dimensions) {
         Meta meta = getMeta();
         if (component == meta._void) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw meta.throwEx(meta.NegativeArraySizeException);
+                throw meta.throwEx(meta.java_lang_NegativeArraySizeException);
             }
         }
         return newMultiArrayWithoutChecks(component, dimensions);
@@ -366,7 +367,6 @@ public final class InterpreterToVM implements ContextAccess {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
         // @formatter:off
-        // Checkstyle: stop
         switch (jvmPrimitiveType) {
             case 4  : return StaticObject.wrap(new boolean[length]);
             case 5  : return StaticObject.wrap(new char[length]);
@@ -376,10 +376,11 @@ public final class InterpreterToVM implements ContextAccess {
             case 9  : return StaticObject.wrap(new short[length]);
             case 10 : return StaticObject.wrap(new int[length]);
             case 11 : return StaticObject.wrap(new long[length]);
-            default : throw EspressoError.shouldNotReachHere();
+            default :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     /**
@@ -407,7 +408,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
-        throw getMeta().throwEx(getMeta().ClassCastException);
+        throw getMeta().throwEx(getMeta().java_lang_ClassCastException);
     }
 
     public static StaticObject newObject(Klass klass) {
@@ -425,7 +426,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
-        assert getMeta().String == guestString.getKlass();
+        assert getMeta().java_lang_String == guestString.getKlass();
         return getStrings().intern(guestString);
     }
 
@@ -469,7 +470,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
-        throwable.setField(meta.Throwable_backtrace, throwable);
+        throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
         return throwable;
     }
 
@@ -486,7 +487,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (!skipFillInStackTrace) {
                 return false;
             }
-            if (!((m.getName() == Symbol.Name.fillInStackTrace) || (m.getName() == Symbol.Name.fillInStackTrace0))) {
+            if (!((Name.fillInStackTrace.equals(m.getName())) || (Name.fillInStackTrace0.equals(m.getName())))) {
                 skipFillInStackTrace = false;
             }
             return skipFillInStackTrace;
@@ -496,7 +497,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (!skipThrowableInit) {
                 return false;
             }
-            if (!(m.getName() == Symbol.Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+            if (!(Name._init_.equals(m.getName())) || !m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
                 skipThrowableInit = false;
             }
             return skipThrowableInit;

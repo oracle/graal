@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
-
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -168,14 +166,14 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            resolveMethodCount.inc();
+            METHODREF_RESOLVE_COUNT.inc();
 
             EspressoContext context = pool.getContext();
             Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
-                throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
             }
 
             Symbol<Name> name = getName(pool);
@@ -183,13 +181,13 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
             if (method == null) {
-                throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
                 System.err.println(EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                 " throws IllegalAccessError");
-                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(getName(pool)));
+                throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
             if (!method.isMethodHandleIntrinsic()) {
@@ -207,7 +205,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // initialization method (&sect;2.9). The return type of such a method must be void.
             pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
             Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
-            if (name.equals(Name.INIT)) {
+            if (Name._init_.equals(name)) {
                 Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
                 int len = descriptor.length();
                 // descriptor.endsWith(")V");

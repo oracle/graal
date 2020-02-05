@@ -327,11 +327,11 @@ public final class ClassfileParser {
 
         Symbol<Type> superKlass = parseSuperKlass();
 
-        if (!Type.Object.equals(classType) && superKlass == null) {
+        if (!Type.java_lang_Object.equals(classType) && superKlass == null) {
             throw ConstantPool.classFormatError("Class " + classType + " must have a superclass");
         }
 
-        if (isInterface && !Type.Object.equals(superKlass)) {
+        if (isInterface && !Type.java_lang_Object.equals(superKlass)) {
             throw ConstantPool.classFormatError("Interface " + classType + " must extend java.lang.Object");
         }
 
@@ -455,7 +455,7 @@ public final class ClassfileParser {
         int extraFlags = methodFlags;
         boolean isClinit = false;
         boolean isInit = false;
-        if (name.equals(Name.CLINIT)) {
+        if (name.equals(Name._clinit_)) {
             // Class and interface initialization methods (3.9) are called
             // implicitly by the Java virtual machine; the value of their
             // access_flags item is ignored except for the settings of the
@@ -463,7 +463,7 @@ public final class ClassfileParser {
             methodFlags &= (ACC_STRICT | ACC_STATIC);
             // extraFlags = INITIALIZER | methodFlags;
             isClinit = true;
-        } else if (name.equals(Name.INIT)) {
+        } else if (name.equals(Name._init_)) {
             isInit = true;
         }
 
@@ -478,7 +478,7 @@ public final class ClassfileParser {
             throw ConstantPool.classFormatError("Too many arguments in method signature: " + signature);
         }
 
-        if (name.equals(Name.finalize) && signature.equals(Signature._void) && !Modifier.isStatic(methodFlags) && !Type.Object.equals(classType)) {
+        if (name.equals(Name.finalize) && signature.equals(Signature._void) && !Modifier.isStatic(methodFlags) && !Type.java_lang_Object.equals(classType)) {
             // This class has a finalizer method implementation (ignore for java.lang.Object).
             classFlags |= ACC_FINALIZER;
         }
@@ -531,7 +531,7 @@ public final class ClassfileParser {
                         Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
                         constant.validateType(false);
                         Symbol<Type> annotType = constant.value();
-                        if (Type.LambdaForm$Compiled.equals(annotType)) {
+                        if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
@@ -1210,7 +1210,7 @@ public final class ClassfileParser {
                     valid = (tag == Tag.DOUBLE);
                     break;
                 case Object:
-                    valid = (tag == Tag.STRING) && descriptor.equals(Type.String);
+                    valid = (tag == Tag.STRING) && descriptor.equals(Type.java_lang_String);
                     break;
                 default: {
                     throw ConstantPool.classFormatError("Cannot have ConstantValue for fields of type " + kind);
@@ -1250,7 +1250,7 @@ public final class ClassfileParser {
     private Symbol<Type> parseSuperKlass() {
         int index = stream.readU2();
         if (index == 0) {
-            if (!classType.equals(Type.Object)) {
+            if (!classType.equals(Type.java_lang_Object)) {
                 throw ConstantPool.classFormatError("Invalid superclass index 0");
             }
             return null;

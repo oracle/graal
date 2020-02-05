@@ -253,12 +253,12 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
 
         if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
+            throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
         }
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null && !Klass.checkAccess(interf, klass)) {
-                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superinterface " + interf.getType()));
+                throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superinterface " + interf.getType()));
             }
         }
 
@@ -274,10 +274,10 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             klass = loadKlass(type);
         } catch (EspressoException e) {
-            if (meta.ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
-                StaticObject ncdfe = Meta.initEx(meta.NoClassDefFoundError);
-                meta.Throwable_cause.set(ncdfe, e.getExceptionObject());
+                StaticObject ncdfe = Meta.initEx(meta.java_lang_NoClassDefFoundError);
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
                 throw new EspressoException(ncdfe);
             }
             throw e;

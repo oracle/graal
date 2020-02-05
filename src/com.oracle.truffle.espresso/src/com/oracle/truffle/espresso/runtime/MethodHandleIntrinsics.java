@@ -118,7 +118,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     public static boolean isMethodHandleIntrinsic(Method m, Meta meta) {
-        if (m.getDeclaringKlass() == meta.MethodHandle) {
+        if (m.getDeclaringKlass() == meta.java_lang_invoke_MethodHandle) {
             PolySigIntrinsics id = getId(m);
             /*
              * Contrary to HotSpot implementation, Espresso pushes the MH.invoke_ frames on the
@@ -133,7 +133,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     public static PolySigIntrinsics getId(Method m) {
-        assert m.getDeclaringKlass() == m.getMeta().MethodHandle;
+        assert m.getDeclaringKlass() == m.getMeta().java_lang_invoke_MethodHandle;
         Symbol<Name> name = m.getName();
         if (name == Name.linkToStatic) {
             return PolySigIntrinsics.LinkToStatic;
@@ -163,10 +163,10 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         // * It has a single formal parameter of type Object[].
         // * It has a return type of Object.
         // * It has the ACC_VARARGS and ACC_NATIVE flags set.
-        if (!Type.MethodHandle.equals(m.getDeclaringKlass().getType())) {
+        if (!Type.java_lang_invoke_MethodHandle.equals(m.getDeclaringKlass().getType())) {
             return false;
         }
-        Symbol<Signature> polySig = Signature.Object_ObjectArray;
+        Symbol<Signature> polySig = Signature.Object_Object_array;
         Method lookup = m.getDeclaringKlass().lookupMethod(m.getName(), polySig);
         if (lookup == null) {
             return false;
