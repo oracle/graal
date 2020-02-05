@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -74,8 +74,7 @@ bin/$(LIBSULONG): bin/libsulong.bc
 	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) $(LD_FLAGS) $+
 
 bin/$(LIBSULONGXX): bin/libsulong++.bc
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) -stdlib=libc++ -lc++abi $(LD_FLAGS) -Wno-undefined-internal \
-	-L$(LLVM_TOOLCHAIN_LIB) $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -o $@ -fPIC -shared -rpath $(ORIGIN_TOKEN) -stdlib=libc++ $(LD_FLAGS) -Wno-undefined-internal $+
 
 bin/%.bc: bin/%.noopt.bc
 	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}

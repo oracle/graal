@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -48,8 +48,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -133,9 +131,6 @@ public final class NFIContextExtension implements ContextExtension {
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
-        if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
-            context.addInternalLibrary(getLibCxxName(), "<default nfi library>");
-        }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
             addLibrary(l, context);
@@ -177,10 +172,6 @@ public final class NFIContextExtension implements ContextExtension {
         } else {
             return false;
         }
-    }
-
-    private static String getLibCxxName() {
-        return LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
     }
 
     private TruffleObject loadLibrary(ExternalLibrary lib, LLVMContext context) {
