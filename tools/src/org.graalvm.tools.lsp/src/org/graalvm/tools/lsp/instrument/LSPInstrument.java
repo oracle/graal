@@ -192,7 +192,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         assert options != null;
         assert options.hasSetOptions();
 
-        TruffleAdapter truffleAdapter = new TruffleAdapter(options.get(DeveloperMode));
+        TruffleAdapter truffleAdapter = new TruffleAdapter(environment, options.get(DeveloperMode));
 
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);

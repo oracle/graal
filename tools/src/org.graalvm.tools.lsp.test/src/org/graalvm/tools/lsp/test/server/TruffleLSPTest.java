@@ -86,7 +86,7 @@ public abstract class TruffleLSPTest {
         Instrument instrument = engine.getInstruments().get("lsp");
         EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
 
-        truffleAdapter = new TruffleAdapter(true);
+        truffleAdapter = new TruffleAdapter(envProvider.getEnvironment(), true);
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);

@@ -33,18 +33,15 @@ import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
-
 public final class InteropUtils {
 
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, InteropUtils.class);
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private InteropUtils() {
         assert false;
     }
 
-    public static Integer getNumberOfArguments(Object nodeObject) {
+    public static Integer getNumberOfArguments(Object nodeObject, TruffleLogger logger) {
         if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, "numberOfArguments")) {
             try {
                 Object object = INTEROP.readMember(nodeObject, "numberOfArguments");
@@ -52,7 +49,7 @@ public final class InteropUtils {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
-                LOG.log(Level.INFO, nodeObject.toString(), t);
+                logger.log(Level.INFO, nodeObject.toString(), t);
             }
         }
         return null;
@@ -71,7 +68,7 @@ public final class InteropUtils {
                         clazz == String.class);
     }
 
-    public static String getNodeObjectName(InstrumentableNode node) {
+    public static String getNodeObjectName(InstrumentableNode node, TruffleLogger logger) {
         Object nodeObject = node.getNodeObject();
         if (nodeObject instanceof TruffleObject) {
             try {
@@ -84,7 +81,7 @@ public final class InteropUtils {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
-                LOG.log(Level.INFO, node.getClass().getCanonicalName(), t);
+                logger.log(Level.INFO, node.getClass().getCanonicalName(), t);
             }
         }
         return null;

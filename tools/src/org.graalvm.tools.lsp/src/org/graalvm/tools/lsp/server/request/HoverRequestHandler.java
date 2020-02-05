@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.Hover;
 import org.graalvm.tools.lsp.server.types.MarkupContent;
@@ -43,7 +42,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -66,13 +64,13 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("deprecation")
 public final class HoverRequestHandler extends AbstractRequestHandler {
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, HoverRequestHandler.class);
 
     private final CompletionRequestHandler completionHandler;
     private final boolean developerMode;
 
-    public HoverRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler, boolean developerMode) {
-        super(env, surrogateMap, contextAwareExecutor);
+    public HoverRequestHandler(Env envMain, Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler,
+                    boolean developerMode) {
+        super(envMain, env, surrogateMap, contextAwareExecutor);
         this.completionHandler = completionHandler;
         this.developerMode = developerMode;
     }
@@ -82,7 +80,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column);
         if (nodeAtCaret != null) {
             SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();
-            LOG.log(Level.FINER, "Hover: SourceSection({0})", hoverSection.getCharacters());
+            logger.log(Level.FINER, "Hover: SourceSection({0})", hoverSection.getCharacters());
             if (surrogate.hasCoverageData()) {
                 List<CoverageData> coverages = surrogate.getCoverageData(hoverSection);
                 if (coverages != null) {
@@ -152,7 +150,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
             coverageEventNode.insertOrReplaceChild(executableNode);
             Object evalResult = null;
             try {
-                LOG.fine("Trying coverage-based eval...");
+                logger.fine("Trying coverage-based eval...");
                 evalResult = executableNode.execute(coverageData.getFrame());
             } catch (Exception e) {
                 if (!((e instanceof TruffleException) || (e instanceof ControlFlowException))) {

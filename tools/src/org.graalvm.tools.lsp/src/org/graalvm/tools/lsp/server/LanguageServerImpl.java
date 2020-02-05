@@ -93,9 +93,7 @@ import org.graalvm.tools.lsp.server.types.WorkspaceEdit;
 import org.graalvm.tools.lsp.server.types.WorkspaceSymbolParams;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
@@ -103,8 +101,6 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
  * JSON-RPC requests. It delegates all requests to {@link TruffleAdapter}.
  */
 public final class LanguageServerImpl extends LanguageServer {
-
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, LanguageServer.class);
 
     private static final String DRY_RUN = "dry_run";
     private static final String SHOW_COVERAGE = "show_coverage";
@@ -311,7 +307,7 @@ public final class LanguageServerImpl extends LanguageServer {
                     final List<? extends TextDocumentContentChangeEvent> list) {
         String langId = openedFileUri2LangId.get(URI.create(documentUri));
         if (langId == null) {
-            LOG.warning("Changed document that was not opened: " + documentUri);
+            truffleAdapter.getLogger().warning("Changed document that was not opened: " + documentUri);
             return;
         }
 
@@ -347,7 +343,7 @@ public final class LanguageServerImpl extends LanguageServer {
         if (params.getText() != null) {
             String langId = openedFileUri2LangId.get(uri);
             if (langId == null) {
-                LOG.warning("Saved document that was not opened: " + uri);
+                truffleAdapter.getLogger().warning("Saved document that was not opened: " + uri);
                 return;
             }
             future = truffleAdapter.parse(params.getText(), langId, uri);
@@ -394,17 +390,17 @@ public final class LanguageServerImpl extends LanguageServer {
         return new LoggerProxy() {
             @Override
             public boolean isLoggable(Level level) {
-                return LOG.isLoggable(level);
+                return truffleAdapter.getLogger().isLoggable(level);
             }
 
             @Override
             public void log(Level level, String msg) {
-                LOG.log(level, msg);
+                truffleAdapter.getLogger().log(level, msg);
             }
 
             @Override
             public void log(Level level, String msg, Throwable thrown) {
-                LOG.log(level, msg, thrown);
+                truffleAdapter.getLogger().log(level, msg, thrown);
             }
         };
     }
@@ -439,7 +435,7 @@ public final class LanguageServerImpl extends LanguageServer {
         } catch (ExecutionException e) {
             if (e.getCause() instanceof UnknownLanguageException) {
                 String message = "Unknown language: " + e.getCause().getMessage();
-                LOG.fine(message);
+                truffleAdapter.getLogger().fine(message);
                 client.showMessage(ShowMessageParams.create(MessageType.Error, message));
             } else if (e.getCause() instanceof DiagnosticsNotification) {
                 for (PublishDiagnosticsParams params : ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection()) {

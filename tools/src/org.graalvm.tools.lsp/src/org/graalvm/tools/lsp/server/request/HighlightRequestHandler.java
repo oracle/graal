@@ -49,8 +49,8 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class HighlightRequestHandler extends AbstractRequestHandler {
 
-    public HighlightRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
-        super(env, surrogateMap, executor);
+    public HighlightRequestHandler(TruffleInstrument.Env envMain, TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
+        super(envMain, env, surrogateMap, executor);
     }
 
     public List<? extends DocumentHighlight> highlightWithEnteredContext(URI uri, int line, int character) {
@@ -65,7 +65,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
     }
 
     List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
-        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret);
+        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret, logger);
         if (variableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
             List<DocumentHighlight> highlights = new ArrayList<>();
@@ -80,7 +80,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName(instrumentableNode);
+                                    String name = InteropUtils.getNodeObjectName(instrumentableNode, logger);
                                     assert name != null : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
                                     if (variableName.equals(name)) {
                                         SourceSection sourceSection = node.getSourceSection();

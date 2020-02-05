@@ -36,7 +36,6 @@ import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
-import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
@@ -53,7 +52,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -78,11 +76,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class SourceCodeEvaluator extends AbstractRequestHandler {
-    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SourceCodeEvaluator.class);
+
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    public SourceCodeEvaluator(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
-        super(env, surrogateMap, executor);
+    public SourceCodeEvaluator(TruffleInstrument.Env envMain, TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
+        super(envMain, env, surrogateMap, executor);
     }
 
     public CallTarget parse(final TextDocumentSurrogate surrogate) throws DiagnosticsNotification {
@@ -93,9 +91,9 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         SourceWrapper sourceWrapper = surrogate.prepareParsing();
         CallTarget callTarget = null;
         try {
-            LOG.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLanguageId(), surrogate.getUri()});
+            logger.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLanguageId(), surrogate.getUri()});
             callTarget = env.parse(sourceWrapper.getSource());
-            LOG.log(Level.FINER, "Parsing done.");
+            logger.log(Level.FINER, "Parsing done.");
         } catch (Exception e) {
             if (e instanceof TruffleException) {
                 throw DiagnosticsNotification.create(surrogate.getUri(),
@@ -113,7 +111,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
     }
 
     public EvaluationResult tryDifferentEvalStrategies(TextDocumentSurrogate surrogate, Node nearestNode) throws DiagnosticsNotification {
-        LOG.fine("Trying literal eval...");
+        logger.fine("Trying literal eval...");
         EvaluationResult literalResult = evalLiteral(nearestNode);
         if (literalResult.isEvaluationDone() && !literalResult.isError()) {
             return literalResult;
@@ -124,13 +122,13 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             return coverageEvalResult;
         }
 
-        LOG.fine("Trying run-to-section eval...");
+        logger.fine("Trying run-to-section eval...");
         EvaluationResult runToSectionEvalResult = runToSectionAndEval(surrogate, nearestNode);
         if (runToSectionEvalResult.isEvaluationDone()) {
             return runToSectionEvalResult;
         }
 
-        LOG.fine("Trying global eval...");
+        logger.fine("Trying global eval...");
         EvaluationResult globalScopeEvalResult = evalInGlobalScope(surrogate.getLanguageId(), nearestNode);
         if (globalScopeEvalResult.isError()) {
             return EvaluationResult.createEvaluationSectionNotReached();
@@ -138,7 +136,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         return globalScopeEvalResult;
     }
 
-    private static EvaluationResult evalLiteral(Node nearestNode) {
+    private EvaluationResult evalLiteral(Node nearestNode) {
         Object nodeObject = ((InstrumentableNode) nearestNode).getNodeObject();
         if (nodeObject instanceof TruffleObject) {
             try {
@@ -147,11 +145,11 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                     if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
                         return EvaluationResult.createResult(result);
                     } else {
-                        LOG.log(Level.FINE, "Literal is no TruffleObject or primitive: {0}", result.getClass());
+                        logger.log(Level.FINE, "Literal is no TruffleObject or primitive: {0}", result.getClass());
                     }
                 }
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                LOG.warning(e.getMessage());
+                logger.warning(e.getMessage());
                 return EvaluationResult.createError(e);
             }
         }
@@ -175,7 +173,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             String symbol = nearestNode.getSourceSection().getCharacters().toString();
             FrameSlot frameSlot = slots.stream().filter(slot -> slot.getIdentifier().equals(symbol)).findFirst().orElseGet(() -> null);
             if (frameSlot != null) {
-                LOG.fine("Coverage-based variable look-up");
+                logger.fine("Coverage-based variable look-up");
                 Object frameSlotValue = coverageData.getFrame().getValue(frameSlot);
                 return EvaluationResult.createResult(frameSlotValue);
             }
@@ -190,7 +188,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         coverageEventNode.insertOrReplaceChild(executableNode);
 
         try {
-            LOG.fine("Trying coverage-based eval...");
+            logger.fine("Trying coverage-based eval...");
             Object result = executableNode.execute(coverageData.getFrame());
             return EvaluationResult.createResult(result);
         } catch (Exception e) {
@@ -234,7 +232,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
 
                                     @Override
                                     public void onReturnValue(VirtualFrame frame, Object result) {
-                                        if (LOG.isLoggable(Level.FINEST)) {
+                                        if (logger.isLoggable(Level.FINEST)) {
                                             logOnReturnValue(result);
                                         }
 
@@ -249,13 +247,13 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                                         if (indent.length() > 1) {
                                             indent.setLength(indent.length() - 2);
                                         }
-                                        LOG.log(Level.FINEST, "{0}onReturnValue {1} {2} {3} {4}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                        logger.log(Level.FINEST, "{0}onReturnValue {1} {2} {3} {4}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
                                                         sourceSectionFormat(context.getInstrumentedSourceSection()), result});
                                     }
 
                                     @Override
                                     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-                                        if (LOG.isLoggable(Level.FINEST)) {
+                                        if (logger.isLoggable(Level.FINEST)) {
                                             logOnReturnExceptional();
                                         }
                                     }
@@ -263,26 +261,26 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                                     @TruffleBoundary
                                     private void logOnReturnExceptional() {
                                         indent.setLength(indent.length() - 2);
-                                        LOG.log(Level.FINEST, "{0}onReturnExceptional {1}", new Object[]{indent, sourceSectionFormat(context.getInstrumentedSourceSection())});
+                                        logger.log(Level.FINEST, "{0}onReturnExceptional {1}", new Object[]{indent, sourceSectionFormat(context.getInstrumentedSourceSection())});
                                     }
 
                                     @Override
                                     public void onEnter(VirtualFrame frame) {
-                                        if (LOG.isLoggable(Level.FINEST)) {
+                                        if (logger.isLoggable(Level.FINEST)) {
                                             logOnEnter();
                                         }
                                     }
 
                                     @TruffleBoundary
                                     private void logOnEnter() {
-                                        LOG.log(Level.FINEST, "{0}onEnter {1} {2}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                        logger.log(Level.FINEST, "{0}onEnter {1} {2}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
                                                         sourceSectionFormat(context.getInstrumentedSourceSection())});
                                         indent.append("  ");
                                     }
 
                                     @Override
                                     public void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
-                                        if (LOG.isLoggable(Level.FINEST)) {
+                                        if (logger.isLoggable(Level.FINEST)) {
                                             logOnInputValue(inputContext, inputIndex, inputValue);
                                         }
                                         CompilerDirectives.transferToInterpreter();
@@ -292,7 +290,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                                     @TruffleBoundary
                                     private void logOnInputValue(EventContext inputContext, int inputIndex, Object inputValue) {
                                         indent.setLength(indent.length() - 2);
-                                        LOG.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
+                                        logger.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
                                                         new Object[]{indent, inputIndex, inputContext.getInstrumentedNode().getClass().getSimpleName(),
                                                                         sourceSectionFormat(context.getInstrumentedSourceSection()),
                                                                         sourceSectionFormat(inputContext.getInstrumentedSourceSection()), inputValue,
