@@ -1,15 +1,20 @@
 # [T-Trace](T-Trace.md): OpenTracing API on top of **T-Trace**
 
-It is possible to use the [T-Trace](T-Trace.md) system to implement smooth, declarative
-tracing via standard OpenTracing API. First of all use the `npm` command to install
-one of the JavaScript libraries for tracing:
+It is possible to use the [T-Trace](T-Trace.md) system to implement smooth, declarative,
+adhoc tracing via standard OpenTracing API. The traces can be added into running
+application and customized on the fly to extract the right information needed
+to investigate any misbehavior incident.
+
+Let's demonstrate the [T-Trace](T-Trace.md) capabilities on following showcase.
+First of all use the `npm` command to install one of the JavaScript libraries for tracing:
 
 ```bash
 $ graalvm/bin/npm install jaeger-client@3.17.1
 ```
 
-Now you can use its API in your instrument `agent.js` via the
-`tracer` object (once it becomes available - discussed later in this document):
+Now you can use the [OpenTracing API](https://github.com/opentracing/opentracing-javascript)
+provided by the `jaeger-client` module in your instrument `agent.js` via the `tracer` object
+(once it becomes available - discussed later in this document):
 
 ```js
 let initializeAgent = function(tracer) {
@@ -117,8 +122,8 @@ agent.on('return', initializeJaeger, {
 });
 ```
 
-This instrument needs a little help from the server. Let the server obtain
-the `jaeger-client` module and pass it to the agent via the `jaegerAvailable`
+This instrument needs a little help from the main server script. Let the `server.js` obtain
+the `jaeger-client` module and *pass it* to the agent via the `jaegerAvailable`
 function. Then it creates a typical HTTP server. The content of `server.js` is:
 
 ```js
@@ -163,7 +168,7 @@ put our server under some load:
 $ ab -c 10 -n 10000 http://localhost:8080/
 ```
 
-The server console prints a lot of information about the handling of requests
+The server console prints a lot of detailed information while handling the requests
 and the Jaeger UI fills with the traces:
 
 
@@ -171,7 +176,8 @@ and the Jaeger UI fills with the traces:
 
 We have successfully enhanced a plain nodejs application with tracing. The
 traces remain separated in its own `agent.js` file and can be applied
-[dynamically](T-Trace-Embedding.md) only when needed.
+at start time (demonstrated here) or [dynamically](T-Trace-Embedding.md) when
+really needed.
 
 For other, generic ideas about using [T-Trace](T-Trace.md)
 consult its [hacker's manual](T-Trace-Manual.md).
