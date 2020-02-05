@@ -36,11 +36,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.Stable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -594,10 +595,10 @@ public final class StaticObject implements TruffleObject {
 
     // Given a guest Class, get the corresponding Klass.
     public Klass getMirrorKlass() {
-        assert getKlass().getType() == Symbol.Type.java_lang_Class;
+        assert getKlass().getType() == Type.java_lang_Class;
         Klass result = (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
         if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
         }
         return result;
@@ -683,7 +684,7 @@ public final class StaticObject implements TruffleObject {
             UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, klass.getComponentType(), meta));
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -691,7 +692,7 @@ public final class StaticObject implements TruffleObject {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
-            throw meta.throwEx(ArrayStoreException.class);
+            throw meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
@@ -826,7 +827,7 @@ public final class StaticObject implements TruffleObject {
         if (index >= 0 && index < length()) {
             UNSAFE.putByte(fields, getArrayByteOffset(index), value);
         } else {
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -835,7 +836,7 @@ public final class StaticObject implements TruffleObject {
         if (index >= 0 && index < length()) {
             return UNSAFE.getByte(fields, getArrayByteOffset(index));
         } else {
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
