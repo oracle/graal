@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.substitutions;
 
 public abstract class Substitutor {
 
+    // TODO(garcia): use factories for substitutions, so that profiles can be created per call site.
+
     private final String methodName;
     private final String substitutionClassName;
     private final String returnType;
