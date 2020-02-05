@@ -163,8 +163,21 @@ public final class Meta implements ContextAccess {
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
         java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
+        java_lang_ThreadDeath = knownKlass(Type.java_lang_ThreadDeath);
+
         java_lang_RuntimeException = knownKlass(Type.java_lang_RuntimeException);
         java_lang_IllegalMonitorStateException = knownKlass(Type.java_lang_IllegalMonitorStateException);
+        java_lang_ArrayStoreException = knownKlass(Type.java_lang_ArrayStoreException);
+        java_lang_IndexOutOfBoundsException = knownKlass(Type.java_lang_IndexOutOfBoundsException);
+        java_lang_ArrayIndexOutOfBoundsException = knownKlass(Type.java_lang_ArrayIndexOutOfBoundsException);
+        java_lang_StringIndexOutOfBoundsException = knownKlass(Type.java_lang_StringIndexOutOfBoundsException);
+        java_lang_ExceptionInInitializerError = knownKlass(Type.java_lang_ExceptionInInitializerError);
+        java_lang_InstantiationException = knownKlass(Type.java_lang_InstantiationException);
+        java_lang_InstantiationError = knownKlass(Type.java_lang_InstantiationError);
+        java_lang_CloneNotSupportedException = knownKlass(Type.java_lang_CloneNotSupportedException);
+        java_lang_SecurityException = knownKlass(Type.java_lang_SecurityException);
+        java_lang_ArithmeticException = knownKlass(Type.java_lang_ArithmeticException);
+        java_lang_LinkageError = knownKlass(Type.java_lang_LinkageError);
 
         java_lang_StackOverflowError = knownKlass(Type.java_lang_StackOverflowError);
         java_lang_OutOfMemoryError = knownKlass(Type.java_lang_OutOfMemoryError);
@@ -172,6 +185,9 @@ public final class Meta implements ContextAccess {
         java_lang_AbstractMethodError = knownKlass(Type.java_lang_AbstractMethodError);
         java_lang_InternalError = knownKlass(Type.java_lang_InternalError);
         java_lang_VerifyError = knownKlass(Type.java_lang_VerifyError);
+        java_lang_ClassFormatError = knownKlass(Type.java_lang_ClassFormatError);
+        java_lang_ClassCircularityError = knownKlass(Type.java_lang_ClassCircularityError);
+        java_lang_UnsatisfiedLinkError = knownKlass(Type.java_lang_UnsatisfiedLinkError);
 
         java_lang_Error = knownKlass(Type.java_lang_Error);
         java_lang_NoSuchFieldError = knownKlass(Type.java_lang_NoSuchFieldError);
@@ -514,6 +530,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
     public final ObjectKlass java_lang_InterruptedException;
+    public final ObjectKlass java_lang_ThreadDeath;
     public final ObjectKlass java_lang_RuntimeException;
     public final ObjectKlass java_lang_StackOverflowError;
     public final ObjectKlass java_lang_OutOfMemoryError;
@@ -521,6 +538,20 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_AbstractMethodError;
     public final ObjectKlass java_lang_InternalError;
     public final ObjectKlass java_lang_VerifyError;
+    public final ObjectKlass java_lang_ClassFormatError;
+    public final ObjectKlass java_lang_ClassCircularityError;
+    public final ObjectKlass java_lang_UnsatisfiedLinkError;
+    public final ObjectKlass java_lang_ArrayStoreException;
+    public final ObjectKlass java_lang_IndexOutOfBoundsException;
+    public final ObjectKlass java_lang_ArrayIndexOutOfBoundsException;
+    public final ObjectKlass java_lang_StringIndexOutOfBoundsException;
+    public final ObjectKlass java_lang_ExceptionInInitializerError;
+    public final ObjectKlass java_lang_InstantiationException;
+    public final ObjectKlass java_lang_InstantiationError;
+    public final ObjectKlass java_lang_CloneNotSupportedException;
+    public final ObjectKlass java_lang_SecurityException;
+    public final ObjectKlass java_lang_ArithmeticException;
+    public final ObjectKlass java_lang_LinkageError;
 
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
@@ -717,15 +748,11 @@ public final class Meta implements ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
-        return ex;
+    public @Host(Throwable.class) StaticObject initException(java.lang.Class<? extends Throwable> clazz) {
+        return initException(throwableKlass(clazz));
     }
 
-    public static StaticObject initExWithMessage(ObjectKlass klass, String message) {
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass klass, String message) {
         assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
@@ -733,7 +760,7 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static StaticObject initExWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
         assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         assert StaticObject.isNull(message) || klass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         StaticObject ex = klass.allocateInstance();
@@ -742,115 +769,104 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static StaticObject initEx(ObjectKlass klass) {
-        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
-        StaticObject ex = klass.allocateInstance();
+    public static @Host(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        StaticObject ex = exceptionKlass.allocateInstance();
         // Call constructor.
-        klass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
         return ex;
     }
 
-    public StaticObject initExWithMessage(java.lang.Class<?> clazz, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, toGuestString(message));
-        return ex;
+    public @Host(Throwable.class) StaticObject initExceptionWithMessage(java.lang.Class<? extends Throwable> clazz, String message) {
+        return initExceptionWithMessage(throwableKlass(clazz), message);
     }
 
-    public StaticObject initExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.class.isAssignableFrom(clazz);
+    public @Host(Throwable.class) StaticObject initExceptionWithCause(java.lang.Class<? extends Throwable> clazz, @Host(Throwable.class) StaticObject cause) {
+        return initExceptionWithCause(throwableKlass(clazz), cause);
+    }
+
+    public @Host(Throwable.class) StaticObject initExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+        assert java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
+        StaticObject ex = exceptionKlass.allocateInstance();
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
-    public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
-        return ex;
+    public @Host(Throwable.class) StaticObject initExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, String message) {
+        return initExceptionWithCauseAndMessage(exceptionKlass, cause, toGuestString(message));
     }
 
-    public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
+    public @Host(Throwable.class) StaticObject initExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
+        assert java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
-        return ex;
-    }
-
-    public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        StaticObject ex = exceptionKlass.allocateInstance();
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
         return ex;
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwEx(ObjectKlass exKlass) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        throw new EspressoException(initEx(exKlass));
+    public EspressoException throwException(ObjectKlass exceptionKlass) {
+        assert java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        throw new EspressoException(initException(exceptionKlass));
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwEx(java.lang.Class<?> clazz) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        throw new EspressoException(initEx(clazz));
+    public EspressoException throwException(java.lang.Class<? extends Throwable> clazz) {
+        throw new EspressoException(initException(throwableKlass(clazz)));
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public static EspressoException throwEx(StaticObject throwable) {
+    public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
         throw new EspressoException(throwable);
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
-        throw new EspressoException(initExWithMessage(clazz, message));
+    public EspressoException throwExceptionWithMessage(java.lang.Class<? extends Throwable> clazz, String message) {
+        throw new EspressoException(initExceptionWithMessage(clazz, message));
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCause(clazz, cause));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
+    public EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+        assert java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || java_lang_String.isAssignableFrom(message.getKlass());
-        throw new EspressoException(initExWithMessage(exKlass, message));
+        throw new EspressoException(initExceptionWithMessage(exceptionKlass, message));
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCause(exKlass, cause));
+    public EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
+        throw throwExceptionWithMessage(exceptionKlass, toGuestString(message));
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
+    public EspressoException throwExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+        assert java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
+        throw new EspressoException(initExceptionWithCause(exceptionKlass, cause));
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    public EspressoException throwExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
+        throw new EspressoException(initExceptionWithCauseAndMessage(exceptionKlass, cause, message));
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    public EspressoException throwNullPointerException() {
+        throw throwException(java_lang_NullPointerException);
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    public EspressoException throwIllegalMonitorStateException() {
+        throw throwException(java_lang_IllegalMonitorStateException);
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    public EspressoException throwArrayIndexOutOfBoundsException() {
+        throw throwException(java_lang_ArrayIndexOutOfBoundsException);
     }
 
     @TruffleBoundary
-    public Klass throwableKlass(java.lang.Class<?> exceptionClass) {
+    public ObjectKlass throwableKlass(java.lang.Class<? extends Throwable> exceptionClass) {
         assert isKnownClass(exceptionClass);
         assert Throwable.class.isAssignableFrom(exceptionClass);
         return knownKlass(exceptionClass);
@@ -888,7 +904,7 @@ public final class Meta implements ContextAccess {
     }
 
     public StaticObject newThrowable() {
-        return initEx(java_lang_Throwable);
+        return initException(java_lang_Throwable);
     }
 
     /**
@@ -1017,9 +1033,6 @@ public final class Meta implements ContextAccess {
             if (StaticObject.isNull(guestObject)) {
                 return null;
             }
-            if (guestObject == StaticObject.VOID) {
-                return null;
-            }
             if (guestObject.isArray()) {
                 return guestObject.unwrap();
             }
@@ -1102,56 +1115,56 @@ public final class Meta implements ContextAccess {
 
     public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Boolean) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (boolean) java_lang_Boolean_value.get(boxed);
     }
 
     public byte unboxByte(@Host(Byte.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Byte) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (byte) java_lang_Byte_value.get(boxed);
     }
 
     public char unboxCharacter(@Host(Character.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Character) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (char) java_lang_Character_value.get(boxed);
     }
 
     public short unboxShort(@Host(Short.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Short) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (short) java_lang_Short_value.get(boxed);
     }
 
     public float unboxFloat(@Host(Float.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Float) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (float) java_lang_Float_value.get(boxed);
     }
 
     public int unboxInteger(@Host(Integer.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Integer) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (int) java_lang_Integer_value.get(boxed);
     }
 
     public double unboxDouble(@Host(Double.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Double) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (double) java_lang_Double_value.get(boxed);
     }
 
     public long unboxLong(@Host(Long.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Long) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (long) java_lang_Long_value.get(boxed);
     }
