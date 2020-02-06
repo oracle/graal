@@ -758,25 +758,23 @@ public final class Meta implements ContextAccess {
 
     // region Guest exception handling (throw*)
 
-    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
-        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
-        StaticObject ex = exceptionKlass.allocateInstance();
-        // Call constructor.
-        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, exceptionKlass.getMeta().toGuestString(message));
-        return ex;
-    }
-
     public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
+        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         // Call constructor.
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
         return ex;
     }
 
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
+        return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
+    }
+
     public static @Host(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         // Call constructor.
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
@@ -786,42 +784,34 @@ public final class Meta implements ContextAccess {
     public static @Host(Throwable.class) StaticObject initExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
+        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwException(ObjectKlass exceptionKlass) {
-        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         throw new EspressoException(initException(exceptionKlass));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
         throw new EspressoException(throwable);
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
-        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
-        assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         throw new EspressoException(initExceptionWithMessage(exceptionKlass, message));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExceptionWithCause(exceptionKlass, cause));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwNullPointerException() {
         throw throwException(java_lang_NullPointerException);
     }
@@ -859,7 +849,7 @@ public final class Meta implements ContextAccess {
         return getRegistries().loadKlass(type, classLoader);
     }
 
-    public StaticObject newThrowable() {
+    public @Host(Throwable.class) StaticObject newThrowable() {
         return initException(java_lang_Throwable);
     }
 
