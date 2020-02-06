@@ -836,10 +836,6 @@ public final class Meta implements ContextAccess {
         return getRegistries().loadKlass(type, classLoader);
     }
 
-    public @Host(Throwable.class) StaticObject newThrowable() {
-        return initException(java_lang_Throwable);
-    }
-
     /**
      * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
      * corresponding Klass.

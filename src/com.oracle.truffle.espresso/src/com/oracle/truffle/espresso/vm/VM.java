@@ -1024,7 +1024,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject internalError = exception[0];
         if (internalError != null) {
             assert InterpreterToVM.instanceOf(internalError, meta.java_lang_InternalError);
-            throw new EspressoException(internalError);
+            throw Meta.throwException(internalError);
         }
 
         if (callerMethod == null) {
@@ -1244,7 +1244,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                             !getMeta().java_lang_RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 StaticObject wrapper = getMeta().java_security_PrivilegedActionException.allocateInstance();
                 getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
-                throw new EspressoException(wrapper);
+                throw Meta.throwException(wrapper);
             }
             throw e;
         } finally {
@@ -1983,7 +1983,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                 StaticObject stackTrace;
                 if (maxDepth != 0 && thread == currentThread) {
-                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(getMeta().newThrowable());
+                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(Meta.initException(meta.java_lang_Throwable));
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);

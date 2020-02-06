@@ -1570,7 +1570,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert getMeta().java_lang_Throwable.isAssignableFrom(obj.getKlass());
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
-        throw new EspressoException(obj);
+        throw Meta.throwException(obj);
     }
 
     /**

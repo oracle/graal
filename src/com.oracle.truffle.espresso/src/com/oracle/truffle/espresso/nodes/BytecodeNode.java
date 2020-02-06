@@ -997,7 +997,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
                     case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
 
-                    case ATHROW: throw new EspressoException(nullCheck(peekAndReleaseObject(frame, top - 1)));
+                    case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
 
                     case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                     case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
