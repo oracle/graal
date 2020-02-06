@@ -767,10 +767,10 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @TruffleBoundary
     public static @Host(Throwable.class) StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
-        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         // Call constructor.
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
@@ -802,9 +802,9 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @TruffleBoundary
     public static @Host(Throwable.class) StaticObject initException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
-        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         // Call constructor.
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
@@ -822,10 +822,10 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @TruffleBoundary
     public static @Host(Throwable.class) StaticObject initExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
         exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
