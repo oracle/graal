@@ -760,6 +760,12 @@ public final class ObjectKlass extends Klass {
                 for (Method m : getDeclaredMethods()) {
                     try {
                         MethodVerifier.verify(m);
+                        // The verifier convention use host exceptions and they must be
+                        // explicitly converted.
+                        // This is acceptable since these particular set of host exceptions are not
+                        // expected at all e.g. we don't expect any host
+                        // VerifyError/ClassFormatError to be thrown by the host itself (at this
+                        // point, or even ever at all).
                     } catch (VerifyError e) {
                         throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
                     } catch (ClassFormatError e) {
