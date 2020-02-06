@@ -257,7 +257,7 @@ public final class ObjectKlass extends Klass {
         synchronized (this) {
             if (!(isInitializedOrPrepared())) { // Check under lock
                 if (initState == ERRONEOUS) {
-                    throw getMeta().throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
                 }
                 try {
                     // Spec fragment: Then, initialize each final static field of C with the
@@ -292,7 +292,7 @@ public final class ObjectKlass extends Klass {
                     StaticObject cause = e.getExceptionObject();
                     Meta meta = getMeta();
                     if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                        throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                        throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
                     } else {
                         throw e;
                     }
@@ -303,7 +303,7 @@ public final class ObjectKlass extends Klass {
                     throw e;
                 }
                 if (initState == ERRONEOUS) {
-                    throw getMeta().throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
                 }
                 initState = INITIALIZED;
                 assert isInitialized();
@@ -546,7 +546,7 @@ public final class ObjectKlass extends Klass {
         try {
             return itable[findITableIndex(interfKlass)][index];
         } catch (IndexOutOfBoundsException e) {
-            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
         }
     }
 
@@ -738,7 +738,7 @@ public final class ObjectKlass extends Klass {
             if (mode == VerifyMode.ALL || !StaticObject.isNull(getDefiningClassLoader())) {
                 Meta meta = getMeta();
                 if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
-                    throw meta.throwException(meta.java_lang_VerifyError);
+                    throw Meta.throwException(meta.java_lang_VerifyError);
                 }
                 if (getSuperKlass() != null) {
                     getSuperKlass().verify();
@@ -761,13 +761,13 @@ public final class ObjectKlass extends Klass {
                     try {
                         MethodVerifier.verify(m);
                     } catch (VerifyError e) {
-                        throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
                     } catch (ClassFormatError e) {
-                        throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
                     } catch (IncompatibleClassChangeError e) {
-                        throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
                     } catch (NoClassDefFoundError e) {
-                        throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
                     }
                 }
             }

@@ -66,11 +66,11 @@ public final class Target_java_lang_reflect_Array {
     public static Object newArray(@Host(Class.class) StaticObject componentType, int length) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType)) {
-            throw meta.throwException(meta.java_lang_NullPointerException);
+            throw Meta.throwException(meta.java_lang_NullPointerException);
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         if (component.isPrimitive()) {
@@ -112,11 +112,11 @@ public final class Target_java_lang_reflect_Array {
     public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
-            throw meta.throwException(meta.java_lang_NullPointerException);
+            throw Meta.throwException(meta.java_lang_NullPointerException);
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         final int[] dimensions = dimensionsArray.unwrap();
         int finalDimensions = dimensions.length;
@@ -124,11 +124,11 @@ public final class Target_java_lang_reflect_Array {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
+                throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
         if (dimensions.length == 1) {
@@ -232,13 +232,13 @@ public final class Target_java_lang_reflect_Array {
         assert e instanceof NullPointerException || e instanceof ArrayIndexOutOfBoundsException || e instanceof IllegalArgumentException;
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (e instanceof NullPointerException) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, e.getMessage());
         }
         if (e instanceof ArrayIndexOutOfBoundsException) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
         if (e instanceof IllegalArgumentException) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         }
         throw EspressoError.shouldNotReachHere(e);
     }
@@ -249,7 +249,7 @@ public final class Target_java_lang_reflect_Array {
         }
         if (!(array.isArray())) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -361,7 +361,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw meta.throwException(meta.java_lang_NullPointerException);
+            throw Meta.throwException(meta.java_lang_NullPointerException);
         }
         if (array.isArray()) {
             // @formatter:off
@@ -382,7 +382,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -404,7 +404,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw meta.throwException(meta.java_lang_NullPointerException);
+            throw Meta.throwException(meta.java_lang_NullPointerException);
         }
         if (array.isArray()) {
             // @formatter:off
@@ -424,7 +424,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
