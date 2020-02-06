@@ -66,6 +66,7 @@ else:
         return x.decode()
 
 GRAAL_COMPILER_FLAGS_BASE = [
+    '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task
     '-XX:+UnlockExperimentalVMOptions',
     '-XX:+EnableJVMCI',
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
