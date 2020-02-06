@@ -1170,18 +1170,12 @@ public class ELFObjectFile extends ObjectFile {
         DwarfSections.DwarfARangesSectionImpl elfARangesSectionImpl = dwarfSections.getARangesSectionImpl();
         DwarfSections.DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
         // now we can create the section elements with empty content
-        @SuppressWarnings("unused")
-        ELFSection strSection = (ELFSection) newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection abbrevSection = (ELFSection) newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection locSection = (ELFSection) newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection infoSection = (ELFSection) newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection aRangesSection = (ELFSection) newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection debugSection = (ELFSection) newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
+        newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
+        newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
+        newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
+        newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
+        newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
+        newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
         // the byte[] for each implementation's content are created and
         // written under getOrDecideContent. doing that ensures that all
         // dependent sections are filled in and then sized according to the
