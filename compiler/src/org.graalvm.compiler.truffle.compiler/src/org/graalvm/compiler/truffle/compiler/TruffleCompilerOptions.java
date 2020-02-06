@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.compiler;
 
 import java.util.Formatter;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EnableInfopoints;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
@@ -156,10 +156,10 @@ public final class TruffleCompilerOptions {
     static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(PrintExpansionHistogram.getDefaultValue());
 
     /**
-     * Deprecated by {@link PolyglotCompilerOptions#EnableInfopoints}.
+     * Deprecated by {@link PolyglotCompilerOptions#NodeSourcePositions}.
      */
     @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
-    static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(EnableInfopoints.getDefaultValue());
+    static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(NodeSourcePositions.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#IterativePartialEscape}.
@@ -426,7 +426,7 @@ public final class TruffleCompilerOptions {
             result.put(InliningRecursionDepth, identity(SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining));
             result.put(LanguageAgnosticInlining, identity(SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining));
             result.put(ExcludeAssertions, identity(TruffleExcludeAssertions));
-            result.put(EnableInfopoints, identity(TruffleEnableInfopoints));
+            result.put(NodeSourcePositions, identity(TruffleEnableInfopoints));
             result.put(InstrumentBoundaries, identity(TruffleInstrumentBoundaries));
             result.put(InstrumentBoundariesPerInlineSite, identity(TruffleInstrumentBoundariesPerInlineSite));
             result.put(InstrumentBranches, identity(TruffleInstrumentBranches));

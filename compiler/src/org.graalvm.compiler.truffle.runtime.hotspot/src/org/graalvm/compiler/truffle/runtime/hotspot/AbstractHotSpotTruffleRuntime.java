@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -136,6 +137,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private volatile CancellableCompileTask initializationTask;
     private volatile boolean truffleCompilerInitialized;
     private volatile Throwable truffleCompilerInitializationException;
+    private final Semaphore compilerPermits = new Semaphore(0);
 
     public AbstractHotSpotTruffleRuntime() {
         super(Arrays.asList(HotSpotOptimizedCallTarget.class));
@@ -169,26 +171,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public HotSpotTruffleCompiler getTruffleCompiler() {
         if (truffleCompiler == null) {
-            boolean interrupted = false;
             synchronized (this) {
-                while (!truffleCompilerInitialized) {
-                    rethrowTruffleCompilerInitializationException();
-                    if (initializationTask == null) {
-                        throw new IllegalStateException("Compiler not yet initialized.");
-                    }
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        // Keep waiting
-                        interrupted = true;
-                    }
+                // If the compiler failed to initialize re-throw the initialization exception
+                rethrowTruffleCompilerInitializationException();
+                // If the compiler is neither initialized nor failed to be initialize and there is
+                // no initializationTask
+                // we need to fail with exception. The getTruffleCompiler was called before
+                // createOptimizedCallTarget
+                // calling compilerPermits.acquire will cause a deadlock.
+                if (!truffleCompilerInitialized && initializationTask == null) {
+                    throw new IllegalStateException("Compiler not yet initialized.");
                 }
             }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
+            compilerPermits.acquireUninterruptibly();
+            rethrowTruffleCompilerInitializationException();
+            assert truffleCompiler != null : "TruffleCompiler must be non null";
         }
-        assert truffleCompiler != null : "TruffleCompiler must be non null";
         return (HotSpotTruffleCompiler) truffleCompiler;
     }
 
@@ -225,8 +223,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
                                 assert initializationTask != null;
                                 initializationTask = null;
-                                lock.notifyAll();
                             }
+                            compilerPermits.release();
                         }
                     });
                 }
@@ -249,7 +247,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         truffleCompilerInitializationException = null;
     }
 
-    private synchronized void initializeTruffleCompiler(OptimizedCallTarget callTarget) {
+    private void initializeTruffleCompiler(OptimizedCallTarget callTarget) {
+        assert Thread.holdsLock(this);
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();

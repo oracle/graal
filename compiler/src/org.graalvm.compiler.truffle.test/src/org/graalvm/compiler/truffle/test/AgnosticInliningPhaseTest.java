@@ -99,9 +99,8 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        initializeCompiler(callTarget);
         final TruffleInlining callNodeProvider = new TruffleInlining(callTarget, new NoInliningPolicy());
-        final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
+        final PartialEvaluator partialEvaluator = getTruffleCompiler(callTarget).getPartialEvaluator();
         final Class<?> partialEvaluatorClass = partialEvaluator.getClass().getSuperclass();
         final Method createGraphForPE = partialEvaluatorClass.getDeclaredMethod("createGraphForPE",
                         DebugContext.class,
@@ -126,7 +125,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                         getSpeculationLog(),
                         null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget);
-        agnosticInliningPhase.apply(graph, truffleCompiler.getPartialEvaluator().getProviders());
+        agnosticInliningPhase.apply(graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
         return graph;
     }
 
@@ -140,7 +139,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     }
 
     private ResolvedJavaMethod rootCallForTarget(OptimizedCallTarget target) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
+        final PartialEvaluator partialEvaluator = getTruffleCompiler(target).getPartialEvaluator();
         final Method rootForCallTarget = partialEvaluator.getClass().getSuperclass().getDeclaredMethod("rootForCallTarget", CompilableTruffleAST.class);
         return (ResolvedJavaMethod) rootForCallTarget.invoke(partialEvaluator, target);
     }

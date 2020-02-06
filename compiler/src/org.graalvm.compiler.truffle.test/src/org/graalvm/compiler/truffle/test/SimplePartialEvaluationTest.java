@@ -110,7 +110,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (GraalBailoutException t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            if (truffleCompiler.getPartialEvaluator().getConfigForParsing().trackNodeSourcePosition() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
+            if (getTruffleCompiler(null).getPartialEvaluator().getConfig().trackNodeSourcePosition() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
                 assertStack(trace[0], "com.oracle.truffle.api.CompilerAsserts", "neverPartOfCompilation", "CompilerAsserts.java");
                 assertStack(trace[1], "org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
                 assertStack(trace[2], "org.graalvm.compiler.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");

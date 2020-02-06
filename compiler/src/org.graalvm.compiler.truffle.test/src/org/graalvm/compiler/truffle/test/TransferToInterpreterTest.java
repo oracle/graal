@@ -40,7 +40,6 @@ import java.util.Map;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 
@@ -75,8 +74,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         target.call(0);
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;
-        TruffleCompiler compiler = runtime.newTruffleCompiler();
-        compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(target));
+        TruffleCompiler compiler = runtime.getTruffleCompiler();
         Map<String, Object> options = runtime.getOptions();
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);

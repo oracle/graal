@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EnableInfopoints;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
@@ -200,7 +200,7 @@ public abstract class PartialEvaluator {
 
     void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
-        boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, EnableInfopoints) ||
+        boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, NodeSourcePositions) ||
                         instrumentationCfg.instrumentBranches ||
                         instrumentationCfg.instrumentBoundaries ||
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
@@ -265,21 +265,20 @@ public abstract class PartialEvaluator {
      * Returns the root {@link GraphBuilderConfiguration}. The root configuration provides plugins
      * used by this {@link PartialEvaluator} but it's not configured with engine options. The root
      * configuration should be used in image generation time where the {@link PartialEvaluator} is
-     * not yet initialized with engine options. In execution time the {@link #getConfigForParsing}
-     * should be used.
+     * not yet initialized with engine options. At runtime the {@link #getConfig} should be used.
      */
-    public GraphBuilderConfiguration getRootConfig() {
+    public GraphBuilderConfiguration getConfigPrototype() {
         return configPrototype;
     }
 
     /**
      * Returns the {@link GraphBuilderConfiguration} used by parsing. The returned configuration is
      * configured with engine options. In the image generation time the {@link PartialEvaluator} is
-     * not yet initialized and the {@link #getRootConfig} should be used instead.
+     * not yet initialized and the {@link #getConfigPrototype} should be used instead.
      *
      * @throws IllegalStateException when called on non initialized {@link PartialEvaluator}
      */
-    public GraphBuilderConfiguration getConfigForParsing() {
+    public GraphBuilderConfiguration getConfig() {
         if (configForParsing == null) {
             throw new IllegalStateException("PartialEvaluator is not yet initialized");
         }

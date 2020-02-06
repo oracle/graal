@@ -351,8 +351,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Exclude assertion code from Truffle compilations", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> ExcludeAssertions = new OptionKey<>(true);
 
-    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> EnableInfopoints = new OptionKey<>(false);
+    @Option(help = "Enable node source positions in truffle partial evaluations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> NodeSourcePositions = new OptionKey<>(false);
 
     @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> InstrumentBoundaries = new OptionKey<>(false);

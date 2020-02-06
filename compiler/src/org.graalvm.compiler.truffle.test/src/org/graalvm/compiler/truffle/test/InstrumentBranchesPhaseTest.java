@@ -89,7 +89,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
         OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
+        InstrumentPhase.Instrumentation instrumentation = getTruffleCompiler(target).getPartialEvaluator().getInstrumentation();
         Assert.assertTrue(target.isValid());
         target.call();
         String stackOutput = instrumentation.accessTableToList().get(0);
@@ -109,7 +109,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         // We run this twice to make sure that it comes first in the sorted access list.
         target.call();
         target.call();
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
+        InstrumentPhase.Instrumentation instrumentation = getTruffleCompiler(target).getPartialEvaluator().getInstrumentation();
         String stackOutput1 = instrumentation.accessTableToList().get(0);
         Assert.assertTrue(stackOutput1, stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput1, stackOutput1.contains(String.format("[bci: 4]%n[0] state = ELSE(if=0#, else=2#)")));

@@ -37,7 +37,7 @@ import org.junit.Assume;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
-    protected final TruffleCompilerImpl truffleCompiler;
+    private final TruffleCompilerImpl truffleCompiler;
     private final AtomicBoolean compilerInitialized = new AtomicBoolean();
     private Context activeContext;
 
@@ -48,10 +48,11 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
         this.truffleCompiler = (TruffleCompilerImpl) compiler;
     }
 
-    protected final void initializeCompiler(OptimizedCallTarget callTarget) {
+    protected final TruffleCompilerImpl getTruffleCompiler(OptimizedCallTarget callTarget) {
         if (compilerInitialized.compareAndSet(false, true)) {
             truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
         }
+        return truffleCompiler;
     }
 
     protected final void setupContext(Context newContext) {
