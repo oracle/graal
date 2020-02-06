@@ -475,7 +475,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             // if we have constructed any debug info then
             // give the object file a chance to install it
-            if (GraalOptions.TrackNodeSourcePosition.getValue(HostedOptionValues.singleton())) {
+            if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
                 DebugInfoProvider provider = new NativeImageDebugInfoProvider(codeCache, heap);
                 objectFile.installDebugInfo(provider);
             }

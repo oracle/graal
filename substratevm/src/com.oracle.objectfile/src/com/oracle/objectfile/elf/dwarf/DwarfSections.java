@@ -50,6 +50,7 @@ import java.util.Map;
  * for generating content for a specific section type.
  */
 public class DwarfSections {
+
     // names of the different ELF sections we create or reference
     // in reverse dependency order
     public static final String TEXT_SECTION_NAME = ".text";
