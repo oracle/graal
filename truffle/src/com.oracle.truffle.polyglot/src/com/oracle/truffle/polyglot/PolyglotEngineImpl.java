@@ -1420,8 +1420,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     PolyglotContextImpl.disposeStaticContext(null);
                     config.fileSystem = oldFileSystem;
                     config.internalFileSystem = oldInternalFileSystem;
-                    ensureClosed(true, true, false);
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
+                    ensureClosed(true, true, false);
                     synchronized (engine) {
                         engine.creatorApi = getAPIAccess().newEngine(engine);
                         engine.currentApi = getAPIAccess().newEngine(engine);
