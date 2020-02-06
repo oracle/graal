@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
@@ -32,50 +33,59 @@ import com.oracle.truffle.object.DebugCounter;
 @EspressoSubstitutions
 public final class Target_java_lang_System {
 
-    public static final DebugCounter arraycopyCount = DebugCounter.create("arraycopyCount");
-    static final DebugCounter identityHashCodeCount = DebugCounter.create("identityHashCodeCount");
+    private static final DebugCounter SYSTEM_ARRAYCOPY_COUNT = DebugCounter.create("System.arraycopy call count");
+    private static final DebugCounter SYSTEM_IDENTITY_HASH_CODE_COUNT = DebugCounter.create("System.identityHashCode call count");
 
     @Substitution
     public static int identityHashCode(@Host(Object.class) StaticObject self) {
-        identityHashCodeCount.inc();
+        SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
     }
 
     @Substitution
     public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
-        arraycopyCount.inc();
+        SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
             doArrayCopy(src, srcPos, dest, destPos, length);
-        } catch (NullPointerException | ArrayStoreException | IndexOutOfBoundsException e) {
-            // Should catch NPE if src or dest is null, and ArrayStoreException.
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } catch (NullPointerException e) {
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw meta.throwNullPointerException();
+        } catch (ArrayStoreException e) {
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw Meta.throwException(meta.java_lang_ArrayStoreException);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // System.arraycopy javadoc states it throws IndexOutOfBoundsException, the
+            // actual implementation throws ArrayIndexOutOfBoundsException (IooBE subclass).
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
     private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+        final Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
+            throw meta.throwNullPointerException();
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
             // System.arraycopy does the bounds checks
             if (src == dest) {
                 // Same array, no need to type check
-                boundsCheck(src, srcPos, dest, destPos, length);
+                boundsCheck(meta, src, srcPos, dest, destPos, length);
                 System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
             } else {
                 Klass destType = dest.getKlass().getComponentType();
                 Klass srcType = src.getKlass().getComponentType();
                 if (destType.isPrimitive() && srcType.isPrimitive()) {
                     if (srcType != destType) {
-                        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+                        throw Meta.throwException(meta.java_lang_ArrayStoreException);
                     }
-                    boundsCheck(src, srcPos, dest, destPos, length);
+                    boundsCheck(meta, src, srcPos, dest, destPos, length);
                     System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                 } else if (!destType.isPrimitive() && !srcType.isPrimitive()) {
                     if (destType.isAssignableFrom(srcType)) {
                         // We have guarantee we can copy, as all elements in src conform to dest.
-                        boundsCheck(src, srcPos, dest, destPos, length);
+                        boundsCheck(meta, src, srcPos, dest, destPos, length);
                         System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                     } else {
                         // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
@@ -84,7 +94,7 @@ public final class Target_java_lang_System {
                         // Use cases:
                         // - System startup.
                         // - MethodHandle and CallSite linking.
-                        boundsCheck(src, srcPos, dest, destPos, length);
+                        boundsCheck(meta, src, srcPos, dest, destPos, length);
                         StaticObject[] s = src.unwrap();
                         StaticObject[] d = dest.unwrap();
                         for (int i = 0; i < length; i++) {
@@ -92,23 +102,23 @@ public final class Target_java_lang_System {
                             if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
                                 d[destPos + i] = cpy;
                             } else {
-                                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+                                throw Meta.throwException(meta.java_lang_ArrayStoreException);
                             }
                         }
                     }
                 } else {
-                    throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+                    throw Meta.throwException(meta.java_lang_ArrayStoreException);
                 }
             }
         } else {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+            throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
-    private static void boundsCheck(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+    private static void boundsCheck(Meta meta, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos > src.length() - length || destPos > dest.length() - length) {
             // Other checks are caught during execution without side effects.
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -435,8 +436,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             initialize();
         } catch (EspressoException e) {
             StaticObject cause = e.getExceptionObject();
-            if (!InterpreterToVM.instanceOf(cause, getMeta().java_lang_Error)) {
-                throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
+            Meta meta = getMeta();
+            if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
+                throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
             } else {
                 throw e;
             }
@@ -682,7 +684,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public abstract int getClassModifiers();
 
     public final StaticObject allocateInstance() {
-        return InterpreterToVM.newObject(this);
+        return InterpreterToVM.newObject(this, false);
     }
 
     // TODO(garcia) Symbolify package ?

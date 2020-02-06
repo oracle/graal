@@ -173,7 +173,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
-                throw meta.throwExWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
             }
 
             Symbol<Name> name = getName(pool);
@@ -181,13 +181,13 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
             if (method == null) {
-                throw meta.throwExWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
                 System.err.println(EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                 " throws IllegalAccessError");
-                throw meta.throwExWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
             if (!method.isMethodHandleIntrinsic()) {
@@ -208,7 +208,6 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             if (Name._init_.equals(name)) {
                 Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
                 int len = descriptor.length();
-                // descriptor.endsWith(")V");
                 if (len <= 2 || (descriptor.byteAt(len - 2) != ')' || descriptor.byteAt(len - 1) != 'V')) {
                     throw ConstantPool.classFormatError("<init> method should have ()V signature");
                 }

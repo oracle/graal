@@ -147,7 +147,7 @@ public final class Target_java_lang_Thread {
                     }
                     // check if death cause throwable is set, if not throw ThreadDeath
                     StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
-                    throw deathThrowable != null ? Meta.throwEx(deathThrowable) : meta.throwEx(ThreadDeath.class);
+                    throw deathThrowable != null ? Meta.throwException(deathThrowable) : Meta.throwException(meta.java_lang_ThreadDeath);
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
@@ -174,11 +174,11 @@ public final class Target_java_lang_Thread {
     @Substitution
     public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads) {
         if (StaticObject.isNull(threads)) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
+            throw EspressoLanguage.getCurrentContext().getMeta().throwNullPointerException();
         }
         Meta meta = threads.getKlass().getMeta();
         if (threads.length() == 0) {
-            throw meta.throwEx(IllegalArgumentException.class);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
         StaticObject[] toWrap = new StaticObject[threads.length()];
@@ -299,7 +299,7 @@ public final class Target_java_lang_Thread {
     public static boolean holdsLock(@Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         return object.getLock().isHeldByCurrentThread();
     }
@@ -308,17 +308,18 @@ public final class Target_java_lang_Thread {
     @Substitution
     public static void sleep(long millis) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
+        Meta meta = context.getMeta();
         StaticObject thread = context.getCurrentThread();
         try {
-            fromRunnable(thread, context.getMeta(), State.TIMED_WAITING);
+            fromRunnable(thread, meta, State.TIMED_WAITING);
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             setInterrupt(thread, false);
-            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
         } catch (IllegalArgumentException e) {
-            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {
-            toRunnable(thread, context.getMeta(), State.RUNNABLE);
+            toRunnable(thread, meta, State.RUNNABLE);
         }
     }
 

@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -131,7 +131,7 @@ public final class NativeRootNode extends EspressoMethodNode {
         StaticObject ex = jniEnv.getPendingException();
         if (ex != null) {
             jniEnv.clearPendingException();
-            throw new EspressoException(ex);
+            throw Meta.throwException(ex);
         }
     }
 

@@ -59,6 +59,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 import java.lang.reflect.Modifier;
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
@@ -87,6 +88,7 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -211,10 +213,8 @@ public final class ClassfileParser {
         } catch (EspressoException e) {
             throw e;
         } catch (Throwable e) {
-            // Warn that some unexpected host-guest exception conversion happened.
-            System.err.println("Unexpected host exception " + e + " thrown during class parsing, re-throwing as guest exception.");
-            e.printStackTrace();
-            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            EspressoLanguage.EspressoLogger.severe("Unexpected host exception " + e + " thrown during class parsing.");
+            throw e;
         }
     }
 
@@ -238,7 +238,12 @@ public final class ClassfileParser {
                                         (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION))) {
             return;
         }
-        throw new UnsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    }
+
+    private static EspressoException unsupportedClassVersionError(String message) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
     }
 
     /**
@@ -298,7 +303,7 @@ public final class ClassfileParser {
             // Do not throw CFE until after the access_flags are checked because if
             // ACC_MODULE is set in the access flags, then NCDFE must be thrown, not CFE.
             // https://bugs.openjdk.java.net/browse/JDK-8175383
-            throw classfile.classFormatError("Unknown constant tag %s", badConstantSeen);
+            throw ConstantPool.classFormatError(String.format("Unknown constant tag %s [in class file %s]", badConstantSeen, classfile));
         }
 
         verifyClassFlags(classFlags, majorVersion);

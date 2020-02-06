@@ -352,8 +352,8 @@ public final class EspressoContext {
         outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
         outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
 
-        this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
-        this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
+        this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
+        this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
 
         // Create application (system) class loader.
         meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);

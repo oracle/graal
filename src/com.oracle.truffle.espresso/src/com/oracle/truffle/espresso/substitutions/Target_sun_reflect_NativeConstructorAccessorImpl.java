@@ -40,7 +40,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
         Klass klass = ((StaticObject) meta.java_lang_reflect_Constructor_clazz.get(constructor)).getMirrorKlass();
         klass.safeInitialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
-            throw meta.throwEx(InstantiationException.class);
+            throw Meta.throwException(meta.java_lang_InstantiationException);
         }
         Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor);
         StaticObject instance = klass.allocateInstance();

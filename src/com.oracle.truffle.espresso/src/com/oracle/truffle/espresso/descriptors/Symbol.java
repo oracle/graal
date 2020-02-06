@@ -459,9 +459,24 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
         public static final Symbol<Type> java_lang_NoClassDefFoundError = StaticSymbols.putType(NoClassDefFoundError.class);
         public static final Symbol<Type> java_lang_InterruptedException = StaticSymbols.putType(InterruptedException.class);
+        public static final Symbol<Type> java_lang_ThreadDeath = StaticSymbols.putType(ThreadDeath.class);
         public static final Symbol<Type> java_lang_NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
         public static final Symbol<Type> java_lang_RuntimeException = StaticSymbols.putType(RuntimeException.class);
         public static final Symbol<Type> java_lang_reflect_InvocationTargetException = StaticSymbols.putType(java.lang.reflect.InvocationTargetException.class);
+        public static final Symbol<Type> java_lang_IndexOutOfBoundsException = StaticSymbols.putType(IndexOutOfBoundsException.class);
+        public static final Symbol<Type> java_lang_ArrayIndexOutOfBoundsException = StaticSymbols.putType(ArrayIndexOutOfBoundsException.class);
+        public static final Symbol<Type> java_lang_StringIndexOutOfBoundsException = StaticSymbols.putType(StringIndexOutOfBoundsException.class);
+        public static final Symbol<Type> java_lang_ExceptionInInitializerError = StaticSymbols.putType(ExceptionInInitializerError.class);
+        public static final Symbol<Type> java_lang_InstantiationException = StaticSymbols.putType(InstantiationException.class);
+        public static final Symbol<Type> java_lang_InstantiationError = StaticSymbols.putType(InstantiationError.class);
+        public static final Symbol<Type> java_lang_CloneNotSupportedException = StaticSymbols.putType(CloneNotSupportedException.class);
+        public static final Symbol<Type> java_lang_SecurityException = StaticSymbols.putType(SecurityException.class);
+        public static final Symbol<Type> java_lang_LinkageError = StaticSymbols.putType(LinkageError.class);
+        public static final Symbol<Type> java_lang_BootstrapMethodError = StaticSymbols.putType(BootstrapMethodError.class);
+        public static final Symbol<Type> java_lang_NoSuchFieldException = StaticSymbols.putType(NoSuchFieldException.class);
+        public static final Symbol<Type> java_lang_NoSuchMethodException = StaticSymbols.putType(NoSuchMethodException.class);
+        public static final Symbol<Type> java_lang_UnsupportedOperationException = StaticSymbols.putType(UnsupportedOperationException.class);
+        public static final Symbol<Type> java_lang_UnsupportedClassVersionError = StaticSymbols.putType(UnsupportedClassVersionError.class);
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
@@ -526,6 +541,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
         public static final Symbol<Type> java_lang_InternalError = StaticSymbols.putType(InternalError.class);
         public static final Symbol<Type> java_lang_VerifyError = StaticSymbols.putType(VerifyError.class);
+        public static final Symbol<Type> java_lang_ClassFormatError = StaticSymbols.putType(ClassFormatError.class);
+        public static final Symbol<Type> java_lang_ClassCircularityError = StaticSymbols.putType(ClassCircularityError.class);
+        public static final Symbol<Type> java_lang_UnsatisfiedLinkError = StaticSymbols.putType(UnsatisfiedLinkError.class);
 
         public static final Symbol<Type> java_lang_invoke_MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
 

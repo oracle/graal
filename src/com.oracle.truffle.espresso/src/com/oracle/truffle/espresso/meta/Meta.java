@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -163,8 +164,24 @@ public final class Meta implements ContextAccess {
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
         java_lang_InterruptedException = knownKlass(Type.java_lang_InterruptedException);
+        java_lang_ThreadDeath = knownKlass(Type.java_lang_ThreadDeath);
+
         java_lang_RuntimeException = knownKlass(Type.java_lang_RuntimeException);
         java_lang_IllegalMonitorStateException = knownKlass(Type.java_lang_IllegalMonitorStateException);
+        java_lang_ArrayStoreException = knownKlass(Type.java_lang_ArrayStoreException);
+        java_lang_IndexOutOfBoundsException = knownKlass(Type.java_lang_IndexOutOfBoundsException);
+        java_lang_ArrayIndexOutOfBoundsException = knownKlass(Type.java_lang_ArrayIndexOutOfBoundsException);
+        java_lang_StringIndexOutOfBoundsException = knownKlass(Type.java_lang_StringIndexOutOfBoundsException);
+        java_lang_ExceptionInInitializerError = knownKlass(Type.java_lang_ExceptionInInitializerError);
+        java_lang_InstantiationException = knownKlass(Type.java_lang_InstantiationException);
+        java_lang_InstantiationError = knownKlass(Type.java_lang_InstantiationError);
+        java_lang_CloneNotSupportedException = knownKlass(Type.java_lang_CloneNotSupportedException);
+        java_lang_SecurityException = knownKlass(Type.java_lang_SecurityException);
+        java_lang_ArithmeticException = knownKlass(Type.java_lang_ArithmeticException);
+        java_lang_LinkageError = knownKlass(Type.java_lang_LinkageError);
+        java_lang_NoSuchFieldException = knownKlass(Type.java_lang_NoSuchFieldException);
+        java_lang_NoSuchMethodException = knownKlass(Type.java_lang_NoSuchMethodException);
+        java_lang_UnsupportedOperationException = knownKlass(Type.java_lang_UnsupportedOperationException);
 
         java_lang_StackOverflowError = knownKlass(Type.java_lang_StackOverflowError);
         java_lang_OutOfMemoryError = knownKlass(Type.java_lang_OutOfMemoryError);
@@ -172,12 +189,17 @@ public final class Meta implements ContextAccess {
         java_lang_AbstractMethodError = knownKlass(Type.java_lang_AbstractMethodError);
         java_lang_InternalError = knownKlass(Type.java_lang_InternalError);
         java_lang_VerifyError = knownKlass(Type.java_lang_VerifyError);
+        java_lang_ClassFormatError = knownKlass(Type.java_lang_ClassFormatError);
+        java_lang_ClassCircularityError = knownKlass(Type.java_lang_ClassCircularityError);
+        java_lang_UnsatisfiedLinkError = knownKlass(Type.java_lang_UnsatisfiedLinkError);
+        java_lang_UnsupportedClassVersionError = knownKlass(Type.java_lang_UnsupportedClassVersionError);
 
         java_lang_Error = knownKlass(Type.java_lang_Error);
         java_lang_NoSuchFieldError = knownKlass(Type.java_lang_NoSuchFieldError);
         java_lang_NoSuchMethodError = knownKlass(Type.java_lang_NoSuchMethodError);
         java_lang_IllegalAccessError = knownKlass(Type.java_lang_IllegalAccessError);
         java_lang_IncompatibleClassChangeError = knownKlass(Type.java_lang_IncompatibleClassChangeError);
+        java_lang_BootstrapMethodError = knownKlass(Type.java_lang_BootstrapMethodError);
 
         java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
         java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
@@ -514,6 +536,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
     public final ObjectKlass java_lang_InterruptedException;
+    public final ObjectKlass java_lang_ThreadDeath;
     public final ObjectKlass java_lang_RuntimeException;
     public final ObjectKlass java_lang_StackOverflowError;
     public final ObjectKlass java_lang_OutOfMemoryError;
@@ -521,6 +544,24 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_AbstractMethodError;
     public final ObjectKlass java_lang_InternalError;
     public final ObjectKlass java_lang_VerifyError;
+    public final ObjectKlass java_lang_ClassFormatError;
+    public final ObjectKlass java_lang_ClassCircularityError;
+    public final ObjectKlass java_lang_UnsatisfiedLinkError;
+    public final ObjectKlass java_lang_UnsupportedClassVersionError;
+    public final ObjectKlass java_lang_ArrayStoreException;
+    public final ObjectKlass java_lang_IndexOutOfBoundsException;
+    public final ObjectKlass java_lang_ArrayIndexOutOfBoundsException;
+    public final ObjectKlass java_lang_StringIndexOutOfBoundsException;
+    public final ObjectKlass java_lang_ExceptionInInitializerError;
+    public final ObjectKlass java_lang_InstantiationException;
+    public final ObjectKlass java_lang_InstantiationError;
+    public final ObjectKlass java_lang_CloneNotSupportedException;
+    public final ObjectKlass java_lang_SecurityException;
+    public final ObjectKlass java_lang_ArithmeticException;
+    public final ObjectKlass java_lang_LinkageError;
+    public final ObjectKlass java_lang_NoSuchFieldException;
+    public final ObjectKlass java_lang_NoSuchMethodException;
+    public final ObjectKlass java_lang_UnsupportedOperationException;
 
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
@@ -533,6 +574,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_NoSuchMethodError;
     public final ObjectKlass java_lang_IllegalAccessError;
     public final ObjectKlass java_lang_IncompatibleClassChangeError;
+    public final ObjectKlass java_lang_BootstrapMethodError;
 
     public final ObjectKlass java_lang_StackTraceElement;
     public final Method java_lang_StackTraceElement_init;
@@ -684,11 +726,6 @@ public final class Meta implements ContextAccess {
 
     // Checkstyle: resume field name check
 
-    private static boolean isKnownClass(java.lang.Class<?> clazz) {
-        // Cheap check: (host) known classes are loaded by the BCL.
-        return clazz.getClassLoader() == null;
-    }
-
     public static StaticObject box(Meta meta, Object arg) {
         if (arg instanceof Boolean) {
             return meta.boxBoolean((boolean) arg);
@@ -717,158 +754,167 @@ public final class Meta implements ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
-    public StaticObject initEx(java.lang.Class<?> clazz) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
-        return ex;
-    }
+    // region Guest exception handling (throw*)
 
-    public static StaticObject initExWithMessage(ObjectKlass klass, String message) {
-        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
-        StaticObject ex = klass.allocateInstance();
-        // Call constructor.
-        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, ex.getKlass().getMeta().toGuestString(message));
-        return ex;
-    }
-
-    public static StaticObject initExWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
-        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
-        assert StaticObject.isNull(message) || klass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
-        StaticObject ex = klass.allocateInstance();
-        // Call constructor.
-        klass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
-        return ex;
-    }
-
-    public static StaticObject initEx(ObjectKlass klass) {
-        assert klass.getMeta().java_lang_Throwable.isAssignableFrom(klass);
-        StaticObject ex = klass.allocateInstance();
-        // Call constructor.
-        klass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
-        return ex;
-    }
-
-    public StaticObject initExWithMessage(java.lang.Class<?> clazz, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, toGuestString(message));
-        return ex;
-    }
-
-    public StaticObject initExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
-        return ex;
-    }
-
-    public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
-        return ex;
-    }
-
-    public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        Klass exKlass = throwableKlass(clazz);
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
-        return ex;
-    }
-
-    public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        StaticObject ex = exKlass.allocateInstance();
-        exKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
-        return ex;
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwEx(ObjectKlass exKlass) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        throw new EspressoException(initEx(exKlass));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwEx(java.lang.Class<?> clazz) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        throw new EspressoException(initEx(clazz));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public static EspressoException throwEx(StaticObject throwable) {
-        throw new EspressoException(throwable);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
-        throw new EspressoException(initExWithMessage(clazz, message));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCause(clazz, cause));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
-        assert Throwable.class.isAssignableFrom(clazz);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(message) || java_lang_String.isAssignableFrom(message.getKlass());
-        throw new EspressoException(initExWithMessage(exKlass, message));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCause(exKlass, cause));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
-        assert java_lang_Throwable.isAssignableFrom(exKlass);
-        assert StaticObject.isNull(cause) || java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
-    }
-
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
     @TruffleBoundary
-    public Klass throwableKlass(java.lang.Class<?> exceptionClass) {
-        assert isKnownClass(exceptionClass);
-        assert Throwable.class.isAssignableFrom(exceptionClass);
-        return knownKlass(exceptionClass);
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
+        StaticObject ex = exceptionKlass.allocateInstance();
+        // Call constructor.
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(ex, message);
+        return ex;
     }
 
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
+        return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
+    }
+
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the {@link Throwable#Throwable()
+     * default constructor}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
     @TruffleBoundary
-    public ObjectKlass knownKlass(Symbol<Type> type) {
+    public static @Host(Throwable.class) StaticObject initException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        StaticObject ex = exceptionKlass.allocateInstance();
+        // Call constructor.
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void).invokeDirect(ex);
+        return ex;
+    }
+
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(Throwable) constructor with cause}. The given guest class must
+     * have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    @TruffleBoundary
+    public static @Host(Throwable.class) StaticObject initExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
+        assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
+        StaticObject ex = exceptionKlass.allocateInstance();
+        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_Throwable).invokeDirect(ex, cause);
+        return ex;
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the {@link Throwable#Throwable()
+     * default constructor}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+        throw throwException(initException(exceptionKlass));
+    }
+
+    /**
+     * Throws the given guest exception, wrapped in {@link EspressoException}.
+     *
+     * <p>
+     * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
+     * {@link #java_lang_Throwable Throwable}.
+     */
+    public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
+        assert StaticObject.notNull(throwable);
+        assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
+        throw EspressoException.wrap(throwable);
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+        throw throwException(initExceptionWithMessage(exceptionKlass, message));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
+        throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(Throwable) constructor with cause}.
+     * The given guest class must have such constructor declared.
+     * 
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+        throw throwException(initExceptionWithCause(exceptionKlass, cause));
+    }
+
+    /**
+     * Throws a guest {@link NullPointerException}. A guest instance is allocated and initialized by
+     * calling the {@link NullPointerException#NullPointerException() default constructor}.
+     */
+    public EspressoException throwNullPointerException() {
+        throw throwException(java_lang_NullPointerException);
+    }
+
+    // endregion Guest exception handling (throw)
+
+    private ObjectKlass knownKlass(Symbol<Type> type) {
+        CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
-    }
-
-    @TruffleBoundary
-    ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
-        assert isKnownClass(hostClass);
-        assert !hostClass.isPrimitive();
-        // Resolve non-primitive classes using BCL.
-        return knownKlass(getTypes().fromClass(hostClass));
     }
 
     /**
@@ -885,10 +931,6 @@ public final class Meta implements ContextAccess {
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         return getRegistries().loadKlass(type, classLoader);
-    }
-
-    public StaticObject newThrowable() {
-        return initEx(java_lang_Throwable);
     }
 
     /**
@@ -1017,9 +1059,6 @@ public final class Meta implements ContextAccess {
             if (StaticObject.isNull(guestObject)) {
                 return null;
             }
-            if (guestObject == StaticObject.VOID) {
-                return null;
-            }
             if (guestObject.isArray()) {
                 return guestObject.unwrap();
             }
@@ -1102,56 +1141,56 @@ public final class Meta implements ContextAccess {
 
     public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Boolean) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (boolean) java_lang_Boolean_value.get(boxed);
     }
 
     public byte unboxByte(@Host(Byte.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Byte) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (byte) java_lang_Byte_value.get(boxed);
     }
 
     public char unboxCharacter(@Host(Character.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Character) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (char) java_lang_Character_value.get(boxed);
     }
 
     public short unboxShort(@Host(Short.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Short) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (short) java_lang_Short_value.get(boxed);
     }
 
     public float unboxFloat(@Host(Float.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Float) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (float) java_lang_Float_value.get(boxed);
     }
 
     public int unboxInteger(@Host(Integer.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Integer) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (int) java_lang_Integer_value.get(boxed);
     }
 
     public double unboxDouble(@Host(Double.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Double) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (double) java_lang_Double_value.get(boxed);
     }
 
     public long unboxLong(@Host(Long.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Long) {
-            throw throwEx(java_lang_IllegalArgumentException);
+            throw throwException(java_lang_IllegalArgumentException);
         }
         return (long) java_lang_Long_value.get(boxed);
     }

@@ -68,7 +68,7 @@ public final class Target_sun_misc_Perf {
         Meta meta = self.getKlass().getMeta();
 
         if (units <= 0 || units > U_Last) {
-            throw meta.throwEx(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         // check that the PerfData name doesn't already exist
@@ -83,7 +83,7 @@ public final class Target_sun_misc_Perf {
             case V_Variable:
                 break;
             default:
-                throw meta.throwEx(meta.java_lang_IllegalArgumentException);
+                throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(longToBytes(value)));
