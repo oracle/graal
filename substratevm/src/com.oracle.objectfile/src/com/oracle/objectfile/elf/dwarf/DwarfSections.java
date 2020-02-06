@@ -223,15 +223,10 @@ public class DwarfSections {
     // 1) by top level compiled method (primary Range) ordered by ascending address
     // 2) by inlined method (sub range) within top level method ordered by ascending address
     //
-    // this ensures that all debug records are generated in increasing address order
-
-    /**
-     * a list recording details of all primary ranges included in
-     * this file sorted by ascending address range.
-     */
-    private LinkedList<PrimaryEntry> primaryEntries = new LinkedList<>();
-
+    // these can be used to ensure that all debug records are generated in increasing address order
+    //
     // An alternative traversal option is
+    //
     // 1) by top level class (String id)
     // 2) by top level compiled method (primary Range) within a class ordered by ascending address
     // 3) by inlined method (sub range) within top level method ordered by ascending address
@@ -241,6 +236,7 @@ public class DwarfSections {
     // or data values. this means we can treat each class as a compilation unit, allowing
     // data common to all methods of the class to be shared.
     //
+    // A third option appears to be to traverse via files, then top level class within file etc.
     // Unfortunately, files cannot be treated as the compilation unit. A file F may contain
     // multiple classes, say C1 and C2. There is no guarantee that methods for some other
     // class C' in file F' will not be compiled into the address space interleaved between
@@ -395,10 +391,6 @@ public class DwarfSections {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
         PrimaryEntry entry = classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
-        if (entry != null) {
-            // track the entry for this range in address order
-            primaryEntries.add(entry);
-        }
     }
 
     public void addSubRange(Range primaryRange, Range subrange) {
