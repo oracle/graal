@@ -49,8 +49,8 @@ suite = {
         },
 
         "JDK11_LIBMUSL_STATIC_LIBS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/jdk11.0.5+10-muslc-static-libs-dev-linux-amd64.tar.gz"],
-            "sha1" : "56baa3cf169cfcff04345202a0eff6d083b8e0f3",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/labsjdk-ce-11.0.6-jvmci-20.0-b02-musl-static-libs.tar.gz"],
+            "sha1" : "59082db9e4c5a3e1fff58c9c4d7870ace5410bdb",
         }
     },
 
