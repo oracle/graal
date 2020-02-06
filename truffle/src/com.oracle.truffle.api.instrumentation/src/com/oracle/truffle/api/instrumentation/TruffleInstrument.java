@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -605,9 +605,22 @@ public abstract class TruffleInstrument {
          *
          * @return a read-only map of symbol names and their values
          * @since 0.30
+         * @deprecated Use {@link #getPolyglotBindings()} instead.
          */
+        @Deprecated
         public Map<String, ? extends Object> getExportedSymbols() {
             return InstrumentAccessor.engineAccess().getExportedSymbols();
+        }
+
+        /**
+         * Returns the polyglot scope - symbols explicitly exported by languages. The polyglot
+         * bindings of the current entered context are returned.
+         *
+         * @return an interop object having the symbol names as properties
+         * @since 20.1
+         */
+        public Object getPolyglotBindings() {
+            return InstrumentAccessor.engineAccess().getPolyglotBindingsObject();
         }
 
         /**

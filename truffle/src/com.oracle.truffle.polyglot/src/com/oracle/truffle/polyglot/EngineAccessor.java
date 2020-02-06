@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -514,6 +514,12 @@ final class EngineAccessor extends Accessor {
         public Map<String, ? extends Object> getExportedSymbols() {
             PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
             return currentContext.getPolyglotBindings().as(Map.class);
+        }
+
+        @Override
+        public Object getPolyglotBindingsObject() {
+            PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+            return currentContext.getPolyglotBindingsObject();
         }
 
         @Override

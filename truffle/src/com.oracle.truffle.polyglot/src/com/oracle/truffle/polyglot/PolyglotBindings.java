@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.polyglot.Value;
 
@@ -54,19 +55,31 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 final class PolyglotBindings implements TruffleObject {
 
-    // a bindings object for each language.
+    // a bindings object for engine.
+    private final PolyglotContextImpl context;
+    // a bindings object for each language, can be null.
     private final PolyglotLanguageContext languageContext;
     // the bindings map that shared across a bindings object for each language context
     private volatile Map<String, Value> bindings;
 
+    PolyglotBindings(PolyglotContextImpl context) {
+        this(context, null);
+    }
+
     PolyglotBindings(PolyglotLanguageContext languageContext) {
-        this.languageContext = languageContext;
+        this(languageContext.context, languageContext);
+    }
+
+    private PolyglotBindings(PolyglotContextImpl context, PolyglotLanguageContext languageContext) {
+        Objects.requireNonNull(context);
+        this.context = context;
+        this.languageContext = languageContext; // Can be null
     }
 
     public Map<String, Value> getBindings() {
         Map<String, Value> localBindings = this.bindings;
         if (localBindings == null) {
-            this.bindings = localBindings = languageContext.context.getPolyglotGuestBindings();
+            this.bindings = localBindings = context.getPolyglotGuestBindings();
         }
         return localBindings;
     }
@@ -83,19 +96,24 @@ final class PolyglotBindings implements TruffleObject {
         Value value = getBindings().get(member);
         if (value == null) {
             // legacy support
-            Value legacyValue = languageContext.context.findLegacyExportedSymbol(member);
+            Value legacyValue = context.findLegacyExportedSymbol(member);
             if (legacyValue != null) {
-                return languageContext.getAPIAccess().getReceiver(legacyValue);
+                return context.getAPIAccess().getReceiver(legacyValue);
             }
             throw UnknownIdentifierException.create(member);
         }
-        return languageContext.toGuestValue(value);
+        if (languageContext != null) {
+            return languageContext.toGuestValue(value);
+        } else {
+            return context.getAPIAccess().getReceiver(value);
+        }
     }
 
     @ExportMessage
     @TruffleBoundary
     void writeMember(String member, Object value) {
-        getBindings().put(member, languageContext.asValue(value));
+        Value v = (languageContext != null) ? languageContext.asValue(value) : context.asValue(value);
+        getBindings().put(member, v);
     }
 
     @ExportMessage
@@ -120,7 +138,7 @@ final class PolyglotBindings implements TruffleObject {
     boolean isMemberExisting(String member) {
         boolean existing = getBindings().containsKey(member);
         if (!existing) {
-            return languageContext.context.findLegacyExportedSymbol(member) != null;
+            return context.findLegacyExportedSymbol(member) != null;
         }
         return existing;
     }

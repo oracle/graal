@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -101,6 +102,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -2170,6 +2172,63 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         public void onReturnValue(AllocationEvent event) {
             allocations.add("A " + event.getNewSize() + " " + event.getValue());
         }
+    }
+
+    @Test
+    public void testPolyglotBindings() throws Exception {
+        Instrument bindingsTestInstrument = context.getEngine().getInstruments().get(BindingsTestInstrument.ID);
+        Object bindingsObject = bindingsTestInstrument.lookup(Supplier.class).get();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+
+        assertTrue(interop.hasMembers(bindingsObject));
+        assertFalse(interop.isNull(bindingsObject));
+        assertFalse(interop.isExecutable(bindingsObject));
+        assertFalse(interop.isInstantiable(bindingsObject));
+
+        final String m1 = "member1";
+        final String m2 = "member2";
+
+        // Bindings are empty initially
+        assertFalse(interop.isMemberExisting(bindingsObject, m1));
+        assertFalse(interop.isMemberExisting(bindingsObject, m2));
+        assertFalse(context.getPolyglotBindings().hasMember(m1));
+        assertFalse(context.getPolyglotBindings().hasMember(m2));
+
+        // Value set by Context can be read by instrument
+        context.getPolyglotBindings().putMember(m1, 10);
+        assertTrue(interop.isMemberExisting(bindingsObject, m1));
+        assertEquals(10, interop.readMember(bindingsObject, m1));
+
+        // Value set by instrument can be read by Context
+        interop.writeMember(bindingsObject, m1, 11);
+        interop.writeMember(bindingsObject, m2, 20);
+        assertEquals(11, context.getPolyglotBindings().getMember(m1).asInt());
+        assertEquals(20, context.getPolyglotBindings().getMember(m2).asInt());
+
+        // Remove works from both sides
+        interop.removeMember(bindingsObject, m1);
+        context.getPolyglotBindings().removeMember(m2);
+        assertFalse(interop.isMemberExisting(bindingsObject, m1));
+        assertFalse(interop.isMemberExisting(bindingsObject, m2));
+        assertFalse(context.getPolyglotBindings().hasMember(m1));
+        assertFalse(context.getPolyglotBindings().hasMember(m2));
+    }
+
+    @TruffleInstrument.Registration(id = BindingsTestInstrument.ID, services = Supplier.class)
+    public static class BindingsTestInstrument extends TruffleInstrument {
+
+        static final String ID = "bindings-test-instrument";
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(new Supplier<Object>() {
+                @Override
+                public Object get() {
+                    return env.getPolyglotBindings();
+                }
+            });
+        }
+
     }
 
     private static final class MyKillException extends ThreadDeath {
