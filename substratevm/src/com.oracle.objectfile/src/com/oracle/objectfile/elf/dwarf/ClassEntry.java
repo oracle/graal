@@ -129,10 +129,14 @@ public class ClassEntry {
 
     void addSubRange(Range subrange, FileEntry subFileEntry) {
         Range primary = subrange.getPrimary();
-        // the subrange should belong to a primary range
+        /*
+         * the subrange should belong to a primary range
+         */
         assert primary != null;
         PrimaryEntry primaryEntry = primaryIndex.get(primary);
-        // we should already have seen the primary range
+        /*
+         * we should already have seen the primary range
+         */
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
         primaryEntry.addSubRange(subrange, subFileEntry);

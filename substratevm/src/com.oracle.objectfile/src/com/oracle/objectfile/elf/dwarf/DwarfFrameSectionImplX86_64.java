@@ -27,37 +27,42 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * Tracks debug info associated with a Java source file.
+ * x86_64-specific section generator for debug_frame section
+ * that knows details of x86_64 registers and frame layout.
  */
-public class FileEntry {
-    /**
-     * The name of the associated file including path
-     */
-    private String fileName;
-    /**
-     * The name of the associated file excluding path
-     */
-    private String baseName;
-    /**
-     * The directory entry associated with this file entry
-     */
-    DirEntry dirEntry;
+public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
+    public static final int DW_CFA_RSP_IDX = 7;
+    public static final int DW_CFA_RIP_IDX = 16;
 
-    public FileEntry(String fileName, String baseName, DirEntry dirEntry) {
-        this.fileName = fileName;
-        this.baseName = baseName;
-        this.dirEntry = dirEntry;
+    public DwarfFrameSectionImplX86_64(DwarfSections dwarfSections) {
+        super(dwarfSections);
     }
 
-    public String getFileName() {
-        return fileName;
+    @Override
+    public int getPCIdx() {
+        return DW_CFA_RIP_IDX;
     }
 
-    public String getBaseName() {
-        return baseName;
+    @Override
+    public int getSPIdx() {
+        return DW_CFA_RSP_IDX;
     }
 
-    String getDirName() {
-        return (dirEntry != null ? dirEntry.getPath() : "");
+    @Override
+    public int writeInitialInstructions(byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * rsp points at the word containing the saved rip
+         * so the frame base (cfa) is at rsp + 8 (why not - ???)
+         * def_cfa r7 (sp) offset 8
+         */
+        pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
+        /*
+         * and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
+         * (why not -1 ???)
+         * offset r16 (rip) cfa - 8
+         */
+        pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
+        return pos;
     }
 }

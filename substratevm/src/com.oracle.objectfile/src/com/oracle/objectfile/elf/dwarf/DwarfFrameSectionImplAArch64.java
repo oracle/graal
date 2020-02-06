@@ -27,37 +27,39 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * Tracks debug info associated with a Java source file.
+ * AArch64-specific section generator for debug_frame section
+ * that knows details of AArch64 registers and frame layout.
  */
-public class FileEntry {
-    /**
-     * The name of the associated file including path
-     */
-    private String fileName;
-    /**
-     * The name of the associated file excluding path
-     */
-    private String baseName;
-    /**
-     * The directory entry associated with this file entry
-     */
-    DirEntry dirEntry;
+public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
+    public static final int DW_CFA_FP_IDX = 29;
+    public static final int DW_CFA_LR_IDX = 30;
+    public static final int DW_CFA_SP_IDX = 31;
+    public static final int DW_CFA_PC_IDX = 32;
 
-    public FileEntry(String fileName, String baseName, DirEntry dirEntry) {
-        this.fileName = fileName;
-        this.baseName = baseName;
-        this.dirEntry = dirEntry;
+    public DwarfFrameSectionImplAArch64(DwarfSections dwarfSections) {
+        super(dwarfSections);
     }
 
-    public String getFileName() {
-        return fileName;
+    @Override
+    public int getPCIdx() {
+        return DW_CFA_PC_IDX;
     }
 
-    public String getBaseName() {
-        return baseName;
+    @Override
+    public int getSPIdx() {
+        return DW_CFA_SP_IDX;
     }
 
-    String getDirName() {
-        return (dirEntry != null ? dirEntry.getPath() : "");
+    @Override
+    public int writeInitialInstructions(byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * rsp has not been updated
+         * caller pc is in lr
+         * register r32 (rpc), r30 (lr)
+         */
+        pos = writeRegister(DW_CFA_PC_IDX, DW_CFA_LR_IDX, buffer, pos);
+        return pos;
     }
 }
+
