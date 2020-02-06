@@ -72,16 +72,6 @@ public interface VMListener {
     boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
 
     /**
-     * Hold all events until releaseEvents is called.
-     */
-    void holdEvents();
-
-    /**
-     * Send all held events, and stop holding events.
-     */
-    void releaseEvents();
-
-    /**
      * Determines if the method has a method breakpoint set. If true, the caller of this method is
      * expected to enter a probe node to allow for the Truffle Debug API to suspend the execution.
      *
@@ -91,7 +81,43 @@ public interface VMListener {
      */
     boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
 
+    /**
+     * This method prepares for a monitor contended enter event, but only if there was a request for
+     * such event on the current thread.
+     *
+     * @param monitor the monitor object
+     * @return {@code true} if an event for a monitor contended was prepared, {@code false}
+     *         otherwise.
+     */
     boolean prepareMonitorContended(Object monitor);
 
+    /**
+     * This method prepares for a monitor contended entered event, but only if there was a request
+     * for such event on the current thread.
+     *
+     * @param monitor the monitor object
+     * @return {@code true} if an event for a monitor contended entered was prepared, {@code false}
+     *         otherwise.
+     */
     boolean prepareMonitorContendedEntered(Object monitor);
+
+    /**
+     * This method should be called when when the monitor wait(timeout) method is invoked in the
+     * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
+     * current thread.
+     * 
+     * @param monitor the monitor object
+     * @param timeout the timeout in ms before the wait will time out
+     */
+    void monitorWait(Object monitor, long timeout);
+
+    /**
+     * This method should be called just after the monitor wait(timeout) method is invoked in the
+     * guest VM. A monitor waited event will then be sent through JDWP, if there was a request for the
+     * current thread.
+     *
+     * @param monitor the monitor object
+     * @param timedOut if the wait timed out or not
+     */
+    void monitorWaited(Object monitor, boolean timedOut);
 }

@@ -339,6 +339,8 @@ public final class Meta implements ContextAccess {
         Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
         Finalizer_register = Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
 
+        Object_wait = Object.lookupDeclaredMethod(Name.wait, Signature._void_long);
+
         // References
         Reference = knownKlass(java.lang.ref.Reference.class);
         Reference_referent = Reference.lookupDeclaredField(Name.referent, Type.Object);
@@ -642,6 +644,8 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_findMethodHandleType;
     public final Method MethodHandleNatives_linkCallSite;
     public final Method MethodHandleNatives_fixMethodType;
+
+    public final Method Object_wait;
 
     // References
     public final ObjectKlass Finalizer;

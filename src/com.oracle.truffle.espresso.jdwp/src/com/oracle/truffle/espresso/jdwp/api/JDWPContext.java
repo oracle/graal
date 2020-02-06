@@ -406,4 +406,11 @@ public interface JDWPContext {
      * @return the BCI or -1
      */
     long readBCIFromFrame(RootNode root, FrameInstance frameInstance);
+
+    /**
+     * Returns a {@link CallFrame} representation of the location of {@code Object.wait(long timeout)}.
+     *
+     * @return the {@link CallFrame} that represents the monitor wait method
+     */
+    CallFrame locateObjectWaitFrame();
 }

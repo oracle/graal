@@ -51,6 +51,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
+import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -578,5 +579,13 @@ public final class JDWPContextImpl implements JDWPContext {
             }
         }
         return -1;
+    }
+
+    @Override
+    public CallFrame locateObjectWaitFrame() {
+        Object currentThread = asGuestThread(Thread.currentThread());
+        KlassRef klass = context.getMeta().Object;
+        MethodRef method = context.getMeta().Object_wait;
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
     }
 }

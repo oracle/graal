@@ -55,6 +55,8 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorContendedRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorContendedEnteredRequests = new HashMap<>();
+    private final HashMap<Integer, RequestFilter> monitorWaitRequests = new HashMap<>();
+    private final HashMap<Integer, RequestFilter> monitorWaitedRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
     private static volatile int fieldBreakpointCount;
     private final StableBoolean methodBreakpointsActive = new StableBoolean(false);
@@ -664,6 +666,136 @@ public final class VMEventListenerImpl implements VMEventListener {
             }
         }
         return false;
+    }
+
+    public void sendMonitorWaitEvent(Object monitor, long timeout, RequestFilter filter, CallFrame currentFrame) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+        stream.writeByte(filter.getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(RequestedJDWPEvents.MONITOR_WAIT);
+        stream.writeInt(filter.getRequestId());
+        stream.writeLong(currentFrame.getThreadId());
+        // tagged object ID
+        stream.writeByte(context.getTag(monitor));
+        stream.writeLong(context.getIds().getIdAsLong(monitor));
+
+        // location
+        stream.writeByte(currentFrame.getTypeTag());
+        stream.writeLong(currentFrame.getClassId());
+        stream.writeLong(currentFrame.getMethodId());
+        long codeIndex = currentFrame.getCodeIndex();
+        stream.writeLong(codeIndex);
+
+        // timeout
+        stream.writeLong(timeout);
+        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.STEPPING);
+
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
+    }
+
+    @Override
+    public void addMonitorWaitRequest(int requestId, RequestFilter filter) {
+        monitorWaitRequests.put(requestId, filter);
+    }
+
+    @Override
+    public void removeMonitorWaitRequest(int requestId) {
+        monitorWaitRequests.remove(requestId);
+    }
+
+    @Override
+    public void monitorWait(Object monitor, long timeout) {
+        if (monitorWaitRequests.isEmpty()) {
+            return;
+        }
+        Object currentThread = context.asGuestThread(Thread.currentThread());
+        for (Map.Entry<Integer, RequestFilter> entry : monitorWaitRequests.entrySet()) {
+            RequestFilter filter = entry.getValue();
+            if (currentThread == filter.getThread()) {
+                // monitor wait(timeout) is called on a requested thread
+                // create the call frame for the caller location of Object.wait(timeout)
+                CallFrame frame = context.locateObjectWaitFrame();
+
+                debuggerController.immediateSuspend(currentThread, filter.getSuspendPolicy(), new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        sendMonitorWaitEvent(monitor, timeout, filter, frame);
+                        return null;
+                    }
+                });
+            }
+        }
+    }
+
+    public void sendMonitorWaitedEvent(Object monitor, boolean timedOut, RequestFilter filter, CallFrame currentFrame) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+        stream.writeByte(filter.getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(RequestedJDWPEvents.MONITOR_WAITED);
+        stream.writeInt(filter.getRequestId());
+        stream.writeLong(currentFrame.getThreadId());
+        // tagged object ID
+        stream.writeByte(context.getTag(monitor));
+        stream.writeLong(context.getIds().getIdAsLong(monitor));
+
+        // location
+        stream.writeByte(currentFrame.getTypeTag());
+        stream.writeLong(currentFrame.getClassId());
+        stream.writeLong(currentFrame.getMethodId());
+        long codeIndex = currentFrame.getCodeIndex();
+        stream.writeLong(codeIndex);
+
+        // timeout
+        stream.writeBoolean(timedOut);
+        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.STEPPING);
+
+        if (holdEvents) {
+            heldEvents.add(stream);
+        } else {
+            connection.queuePacket(stream);
+        }
+    }
+
+    @Override
+    public void addMonitorWaitedRequest(int requestId, RequestFilter filter) {
+        monitorWaitedRequests.put(requestId, filter);
+    }
+
+    @Override
+    public void removeMonitorWaitedRequest(int requestId) {
+        monitorWaitedRequests.remove(requestId);
+    }
+
+    @Override
+    public void monitorWaited(Object monitor, boolean timedOut) {
+        if (monitorWaitedRequests.isEmpty()) {
+            return;
+        }
+        Object currentThread = context.asGuestThread(Thread.currentThread());
+        for (Map.Entry<Integer, RequestFilter> entry : monitorWaitedRequests.entrySet()) {
+            RequestFilter filter = entry.getValue();
+            if (currentThread == filter.getThread()) {
+                // monitor wait(timeout) is called on a requested thread
+                // create the call frame for the caller location of Object.wait(timeout)
+                CallFrame frame = context.locateObjectWaitFrame();
+
+                debuggerController.immediateSuspend(currentThread, filter.getSuspendPolicy(), new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        sendMonitorWaitedEvent(monitor, timedOut, filter, frame);
+                        return null;
+                    }
+                });
+            }
+        }
     }
 
     @Override
