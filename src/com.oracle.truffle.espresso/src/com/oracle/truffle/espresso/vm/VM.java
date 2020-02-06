@@ -998,14 +998,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                                             // This must only be called from
                                             // Reflection.getCallerClass.
                                             if (method != meta.sun_reflect_Reflection_getCallerClass) {
-                                                exception[0] = meta.initExceptionWithMessage(InternalError.class, "JVM_GetCallerClass must only be called from Reflection.getCallerClass");
+                                                exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "JVM_GetCallerClass must only be called from Reflection.getCallerClass");
                                                 return /* ignore */ method;
                                             }
                                             // fall-through
                                         case 1:
                                             // Frame 0 and 1 must be caller sensitive.
                                             if ((method.getModifiers() & ACC_CALLER_SENSITIVE) == 0) {
-                                                exception[0] = meta.initExceptionWithMessage(InternalError.class, "CallerSensitive annotation expected at frame " + depth);
+                                                exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "CallerSensitive annotation expected at frame " + depth);
                                                 return /* ignore */ method;
                                             }
                                             break;

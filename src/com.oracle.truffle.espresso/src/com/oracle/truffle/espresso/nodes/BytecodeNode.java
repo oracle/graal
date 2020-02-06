@@ -1763,7 +1763,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         try {
             rtype = meta.resolveSymbol(rt, accessingKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
-            throw meta.throwException(BootstrapMethodError.class);
+            throw meta.throwException(meta.java_lang_BootstrapMethodError);
         }
         return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,

@@ -250,9 +250,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             methodName = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
         } catch (EspressoError e) {
             if ((flags & ALL_KINDS) == MN_IS_FIELD) {
-                throw meta.throwException(NoSuchFieldException.class);
+                throw meta.throwException(meta.java_lang_NoSuchFieldException);
             } else {
-                throw meta.throwException(NoSuchMethodException.class);
+                throw meta.throwException(meta.java_lang_NoSuchMethodException);
             }
         }
         StaticObject type = (StaticObject) meta.java_lang_invoke_MemberName_getSignature.invokeDirect(self);
@@ -361,7 +361,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
-            throw defKlass.getContext().getMeta().throwException(NoSuchMethodError.class);
+            throw meta.throwException(meta.java_lang_NoSuchMethodError);
         }
         plantResolvedMethod(memberName, target, refKind, flagField, meta);
     }
@@ -375,7 +375,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
-            throw defKlass.getContext().getMeta().throwException(NoSuchFieldError.class);
+            throw meta.throwException(meta.java_lang_NoSuchFieldError);
         }
         plantResolvedField(memberName, field, refKind, flagField, meta);
     }

@@ -27,6 +27,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -472,6 +473,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_CloneNotSupportedException = StaticSymbols.putType(CloneNotSupportedException.class);
         public static final Symbol<Type> java_lang_SecurityException = StaticSymbols.putType(SecurityException.class);
         public static final Symbol<Type> java_lang_LinkageError = StaticSymbols.putType(LinkageError.class);
+        public static final Symbol<Type> java_lang_BootstrapMethodError = StaticSymbols.putType(BootstrapMethodError.class);
+        public static final Symbol<Type> java_lang_NoSuchFieldException = StaticSymbols.putType(NoSuchFieldException.class);
+        public static final Symbol<Type> java_lang_NoSuchMethodException = StaticSymbols.putType(NoSuchMethodException.class);
+        public static final Symbol<Type> java_lang_UnsupportedOperationException = StaticSymbols.putType(UnsupportedOperationException.class);
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType(ThreadGroup.class);

@@ -238,7 +238,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         Klass klass = ((StaticObject) meta.java_lang_reflect_Method_clazz.get(guestMethod)).getMirrorKlass();
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
-            StaticObject cause = meta.initExceptionWithMessage(UnsupportedOperationException.class, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
+            StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
             StaticObject invocationTargetException = meta.initExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, cause);
             throw new EspressoException(invocationTargetException);
         }
