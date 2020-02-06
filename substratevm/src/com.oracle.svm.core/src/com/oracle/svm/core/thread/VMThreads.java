@@ -414,18 +414,6 @@ public abstract class VMThreads {
         JavaThreads.cleanupBeforeDetach(thread);
     }
 
-    public void detachThreads(IsolateThread[] threads) {
-        JavaVMOperation.enqueueBlockingSafepoint("detachThreads", () -> {
-            for (IsolateThread thread : threads) {
-                VMError.guarantee(!JavaThreads.wasStartedByCurrentIsolate(thread), "DetachThreads must not be called for threads that detach themselves automatically.");
-                assert !thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach current thread with this method";
-                cleanupBeforeDetach(thread);
-                detachThreadInSafeContext(thread);
-                releaseThread(thread);
-            }
-        });
-    }
-
     /**
      * Detaches all manually attached native threads, but not those threads that were launched from
      * Java, which must be notified to individually exit in the immediately following tear-down.
@@ -444,6 +432,7 @@ public abstract class VMThreads {
                     Thread javaThread = JavaThreads.fromVMThread(thread);
                     if (!JavaThreads.wasStartedByCurrentIsolate(javaThread)) {
                         detachThreadInSafeContext(thread);
+                        releaseThread(thread);
                     }
                 }
                 thread = next;

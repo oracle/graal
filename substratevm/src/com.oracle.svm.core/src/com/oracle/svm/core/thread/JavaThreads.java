@@ -197,19 +197,10 @@ public abstract class JavaThreads {
 
     /** Before detaching a thread, run any Java cleanup code. */
     static void cleanupBeforeDetach(IsolateThread thread) {
-        if (thread.equal(CurrentIsolate.getCurrentThread())) {
-            Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
-            javaThread.exit();
-        } else {
-            /*
-             * We cannot call Thread.exit() for another thread: it may use synchronization, which is
-             * not permitted since we must be at a safepoint here, and any TerminatingThreadLocal
-             * instances access the current thread's thread-local values, so we would end up
-             * cleaning up the wrong thread's resources. Of course, not calling Thread.exit() means
-             * that there will be leaks. Since the Java thread code is not designed for detaching
-             * other threads, we shouldn't support this in the first place.
-             */
-        }
+        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
+
+        Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
+        javaThread.exit();
     }
 
     /**

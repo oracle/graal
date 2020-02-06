@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-import java.util.Arrays;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -32,13 +31,11 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
@@ -165,68 +162,6 @@ public final class CEntryPointNativeFunctions {
         }
         result = CEntryPointActions.leaveDetachThread();
         return result;
-    }
-
-    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
-    @CEntryPoint(name = "detach_threads", documentation = {
-                    "- This function is DEPRECATED AND WILL BE REMOVED ENTIRELY in a future release -",
-                    "",
-                    "Using the context of the isolate thread from the first argument, detaches the",
-                    "threads in an array pointed to by the second argument, with the length of the",
-                    "array given in the third argument. All of the passed threads must be in the",
-                    "same isolate, including the first argument. None of the threads to detach may",
-                    "execute Java code at the time of the call or later without reattaching first,",
-                    "or their behavior will be entirely undefined. The current thread may be part of",
-                    "the array, however, using detach_thread() should be preferred for detaching only",
-                    "the current thread.",
-                    "Returns 0 on success, or a non-zero value on failure."})
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class, publishAs = CEntryPointOptions.Publish.SymbolOnly)
-    public static int detachThreads(IsolateThread thread, IsolateThreadPointer array, int length) {
-        int result = CEntryPointActions.enter(thread);
-        if (result != 0) {
-            CEntryPointActions.leave();
-            return result;
-        }
-        boolean detachCurrent = false;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            try {
-                detachCurrent = detachThreadsInJava(array, length);
-            } catch (Throwable t) {
-                result = CEntryPointErrors.UNCAUGHT_EXCEPTION;
-            }
-        }
-        int leaveResult;
-        if (result == 0 && detachCurrent) {
-            leaveResult = CEntryPointActions.leaveDetachThread();
-        } else {
-            leaveResult = CEntryPointActions.leave();
-        }
-        return (result != 0) ? result : leaveResult;
-    }
-
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Safe context.")
-    private static boolean detachThreadsInJava(IsolateThreadPointer array, int length) {
-        IsolateThread current = CurrentIsolate.getCurrentThread();
-        Isolate currentIsolate = getIsolateOf(current);
-        boolean containsCurrent = false;
-        IsolateThread[] jarray = new IsolateThread[length];
-        int count = 0;
-        for (int i = 0; i < length; i++) {
-            IsolateThread thread = ((WordPointer) array).read(count);
-            if (thread.equal(current)) {
-                containsCurrent = true;
-            } else if (getIsolateOf(thread).notEqual(currentIsolate)) {
-                throw new IllegalArgumentException("Thread is not attached to this isolate");
-            } else {
-                jarray[count] = thread;
-                count++;
-            }
-        }
-        if (count > 0) {
-            jarray = Arrays.copyOf(jarray, count);
-            VMThreads.singleton().detachThreads(jarray);
-        }
-        return containsCurrent;
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)

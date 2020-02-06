@@ -111,24 +111,6 @@ public final class PolyglotNativeAPIEntryPoints {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint(name = "poly_detach_threads", documentation = {
-                    "- This function is DEPRECATED AND WILL BE REMOVED ENTIRELY in a future release -",
-                    "",
-                    "Using the context of the isolate thread from the first argument, detaches the",
-                    "threads in an array pointed to by the second argument, with the length of the",
-                    "array given in the third argument. All of the passed threads must be in the",
-                    "same isolate, including the first argument. None of the threads to detach may",
-                    "execute Java code at the time of the call or later without reattaching first,",
-                    "or their behavior will be entirely undefined. The current thread may be part of",
-                    "the array, however, using poly_detach_thread() should be preferred for detaching",
-                    "only the current thread.",
-                    "Returns poly_ok on success, or poly_generic_failure on failure."})
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class, publishAs = CEntryPointOptions.Publish.SymbolOnly)
-    public static @CTypedef(name = "poly_status") int polyDetachThreads(PolyglotIsolateThread thread, PolyglotIsolateThreadPointer threads, int length) {
-        return detachThreads(thread, threads, length) == 0 ? Poly.ok() : Poly.generic_failure();
-    }
-
-    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "poly_detach_all_threads_and_tear_down_isolate", documentation = {
                     "In the isolate of the passed isolate thread, detach all those threads that were",
                     "externally started (not within Java, which includes the \"main thread\") and were",
@@ -170,9 +152,6 @@ public final class PolyglotNativeAPIEntryPoints {
 
     @CFunction(value = "graal_detach_thread", transition = NO_TRANSITION)
     private static native int detachThread(IsolateThread thread);
-
-    @CFunction(value = "graal_detach_threads", transition = NO_TRANSITION)
-    private static native int detachThreads(IsolateThread thread, IsolateThreadPointer array, int length);
 
     @CFunction(value = "graal_detach_all_threads_and_tear_down_isolate", transition = NO_TRANSITION)
     private static native int detachAllThreadsAndTearDownIsolate(IsolateThread thread);
