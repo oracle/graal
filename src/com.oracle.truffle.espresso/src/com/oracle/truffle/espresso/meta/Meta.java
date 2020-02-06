@@ -853,13 +853,6 @@ public final class Meta implements ContextAccess {
         throw throwException(java_lang_ArrayIndexOutOfBoundsException);
     }
 
-    @TruffleBoundary
-    public ObjectKlass throwableKlass(java.lang.Class<? extends Throwable> exceptionClass) {
-        assert isKnownClass(exceptionClass);
-        assert Throwable.class.isAssignableFrom(exceptionClass);
-        return knownKlass(exceptionClass);
-    }
-
     // endregion Guest exception handling (throw)
 
     @TruffleBoundary
