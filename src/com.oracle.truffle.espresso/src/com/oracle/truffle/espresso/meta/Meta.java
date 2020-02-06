@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -753,7 +754,18 @@ public final class Meta implements ContextAccess {
 
     // region Guest exception handling (throw*)
 
-    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         CompilerAsserts.partialEvaluationConstant(exceptionKlass);
@@ -763,11 +775,32 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @Host(Throwable.class) StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
         return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
-    public static @Host(Throwable.class) StaticObject initException(ObjectKlass exceptionKlass) {
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the {@link Throwable#Throwable()
+     * default constructor}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @Host(Throwable.class) StaticObject initException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         CompilerAsserts.partialEvaluationConstant(exceptionKlass);
         StaticObject ex = exceptionKlass.allocateInstance();
@@ -776,7 +809,18 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static @Host(Throwable.class) StaticObject initExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+    /**
+     * Allocate and initializes an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(Throwable) constructor with cause}. The given guest class must
+     * have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static @Host(Throwable.class) StaticObject initExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
         CompilerAsserts.partialEvaluationConstant(exceptionKlass);
@@ -785,28 +829,79 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static EspressoException throwException(ObjectKlass exceptionKlass) {
-        throw new EspressoException(initException(exceptionKlass));
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the {@link Throwable#Throwable()
+     * default constructor}. The given guest class must have such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+        throw throwException(initException(exceptionKlass));
     }
 
+    /**
+     * Throws the given guest exception, wrapped in {@link EspressoException}.
+     *
+     * <p>
+     * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
+     * {@link #java_lang_Throwable Throwable}.
+     */
     public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
-        throw new EspressoException(throwable);
+        assert StaticObject.notNull(throwable);
+        assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
+        throw EspressoException.wrap(throwable);
     }
 
-    public static EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
-        throw new EspressoException(initExceptionWithMessage(exceptionKlass, message));
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+        throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
 
-    public static EspressoException throwExceptionWithMessage(ObjectKlass exceptionKlass, String message) {
+    /**
+     * Initializes and throws an exception of the given guest klass.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
-    public static EspressoException throwExceptionWithCause(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
-        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
-        assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        throw new EspressoException(initExceptionWithCause(exceptionKlass, cause));
+    /**
+     * Initializes and throws an exception of the given guest klass. A guest instance is allocated
+     * and initialized by calling the {@link Throwable#Throwable(Throwable) constructor with cause}.
+     * The given guest class must have such constructor declared.
+     * 
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     */
+    public static EspressoException throwExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+        throw throwException(initExceptionWithCause(exceptionKlass, cause));
     }
 
+    /**
+     * Throws a guest {@link NullPointerException}. A guest instance is allocated and initialized by
+     * calling the {@link NullPointerException#NullPointerException() default constructor}.
+     */
     public EspressoException throwNullPointerException() {
         throw throwException(java_lang_NullPointerException);
     }
