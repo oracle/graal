@@ -1218,7 +1218,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private void boundsCheck(int start, int len, int arrayLength) {
         assert arrayLength >= 0;
         if (start < 0 || len < 0 || start + (long) len > arrayLength) {
-            throw getMeta().throwArrayIndexOutOfBoundsException();
+            throw Meta.throwException(getMeta().java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 

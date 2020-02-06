@@ -49,7 +49,7 @@ public final class Target_java_lang_System {
             doArrayCopy(src, srcPos, dest, destPos, length);
         } catch (NullPointerException e) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         } catch (ArrayStoreException e) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
@@ -64,7 +64,7 @@ public final class Target_java_lang_System {
     private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         final Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {

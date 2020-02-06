@@ -1928,8 +1928,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     private StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
             // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = getMeta();
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw getMeta().throwNullPointerException();
         }
         return value;
     }

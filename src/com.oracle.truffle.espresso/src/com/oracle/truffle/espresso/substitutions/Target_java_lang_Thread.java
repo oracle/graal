@@ -299,7 +299,7 @@ public final class Target_java_lang_Thread {
     public static boolean holdsLock(@Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         return object.getLock().isHeldByCurrentThread();
     }

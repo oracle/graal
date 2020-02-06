@@ -66,7 +66,7 @@ public final class Target_java_lang_reflect_Array {
     public static Object newArray(@Host(Class.class) StaticObject componentType, int length) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
@@ -112,7 +112,7 @@ public final class Target_java_lang_reflect_Array {
     public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
@@ -232,7 +232,7 @@ public final class Target_java_lang_reflect_Array {
         assert e instanceof NullPointerException || e instanceof ArrayIndexOutOfBoundsException || e instanceof IllegalArgumentException;
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (e instanceof NullPointerException) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, e.getMessage());
+            throw meta.throwNullPointerException();
         }
         if (e instanceof ArrayIndexOutOfBoundsException) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
@@ -361,7 +361,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         if (array.isArray()) {
             // @formatter:off
@@ -404,7 +404,7 @@ public final class Target_java_lang_reflect_Array {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         if (array.isArray()) {
             // @formatter:off

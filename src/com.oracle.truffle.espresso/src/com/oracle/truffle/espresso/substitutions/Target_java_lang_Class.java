@@ -111,7 +111,7 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         if (StaticObject.isNull(name)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, name);
+            throw meta.throwNullPointerException();
         }
 
         String hostName = Meta.toHostString(name);

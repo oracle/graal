@@ -396,7 +396,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             self.getLock().signalAll();
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwIllegalMonitorStateException();
+            throw Meta.throwException(getMeta().java_lang_IllegalMonitorStateException);
         }
     }
 
@@ -407,7 +407,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             self.getLock().signal();
         } catch (IllegalMonitorStateException e) {
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalMonitorStateException, e.getMessage());
+            throw Meta.throwException(getMeta().java_lang_IllegalMonitorStateException);
         }
     }
 
@@ -880,7 +880,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (IllegalArgumentException e) {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
         } catch (NullPointerException e) {
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_NullPointerException, e.getMessage());
+            throw getMeta().throwNullPointerException();
         }
     }
 

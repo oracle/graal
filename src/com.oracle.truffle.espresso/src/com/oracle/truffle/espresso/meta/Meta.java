@@ -791,18 +791,6 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
-    public static @Host(Throwable.class) StaticObject initExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, String message) {
-        return initExceptionWithCauseAndMessage(exceptionKlass, cause, exceptionKlass.getMeta().toGuestString(message));
-    }
-
-    public static @Host(Throwable.class) StaticObject initExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
-        assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
-        assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
-        StaticObject ex = exceptionKlass.allocateInstance();
-        exceptionKlass.lookupDeclaredMethod(Name._init_, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
-        return ex;
-    }
-
     @TruffleBoundary(transferToInterpreterOnException = false)
     public static EspressoException throwException(ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
@@ -834,23 +822,8 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    public static EspressoException throwExceptionWithCauseAndMessage(ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
-        throw new EspressoException(initExceptionWithCauseAndMessage(exceptionKlass, cause, message));
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
     public EspressoException throwNullPointerException() {
         throw throwException(java_lang_NullPointerException);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwIllegalMonitorStateException() {
-        throw throwException(java_lang_IllegalMonitorStateException);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public EspressoException throwArrayIndexOutOfBoundsException() {
-        throw throwException(java_lang_ArrayIndexOutOfBoundsException);
     }
 
     // endregion Guest exception handling (throw)

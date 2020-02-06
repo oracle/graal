@@ -53,7 +53,7 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         return value;
     }
