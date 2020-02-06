@@ -431,6 +431,14 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwException(meta.java_lang_ClassCastException);
     }
 
+    /**
+     * Allocates a new instance of the given class; does not call any constructor. If the class is
+     * instantiable, it is initialized.
+     * 
+     * @param throwsError if the given class is not instantiable (abstract or interface); if true
+     *            throws guest {@link InstantiationError} otherwise throws guest
+     *            {@link InstantiationException}.
+     */
     @Throws({InstantiationError.class, InstantiationException.class})
     public static StaticObject newObject(Klass klass, boolean throwsError) {
         // TODO(peterssen): Accept only ObjectKlass.
@@ -447,6 +455,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public static int arrayLength(StaticObject arr) {
+        assert arr.isArray();
         return arr.length();
     }
 
