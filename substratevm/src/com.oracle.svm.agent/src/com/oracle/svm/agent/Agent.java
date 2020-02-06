@@ -38,6 +38,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -56,6 +57,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -112,6 +118,16 @@ public final class Agent {
     private static final String oHDynamicProxyConfigurationResources = oH(ConfigurationFiles.Options.DynamicProxyConfigurationResources);
     private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
     private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
+
+    private static final Lock writeProfilesLock = new ReentrantLock();
+    private static final ScheduledExecutorService agentConfigurationsPeriodicExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        // Mark the thread as daemon
+        Thread workerThread = new Thread(r);
+        workerThread.setDaemon(true);
+        workerThread.setName("AgentConfigurationsPeriodicWriter");
+        return workerThread;
+    });
+
 
     private static TraceWriter traceWriter;
 
@@ -330,7 +346,21 @@ public final class Agent {
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_DEATH, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullHandle()));
+
+        setupExecutorServiceForPeriodicConfigurationCapture();
         return 0;
+    }
+
+    private static void setupExecutorServiceForPeriodicConfigurationCapture() {
+        if (traceWriter != null) {
+            long initialDelay = ConfigurationFiles.Options.ConfigurationDumpInitialDelay.getValue().longValue();
+            long periodLenValue = ConfigurationFiles.Options.ConfigurationsDumpPeriod.getValue().longValue();
+            agentConfigurationsPeriodicExecutor.scheduleAtFixedRate(() -> {
+                writeProfilesLock.lock();
+                writeConfigurations();
+                writeProfilesLock.unlock();
+            }, initialDelay, periodLenValue, TimeUnit.SECONDS);
+        }
     }
 
     interface AddURI {
@@ -496,33 +526,41 @@ public final class Agent {
         }
     }
 
+    private static void writeConfigurations() {
+        if (traceWriter == null || configOutputDirPath == null) {
+            return;
+        }
+        try {
+            TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
+            try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.REFLECTION_NAME))) {
+                p.getReflectionConfiguration().printJson(writer);
+            }
+            try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.JNI_NAME))) {
+                p.getJniConfiguration().printJson(writer);
+            }
+            try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME))) {
+                p.getProxyConfiguration().printJson(writer);
+            }
+            try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.RESOURCES_NAME))) {
+                p.getResourceConfiguration().printJson(writer);
+            }
+        } catch (IOException e) {
+            System.err.println(MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
+        }
+    }
+
     @CEntryPoint(name = "Agent_OnUnload")
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     public static void onUnload(@SuppressWarnings("unused") JNIJavaVM vm) {
+        writeProfilesLock.lock();
+        agentConfigurationsPeriodicExecutor.shutdownNow();
+        writeProfilesLock.unlock();
+
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("unload");
             traceWriter.close();
-
-            if (configOutputDirPath != null) {
-                TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
-                try {
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.REFLECTION_NAME))) {
-                        p.getReflectionConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.JNI_NAME))) {
-                        p.getJniConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME))) {
-                        p.getProxyConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.RESOURCES_NAME))) {
-                        p.getResourceConfiguration().printJson(writer);
-                    }
-                } catch (IOException e) {
-                    System.err.println(MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
-                }
-                configOutputDirPath = null;
-            }
+            writeConfigurations();
+            configOutputDirPath = null;
             traceWriter = null;
         }
 

@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
@@ -84,6 +85,15 @@ public final class ConfigurationFiles {
 
         @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<String[]> SubstitutionFiles = new HostedOptionKey<>(null);
+
+        static final Integer DEFAULT_PROFILE_DUMP_PERIOD = -1;
+        @Option(help = "Integer greater than zero representing the duration in seconds that will be used to trigger a configuration capture. Any integer less than one disables periodic dumps")//
+        public static final RuntimeOptionKey<Integer> ConfigurationsDumpPeriod = new RuntimeOptionKey<>(
+                DEFAULT_PROFILE_DUMP_PERIOD);
+        static final Integer DEFAULT_DELAY  = 1;
+        @Option(help = "Integer greater than zero representing the duration in seconds before starting to capture configuration. " +
+                "Any integer less or equal to 0 is assumed to meant no delay")//
+        public static final RuntimeOptionKey<Integer> ConfigurationDumpInitialDelay = new RuntimeOptionKey<>(DEFAULT_DELAY);
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {
