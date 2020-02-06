@@ -405,7 +405,7 @@ public class SubstrateOptions {
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
 
-    @Option(help = "Provide a path for the libmusl bundle so the resulting object file is linked against it.", type = OptionType.Expert)//
+    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
     /**
