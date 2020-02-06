@@ -79,7 +79,8 @@ final class TruffleDebugOptions {
         OptionValuesImpl result = optionValues;
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
-            final OptionDescriptors descriptors = new TruffleDebugOptionsOptionDescriptors();
+            final OptionDescriptors descriptors = OptionDescriptors.createUnion(new TruffleDebugOptionsOptionDescriptors(),
+                            new SharedTruffleRuntimeOptionsOptionDescriptors());
             for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getOptions().entrySet()) {
                 final OptionDescriptor descriptor = descriptors.get(e.getKey());
                 final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
