@@ -200,7 +200,7 @@ public final class ClassfileStream {
 
     public void checkEndOfFile() {
         if (!isAtEndOfFile()) {
-            throw new ClassFormatError("Extra bytes in class file");
+            throw classFormatError("Extra bytes", classfile);
         }
     }
 

@@ -88,6 +88,7 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -237,7 +238,12 @@ public final class ClassfileParser {
                                         (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION))) {
             return;
         }
-        throw new UnsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    }
+
+    private static EspressoException unsupportedClassVersionError(String message) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
     }
 
     /**

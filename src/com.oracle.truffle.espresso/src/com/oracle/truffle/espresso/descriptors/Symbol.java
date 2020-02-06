@@ -476,6 +476,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_NoSuchFieldException = StaticSymbols.putType(NoSuchFieldException.class);
         public static final Symbol<Type> java_lang_NoSuchMethodException = StaticSymbols.putType(NoSuchMethodException.class);
         public static final Symbol<Type> java_lang_UnsupportedOperationException = StaticSymbols.putType(UnsupportedOperationException.class);
+        public static final Symbol<Type> java_lang_UnsupportedClassVersionError = StaticSymbols.putType(UnsupportedClassVersionError.class);
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType(ThreadGroup.class);

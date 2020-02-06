@@ -192,6 +192,7 @@ public final class Meta implements ContextAccess {
         java_lang_ClassFormatError = knownKlass(Type.java_lang_ClassFormatError);
         java_lang_ClassCircularityError = knownKlass(Type.java_lang_ClassCircularityError);
         java_lang_UnsatisfiedLinkError = knownKlass(Type.java_lang_UnsatisfiedLinkError);
+        java_lang_UnsupportedClassVersionError = knownKlass(Type.java_lang_UnsupportedClassVersionError);
 
         java_lang_Error = knownKlass(Type.java_lang_Error);
         java_lang_NoSuchFieldError = knownKlass(Type.java_lang_NoSuchFieldError);
@@ -546,6 +547,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ClassFormatError;
     public final ObjectKlass java_lang_ClassCircularityError;
     public final ObjectKlass java_lang_UnsatisfiedLinkError;
+    public final ObjectKlass java_lang_UnsupportedClassVersionError;
     public final ObjectKlass java_lang_ArrayStoreException;
     public final ObjectKlass java_lang_IndexOutOfBoundsException;
     public final ObjectKlass java_lang_ArrayIndexOutOfBoundsException;
