@@ -46,6 +46,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLock;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -332,13 +333,25 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject newArray(Klass componentType, int length) {
         if (length < 0) {
-            Meta meta = componentType.getMeta();
-            throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+            // componentType is not always PE constant e.g. when called from the Array#newInstance
+            // substitution. The derived context and meta accessor are not PE constant
+            // either, so neither is componentType.getMeta().java_lang_NegativeArraySizeException.
+            // The exception mechanism requires exception classes to be PE constant in order to
+            // PE through exception allocation and initialization.
+            // The definitive solution would be to distinguish the cases where the exception klass
+            // is PE constant from the cases where it's dynamic. We can further reduce the dynamic
+            // cases with an inline cache in the above substitution.
+            throw throwNegativeArraySizeException(componentType.getMeta());
         }
         assert length >= 0;
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
         return StaticObject.createArray(componentType.getArrayClass(), arr);
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    private static EspressoException throwNegativeArraySizeException(Meta meta) {
+        throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
     }
 
     @TruffleBoundary

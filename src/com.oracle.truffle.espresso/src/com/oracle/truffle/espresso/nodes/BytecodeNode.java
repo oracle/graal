@@ -1792,7 +1792,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     // region Instance/array allocation
 
-    @TruffleBoundary
     private static StaticObject allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
         return InterpreterToVM.newArray(componentType, length);
