@@ -1181,8 +1181,7 @@ public class ELFObjectFile extends ObjectFile {
         newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
         newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
         newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
-        @SuppressWarnings("unused")
-        ELFSection debugSection = (ELFSection) newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
+        newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
         // the byte[] for each implementation's content are created and
         // written under getOrDecideContent. doing that ensures that all
         // dependent sections are filled in and then sized according to the
