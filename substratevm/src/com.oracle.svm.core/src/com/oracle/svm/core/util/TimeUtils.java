@@ -112,21 +112,33 @@ public class TimeUtils {
         return (nanos / nanosPerMilli);
     }
 
-    /** Round the number of nanoseconds to a number of milliseconds. */
+    /** Round the number of nanoseconds to milliseconds. */
     public static long roundNanosToMillis(long nanos) {
         return roundedDivide(nanos, nanosPerMilli);
     }
 
-    /** Round the number of nanoseconds to a number of seconds. */
+    /** Round the number of nanoseconds up to the next-highest number of milliseconds. */
+    public static long roundUpNanosToMillis(long nanos) {
+        return roundedUpDivide(nanos, nanosPerMilli);
+    }
+
+    /** Round the number of nanoseconds to seconds. */
     public static long roundNanosToSeconds(long nanos) {
         return roundedDivide(nanos, nanosPerSecond);
     }
 
-    /* Divide, rounding to the next higher long. */
+    /* Divide, rounding to the nearest long. */
     public static long roundedDivide(long numerator, long denominator) {
         final long halfStep = denominator / 2L;
         final long addition = addOrMaxValue(numerator, halfStep);
         return (addition / denominator);
+    }
+
+    /* Divide, rounding to the next-highest long. */
+    public static long roundedUpDivide(long numerator, long denominator) {
+        long almostStep = denominator - 1L;
+        long sum = addOrMaxValue(numerator, almostStep);
+        return (sum / denominator);
     }
 
     /** Weight a nanosecond value by a percentage between 0 and 100. */

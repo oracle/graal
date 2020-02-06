@@ -67,7 +67,6 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -652,54 +651,56 @@ public abstract class JavaThreads {
     }
 
     /** Interruptibly park the current thread. */
-    static WaitResult park() {
-        VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(): Should not park when it is not okay to block.]");
+    static void park() {
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
+        if (thread.isInterrupted()) { // avoid state changes and synchronization
+            return;
+        }
+        /*
+         * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
+         * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
+         */
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
-
         // Change the Java thread state while parking.
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
-            return parkEvent.condWait();
+            parkEvent.condWait();
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
     }
 
     /** Interruptibly park the current thread for the given number of nanoseconds. */
-    static WaitResult park(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(long): Should not park when it is not okay to block.]");
+    static void park(long delayNanos) {
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
+        if (thread.isInterrupted()) { // avoid state changes and synchronization
+            return;
+        }
+        /*
+         * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
+         * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
+         */
         final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
-
-        final long startNanos = System.nanoTime();
-        /* Can not park past the end of a 64-bit nanosecond epoch. */
-        final long endNanos = TimeUtils.addOrMaxValue(startNanos, delayNanos);
-
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
-            // How much longer should I sleep?
-            long remainingNanos = delayNanos;
-            while (0L < remainingNanos) {
-                WaitResult result = parkEvent.condTimedWait(remainingNanos);
-                if (result == WaitResult.INTERRUPTED || result == WaitResult.UNPARKED) {
-                    return result;
-                }
-                // If the sleep returns early, how much longer should I delay?
-                remainingNanos = endNanos - System.nanoTime();
-            }
-            return WaitResult.TIMED_OUT;
-
+            parkEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
     }
 
-    /** Unpark a Thread. */
+    /**
+     * Unpark a Thread.
+     *
+     * @see #park()
+     * @see #park(long)
+     */
     static void unpark(Thread thread) {
         ensureUnsafeParkEvent(thread).unpark();
     }
@@ -710,46 +711,41 @@ public abstract class JavaThreads {
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static WaitResult sleep(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[SleepSupport.sleep(long): Should not sleep when it is not okay to block.]");
+    static void sleep(long delayNanos) {
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        final ParkEvent sleepEvent = ensureSleepEvent(thread);
-
-        final long startNanos = System.nanoTime();
-        /* Can not sleep past the end of a 64-bit nanosecond epoch. */
-        final long endNanos = TimeUtils.addOrMaxValue(startNanos, delayNanos);
-
+        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
+        sleepEvent.reset();
+        /*
+         * It is critical to reset the event *before* checking for an interrupt to avoid losing a
+         * wakeup in the race. This requires that updates to the event's unparked status and updates
+         * to the thread's interrupt status cannot be reordered with regard to each other. Another
+         * important aspect is that the thread must have a sleepParkEvent assigned to it *before*
+         * the interrupted check because if not, the interrupt code will not assign one and the
+         * wakeup will be lost, too.
+         */
+        if (thread.isInterrupted()) {
+            return; // likely leaves a stale unpark which will be reset before the next sleep()
+        }
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
-            // How much longer should I sleep?
-            long remainingNanos = delayNanos;
-            while (0L < remainingNanos) {
-                final WaitResult result = sleepEvent.condTimedWait(remainingNanos);
-                if (result == WaitResult.INTERRUPTED || result == WaitResult.UNPARKED) {
-                    return result;
-                }
-                // If the sleep returns early, how much longer should I delay?
-                remainingNanos = endNanos - System.nanoTime();
-            }
-            return WaitResult.TIMED_OUT;
-
+            sleepEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
         }
     }
 
-    /** Interrupt a sleeping thread. */
+    /**
+     * Interrupt a sleeping thread.
+     *
+     * @see #sleep(long)
+     */
     static void interrupt(Thread thread) {
         final ParkEvent sleepEvent = JavaThreads.getSleepParkEvent(thread).get();
         if (sleepEvent != null) {
             sleepEvent.unpark();
         }
-    }
-
-    /** Get the Sleep event for a thread, lazily initializing if needed. */
-    private static ParkEvent ensureSleepEvent(Thread thread) {
-        return ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
     }
 
     /**
