@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 
 /**
  * Implements a stack that grows from the top to the bottom. The stack is allocated lazily when it
@@ -237,7 +238,7 @@ public final class LLVMStack {
     private static long getAlignedAllocation(long address, long size, int alignment) {
         if (Long.compareUnsigned(size, MAX_ALLOCATION_SIZE) > 0) {
             CompilerDirectives.transferToInterpreter();
-            throw new StackOverflowError(String.format(String.format("Stack allocation of %s bytes exceeds limit of %s",
+            throw new LLVMStackOverflowError(String.format(String.format("Stack allocation of %s bytes exceeds limit of %s",
                             Long.toUnsignedString(size), Long.toUnsignedString(MAX_ALLOCATION_SIZE))));
         }
         assert size >= 0;

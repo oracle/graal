@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -113,7 +114,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             try {
                 return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, alignment));
-            } catch (StackOverflowError soe) {
+            } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);
             }
@@ -152,7 +153,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             try {
                 return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
-            } catch (StackOverflowError soe) {
+            } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);
             }
@@ -163,7 +164,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             try {
                 return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
-            } catch (StackOverflowError soe) {
+            } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);
             }

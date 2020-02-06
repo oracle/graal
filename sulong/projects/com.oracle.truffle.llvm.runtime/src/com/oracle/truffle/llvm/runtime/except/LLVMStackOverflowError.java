@@ -29,16 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.nodes.Node;
+public class LLVMStackOverflowError extends StackOverflowError {
 
-/**
- * Indicates an memory allocation failure. Reasons for this might be out-of-memory, stack allocation
- * limits, and alike.
- */
-public class LLVMAllocationFailureException extends LLVMException {
-    private static final long serialVersionUID = -7961190942838521293L;
+    private static final long serialVersionUID = -7370258635552835057L;
 
-    public LLVMAllocationFailureException(Node node, LLVMStackOverflowError cause) {
-        super(node, cause.getMessage(), cause);
+    public LLVMStackOverflowError(String message) {
+        super(message);
     }
 }

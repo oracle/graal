@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -950,7 +951,7 @@ public class BasicNodeFactory implements NodeFactory {
             UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
             LLVMGetStackForConstInstruction getStackSpace = LLVMGetUniqueStackSpaceInstructionNodeGen.create(byteSize, alignment, type, slot);
             return createGetStackSpace(type, getStackSpace, byteSize);
-        } catch (StackOverflowError soe) {
+        } catch (LLVMStackOverflowError soe) {
             return new LLVMExpressionNode() {
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {

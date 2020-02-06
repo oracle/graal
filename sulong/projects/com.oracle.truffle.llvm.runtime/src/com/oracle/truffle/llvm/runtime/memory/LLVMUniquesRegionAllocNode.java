@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -65,7 +66,7 @@ public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
                     @CachedLanguage LLVMLanguage language) {
         try {
             allocator.allocate(frame, language.getLLVMMemory(), getStackPointerSlot());
-        } catch (StackOverflowError soe) {
+        } catch (LLVMStackOverflowError soe) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMAllocationFailureException(this, soe);
         }
