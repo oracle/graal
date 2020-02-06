@@ -36,9 +36,6 @@ common_vm_windows: ${common_vm} ${windows} {
   environment : {
     PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
   }
-  packages : {
-    msvc : "==10.0"
-  }
 }
 
 common_vm_windows-jdk11: ${common_vm} ${windows} ${windows-devkit-jdk11} {
@@ -48,6 +45,28 @@ common_vm_windows-jdk11: ${common_vm} ${windows} ${windows-devkit-jdk11} {
   environment : {
     PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
   }
+}
+
+# JS
+js_windows_common: {
+  downloads: {
+    NASM: {name: nasm, version: "2.14.02", platformspecific: true}
+  }
+  setup: [
+    ["set-export", "DEVKIT_ROOT", "$VS2017_15_5_5_1_0_ROOT"]
+    ["set-export", "DEVKIT_VERSION", "2017"]
+  ]
+}
+
+js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
+  setup: ${common_vm_windows-jdk11.setup} ${js_windows_common.setup}
+}
+
+js_windows: ${common_vm_windows} ${js_windows_common} {
+  packages: {
+    "devkit:VS2017-15.5.5+1": "==0"
+  }
+  setup: ${common_vm_windows.setup} ${js_windows_common.setup}
 }
 
 # SULONG
@@ -352,7 +371,7 @@ builds += [
     name: deploy-vm-installable-java11-darwin-amd64
   }
   # Windows
-  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
+  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -362,7 +381,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java8-windows-amd64
   }
-  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
+  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -372,7 +391,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java11-windows-amd64
   }
-  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
+  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
@@ -382,7 +401,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-installable-java8-windows-amd64
   }
-  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
+  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
