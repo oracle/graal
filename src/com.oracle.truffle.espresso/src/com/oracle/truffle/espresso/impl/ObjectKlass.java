@@ -452,11 +452,6 @@ public final class ObjectKlass extends Klass {
         return declaredFields;
     }
 
-    @Override
-    public Klass getComponentType() {
-        return null;
-    }
-
     public EnclosingMethodAttribute getEnclosingMethod() {
         return enclosingMethod;
     }

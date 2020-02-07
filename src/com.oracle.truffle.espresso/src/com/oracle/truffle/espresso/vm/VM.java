@@ -57,6 +57,7 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -1905,9 +1906,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray) {
         // check if the element of infoArray is of type ThreadInfo class
-        Klass component = infoArray.getKlass().getComponentType();
-        if (component == null || !meta.java_lang_management_ThreadInfo.equals(component)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
+        Klass infoArrayKlass = infoArray.getKlass();
+        if (infoArray.isArray()) {
+            Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
+            if (!meta.java_lang_management_ThreadInfo.equals(component)) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
+            }
         }
     }
 

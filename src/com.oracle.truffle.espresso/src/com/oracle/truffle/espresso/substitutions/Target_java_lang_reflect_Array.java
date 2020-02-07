@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -365,8 +366,8 @@ public final class Target_java_lang_reflect_Array {
         }
         if (array.isArray()) {
             // @formatter:off
-            Object widenValue = Target_sun_reflect_NativeMethodAccessorImpl.checkAndWiden(meta, value, array.getKlass().getComponentType());
-            switch (array.getKlass().getComponentType().getJavaKind()) {
+            Object widenValue = Target_sun_reflect_NativeMethodAccessorImpl.checkAndWiden(meta, value, ((ArrayKlass) array.getKlass()).getComponentType());
+            switch (((ArrayKlass) array.getKlass()).getComponentType().getJavaKind()) {
                 case Boolean : vm.setArrayByte(((boolean) widenValue) ? (byte) 1 : (byte) 0, index, array); break;
                 case Byte    : vm.setArrayByte(((byte) widenValue), index, array);       break;
                 case Short   : vm.setArrayShort(((short) widenValue), index, array);     break;
@@ -408,7 +409,7 @@ public final class Target_java_lang_reflect_Array {
         }
         if (array.isArray()) {
             // @formatter:off
-            switch (array.getKlass().getComponentType().getJavaKind()) {
+            switch (((ArrayKlass) array.getKlass()).getComponentType().getJavaKind()) {
                 case Boolean : return meta.boxBoolean(vm.getArrayByte(index, array) != 0);
                 case Byte    : return meta.boxByte(vm.getArrayByte(index, array));
                 case Short   : return meta.boxShort(vm.getArrayShort(index, array));

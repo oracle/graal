@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -1819,7 +1820,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
             StaticObject clazz = GetObjectClass(array);
-            JavaKind componentKind = clazz.getMirrorKlass().getComponentType().getJavaKind();
+            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
             int length = GetArrayLength(array);
             // @formatter:off
@@ -1844,49 +1845,49 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public void ReleaseBooleanArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Boolean;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Boolean;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseByteArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Byte;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Byte;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseCharArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Char;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Char;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseShortArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Short;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Short;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseIntArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Int;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Int;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseLongArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Long;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Long;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseFloatArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Float;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Float;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
     @JniImpl
     public void ReleaseDoubleArrayElements(StaticObject object, @Word long bufPtr, int mode) {
-        assert object.getKlass().getComponentType().getJavaKind() == JavaKind.Double;
+        assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Double;
         ReleasePrimitiveArrayElements(object, bufPtr, mode);
     }
 
@@ -2398,7 +2399,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
         StaticObject array = object;
         StaticObject clazz = GetObjectClass(array);
-        JavaKind componentKind = clazz.getMirrorKlass().getComponentType().getJavaKind();
+        JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
         assert componentKind.isPrimitive();
         int length = GetArrayLength(array);
 
@@ -2429,7 +2430,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
             StaticObject clazz = GetObjectClass(array);
-            JavaKind componentKind = clazz.getMirrorKlass().getComponentType().getJavaKind();
+            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
             int length = GetArrayLength(array);
             // @formatter:off

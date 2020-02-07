@@ -439,7 +439,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getArrayValue(Object array, int index) {
         StaticObject arrayRef = (StaticObject) array;
         Object value;
-        if (arrayRef.getKlass().getComponentType().isPrimitive()) {
+        if (((ArrayKlass) arrayRef.getKlass()).getComponentType().isPrimitive()) {
             // primitive array type needs wrapping
             Object boxedArray = getUnboxedArray(array);
             value = Array.get(boxedArray, index);
