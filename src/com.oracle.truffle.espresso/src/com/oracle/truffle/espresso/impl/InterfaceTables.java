@@ -162,7 +162,7 @@ final class InterfaceTables {
         // Interfaces must be sorted, superinterfaces first.
         // The Klass.ID (class loading counter) can be used, since parent classes/interfaces are
         // always loaded first.
-        Arrays.sort(sortedInterfaces, Klass.COMPARATOR);
+        Arrays.sort(sortedInterfaces, Klass.KLASS_ID_COMPARATOR);
         return new InterfaceCreationResult(sortedInterfaces, methods);
     }
 

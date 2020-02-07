@@ -61,23 +61,22 @@ import com.oracle.truffle.object.DebugCounter;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef {
 
-    static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
+    static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
         @Override
-        public int compare(Klass o1, Klass o2) {
-            return Integer.compare(o1.id, o2.id);
+        public int compare(Klass k1, Klass k2) {
+            return Integer.compare(k1.id, k2.id);
         }
     };
 
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
-    static final DebugCounter methodLookupCount = DebugCounter.create("methodLookupCount");
-    static final DebugCounter fieldLookupCount = DebugCounter.create("fieldLookupCount");
-    static final DebugCounter declaredMethodLookupCount = DebugCounter.create("declaredMethodLookupCount");
-    static final DebugCounter declaredFieldLookupCount = DebugCounter.create("declaredFieldLookupCount");
+    static final DebugCounter KLASS_LOOKUP_METHOD_COUNT = DebugCounter.create("Klass.lookupMethod call count");
+    static final DebugCounter KLASS_LOOKUP_FIELD_COUNT = DebugCounter.create("Klass.lookupField call count");
+    static final DebugCounter KLASS_LOOKUP_DECLARED_METHOD_COUNT = DebugCounter.create("Klass.lookupDeclaredMethod call count");
+    static final DebugCounter KLASS_LOOKUP_DECLARED_FIELD_COUNT = DebugCounter.create("Klass.lookupDeclaredField call count");
 
     private final Symbol<Name> name;
     private final Symbol<Type> type;
-    private final JavaKind kind;
     private final EspressoContext context;
     private final ObjectKlass superKlass;
 
@@ -334,7 +333,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             }
             return false;
         } else {
-            return Arrays.binarySearch(interfaces, this, COMPARATOR) >= 0;
+            return Arrays.binarySearch(interfaces, this, KLASS_ID_COMPARATOR) >= 0;
         }
     }
 
@@ -569,7 +568,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     // region Lookup
 
     public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
-        declaredFieldLookupCount.inc();
+        KLASS_LOOKUP_DECLARED_FIELD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Field field : getDeclaredFields()) {
             if (fieldName.equals(field.getName()) && fieldType.equals(field.getType())) {
@@ -580,7 +579,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, boolean isStatic) {
-        fieldLookupCount.inc();
+        KLASS_LOOKUP_FIELD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
 
         Field field = lookupDeclaredField(fieldName, fieldType);
@@ -606,7 +605,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
-        fieldLookupCount.inc();
+        KLASS_LOOKUP_FIELD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
 
         Field field = lookupDeclaredField(fieldName, fieldType);
