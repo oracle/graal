@@ -95,8 +95,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMI1Vector doI1VectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadI1VectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -137,8 +138,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMI8Vector doI8VectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadI8VectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -179,8 +181,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMI16Vector doI16VectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadI16VectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -221,8 +224,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMI32Vector doI32VectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadI32VectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -263,8 +267,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected Object doI64VectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadI64VectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)
@@ -337,8 +342,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMPointerVector doPointerVectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("create(getVectorLength())") LLVMLoadPointerVectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -379,8 +385,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMFloatVector doFloatVectorDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadFloatVectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -421,8 +428,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMDoubleVector doDoubleVector(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMLoadDoubleVectorNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")

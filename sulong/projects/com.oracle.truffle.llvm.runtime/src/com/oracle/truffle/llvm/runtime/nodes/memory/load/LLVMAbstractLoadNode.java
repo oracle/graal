@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,16 +40,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
 
     @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
-
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
-        }
-        return derefHandleGetReceiverNode;
-    }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
         if (languageRef == null) {

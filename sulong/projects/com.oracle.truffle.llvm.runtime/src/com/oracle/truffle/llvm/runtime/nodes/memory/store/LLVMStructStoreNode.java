@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -61,8 +62,9 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
-    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value) {
-        doManaged(getDerefHandleGetReceiverNode().execute(addr), getDerefHandleGetReceiverNode().execute(value));
+    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
+        doManaged(getReceiver.execute(addr), getReceiver.execute(value));
     }
 
     @Specialization(guards = "getStructSize() > 0")

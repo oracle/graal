@@ -36,6 +36,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -55,8 +56,9 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached LLVMIVarBitStoreNode store) {
-        store.executeManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+        store.executeManaged(getReceiver.execute(addr), value);
     }
 
     @Specialization(limit = "3")

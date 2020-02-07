@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -51,14 +52,16 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
 
     @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
     protected long doI64DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
-        return doI64Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doI64DerefHandle")
     protected Object doGenericI64DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doGenericI64Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doGenericI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)

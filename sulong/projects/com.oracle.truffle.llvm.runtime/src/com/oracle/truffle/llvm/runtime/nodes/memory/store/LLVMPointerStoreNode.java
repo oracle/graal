@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -59,15 +60,17 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, Object value,
                     @Cached LLVMToPointerNode toPointer,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), value, toPointer, nativeWrite);
+        doTruffleObject(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected void doDerefAddress(long addr, Object value,
                     @Cached LLVMToPointerNode toPointer,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), value, toPointer, nativeWrite);
+        doTruffleObject(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
     @Specialization(limit = "3")

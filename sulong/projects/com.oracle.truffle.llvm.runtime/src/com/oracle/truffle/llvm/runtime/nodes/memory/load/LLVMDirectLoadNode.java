@@ -66,8 +66,9 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMIVarBit doIVarBitDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMIVarBitDirectLoadNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -104,8 +105,9 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVM80BitFloat do80BitFloatDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached LLVM80BitFloatDirectLoadNode load) {
-            return load.executeManaged(getDerefHandleGetReceiverNode().execute(addr));
+            return load.executeManaged(getReceiver.execute(addr));
         }
 
         @Specialization(limit = "3")
@@ -132,8 +134,9 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected LLVMPointer doDerefHandle(LLVMNativePointer addr,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-            return doIndirectedForeign(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+            return doIndirectedForeign(getReceiver.execute(addr), nativeRead);
         }
 
         @Specialization(limit = "3")

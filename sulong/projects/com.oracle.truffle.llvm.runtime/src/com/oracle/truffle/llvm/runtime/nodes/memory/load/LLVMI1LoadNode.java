@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -47,8 +48,9 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected boolean doI1DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doI1Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doI1Managed(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3")
