@@ -98,6 +98,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     protected Object prepareThread;
 
+    // Raw modifiers provided by the VM.
+    private final int modifiers;
+
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
      * following is true:
@@ -120,15 +123,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return superInterfaces;
     }
 
-    public Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers) {
         this.context = context;
         this.name = name;
         this.type = type;
-        this.kind = Types.getJavaKind(type);
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
-        this.isArray = Types.isArray(type);
         this.id = context.getNewId();
+        this.modifiers = modifiers;
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -675,7 +677,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
-    public abstract int getModifiers();
+    public final int getModifiers() {
+        return modifiers;
+    }
 
     /**
      * Returns the modifiers for the guest Class, it takes into account inner classes which are
