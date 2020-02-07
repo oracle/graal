@@ -244,6 +244,14 @@ public interface TruffleCompilerRuntime {
     TruffleCompiler getTruffleCompiler();
 
     /**
+     * Gets the primary {@link TruffleCompiler} instance associated with this runtime if it's
+     * already created, otherwise returns {@code null}.
+     *
+     * @since 20.1.0
+     */
+    TruffleCompiler getTruffleCompilerIfAvailable();
+
+    /**
      * Gets a plan for inlining in terms of a Truffle AST call graph.
      *
      * @return the requested plan or {@code null} a plan cannot be created in the calling context

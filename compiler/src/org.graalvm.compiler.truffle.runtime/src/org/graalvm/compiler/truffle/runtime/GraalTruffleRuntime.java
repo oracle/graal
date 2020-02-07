@@ -393,6 +393,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return metaAccess.lookupJavaType(c);
     }
 
+    @Override
+    public TruffleCompiler getTruffleCompilerIfAvailable() {
+        return truffleCompiler;
+    }
+
     protected void installDefaultListeners() {
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
