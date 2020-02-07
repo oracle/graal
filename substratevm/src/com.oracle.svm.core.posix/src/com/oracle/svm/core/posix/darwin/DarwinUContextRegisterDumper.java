@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -46,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
 
-@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class, Platform.DARWIN_AARCH64.class})
+@Platforms({Platform.DARWIN_AMD64.class, Platform.DARWIN_AARCH64.class})
 @AutomaticFeature
 class DarwinUContextRegisterDumperFeature implements Feature {
     @Override

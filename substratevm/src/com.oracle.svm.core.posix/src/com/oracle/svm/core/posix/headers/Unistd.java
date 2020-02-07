@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -31,7 +32,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -72,11 +72,11 @@ public class Unistd {
     public static native int _SC_PAGE_SIZE();
 
     @CConstant
-    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
+    @Platforms(Platform.LINUX.class)
     public static native int _SC_PHYS_PAGES();
 
     @CConstant
-    @Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
+    @Platforms(Platform.DARWIN.class)
     public static native int _CS_DARWIN_USER_TEMP_DIR();
 
     @CFunction

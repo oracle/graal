@@ -56,7 +56,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
@@ -85,7 +84,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class LLVMFeature implements Feature, GraalFeature {
 
     private static HostedMethod personalityStub;

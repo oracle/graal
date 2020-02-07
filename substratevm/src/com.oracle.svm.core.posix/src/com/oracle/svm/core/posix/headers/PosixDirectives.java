@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PosixDirectives implements CContext.Directives {
     private static final String[] commonLibs = new String[]{
@@ -70,15 +69,15 @@ public class PosixDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class) || Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class);
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             result.addAll(Arrays.asList(linuxLibs));
-        } else if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             result.addAll(Arrays.asList(darwinLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");
