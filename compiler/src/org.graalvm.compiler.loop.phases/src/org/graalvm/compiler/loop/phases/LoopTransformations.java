@@ -88,6 +88,7 @@ public abstract class LoopTransformations {
             // For counted loops we assume that we have an effect on the loop frequency.
             loop.loopBegin().setLoopFrequency(Math.max(1.0, loop.loopBegin().loopFrequency() - 1));
         }
+        loop.loopBegin().incrementPeelings();
     }
 
     @SuppressWarnings("try")
