@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
@@ -45,7 +45,7 @@ import com.oracle.svm.core.graal.snippets.DeoptTester;
  * {@link DeoptTester#deoptTest()}.
  */
 @NodeInfo(allowedUsageTypes = InputType.Memory, cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class DeoptTestNode extends FixedWithNextNode implements Lowerable, DeoptimizingNode.DeoptAfter, MemoryCheckpoint.Single {
+public final class DeoptTestNode extends FixedWithNextNode implements Lowerable, DeoptimizingNode.DeoptAfter, SingleMemoryKill {
     public static final NodeClass<DeoptTestNode> TYPE = NodeClass.create(DeoptTestNode.class);
 
     @OptionalInput(InputType.State) protected FrameState deoptState;

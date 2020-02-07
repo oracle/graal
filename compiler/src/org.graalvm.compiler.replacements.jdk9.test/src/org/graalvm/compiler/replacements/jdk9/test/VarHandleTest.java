@@ -33,8 +33,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -160,13 +161,13 @@ public class VarHandleTest extends GraalCompilerTest {
         for (Node n : graph.getNodes()) {
             if (n instanceof StartNode) {
                 startNodes++;
-            } else if (n instanceof MemoryCheckpoint.Single) {
-                MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
+            } else if (n instanceof SingleMemoryKill) {
+                SingleMemoryKill single = (SingleMemoryKill) n;
                 if (single.getKilledLocationIdentity().isAny()) {
                     anyKillCount++;
                 }
-            } else if (n instanceof MemoryCheckpoint.Multi) {
-                MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;
+            } else if (n instanceof MultiMemoryKill) {
+                MultiMemoryKill multi = (MultiMemoryKill) n;
                 for (LocationIdentity loc : multi.getKilledLocationIdentities()) {
                     if (loc.isAny()) {
                         anyKillCount++;

@@ -55,7 +55,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -99,8 +99,8 @@ public class HotSpotReplacementsUtil {
             if (base instanceof CompressionNode) {
                 base = ((CompressionNode) base).getValue();
             }
-            if (base instanceof Access) {
-                Access access = (Access) base;
+            if (base instanceof AddressableMemoryAccess) {
+                AddressableMemoryAccess access = (AddressableMemoryAccess) base;
                 if (access.getLocationIdentity().equals(HUB_LOCATION) || access.getLocationIdentity().equals(COMPRESSED_HUB_LOCATION)) {
                     AddressNode address = access.getAddress();
                     if (address instanceof OffsetAddressNode) {
@@ -124,8 +124,8 @@ public class HotSpotReplacementsUtil {
          * @return an earlier read or the original {@code read}
          */
         protected static ValueNode foldIndirection(ValueNode read, ValueNode object, LocationIdentity otherLocation) {
-            if (object instanceof Access) {
-                Access access = (Access) object;
+            if (object instanceof AddressableMemoryAccess) {
+                AddressableMemoryAccess access = (AddressableMemoryAccess) object;
                 if (access.getLocationIdentity().equals(otherLocation)) {
                     AddressNode address = access.getAddress();
                     if (address instanceof OffsetAddressNode) {

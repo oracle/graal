@@ -32,7 +32,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -41,7 +41,7 @@ import org.graalvm.word.LocationIdentity;
  * Creates a memory barrier.
  */
 @NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_2)
-public final class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
+public final class MembarNode extends FixedWithNextNode implements LIRLowerable, SingleMemoryKill {
 
     public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
     protected final int barriers;

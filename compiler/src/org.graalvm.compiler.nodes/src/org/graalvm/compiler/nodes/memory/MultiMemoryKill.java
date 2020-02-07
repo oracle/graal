@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,21 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.word.LocationIdentity;
 
-public interface Access extends GuardedNode, HeapAccess {
+/**
+ * This interface marks subclasses of {@link FixedNode} that kill multiple memory locations
+ * represented by {@linkplain LocationIdentity} at once.
+ */
+public interface MultiMemoryKill extends MemoryKill {
 
-    AddressNode getAddress();
-
-    void setAddress(AddressNode address);
-
-    LocationIdentity getLocationIdentity();
-
-    boolean canNullCheck();
+    /**
+     * This method is used to determine which set of memory locations is killed by this node.
+     * Returning the special value {@link LocationIdentity#any()} will kill all memory locations.
+     *
+     * @return the identities of all locations killed by this node.
+     */
+    LocationIdentity[] getKilledLocationIdentities();
 
 }

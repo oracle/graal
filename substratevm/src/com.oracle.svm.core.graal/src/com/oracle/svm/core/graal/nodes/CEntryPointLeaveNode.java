@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
@@ -42,7 +42,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8)
-public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
+public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<CEntryPointLeaveNode> TYPE = NodeClass.create(CEntryPointLeaveNode.class);
 

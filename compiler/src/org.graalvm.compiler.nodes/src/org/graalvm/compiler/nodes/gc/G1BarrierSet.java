@@ -35,8 +35,7 @@ import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -104,7 +103,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     private static void addReadNodeBarriers(ReadNode node) {
-        if (node.getBarrierType() == HeapAccess.BarrierType.WEAK_FIELD || node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD) {
+        if (node.getBarrierType() == BarrierType.WEAK_FIELD || node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD) {
             StructuredGraph graph = node.graph();
             G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node, node.getBarrierType() == BarrierType.MAYBE_WEAK_FIELD));
             graph.addAfterFixed(node, barrier);
@@ -112,7 +111,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     private void addWriteBarriers(FixedAccessNode node, ValueNode writtenValue, ValueNode expectedValue, boolean doLoad, boolean nullCheck) {
-        HeapAccess.BarrierType barrierType = node.getBarrierType();
+        BarrierType barrierType = node.getBarrierType();
         switch (barrierType) {
             case NONE:
                 // nothing to do
@@ -129,7 +128,7 @@ public class G1BarrierSet implements BarrierSet {
                         addG1PreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, nullCheck, graph);
                     }
                     if (writeRequiresPostBarrier(node, writtenValue)) {
-                        boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
+                        boolean precise = barrierType != BarrierType.FIELD;
                         addG1PostWriteBarrier(node, node.getAddress(), writtenValue, precise, graph);
                     }
                 }

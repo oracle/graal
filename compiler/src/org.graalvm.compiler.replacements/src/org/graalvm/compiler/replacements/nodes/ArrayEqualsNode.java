@@ -251,4 +251,5 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }
+
 }
