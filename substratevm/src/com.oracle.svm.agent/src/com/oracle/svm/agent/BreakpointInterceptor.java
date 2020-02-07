@@ -892,8 +892,8 @@ final class BreakpointInterceptor {
             try {
                 MethodReference ref = new ConstantPoolTool(buffer).readMethodReference(cpi);
                 return methodName.contentEquals(ref.name) && signature.contentEquals(ref.descriptor);
-            } catch (Exception e) {
-                return false; // newer class file format?
+            } catch (ConstantPoolException e) {
+                return false; // unsupported class file format?
             }
         } finally {
             jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), constantPool);
