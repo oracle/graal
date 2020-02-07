@@ -66,44 +66,12 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public boolean isInterface() {
-        return false;
-    }
-
-    @Override
-    public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public boolean isInitialized() {
-        // Always initialized, independent of the elemental type initialization state.
-        return true;
-    }
-
-    @Override
-    public void initialize() {
-        // Array class initialization does not trigger elemental type initialization.
-    }
-
-    @Override
-    public Klass getHostClass() {
-        return null;
-    }
-
-    @Override
     public Klass getElementalType() {
         return elementalType;
     }
 
-    @Override
     public Klass getComponentType() {
         return componentType;
-    }
-
-    @Override
-    public Method vtableLookup(int vtableIndex) {
-        return getSuperKlass().vtableLookup(vtableIndex);
     }
 
     @Override
@@ -140,16 +108,6 @@ public final class ArrayKlass extends Klass {
     public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         methodLookupCount.inc();
         return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
-    }
-
-    @Override
-    public Field lookupFieldTable(int slot) {
-        return getSuperKlass().lookupFieldTable(slot);
-    }
-
-    @Override
-    public Field lookupStaticFieldTable(int slot) {
-        return getSuperKlass().lookupStaticFieldTable(slot);
     }
 
     @Override

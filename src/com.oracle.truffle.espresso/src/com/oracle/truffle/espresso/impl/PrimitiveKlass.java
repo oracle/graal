@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -67,48 +66,8 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Klass getComponentType() {
-        return null;
-    }
-
-    @Override
-    public Method vtableLookup(int vtableIndex) {
-        return null;
-    }
-
-    @Override
-    public Field lookupFieldTable(int slot) {
-        return null;
-    }
-
-    @Override
-    public Field lookupStaticFieldTable(int slot) {
-        return null;
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public Klass getHostClass() {
-        return null;
-    }
-
-    @Override
     public Klass getElementalType() {
         return this;
-    }
-
-    @Override
-    public void initialize() {
-        /* nop */
     }
 
     @Override
@@ -119,11 +78,6 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public ConstantPool getConstantPool() {
         return null;
-    }
-
-    @Override
-    public StaticObject getStatics() {
-        throw EspressoError.shouldNotReachHere("Primitives do not have static fields");
     }
 
     @Override
