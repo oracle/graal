@@ -222,6 +222,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return context;
     }
 
+    /**
+     * Final override for performance reasons.
+     * 
+     * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
+     * {@link ContextAccess#getMeta} implementation.
+     *
+     * This final override avoids the virtual call in compiled code.
+     */
     @Override
     public final Meta getMeta() {
         return getContext().getMeta();
