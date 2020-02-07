@@ -309,6 +309,11 @@ final class Runner {
         }
 
         abstract LLVMPointer allocate(LLVMPointer roBase, LLVMPointer rwBase);
+
+        @Override
+        public String toString() {
+            return "AllocGlobal: " + name;
+        }
     }
 
     private static final class AllocPointerGlobalNode extends AllocGlobalNode {
