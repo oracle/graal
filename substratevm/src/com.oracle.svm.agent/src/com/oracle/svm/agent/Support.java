@@ -156,6 +156,7 @@ public final class Support {
         public final JNIObjectHandle javaLangClassNotFoundException;
         public final JNIObjectHandle javaLangRuntimeException;
         public final JNIObjectHandle javaUtilMissingResourceException;
+        public final JNIObjectHandle defaultPackageInfoClass;
 
         // HotSpot crashes when looking these up eagerly
         private JNIObjectHandle javaLangReflectField;
@@ -194,6 +195,7 @@ public final class Support {
             javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
             javaUtilMissingResourceException = newClassGlobalRef(env, "java/util/MissingResourceException");
             javaUtilMissingResourceExceptionCtor3 = getMethodId(env, javaUtilMissingResourceException, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false);
+            defaultPackageInfoClass = findClass(env, "java/lang/Package$1PackageInfoProxy");
         }
 
         private static JNIObjectHandle findClass(JNIEnvironment env, String className) {
