@@ -175,7 +175,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = method.codeAttribute;
@@ -203,7 +203,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = split;
@@ -235,7 +235,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
@@ -370,7 +370,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = getMeta();
             if (poisonPill) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
             }
             // Initializing a class costs a lock, do it outside of this method's lock to avoid
             // congestion.
@@ -440,12 +440,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                 this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
-                                throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
+                                throw meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                             }
                         }
                     } else {
                         if (codeAttribute == null) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
+                            throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                             "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
 

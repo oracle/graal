@@ -844,7 +844,7 @@ public final class Meta implements ContextAccess {
      * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
      * {@link #java_lang_Throwable Throwable}.
      */
-    public EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
+    public static EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
         assert StaticObject.notNull(throwable);
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         throw EspressoException.wrap(throwable);

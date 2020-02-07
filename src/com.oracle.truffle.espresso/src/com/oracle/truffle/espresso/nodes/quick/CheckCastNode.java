@@ -72,7 +72,7 @@ public abstract class CheckCastNode extends QuickNode {
             return 0;
         }
         Meta meta = typeToCheck.getMeta();
-        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+        throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                         receiver.getKlass().getType() + " cannot be cast to: " + typeToCheck.getType() + " in context " + root.getMethod().toString());
     }
 }
