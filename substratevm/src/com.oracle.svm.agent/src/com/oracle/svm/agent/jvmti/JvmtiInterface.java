@@ -220,4 +220,36 @@ public interface JvmtiInterface extends PointerBase {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer countPtr, WordPointer propertyPtr);
     }
+
+    @CField("GetBytecodes")
+    GetBytecodesFunctionPointer GetBytecodes();
+
+    interface GetBytecodesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIMethodId method, CIntPointer bytecodeCountPtr, CCharPointerPointer bytecodesPtr);
+    }
+
+    @CField("GetConstantPool")
+    GetConstantPoolFunctionPointer GetConstantPool();
+
+    interface GetConstantPoolFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle clazz, CIntPointer constantPoolCountPtr, CIntPointer constantPoolByteCountPtr, CCharPointerPointer constantPoolBytesPtr);
+    }
+
+    @CField("GetJLocationFormat")
+    GetJLocationFormatFunctionPointer GetJLocationFormat();
+
+    interface GetJLocationFormatFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer formatPtr);
+    }
+
+    @CField("GetLoadedClasses")
+    GetLoadedClassesFunctionPointer GetLoadedClasses();
+
+    interface GetLoadedClassesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer classCountPtr, WordPointer classesPtr);
+    }
 }
