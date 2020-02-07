@@ -1,0 +1,19 @@
+Builds a native image using libmusl as the libc implementation.
+Usage: -H:UseMuslC=<path to musl bundle>
+---------
+The musl bundle path should contain the following structure:
+- include
+- lib
+Under those two folders, the following libraries must be available:
+- musl
+- zlib
+- libstdc++ (if using libsunec)
+
+One of the ways of constructing the bundle:
+1. Create a folder for the bundle
+2. Download musl sources
+3. Configure musl to use the path to the bundle as the install destination
+4. Repeat steps 2 and 3 for zlib
+5. For libstdc++.a, the easiest way to download it from the Alpine distribution.
+The harder way is to compile it yourself. libstdc++ comes as part of gcc. To compile it yourself and use it means to
+compile GCC using musl and rip it from the result.
