@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.vm;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
@@ -31,8 +32,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -46,6 +50,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLock;
@@ -385,10 +390,12 @@ public final class InterpreterToVM implements ContextAccess {
         }
         int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
         return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+
             @Override
             public StaticObject apply(int i) {
                 return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);
             }
+
         });
     }
 
@@ -476,6 +483,59 @@ public final class InterpreterToVM implements ContextAccess {
     public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
         assert getMeta().java_lang_String == guestString.getKlass();
         return getStrings().intern(guestString);
+    }
+
+    /**
+     * Preemptively added method to benefit from truffle lazy stack traces when they will be
+     * reworked.
+     */
+    @SuppressWarnings("unused")
+    public static StaticObject fillInStackTrace(StaticObject throwable, Meta meta) {
+        // Inlined calls to help StackOverflows.
+        VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getFieldIndex());
+        if (frames != null) {
+            return throwable;
+        }
+        EspressoException e = new EspressoException(throwable);
+        List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
+        if (trace == null) {
+            throwable.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
+            throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+            return throwable;
+        }
+        int bci = -1;
+        Method m = null;
+        frames = new VM.StackTrace();
+        FrameCounter c = new FrameCounter();
+        for (TruffleStackTraceElement element : trace) {
+            Node location = element.getLocation();
+            while (location != null) {
+                if (location instanceof QuickNode) {
+                    bci = ((QuickNode) location).getBCI();
+                    break;
+                }
+                location = location.getParent();
+            }
+            RootCallTarget target = element.getTarget();
+            if (target != null) {
+                RootNode rootNode = target.getRootNode();
+                if (rootNode instanceof EspressoRootNode) {
+                    m = ((EspressoRootNode) rootNode).getMethod();
+                    if (c.checkFillIn(m) || c.checkThrowableInit(m)) {
+                        bci = -1;
+                        continue;
+                    }
+                    if (m.isNative()) {
+                        bci = -2;
+                    }
+                    frames.add(new VM.StackElement(m, bci));
+                    bci = -1;
+                }
+            }
+        }
+        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
+        throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+        return throwable;
     }
 
     // Recursion depth = 4

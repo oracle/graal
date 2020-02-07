@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
@@ -539,13 +540,19 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     public static class StackTrace {
+        public static final StackTrace EMPTY_STACK_TRACE = new StackTrace(0);
+
         public StackElement[] trace;
         public int size;
         public int capacity;
 
         public StackTrace() {
-            this.trace = new StackElement[EspressoContext.DEFAULT_STACK_SIZE];
-            this.capacity = EspressoContext.DEFAULT_STACK_SIZE;
+            this(DEFAULT_STACK_SIZE);
+        }
+
+        private StackTrace(int size) {
+            this.trace = new StackElement[size];
+            this.capacity = size;
             this.size = 0;
         }
 
@@ -562,8 +569,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        InterpreterToVM.fillInStackTrace(self, false, getMeta());
-        return self;
+        return InterpreterToVM.fillInStackTrace(self, false, getMeta());
     }
 
     @VmImpl
