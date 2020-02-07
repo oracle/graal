@@ -30,7 +30,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * A plan to be consulted when partial evaluating or compiling a Truffle AST as to whether a given
  * call should be inlined.
  */
-public interface TruffleInliningPlan extends CallNodeProvider {
+public interface TruffleInliningPlan extends TruffleMetaAccessProvider {
 
     /**
      * Gets the decision of whether or not to inline the Truffle AST called by {@code callNode}.
@@ -40,12 +40,6 @@ public interface TruffleInliningPlan extends CallNodeProvider {
      *         decision for {@code callNode}
      */
     Decision findDecision(JavaConstant callNode);
-
-    /**
-     * If {@code node} represents an AST Node then return the nearest source information for it.
-     * Otherwise simply return null.
-     */
-    TruffleSourceLanguagePosition getPosition(JavaConstant node);
 
     /**
      * Decision of whether a called Truffle AST should be inlined. If {@link #shouldInline()}

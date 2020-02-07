@@ -103,7 +103,7 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.CallNodeProvider;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
@@ -228,6 +228,10 @@ public abstract class PartialEvaluator {
         return callDirectMethod;
     }
 
+    public ResolvedJavaMethod getCallIndirectMethod() {
+        return callIndirectMethod;
+    }
+
     public ResolvedJavaMethod getCallBoundary() {
         return callBoundary;
     }
@@ -298,15 +302,17 @@ public abstract class PartialEvaluator {
         }
     }
 
-    public void parseRootGraphForInlining(OptionValues options, CompilableTruffleAST compilable, StructuredGraph graph, CallNodeProvider callNodeProvider, InlineInvokePlugin callNodePlugin,
+    public void parseRootGraphForInlining(OptionValues options, CompilableTruffleAST compilable, StructuredGraph graph, TruffleMetaAccessProvider truffleMetaAccessProvider,
+                    InlineInvokePlugin callNodePlugin,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining) {
         // This is only called by agnostic inlining. Legacy inlining does not use this method.
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
 
-        doGraphPE(options, compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
+        doGraphPE(options, compilable, graph, tierContext, (TruffleInliningPlan) truffleMetaAccessProvider, callNodePlugin, graphCacheForInlining);
     }
 
-    public StructuredGraph createGraphForInlining(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, CallNodeProvider callNodeProvider, InlineInvokePlugin callNodePlugin,
+    public StructuredGraph createGraphForInlining(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, TruffleMetaAccessProvider truffleMetaAccessProvider,
+                    InlineInvokePlugin callNodePlugin,
                     AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, SpeculationLog log, Cancellable cancellable,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining) {
         // This is only called by agnostic inlining. Legacy inlining does not use this method.
@@ -315,7 +321,7 @@ public abstract class PartialEvaluator {
         final StructuredGraph graph = createGraphForPE(debug, name, rootMethod, allowAssumptions, compilationId, log, cancellable);
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
 
-        doGraphPE(options, compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
+        doGraphPE(options, compilable, graph, tierContext, (TruffleInliningPlan) truffleMetaAccessProvider, callNodePlugin, graphCacheForInlining);
 
         return graph;
     }

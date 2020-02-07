@@ -29,7 +29,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPo
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.CallNodeProvider;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
@@ -45,11 +45,11 @@ public final class CallTree extends Graph {
     int expanded = 1;
     int inlined = 1;
 
-    CallTree(OptionValues options, PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
+    CallTree(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         super(ir.getOptions(), ir.getDebug());
         this.options = options;
         this.policy = policy;
-        this.graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
+        this.graphManager = new GraphManager(ir, partialEvaluator, truffleMetaAccessProvider);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(options, this, truffleAST, ir);
     }

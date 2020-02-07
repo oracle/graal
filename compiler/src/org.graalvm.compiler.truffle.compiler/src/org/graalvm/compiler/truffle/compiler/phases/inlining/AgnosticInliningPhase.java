@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.CallNodeProvider;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -55,14 +55,14 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private final PartialEvaluator partialEvaluator;
-    private final CallNodeProvider callNodeProvider;
+    private final TruffleMetaAccessProvider truffleMetaAccessProvider;
     private final CompilableTruffleAST compilableTruffleAST;
     private final OptionValues options;
 
-    public AgnosticInliningPhase(OptionValues options, PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST compilableTruffleAST) {
+    public AgnosticInliningPhase(OptionValues options, PartialEvaluator partialEvaluator, TruffleMetaAccessProvider truffleMetaAccessProvider, CompilableTruffleAST compilableTruffleAST) {
         this.options = options;
         this.partialEvaluator = partialEvaluator;
-        this.callNodeProvider = callNodeProvider;
+        this.truffleMetaAccessProvider = truffleMetaAccessProvider;
         this.compilableTruffleAST = compilableTruffleAST;
     }
 
@@ -86,7 +86,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
             return;
         }
         final InliningPolicy policy = getInliningPolicyProvider().get(options, coreProviders);
-        final CallTree tree = new CallTree(options, partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
+        final CallTree tree = new CallTree(options, partialEvaluator, truffleMetaAccessProvider, compilableTruffleAST, graph, policy);
         tree.dumpBasic("Before Inline", "");
         policy.run(tree);
         tree.dumpBasic("After Inline", "");
