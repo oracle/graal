@@ -220,7 +220,7 @@ public final class ClassfileStream {
 
     public ClassFormatError classFormatError(String format, Object... args) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
+        throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
     }
 
     public ClassFormatError ioError(IOException ioException) {
