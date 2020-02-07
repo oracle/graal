@@ -27,14 +27,20 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * track debug info associated with a Java source file.
+ * Tracks debug info associated with a Java source file.
  */
 public class FileEntry {
-    // the name of the associated file including path
+    /**
+     * The name of the associated file including path
+     */
     private String fileName;
-    // the name of the associated file excluding path
+    /**
+     * The name of the associated file excluding path
+     */
     private String baseName;
-    // the directory entry associated with this file entry
+    /**
+     * The directory entry associated with this file entry
+     */
     DirEntry dirEntry;
 
     public FileEntry(String fileName, String baseName, DirEntry dirEntry) {

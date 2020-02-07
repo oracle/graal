@@ -1167,7 +1167,7 @@ public class ELFObjectFile extends ObjectFile {
 
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
-        DwarfSections dwarfSections = new DwarfSections(getMachine());
+        DwarfSections dwarfSections = new DwarfSections(getMachine(), getByteOrder());
         // we need an implementation for each section
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();

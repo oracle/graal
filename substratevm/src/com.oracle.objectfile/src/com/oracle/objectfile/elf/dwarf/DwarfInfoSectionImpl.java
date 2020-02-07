@@ -38,7 +38,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LANG_Java;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
 /**
- * generator for debug_info section.
+ * Section generator for debug_info section.
  */
 public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /**
@@ -57,31 +57,33 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void createContent() {
-        // we need a single level 0 DIE for each compilation unit (CU)
-        // Each CU's Level 0 DIE is preceded by a fixed header:
-        // and terminated by a null DIE
-        // uint32 length ......... excluding this length field
-        // uint16 dwarf_version .. always 2 ??
-        // uint32 abbrev offset .. always 0 ??
-        // uint8 address_size .... always 8
-        // <DIE>* ................ sequence of top-level and nested child entries
-        // <null_DIE> ............ == 0
-        //
-        // a DIE is a recursively defined structure
-        // it starts with a code for the associated
-        // abbrev entry followed by a series of attribute
-        // values as determined by the entry terminated by
-        // a null value and followed by zero or more child
-        // DIEs (zero iff has_children == no_children)
-        //
-        // LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE
-        // <attribute_value>* ....... value sequence as determined by abbrev entry
-        // <DIE>* ................... sequence of child DIEs (if appropriate)
-        // <null_value> ............. == 0
-        //
-        // note that a null_DIE looks like
-        // LEB128 abbrev_code ....... == 0
-        // i.e. it also looks like a null_value
+        /*
+         * we need a single level 0 DIE for each compilation unit (CU)
+         * Each CU's Level 0 DIE is preceded by a fixed header:
+         * and terminated by a null DIE
+         * uint32 length ......... excluding this length field
+         * uint16 dwarf_version .. always 2 ??
+         * uint32 abbrev offset .. always 0 ??
+         * uint8 address_size .... always 8
+         * <DIE>* ................ sequence of top-level and nested child entries
+         * <null_DIE> ............ == 0
+         *
+         * a DIE is a recursively defined structure
+         * it starts with a code for the associated
+         * abbrev entry followed by a series of attribute
+         * values as determined by the entry terminated by
+         * a null value and followed by zero or more child
+         * DIEs (zero iff has_children == no_children)
+         *
+         * LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE
+         * <attribute_value>* ....... value sequence as determined by abbrev entry
+         * <DIE>* ................... sequence of child DIEs (if appropriate)
+         * <null_value> ............. == 0
+         *
+         * note that a null_DIE looks like
+         * LEB128 abbrev_code ....... == 0
+         * i.e. it also looks like a null_value
+         */
 
         byte[] buffer = null;
         int pos = 0;
@@ -91,7 +93,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeCUHeader(buffer, pos);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
             pos = writeCU(classEntry, buffer, pos);
-            // no need to backpatch length at lengthPos
+            /*
+             * no need to backpatch length at lengthPos
+             */
         }
         buffer = new byte[pos];
         super.setContent(buffer);
@@ -108,15 +112,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         debug("  [0x%08x] DEBUG_INFO\n", pos);
         debug("  [0x%08x] size = 0x%08x\n", pos, size);
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            // save the offset of this file's CU so it can
-            // be used when writing the aranges section
+            /*
+             * save the offset of this file's CU so it can
+             * be used when writing the aranges section
+             */
             classEntry.setCUIndex(pos);
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             debug("  [0x%08x] Compilation Unit\n", pos, size);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
             pos = writeCU(classEntry, buffer, pos);
-            // backpatch length at lengthPos (excluding length field)
+            /*
+             * backpatch length at lengthPos (excluding length field)
+             */
             patchLength(lengthPos, buffer, pos);
         }
         assert pos == size;
@@ -125,15 +133,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     public int writeCUHeader(byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
-            pos += putInt(0, scratch, 0);            // CU length
-            pos += putShort(DW_VERSION_2, scratch, 0);  // dwarf version
-            pos += putInt(0, scratch, 0);            // abbrev offset
-            return pos + putByte((byte) 8, scratch, 0); // address size
+            /* CU length */
+            pos += putInt(0, scratch, 0);
+            /* dwarf version */
+            pos += putShort(DW_VERSION_2, scratch, 0);
+            /* abbrev offset */
+            pos += putInt(0, scratch, 0);
+            /* address size */
+            return pos + putByte((byte) 8, scratch, 0);
         } else {
-            pos = putInt(0, buffer, pos);                 // CU length
-            pos = putShort(DW_VERSION_2, buffer, pos);       // dwarf version
-            pos = putInt(0, buffer, pos);                 // abbrev offset
-            return putByte((byte) 8, buffer, pos);           // address size
+            /* CU length */
+            pos = putInt(0, buffer, pos);
+            /* dwarf version */
+            pos = putShort(DW_VERSION_2, buffer, pos);
+            /* abbrev offset */
+            pos = putInt(0, buffer, pos);
+            /* address size */
+            return putByte((byte) 8, buffer, pos);
         }
     }
 
@@ -155,7 +171,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
             pos = writePrimary(primaryEntry, buffer, pos);
         }
-        // write a terminating null attribute for the the level 2 primaries
+        /*
+         * write a terminating null attribute for the the level 2 primaries
+         */
         return writeAttrNull(buffer, pos);
 
     }
@@ -171,7 +189,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrAddress(primary.getLo(), buffer, pos);
         debug("  [0x%08x]     high_pc  0x%08x\n", pos, primary.getHi());
         pos = writeAttrAddress(primary.getHi(), buffer, pos);
-        // need to pass true only if method is public
+        /*
+         * need to pass true only if method is public
+         */
         debug("  [0x%08x]     external  true\n", pos);
         return writeFlag(DW_FLAG_true, buffer, pos);
     }

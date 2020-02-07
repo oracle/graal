@@ -27,10 +27,10 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * class used to retain a unique (up to equals) copy of
- * a String and also to flag whether the String needs to be
- * located in the .debug_string section and track the offset
- * where it gets written.
+ * Used to retain a unique (up to equals) copy of a
+ * String. Also flag swhether the String needs to be
+ * located in the debug_string section and, if so,
+ * tracks the offset at which it gets written.
  */
 public class StringEntry {
     private String string;
@@ -47,7 +47,9 @@ public class StringEntry {
     }
 
     public int getOffset() {
-        // offset must be set before this can be fetched
+        /*
+         * offset must be set before this can be fetched
+         */
         assert offset >= 0;
         return offset;
     }

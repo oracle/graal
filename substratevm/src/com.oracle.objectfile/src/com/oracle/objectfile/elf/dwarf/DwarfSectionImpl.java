@@ -33,6 +33,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.elf.ELFObjectFile;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
 
@@ -79,13 +80,17 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     @Override
     public boolean isLoadable() {
-        // even though we're a progbits section impl we're not actually loadable
+        /*
+         * even though we're a progbits section impl we're not actually loadable
+         */
         return false;
     }
 
     public void checkDebug(int pos) {
-        // if the env var relevant to this element
-        // type is set then switch on debugging
+        /*
+         * if the env var relevant to this element
+         * type is set then switch on debugging
+         */
         String name = getSectionName();
         String envVarName = "DWARF_" + name.substring(1).toUpperCase();
         if (System.getenv(envVarName) != null) {
@@ -101,7 +106,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    // base level put methods that assume a non-null buffer
+    protected boolean littleEndian() {
+        return dwarfSections.getByteOrder() == ByteOrder.LITTLE_ENDIAN;
+    }
+
+    /*
+     * base level put methods that assume a non-null buffer
+     */
 
     public int putByte(byte b, byte[] buffer, int p) {
         int pos = p;
@@ -111,36 +122,61 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     public int putShort(short s, byte[] buffer, int p) {
         int pos = p;
-        buffer[pos++] = (byte) (s & 0xff);
-        buffer[pos++] = (byte) ((s >> 8) & 0xff);
+        if (littleEndian()) {
+            buffer[pos++] = (byte) (s & 0xff);
+            buffer[pos++] = (byte) ((s >> 8) & 0xff);
+        } else {
+            buffer[pos++] = (byte) ((s >> 8) & 0xff);
+            buffer[pos++] = (byte) (s & 0xff);
+        }
         return pos;
     }
 
     public int putInt(int i, byte[] buffer, int p) {
         int pos = p;
-        buffer[pos++] = (byte) (i & 0xff);
-        buffer[pos++] = (byte) ((i >> 8) & 0xff);
-        buffer[pos++] = (byte) ((i >> 16) & 0xff);
-        buffer[pos++] = (byte) ((i >> 24) & 0xff);
+        if (littleEndian()) {
+            buffer[pos++] = (byte) (i & 0xff);
+            buffer[pos++] = (byte) ((i >> 8) & 0xff);
+            buffer[pos++] = (byte) ((i >> 16) & 0xff);
+            buffer[pos++] = (byte) ((i >> 24) & 0xff);
+        } else {
+            buffer[pos++] = (byte) ((i >> 24) & 0xff);
+            buffer[pos++] = (byte) ((i >> 16) & 0xff);
+            buffer[pos++] = (byte) ((i >> 8) & 0xff);
+            buffer[pos++] = (byte) (i & 0xff);
+        }
         return pos;
     }
 
     public int putLong(long l, byte[] buffer, int p) {
         int pos = p;
-        buffer[pos++] = (byte) (l & 0xff);
-        buffer[pos++] = (byte) ((l >> 8) & 0xff);
-        buffer[pos++] = (byte) ((l >> 16) & 0xff);
-        buffer[pos++] = (byte) ((l >> 24) & 0xff);
-        buffer[pos++] = (byte) ((l >> 32) & 0xff);
-        buffer[pos++] = (byte) ((l >> 40) & 0xff);
-        buffer[pos++] = (byte) ((l >> 48) & 0xff);
-        buffer[pos++] = (byte) ((l >> 56) & 0xff);
+        if (littleEndian()) {
+            buffer[pos++] = (byte) (l & 0xff);
+            buffer[pos++] = (byte) ((l >> 8) & 0xff);
+            buffer[pos++] = (byte) ((l >> 16) & 0xff);
+            buffer[pos++] = (byte) ((l >> 24) & 0xff);
+            buffer[pos++] = (byte) ((l >> 32) & 0xff);
+            buffer[pos++] = (byte) ((l >> 40) & 0xff);
+            buffer[pos++] = (byte) ((l >> 48) & 0xff);
+            buffer[pos++] = (byte) ((l >> 56) & 0xff);
+        } else {
+            buffer[pos++] = (byte) ((l >> 56) & 0xff);
+            buffer[pos++] = (byte) ((l >> 48) & 0xff);
+            buffer[pos++] = (byte) ((l >> 40) & 0xff);
+            buffer[pos++] = (byte) ((l >> 32) & 0xff);
+            buffer[pos++] = (byte) ((l >> 16) & 0xff);
+            buffer[pos++] = (byte) ((l >> 24) & 0xff);
+            buffer[pos++] = (byte) ((l >> 8) & 0xff);
+            buffer[pos++] = (byte) (l & 0xff);
+        }
         return pos;
     }
 
     public int putRelocatableCodeOffset(long l, byte[] buffer, int p) {
         int pos = p;
-        // mark address so it is relocated relative to the start of the text segment
+        /*
+         * mark address so it is relocated relative to the start of the text segment
+         */
         markRelocationSite(pos, 8, ObjectFile.RelocationKind.DIRECT, TEXT_SECTION_NAME, false, Long.valueOf(l));
         pos = putLong(0, buffer, pos);
         return pos;
@@ -200,7 +236,9 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    // common write methods that check for a null buffer
+    /*
+     * common write methods that check for a null buffer
+     */
 
     public void patchLength(int lengthPos, byte[] buffer, int pos) {
         if (buffer != null) {
@@ -296,10 +334,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        // ensure content byte[] has been created before calling super method
+        /*
+         * ensure content byte[] has been created before calling super method
+         */
         createContent();
 
-        // ensure content byte[] has been written before calling super method
+        /*
+         * ensure content byte[] has been written before calling super method
+         */
         writeContent();
 
         return super.getOrDecideContent(alreadyDecided, contentHint);
@@ -313,12 +355,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
         LayoutDecision.Kind[] targetKinds = targetSectionKinds();
-        // make our content depend on the size and content of the target
+        /*
+         * make our content depend on the size and content of the target
+         */
         for (LayoutDecision.Kind targetKind : targetKinds) {
             LayoutDecision targetDecision = decisions.get(targetSection).getDecision(targetKind);
             deps.add(BuildDependency.createOrGet(ourContent, targetDecision));
         }
-        // make our size depend on our content
+        /*
+         * make our size depend on our content
+         */
         deps.add(BuildDependency.createOrGet(ourSize, ourContent));
 
         return deps;
