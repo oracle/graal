@@ -69,7 +69,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * the priority of the alternatives: if matching with an earlier alternative is possible, that match
  * result is preferred to those from later alternatives.
  */
-public final class Group extends Term implements RegexASTVisitorIterable {
+public final class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;

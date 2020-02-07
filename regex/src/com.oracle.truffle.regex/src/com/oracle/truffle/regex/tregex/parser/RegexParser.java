@@ -63,6 +63,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
@@ -391,7 +392,7 @@ public final class RegexParser {
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
                         finishedAlternative.add(createCharClass(curTrails, token));
                     }
                     curLead = startLead;
@@ -408,7 +409,7 @@ public final class RegexParser {
 
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                        finishedAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
                         finishedAlternative.add(createCharClass(curTrails, token));
                     }
                     curLead = endLead;
@@ -428,7 +429,7 @@ public final class RegexParser {
             }
             if (curTrails.matchesSomething()) {
                 Sequence lastAlternative = group.addSequence(ast);
-                lastAlternative.add(createCharClass(CodePointSet.create(curLead), token));
+                lastAlternative.add(createCharClass(CodePointSet.create(curLead, curLead), token));
                 lastAlternative.add(createCharClass(curTrails, token));
             }
 
@@ -512,7 +513,7 @@ public final class RegexParser {
         popGroup(null);
     }
 
-    private void expandQuantifier(Term toExpand) {
+    private void expandQuantifier(QuantifiableTerm toExpand) {
         assert toExpand.hasQuantifier();
         Token.Quantifier quantifier = toExpand.getQuantifier();
         assert quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition : toExpand + " in " + source;
@@ -569,7 +570,7 @@ public final class RegexParser {
             expand(group);
         }
 
-        private void expand(Term t) {
+        private void expand(QuantifiableTerm t) {
             if (t.hasQuantifier()) {
                 parser.expandQuantifier(t);
             }
@@ -737,22 +738,25 @@ public final class RegexParser {
             // x{1,1} -> x
             return;
         }
-        setQuantifier(curTerm, quantifier);
+        setQuantifier((QuantifiableTerm) curTerm, quantifier);
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
-            Term prev = curSequence.getTerms().get(curSequence.size() - 2);
-            if (prev.hasQuantifier() && curTerm.equalsSemantic(prev, true)) {
-                removeCurTerm();
-                long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
-                long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
-                if (min > Integer.MAX_VALUE) {
-                    replaceCurTermWithDeadNode();
-                    return;
+            Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
+            if (prevTerm instanceof QuantifiableTerm) {
+                QuantifiableTerm prev = (QuantifiableTerm) prevTerm;
+                if (prev.hasQuantifier() && ((QuantifiableTerm) curTerm).equalsSemantic(prev, true)) {
+                    removeCurTerm();
+                    long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
+                    long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
+                    if (min > Integer.MAX_VALUE) {
+                        replaceCurTermWithDeadNode();
+                        return;
+                    }
+                    if (max > Integer.MAX_VALUE) {
+                        max = -1;
+                    }
+                    setQuantifier(prev, new Token.Quantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
                 }
-                if (max > Integer.MAX_VALUE) {
-                    max = -1;
-                }
-                setQuantifier(prev, new Token.Quantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
             }
         }
     }
@@ -770,7 +774,7 @@ public final class RegexParser {
         addTerm(createCharClass(CodePointSet.getEmpty(), null));
     }
 
-    private void setQuantifier(Term term, Token.Quantifier quantifier) {
+    private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
         if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
             properties.setLargeCountedRepetitions();
         }
@@ -884,7 +888,7 @@ public final class RegexParser {
                     }
                     // merge successive single-character-class alternatives
                     if (i > begin && s.size() - prefixSize == 1 &&
-                                    s.getLastTerm() instanceof CharacterClass && !s.getLastTerm().hasQuantifier() &&
+                                    s.getLastTerm() instanceof CharacterClass && !((CharacterClass) s.getLastTerm()).hasQuantifier() &&
                                     innerGroup.getLastAlternative().isSingleCharClass()) {
                         mergeCharClasses((CharacterClass) innerGroup.getLastAlternative().getFirstTerm(), (CharacterClass) s.getLastTerm());
                     } else {

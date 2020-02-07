@@ -55,6 +55,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.charset.CP16BitMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.RangesAccumulator;
@@ -549,7 +550,7 @@ public final class DFAGenerator implements JsonConvertible {
     private void optimizeDFA() {
         RegexProperties props = nfa.getAst().getProperties();
 
-        doSimpleCG = isForward() &&
+        doSimpleCG = (isForward() || !nfa.getAst().getRoot().hasLoops()) &&
                         executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&
                         !nfa.isTraceFinderNFA() &&
@@ -809,7 +810,7 @@ public final class DFAGenerator implements JsonConvertible {
                     matchers[i] = AnyMatcher.create();
                 } else {
                     nRanges += matcherBuilder.size();
-                    matchers[i] = matcherBuilder.createMatcher(compilationBuffer);
+                    matchers[i] = CP16BitMatchers.createMatcher(matcherBuilder, compilationBuffer);
                 }
                 estimatedTransitionsCost += matchers[i].estimatedCost();
 

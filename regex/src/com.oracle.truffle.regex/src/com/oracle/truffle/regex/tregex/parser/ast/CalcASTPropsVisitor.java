@@ -147,6 +147,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
+        if (backReference.hasQuantifier()) {
+            setQuantifierIndex(backReference);
+        }
     }
 
     @Override
@@ -178,6 +181,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             maxPath = Math.max(maxPath, s.getMaxPath());
         }
         if (group.hasQuantifier()) {
+            setQuantifierIndex(group);
             if (group.getQuantifier().getMin() == 0) {
                 flags &= ~(RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR);
             }
@@ -214,7 +218,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void visit(PositionAssertion assertion) {
         switch (assertion.type) {
             case CARET:
-                if (!isReverse()) {
+                if (isForward()) {
                     assertion.getParent().setHasCaret();
                     if (assertion.getParent().getMinPath() > 0) {
                         assertion.markAsDead();
@@ -263,7 +267,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     public void leaveLookAroundAssertion(LookAroundAssertion assertion) {
-        if (!isReverse() && !assertion.isDead()) {
+        if (isForward() && !assertion.isDead()) {
             ast.getLookArounds().add(assertion);
         }
         assertion.getParent().setFlags((short) (assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS)), CHANGED_FLAGS);
@@ -272,6 +276,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(CharacterClass characterClass) {
         if (characterClass.hasQuantifier()) {
+            setQuantifierIndex(characterClass);
             characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());
             if (characterClass.getQuantifier().isInfiniteLoop()) {
                 characterClass.setHasLoops();
@@ -288,6 +293,13 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (characterClass.getCharSet().matchesNothing()) {
             characterClass.markAsDead();
             characterClass.getParent().markAsDead();
+        }
+    }
+
+    public void setQuantifierIndex(QuantifiableTerm term) {
+        assert term.hasQuantifier();
+        if (isForward()) {
+            term.setQuantifierIndex(ast.getQuantifierCount().inc());
         }
     }
 }

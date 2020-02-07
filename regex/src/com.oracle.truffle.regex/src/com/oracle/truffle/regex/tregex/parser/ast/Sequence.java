@@ -163,7 +163,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             return false;
         }
         for (Term t : terms) {
-            if (!(t instanceof CharacterClass) || t.hasQuantifier()) {
+            if (!(t instanceof CharacterClass) || ((CharacterClass) t).hasQuantifier()) {
                 return false;
             }
         }

@@ -67,7 +67,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * by {@link RegexParser} into a more complex expression which matches the individual code units
  * that would make up the UTF-16 encoding of those characters.
  */
-public class CharacterClass extends Term {
+public class CharacterClass extends QuantifiableTerm {
 
     private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node

@@ -45,7 +45,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -99,10 +98,6 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         return constant;
     }
 
-    public static CodePointSet createNoDedup(int... ranges) {
-        return new CodePointSet(ranges);
-    }
-
     public static CodePointSet create(IntRangesBuffer buf) {
         CodePointSet constant = checkConstants(buf.getBuffer(), buf.length());
         if (constant == null) {
@@ -111,15 +106,13 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         return constant;
     }
 
+    public static CodePointSet createNoDedup(int... ranges) {
+        return new CodePointSet(ranges);
+    }
+
     private static CodePointSet checkConstants(int[] ranges, int length) {
         if (length == 0) {
             return CONSTANT_EMPTY;
-        }
-        if (length == 1) {
-            if (ranges[0] < 128) {
-                return CONSTANT_ASCII[ranges[0]];
-            }
-            return new CodePointSet(new int[]{ranges[0], ranges[0]});
         }
         if (length == 2) {
             if (ranges[0] == ranges[1] && ranges[0] < 128) {
@@ -130,9 +123,11 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
             }
         }
         if (length == 4) {
-            CodePointSet ret = checkInverseAndCaseFoldAscii(ranges[0], ranges[1], ranges[2], ranges[3]);
-            if (ret != null) {
-                return ret;
+            if (ranges[0] == Character.MIN_CODE_POINT && ranges[3] == Character.MAX_CODE_POINT && ranges[2] <= 128 && ranges[1] + 2 == ranges[2]) {
+                return CONSTANT_INVERSE_ASCII[ranges[1] + 1];
+            }
+            if (ranges[0] == ranges[1] && ranges[0] >= 'A' && ranges[0] <= 'Z' && ranges[2] == ranges[3] && ranges[2] == (ranges[0] | 0x20)) {
+                return CONSTANT_CASE_FOLD_ASCII[ranges[0] - 'A'];
             }
         }
         for (CodePointSet predefCC : Constants.CONSTANT_CODE_POINT_SETS) {
@@ -150,16 +145,6 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
             }
         }
         return true;
-    }
-
-    private static CodePointSet checkInverseAndCaseFoldAscii(int lo0, int hi0, int lo1, int hi1) {
-        if (lo0 == Character.MIN_CODE_POINT && hi1 == Character.MAX_CODE_POINT && lo1 <= 128 && hi0 + 2 == lo1) {
-            return CONSTANT_INVERSE_ASCII[hi0 + 1];
-        }
-        if (lo0 == hi0 && lo0 >= 'A' && lo0 <= 'Z' && lo1 == hi1 && lo1 == Character.toLowerCase(lo0)) {
-            return CONSTANT_CASE_FOLD_ASCII[lo0 - 'A'];
-        }
-        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -199,6 +184,30 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
     @Override
     public int getHi(int i) {
         return ranges[(i * 2) + 1];
+    }
+
+    public int size16() {
+        if (isEmpty()) {
+            return 0;
+        }
+        if (getLo(size() - 1) > Character.MAX_VALUE) {
+            assert getLo(size() - 1) == Character.MAX_VALUE + 1 && getHi(size() - 1) == Character.MAX_CODE_POINT;
+            return size() - 1;
+        } else {
+            return size();
+        }
+    }
+
+    public char getLo16(int i) {
+        int lo = getLo(i);
+        assert lo <= Character.MAX_VALUE : this;
+        return (char) lo;
+    }
+
+    public char getHi16(int i) {
+        int hi = getHi(i);
+        assert hi <= Character.MAX_VALUE || hi == Character.MAX_CODE_POINT : this;
+        return (char) hi;
     }
 
     @Override
@@ -359,10 +368,6 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
             sb.append(String.format("0x%06x, 0x%06x", getLo(i), getHi(i)));
         }
         return sb.toString();
-    }
-
-    public CharMatcher createMatcher(CompilationBuffer compilationBuffer) {
-        return CharSet.fromSortedRanges(this).createMatcher(compilationBuffer);
     }
 
     public char[] inverseToCharArray() {

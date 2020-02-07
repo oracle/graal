@@ -57,6 +57,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  *            final results.
  *
  * @see TransitionBuilder
+ * @see TransitionSet
  */
 public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>, TB extends TransitionBuilder<S, T>> {
 

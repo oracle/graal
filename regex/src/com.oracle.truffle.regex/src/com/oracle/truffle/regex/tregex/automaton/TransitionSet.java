@@ -41,10 +41,7 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 /**
- * This class represents a power-set automaton state transition fragment to be used by
- * {@link StateTransitionCanonicalizer}.<br>
- * A transition in a power-set automaton consists of a set of transitions of the NFA that the
- * power-set automaton is being built from.
+ * Represents a set of NFA transitions to be used in {@link TransitionBuilder}.
  */
 public class TransitionSet<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
 

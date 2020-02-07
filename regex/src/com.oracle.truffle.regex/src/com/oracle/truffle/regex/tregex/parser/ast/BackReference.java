@@ -52,7 +52,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * Currently not implemented in TRegex and so any use of this node type causes TRegex to bail out.
  */
-public class BackReference extends Term {
+public class BackReference extends QuantifiableTerm {
 
     private final int groupNr;
 

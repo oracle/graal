@@ -50,7 +50,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * This class represents a power-set automaton state transition fragment to be used by
  * {@link StateTransitionCanonicalizer}.<br>
  * A transition in a power-set automaton consists of a set of transitions of the NFA that the
- * power-set automaton is being built from.
+ * power-set automaton is being built from, and the set of characters it can match.
  */
 public class TransitionBuilder<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> implements JsonConvertible {
 

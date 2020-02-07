@@ -48,6 +48,7 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -118,13 +119,12 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             partialTransitionDebugInfo = new PartialTransitionDebugInfo(numberOfNFAStates);
         }
         dfaGen.updateMaxNumberOfNFAStatesInOneTransition(numberOfNFAStates);
-        int[] newOrder = new int[numberOfNFAStates];
-        Arrays.fill(newOrder, -1);
-        boolean[] used = new boolean[newOrder.length];
-        int[] copySource = new int[getRequiredStates().size()];
+        IntArrayBuffer newOrder = compilationBuffer.getIntRangesBuffer1().asFixedSizeArray(numberOfNFAStates, -1);
+        IntArrayBuffer copySource = compilationBuffer.getIntRangesBuffer2().asFixedSizeArray(numberOfNFAStates, -1);
         ObjectArrayBuffer<byte[]> indexUpdates = compilationBuffer.getObjectBuffer1();
         ObjectArrayBuffer<byte[]> indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
+
         for (NFAStateTransition nfaTransition : getTransitionSet().getTransitions()) {
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getStateIndex(getRequiredStatesIndexMap(), nfaTransition.getSource());
@@ -133,12 +133,11 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                     partialTransitionDebugInfo.mapResultToNFATransition(targetIndex, nfaTransition);
                 }
                 assert !(nfaTransition.getTarget().isFinalState()) || targetIndex == DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX;
-                if (!used[sourceIndex]) {
-                    used[sourceIndex] = true;
-                    newOrder[targetIndex] = sourceIndex;
-                    copySource[sourceIndex] = targetIndex;
+                if (copySource.get(sourceIndex) < 0) {
+                    newOrder.set(targetIndex, sourceIndex);
+                    copySource.set(sourceIndex, targetIndex);
                 } else {
-                    arrayCopies.add((byte) copySource[sourceIndex]);
+                    arrayCopies.add((byte) copySource.get(sourceIndex));
                     arrayCopies.add((byte) targetIndex);
                 }
                 if (nfaTransition.getGroupBoundaries().hasIndexUpdates()) {
@@ -150,15 +149,15 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             }
         }
         int order = 0;
-        for (int i = 0; i < newOrder.length; i++) {
-            if (newOrder[i] == -1) {
-                while (used[order]) {
+        for (int i = 0; i < newOrder.length(); i++) {
+            if (newOrder.get(i) == -1) {
+                while (copySource.get(order) >= 0) {
                     order++;
                 }
-                newOrder[i] = order++;
+                newOrder.set(i, order++);
             }
         }
-        byte preReorderFinalStateResultIndex = (byte) newOrder[DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX];
+        byte preReorderFinalStateResultIndex = (byte) newOrder.get(DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX);
         // important: don't change the order, because newOrderToSequenceOfSwaps() reuses
         // CompilationBuffer#getByteArrayBuffer()
         byte[] byteArrayCopies = arrayCopies.toArray();
@@ -183,23 +182,23 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
      * smaller than {@code newOrder.length}. Caution: this method uses
      * {@link CompilationBuffer#getByteArrayBuffer()}.
      */
-    private static byte[] newOrderToSequenceOfSwaps(int[] newOrder, CompilationBuffer compilationBuffer) {
+    private static byte[] newOrderToSequenceOfSwaps(IntArrayBuffer newOrder, CompilationBuffer compilationBuffer) {
         ByteArrayBuffer swaps = compilationBuffer.getByteArrayBuffer();
-        for (int i = 0; i < newOrder.length; i++) {
-            int swapSource = newOrder[i];
+        for (int i = 0; i < newOrder.length(); i++) {
+            int swapSource = newOrder.get(i);
             int swapTarget = swapSource;
             if (swapSource == i) {
                 continue;
             }
             do {
                 swapSource = swapTarget;
-                swapTarget = newOrder[swapTarget];
+                swapTarget = newOrder.get(swapTarget);
                 swaps.add((byte) swapSource);
                 swaps.add((byte) swapTarget);
-                newOrder[swapSource] = swapSource;
+                newOrder.set(swapSource, swapSource);
             } while (swapTarget != i);
         }
-        assert swaps.length() / 2 < newOrder.length;
+        assert swaps.length() / 2 < newOrder.length();
         return swaps.toArray();
     }
 

@@ -374,7 +374,12 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength()));
+            int maxIndex = Math.max(-1, fromIndexArg - 1 - getForwardExecutor().getPrefixLength());
+            if (getBackwardExecutor().isSimpleCG()) {
+                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, maxIndex);
+                return result == null ? NoMatchResult.getInstance() : new SingleIndexArrayResult(result);
+            }
+            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1, maxIndex);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }

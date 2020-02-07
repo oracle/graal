@@ -40,7 +40,44 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-public class QuantifierGuard {
+import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 
-    public static final QuantifierGuard[] NO_GUARDS = new QuantifierGuard[0];
+public final class QuantifierGuard {
+
+    public static final QuantifierGuard[] NO_GUARDS = {};
+
+    public enum Kind {
+        enter,
+        exit
+    }
+
+    private final Kind kind;
+    private final int quantifierIndex;
+    private final int threshold;
+
+    private QuantifierGuard(Kind kind, int quantifierIndex, int threshold) {
+        this.kind = kind;
+        this.quantifierIndex = quantifierIndex;
+        this.threshold = threshold;
+    }
+
+    public static QuantifierGuard createEnter(QuantifiableTerm t) {
+        return new QuantifierGuard(Kind.enter, t.getQuantifierIndex(), t.getQuantifier().getMax());
+    }
+
+    public static QuantifierGuard createExit(QuantifiableTerm t) {
+        return new QuantifierGuard(Kind.enter, t.getQuantifierIndex(), t.getQuantifier().getMin());
+    }
+
+    public Kind getKind() {
+        return kind;
+    }
+
+    public int getQuantifierIndex() {
+        return quantifierIndex;
+    }
+
+    public int getThreshold() {
+        return threshold;
+    }
 }

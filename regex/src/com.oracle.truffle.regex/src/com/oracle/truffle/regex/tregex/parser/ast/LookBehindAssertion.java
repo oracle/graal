@@ -87,8 +87,7 @@ public class LookBehindAssertion extends LookAroundAssertion {
     }
 
     @Override
-    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
-        assert !hasQuantifier();
+    public boolean equalsSemantic(RegexASTNode obj) {
         return this == obj || (obj instanceof LookBehindAssertion && groupEqualsSemantic((LookBehindAssertion) obj));
     }
 
