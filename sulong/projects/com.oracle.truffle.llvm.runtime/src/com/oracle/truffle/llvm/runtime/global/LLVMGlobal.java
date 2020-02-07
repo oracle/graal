@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,17 @@ public final class LLVMGlobal implements LLVMSymbol {
     private final int moduleId;
 
     public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int index, int id) {
+        if (index < 0) {
+            throw new AssertionError("Invalid index for LLVM global: " + index);
+        }
+        if (id < 0) {
+            throw new AssertionError("Invalid index for LLVM global: " + id);
+        }
         return new LLVMGlobal(name, type, sourceSymbol, readOnly, index, id);
+    }
+
+    public static LLVMGlobal createUnavailable(String name) {
+        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, -1, -1);
     }
 
     private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, int moduleId) {
@@ -72,13 +82,15 @@ public final class LLVMGlobal implements LLVMSymbol {
         this.moduleId = moduleId;
     }
 
+    public boolean isAvailable() {
+        return moduleId >= 0;
+    }
+
     public int getIndex() {
-        assert globalIndex >= 0;
         return globalIndex;
     }
 
     public int getID() {
-        assert moduleId >= 0;
         return moduleId;
     }
 
