@@ -26,15 +26,14 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 
 public class ProxyConfiguration implements JsonPrintable {
-    private final Set<List<String>> interfaceLists = new HashSet<>();
+    private final ConcurrentHashMap.KeySetView<List<String>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public void add(List<String> interfaceList) {
         interfaceLists.add(interfaceList);

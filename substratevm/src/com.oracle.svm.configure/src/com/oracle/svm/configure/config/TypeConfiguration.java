@@ -27,9 +27,9 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.UserError;
 import jdk.vm.ci.meta.MetaUtil;
 
 public class TypeConfiguration implements JsonPrintable {
-    private final Map<String, ConfigurationType> types = new HashMap<>();
+    private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
 
     public ConfigurationType get(String qualifiedJavaName) {
         return types.get(qualifiedJavaName);
