@@ -38,7 +38,7 @@ A clear and concise description of what you expected to happen.
 
 
 **Additional context**
-Add any other context about the problem here. Specially important are stack traces or log output. Feel free to link to gists or to screenshots if necesary
+Add any other context about the problem here. Specially important are stack traces or log output. Feel free to link to gists or to screenshots if necessary
 <details><summary>Details</summary>
 
 ```
