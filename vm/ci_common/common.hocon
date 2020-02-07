@@ -233,6 +233,8 @@ weekly_vm_darwin: ${vm_darwin} {
 }
 
 non-product-vm-components: "nju,nic"
+non-product-vm-components-windows: ${non-product-vm-components}",llp"
+
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}"]
 mx_vm_installables: ${mx_vm_common}
@@ -373,8 +375,8 @@ builds += [
   ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -383,8 +385,8 @@ builds += [
   ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
+      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
