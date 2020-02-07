@@ -30,10 +30,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 /**
- * a class which allows incoming strings to be reduced
- * to unique (up to equaals) instances and allows marking
- * of strings which need to be written to the debug_str
- * section and retrieval of the lcoation offset after writing.
+ * Allows incoming strings to be reduced to unique (up
+ * to equals) instances and supports marking of strings
+ * which need to be written to the debug_str section
+ * and retrieval of the location offset after writing.
  */
 public class StringTable implements Iterable<StringEntry> {
 
@@ -44,9 +44,9 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * ensures a unique instance of a string exists in the
+     * Wnsures a unique instance of a string exists in the
      * table, inserting the supplied String if no equivalent
-     * String is already present. this should only be called
+     * String is already present. This should only be called
      * before the string section has been written.
      * @param string the string to be included in the table
      * @return the unique instance of the String
@@ -56,10 +56,10 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * ensures a unique instance of a string exists in the
+     * Ensures a unique instance of a string exists in the
      * table and is marked for inclusion in the debug_str
      * section, inserting the supplied String if no equivalent
-     * String is already present. this should only be called
+     * String is already present. This should only be called
      * before the string section has been written.
      * @param string the string to be included in the table
      * and marked for  inclusion in the debug_str section
@@ -82,8 +82,8 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * retrieves the offset at which a given string was written
-     * into the debug_str section. this should only be called
+     * Retrieves the offset at which a given string was written
+     * into the debug_str section. This should only be called
      * after the string section has been written.
      * @param string
      * @return the offset or -1 if the string does not

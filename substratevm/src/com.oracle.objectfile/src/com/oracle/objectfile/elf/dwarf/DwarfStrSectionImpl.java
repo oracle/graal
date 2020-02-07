@@ -96,7 +96,8 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
     public final LayoutDecision.Kind[] targetSectionKinds = {
             LayoutDecision.Kind.CONTENT,
             LayoutDecision.Kind.OFFSET,
-            LayoutDecision.Kind.VADDR, // add this so we can use the base address
+            /* add this so we can use the text section base address for debug */
+            LayoutDecision.Kind.VADDR,
     };
 
     @Override

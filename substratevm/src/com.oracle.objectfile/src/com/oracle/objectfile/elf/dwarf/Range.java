@@ -27,10 +27,10 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * details of a specific address range in a compiled method
+ * Details of a specific address range in a compiled method
  * either a primary range identifying a whole method
  * or a sub-range identifying a sequence of
- * instructions that belong to an inlined method
+ * instructions that belong to an inlined method.
  */
 
 public class Range {
@@ -43,18 +43,26 @@ public class Range {
     private int lo;
     private int hi;
     private int line;
-    // this is null for a primary range
+    /*
+     * this is null for a primary range
+     */
     private Range primary;
 
-    // create a primary range
+    /*
+     * create a primary range
+     */
     Range(String fileName, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
         this(fileName, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
     }
 
-    // create a primary or secondary range
+    /*
+     * create a primary or secondary range
+     */
     Range(String fileName, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
-        // currently file name and full method name need to go into the debug_str section
-        // other strings just need to be deduplicated to save space
+        /*
+         * currently file name and full method name need to go into the debug_str section
+         * other strings just need to be deduplicated to save space
+         */
         this.fileName = stringTable.uniqueDebugString(fileName);
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);

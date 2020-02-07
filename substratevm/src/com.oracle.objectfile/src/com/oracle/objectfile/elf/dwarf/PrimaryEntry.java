@@ -33,51 +33,34 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * track debug info associated with a primary method.
+ * Tracks debug info associated with a primary method.
  * i.e. a top level compiled method
  */
 public class PrimaryEntry {
     /**
-     * the primary range detailed by this object.
+     * The primary range detailed by this object.
      */
     Range primary;
     /**
-     * details of the class owning this range.
+     * Details of the class owning this range.
      */
     ClassEntry classEntry;
     /**
-     * a list of subranges associated with the primary range.
+     * A list of subranges associated with the primary range.
      */
     List<Range> subranges;
     /**
-     * a mapping from subranges to their associated file entry.
+     * A mapping from subranges to their associated file entry.
      */
     HashMap<Range, FileEntry> subrangeIndex;
     /**
-     * details of of compiled method frame size changes.
+     * Details of of compiled method frame size changes.
      */
     private List<DebugFrameSizeChange> frameSizeInfos;
     /**
-     * size of compiled method frame.
+     * Size of compiled method frame.
      */
     private int frameSize;
-    /**
-     * index of debug_info section compilation unit for this file.
-     */
-    private int cuIndex;
-    /**
-     * index into debug_line section for associated compilation unit.
-     */
-    private int lineIndex;
-    /**
-     * size of line number info prologue region for associated compilation unit.
-     */
-    private int linePrologueSize;
-    /**
-     * total size of line number info region for associated compilation unit.
-     */
-    private int totalSize;
-
     public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
@@ -85,17 +68,18 @@ public class PrimaryEntry {
         this.subrangeIndex = new HashMap<>();
         this.frameSizeInfos = frameSizeInfos;
         this.frameSize = frameSize;
-        // initialize indices into other sections to illegal values
-        this.cuIndex = -1;
-        this.lineIndex = -1;
     }
 
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
-        // we should not see a subrange more than once
+        /*
+         * we should not see a subrange more than once
+         */
         assert !subranges.contains(subrange);
         assert subrangeIndex.get(subrange) == null;
-        // we need to generate a file table entry
-        // for all ranges
+        /*
+         * we need to generate a file table entry
+         * for all ranges
+         */
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);
     }
@@ -126,47 +110,5 @@ public class PrimaryEntry {
 
     int getFrameSize() {
         return frameSize;
-    }
-
-    void setCUIndex(int cuIndex) {
-        // should only get set once to a non-negative value
-        assert cuIndex >= 0;
-        assert this.cuIndex == -1;
-        this.cuIndex = cuIndex;
-    }
-
-    int getCUIndex() {
-        // should have been set before being read
-        assert cuIndex >= 0;
-        return cuIndex;
-    }
-
-    int getLineIndex() {
-        // should have been set before being read
-        assert lineIndex >= 0;
-        return lineIndex;
-    }
-
-    void setLineIndex(int lineIndex) {
-        // should only get set once to a non-negative value
-        assert lineIndex >= 0;
-        assert this.lineIndex == -1;
-        this.lineIndex = lineIndex;
-    }
-
-    public int getLinePrologueSize() {
-        return linePrologueSize;
-    }
-
-    public void setLinePrologueSize(int linePrologueSize) {
-        this.linePrologueSize = linePrologueSize;
-    }
-
-    public int getTotalSize() {
-        return totalSize;
-    }
-
-    public void setTotalSize(int totalSize) {
-        this.totalSize = totalSize;
     }
 }

@@ -42,7 +42,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_CFA_register;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FRAME_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LINE_SECTION_NAME;
 /**
- * generic generator for debug_frame section.
+ * Section generic generator for debug_frame section.
  */
 public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
@@ -59,8 +59,10 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     public void createContent() {
         int pos = 0;
 
-        // the frame section contains one CIE at offset 0
-        // followed by an FIE for each method
+        /*
+         * the frame section contains one CIE at offset 0
+         * followed by an FIE for each method
+         */
         pos = writeCIE(null, pos);
         pos = writeMethodFrames(null, pos);
 
@@ -76,10 +78,12 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
         checkDebug(pos);
 
-        // there are entries for the prologue region where the
-        // stack is being built, the method body region(s) where
-        // the code executes with a fixed size frame and the
-        // epilogue region(s) where the stack is torn down
+        /*
+         * there are entries for the prologue region where the
+         * stack is being built, the method body region(s) where
+         * the code executes with a fixed size frame and the
+         * epilogue region(s) where the stack is torn down
+         */
         pos = writeCIE(buffer, pos);
         pos = writeMethodFrames(buffer, pos);
 
@@ -90,18 +94,20 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     }
 
     public int writeCIE(byte[] buffer, int p) {
-        // we only need a vanilla CIE with default fields
-        // because we have to have at least one
-        // the layout is
-        //
-        // uint32 : length ............... length of remaining fields in this CIE
-        // uint32 : CIE_id ................ unique id for CIE == 0xffffff
-        // uint8 : version ................ == 1
-        // uint8[] : augmentation ......... == "" so always 1 byte
-        // ULEB : code_alignment_factor ... == 1 (could use 4 for Aarch64)
-        // ULEB : data_alignment_factor ... == -8
-        // byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32
-        // byte[] : initial_instructions .. includes pad to 8-byte boundary
+        /*
+         * we only need a vanilla CIE with default fields
+         * because we have to have at least one
+         * the layout is
+         *
+         * uint32 : length ............... length of remaining fields in this CIE
+         * uint32 : CIE_id ................ unique id for CIE == 0xffffff
+         * uint8 : version ................ == 1
+         * uint8[] : augmentation ......... == "" so always 1 byte
+         * ULEB : code_alignment_factor ... == 1 (could use 4 for Aarch64)
+         * ULEB : data_alignment_factor ... == -8
+         * byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32
+         * byte[] : initial_instructions .. includes pad to 8-byte boundary
+         */
         int pos = p;
         if (buffer == null) {
             pos += putInt(0, scratch, 0); // don't care about length
@@ -111,11 +117,17 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos += putULEB(1, scratch, 0);
             pos += putSLEB(-8, scratch, 0);
             pos += putByte((byte) getPCIdx(), scratch, 0);
-            // write insns to set up empty frame
+            /*
+             * write insns to set up empty frame
+             */
             pos = writeInitialInstructions(buffer, pos);
-            // pad to word alignment
+            /*
+             * pad to word alignment
+             */
             pos = writePaddingNops(8, buffer, pos);
-            // no need to write length
+            /*
+             * no need to write length
+             */
             return pos;
         } else {
             int lengthPos = pos;
@@ -126,9 +138,13 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos = putULEB(1, buffer, pos);
             pos = putSLEB(-8, buffer, pos);
             pos = putByte((byte) getPCIdx(), buffer, pos);
-            // write insns to set up empty frame
+            /*
+             * write insns to set up empty frame
+             */
             pos = writeInitialInstructions(buffer, pos);
-            // pad to word alignment
+            /*
+             * pad to word alignment
+             */
             pos = writePaddingNops(8, buffer, pos);
             patchLength(lengthPos, buffer, pos);
             return pos;
@@ -150,10 +166,14 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
                     currentOffset += advance;
                     pos = writeAdvanceLoc(advance, buffer, pos);
                     if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
-                        // SP has been extended so rebase CFA using full frame
+                        /*
+                         * SP has been extended so rebase CFA using full frame
+                         */
                         pos = writeDefCFAOffset(frameSize, buffer, pos);
                     } else {
-                        // SP has been contracted so rebase CFA using empty frame
+                        /*
+                         * SP has been contracted so rebase CFA using empty frame
+                         */
                         pos = writeDefCFAOffset(8, buffer, pos);
                     }
                 }
@@ -165,26 +185,36 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     }
 
     public int writeFDEHeader(int lo, int hi, byte[] buffer, int p) {
-        // we only need a vanilla FDE header with default fields
-        // the layout is
-        //
-        // uint32 : length ........... length of remaining fields in this FDE
-        // uint32 : CIE_offset ........ always 0 i.e. identifies our only CIE header
-        // uint64 : initial_location .. i.e. method lo address
-        // uint64 : address_range ..... i.e. method hi - lo
-        // byte[] : instructions ...... includes pad to 8-byte boundary
+        /*
+         * we only need a vanilla FDE header with default fields
+         * the layout is
+         *
+         * uint32 : length ........... length of remaining fields in this FDE
+         * uint32 : CIE_offset ........ always 0 i.e. identifies our only CIE header
+         * uint64 : initial_location .. i.e. method lo address
+         * uint64 : address_range ..... i.e. method hi - lo
+         * byte[] : instructions ...... includes pad to 8-byte boundary
+         */
 
         int pos = p;
         if (buffer == null) {
-            pos += putInt(0, scratch, 0); // dummy length
-            pos += putInt(0, scratch, 0); // CIE_offset
-            pos += putLong(lo, scratch, 0); // initial address
-            return pos + putLong(hi - lo, scratch, 0); // address range
+            /* dummy length */
+            pos += putInt(0, scratch, 0);
+            /* CIE_offset */
+            pos += putInt(0, scratch, 0);
+            /* initial address */
+            pos += putLong(lo, scratch, 0);
+            /* address range */
+            return pos + putLong(hi - lo, scratch, 0);
         } else {
-            pos = putInt(0, buffer, pos); // dummy length
-            pos = putInt(0, buffer, pos); // CIE_offset
-            pos = putRelocatableCodeOffset(lo, buffer, pos); // initial address
-            return putLong(hi - lo, buffer, pos); // address range
+            /* dummy length */
+            pos = putInt(0, buffer, pos);
+            /* CIE_offset */
+            pos = putInt(0, buffer, pos);
+            /* initial address */
+            pos = putRelocatableCodeOffset(lo, buffer, pos);
+            /* address range */
+            return putLong(hi - lo, buffer, pos);
         }
     }
 
@@ -338,12 +368,12 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         return targetSectionKinds;
     }
 
-    private byte offsetOp(int register) {
+    private static byte offsetOp(int register) {
         assert (register >> 6) == 0;
         return (byte) ((DW_CFA_offset << 6) | register);
     }
 
-    private byte advanceLoc0Op(int offset) {
+    private static byte advanceLoc0Op(int offset) {
         assert (offset >= 0 && offset <= 0x3f);
         return (byte) ((DW_CFA_advance_loc << 6) | offset);
     }
