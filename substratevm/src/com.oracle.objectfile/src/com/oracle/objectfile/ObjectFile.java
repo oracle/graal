@@ -24,6 +24,7 @@
  */
 package com.oracle.objectfile;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
@@ -50,6 +51,7 @@ import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -1201,12 +1203,15 @@ public abstract class ObjectFile {
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
 
+    @SuppressWarnings("try")
     public final void write(FileChannel outputChannel) {
         List<Element> sortedObjectFileElements = new ArrayList<>();
         int totalSize = bake(sortedObjectFileElements);
         try {
             ByteBuffer buffer = outputChannel.map(MapMode.READ_WRITE, 0, totalSize);
-            writeBuffer(sortedObjectFileElements, buffer);
+            try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
+                writeBuffer(sortedObjectFileElements, buffer);
+            }
             outputChannel.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
