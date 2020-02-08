@@ -286,6 +286,20 @@ final class ProviderUtil {
 
 }
 
+@TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_ProviderVerifier {
+
+    @Substitute
+    static boolean isTrustedCryptoProvider(Provider provider) {
+        /*
+         * This is just used for fast-path checks, so returning false is a safe default. The
+         * original method accesses the Java home directory.
+         */
+        return false;
+    }
+}
+
 @TargetClass(className = "javax.crypto.JceSecurity")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
@@ -465,6 +479,47 @@ final class AllPermissionsPolicy extends Policy {
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
     }
+}
+
+/**
+ * This class is instantiated indirectly from the {@link Policy#getInstance} methods via the
+ * {@link java.security.Security#getProviders security provider} abstractions. We could just
+ * substitute the {@link Policy#getInstance} methods to return
+ * {@link AllPermissionsPolicy#SINGLETON}, this version is more fool-proof in case someone manually
+ * registers security providers for reflective instantiation.
+ */
+@TargetClass(className = "sun.security.provider.PolicySpiFile")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_provider_PolicySpiFile {
+
+    @Substitute
+    private Target_sun_security_provider_PolicySpiFile(Policy.Parameters params) {
+    }
+
+    @Substitute
+    private PermissionCollection engineGetPermissions(CodeSource codesource) {
+        return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
+    }
+
+    @Substitute
+    private PermissionCollection engineGetPermissions(ProtectionDomain d) {
+        return AllPermissionsPolicy.SINGLETON.getPermissions(d);
+    }
+
+    @Substitute
+    private boolean engineImplies(ProtectionDomain d, Permission p) {
+        return AllPermissionsPolicy.SINGLETON.implies(d, p);
+    }
+
+    @Substitute
+    private void engineRefresh() {
+        AllPermissionsPolicy.SINGLETON.refresh();
+    }
+}
+
+@Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
+@TargetClass(className = "sun.security.provider.PolicyFile")
+final class Target_sun_security_provider_PolicyFile {
 }
 
 /** Dummy class to have a class with the file's name. */
