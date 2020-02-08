@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -470,7 +469,9 @@ public class NativeImageGenerator {
     }
 
     private void cleanup() {
-        deleteTempDirectory();
+        if (deleteTempDirectory) {
+            deleteAll(tempDirectory());
+        }
         featureHandler.forEachFeature(Feature::cleanup);
     }
 
@@ -1665,7 +1666,7 @@ public class NativeImageGenerator {
     }
 
     private Path tempDirectory;
-    private volatile boolean deleteTempDirectory;
+    private boolean deleteTempDirectory;
 
     public synchronized Path tempDirectory() {
         if (tempDirectory == null) {
@@ -1686,30 +1687,19 @@ public class NativeImageGenerator {
         return tempDirectory.toAbsolutePath();
     }
 
-    private void deleteTempDirectory() {
-        if (!deleteTempDirectory) {
-            return;
-        }
+    private static void deleteAll(Path path) {
         try {
-            Files.walkFileTree(tempDirectory(), new SimpleFileVisitor<Path>() {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    deleteImpl(file);
+                    Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    deleteImpl(dir);
+                    Files.delete(dir);
                     return FileVisitResult.CONTINUE;
-                }
-
-                private void deleteImpl(Path file) throws IOException {
-                    try {
-                        Files.delete(file);
-                    } catch (AccessDeniedException e) {
-                        // we cannot do anything about access denied
-                    }
                 }
             });
         } catch (IOException ex) {
