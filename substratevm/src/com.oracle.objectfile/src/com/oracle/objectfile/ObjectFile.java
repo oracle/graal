@@ -1212,7 +1212,6 @@ public abstract class ObjectFile {
             try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
                 writeBuffer(sortedObjectFileElements, buffer);
             }
-            outputChannel.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
