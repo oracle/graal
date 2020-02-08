@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -155,9 +156,8 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.GLibc;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.c.libc.Libc;
 import com.oracle.svm.core.c.libc.MuslLibc;
+import com.oracle.svm.core.c.libc.Libc;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -1700,11 +1700,7 @@ public class NativeImageGenerator {
 
                 @Override
                 public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    if (Files.isDirectory(dir) && !Files.list(dir).findAny().isPresent()) {
-                        // only delete dir if it is empty.
-                        // dirs might not be empty if a file deletion got an access denied error.
-                        deleteImpl(dir);
-                    }
+                    deleteImpl(dir);
                     return FileVisitResult.CONTINUE;
                 }
 
