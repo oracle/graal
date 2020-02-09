@@ -220,6 +220,7 @@ def _get_component_type_base(c, apply_substitutions=False):
         result = get_final_graalvm_distribution().path_substitutions.substitute(result)
     return result
 
+
 def _get_jdk_base(jdk):
     jdk_dir = jdk.home
     if jdk_dir.endswith(os.path.sep):
@@ -230,6 +231,14 @@ def _get_jdk_base(jdk):
     else:
         jdk_base = '.'
     return jdk_dir, jdk_base
+
+
+def _get_macros_dir():
+    svm_component = get_component('svm', stage1=True)
+    if not svm_component:
+        return None
+    return _get_component_type_base(svm_component) + svm_component.dir_name + '/macros'
+
 
 _src_jdk = mx_sdk_vm.base_jdk()
 _src_jdk_version = mx_sdk_vm.base_jdk_version()
@@ -243,6 +252,7 @@ _src_jdk_version = mx_sdk_vm.base_jdk_version()
 #     _src_jdk_base = .
 _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
 
+
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
                  add_jdk_base=False,
@@ -253,6 +263,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components
+        self.with_polyglot_launcher = with_polyglot_launcher
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -366,11 +377,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
             if svm_component and (component is None or has_component(component.short_name, stage1=False)):
                 # create macro to build this launcher
-                _macro_dir = _get_component_type_base(svm_component) + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
+                _macro_dir = _get_macros_dir() + '/' + GraalVmNativeProperties.macro_name(image_config) + '/'
                 _project_name = GraalVmNativeProperties.project_name(image_config)
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
-                if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
-                    _add(layout, _macro_dir, 'dependency:{}'.format(_project_name) + '/polyglot.config', component)
                 # Add profiles
                 for profile in _image_profile(GraalVmNativeProperties.canonical_image_name(image_config)):
                     _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
@@ -582,11 +591,12 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 graalvm_dists.update(_launcher_config.jar_distributions)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
-                _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
+                launcher_project = GraalVmLauncher.launcher_project_name(_launcher_config, stage1)
+                _add(layout, _launcher_dest, 'dependency:' + launcher_project, _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported():
-                    _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/*.debug', _component)
+                    _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*.debug', _component)
                     if _include_sources():
-                        _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
+                        _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/sources', _component)
                 # add links from jre/bin to launcher
                 if _launcher_config.default_symlinks:
                     _link_path = _add_link(_jdk_jre_bin, _launcher_dest, _component)
@@ -600,6 +610,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
+                if with_polyglot_launcher and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
+                    _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in _get_library_configs(_component):
                 graalvm_dists.update(_library_config.jar_distributions)
                 if _library_config.jvm_library:
@@ -614,6 +626,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
                 _add_native_image_macro(_library_config, _component)
 
+            if _src_jdk_version == 8:
+                graalvm_dists.difference_update(_component.boot_jars)
+            graalvm_dists.difference_update(_component.jar_distributions)
+            graalvm_dists.difference_update(_component.jvmci_parent_jars)
+            graalvm_dists.difference_update(_component.builder_jar_distributions)
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
@@ -1043,18 +1060,9 @@ class GraalVmNativeProperties(GraalVmProject):
     def getArchivableResults(self, use_relpath=True, single=False):
         out = self.properties_output_file()
         yield out, basename(out)
-        if not single and isinstance(self.image_config, mx_sdk.LanguageLauncherConfig):
-            out = self.polyglot_config_output_file()
-            yield out, basename(out)
-
-    def _output_file(self, filename):
-        return join(self.get_output_base(), filename, GraalVmNativeProperties.macro_name(self.image_config), filename)
 
     def properties_output_file(self):
-        return self._output_file("native-image.properties")
-
-    def polyglot_config_output_file(self):
-        return self._output_file("polyglot.config")
+        return join(self.get_output_base(), "native-image.properties", GraalVmNativeProperties.macro_name(self.image_config), "native-image.properties")
 
     def getBuildTask(self, args):
         return NativePropertiesBuildTask(self, args)
@@ -1103,7 +1111,6 @@ def _file_needs_build(newest_input, filepath, contents_getter):
     return None
 
 
-
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         """
@@ -1111,28 +1118,15 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         """
         super(NativePropertiesBuildTask, self).__init__(args, 1, subject)
         self._contents = None
-        self._polyglot_config_contents = None
         self._location_classpath = None
 
     def newestOutput(self):
-        if isinstance(self.subject.image_config, mx_sdk.LanguageLauncherConfig):
-            return mx.TimeStampFile(self.subject.polyglot_config_output_file())
         return mx.TimeStampFile(self.subject.properties_output_file())
 
     def __str__(self):
         graalvm_dist = get_final_graalvm_distribution()
         gralvm_location = graalvm_dist.find_single_source_location('dependency:' + self.subject.name)
         return "Creating native-image.properties for " + basename(dirname(gralvm_location))
-
-    def polyglot_config_contents(self):
-        if self._polyglot_config_contents is None:
-            image_config = self.subject.image_config
-            assert isinstance(image_config, mx_sdk.LanguageLauncherConfig)
-            language = image_config.language
-            classpath = self._get_location_classpath()
-            main_class = image_config.main_class
-            return u"|".join((language, u":".join(classpath), main_class))
-        return self._polyglot_config_contents
 
     def _get_location_classpath(self):
         if self._location_classpath is None:
@@ -1192,8 +1186,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                 build_args += ['--language:' + image_config.language, '--tool:all']
-            elif isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
-                build_args += ['-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..']
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -1257,17 +1249,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
     def build(self):
         with mx.SafeFileCreation(self.subject.properties_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.contents())
-        if isinstance(self.subject.image_config, mx_sdk.LanguageLauncherConfig):
-            with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
-                f.write(self.polyglot_config_contents())
 
     def needsBuild(self, newestInput):
         sup = super(NativePropertiesBuildTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
         reason = _file_needs_build(newestInput, self.subject.properties_output_file(), self.contents)
-        if not reason and isinstance(self.subject.image_config, mx_sdk.LanguageLauncherConfig):
-            reason = _file_needs_build(newestInput, self.subject.polyglot_config_output_file(), self.polyglot_config_contents)
         if reason:
             return True, reason
         return False, None
@@ -1275,8 +1262,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
     def clean(self, forBuild=False):
         if exists(self.subject.properties_output_file()):
             os.unlink(self.subject.properties_output_file())
-        if exists(self.subject.polyglot_config_output_file()):
-            os.unlink(self.subject.polyglot_config_output_file())
 
 
 class GraalVmJvmciParentClasspath(GraalVmProject):  # based on GraalVmNativeProperties
@@ -1566,34 +1551,48 @@ class GraalVmLibrary(GraalVmNativeImage):
             return mx.NoOpTask(self, args)
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        if self.is_skipped():
-            yield None, None
-            return
         for e in super(GraalVmLibrary, self).getArchivableResults(use_relpath=use_relpath, single=single):
             yield e
             if single:
                 return
         output_dir = dirname(self.output_file())
-        for e in os.listdir(output_dir):
-            absolute_path = join(output_dir, e)
-            if isfile(absolute_path) and e.endswith('.h'):
-                yield absolute_path, e
+        if exists(output_dir):
+            for e in os.listdir(output_dir):
+                absolute_path = join(output_dir, e)
+                if isfile(absolute_path) and e.endswith('.h'):
+                    yield absolute_path, e
 
     def is_skipped(self):
         return _skip_libraries(self.native_image_config)
 
 
-class GraalVmMiscLauncher(GraalVmLauncher):     #pylint: disable=too-many-ancestors
+class GraalVmMiscLauncher(GraalVmLauncher):  # pylint: disable=too-many-ancestors
     def __init__(self, component, native_image_config, stage1=False, **kw_args):
         super(GraalVmMiscLauncher, self).__init__(component, GraalVmLauncher.launcher_project_name(native_image_config, stage1=stage1), [], native_image_config, stage1=stage1, **kw_args)
 
 
-class GraalVmLanguageLauncher(GraalVmLauncher): #pylint: disable=too-many-ancestors
+class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ancestors
     def __init__(self, component, native_image_config, stage1=False, **kw_args):
         super(GraalVmLanguageLauncher, self).__init__(component, GraalVmLauncher.launcher_project_name(native_image_config, stage1=stage1), [], native_image_config, stage1=stage1, **kw_args)
 
+    def polyglot_config_output_file(self):
+        return join(self.get_output_base(), self.name, "polyglot.config")
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for e in super(GraalVmLanguageLauncher, self).getArchivableResults(use_relpath=use_relpath, single=single):
+            yield e
+            if single:
+                return
+        if self.get_containing_graalvm().with_polyglot_launcher:
+            out = self.polyglot_config_output_file()
+            yield out, basename(out)
+
 
 class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+    def __init__(self, args, parallelism, project):
+        super(GraalVmNativeImageBuildTask, self).__init__(args, parallelism, project)
+        self._polyglot_config_contents = None
+
     def needsBuild(self, newestInput):
         sup = super(GraalVmNativeImageBuildTask, self).needsBuild(newestInput)
         if sup[0]:
@@ -1606,19 +1605,48 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         reason = self.native_image_needs_build(out_file)
         if reason:
             return True, reason
+        if self.with_polyglot_config():
+            reason = _file_needs_build(newestInput, self.subject.polyglot_config_output_file(), self.polyglot_config_contents)
+            if reason:
+                return True, reason
         return False, None
+
+    def polyglot_config_contents(self):
+        if self._polyglot_config_contents is None:
+            image_config = self.subject.native_image_config
+            assert self.with_polyglot_config()
+            graalvm_dist = self.subject.get_containing_graalvm()
+            graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:{}/polyglot.config'.format(self.subject.name)))
+            classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component)
+            main_class = image_config.main_class
+            return u"|".join((u":".join(classpath), main_class))
+        return self._polyglot_config_contents
+
+    def with_polyglot_config(self):
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and self.subject.get_containing_graalvm().with_polyglot_launcher
 
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
         return None
 
     def newestOutput(self):
-        return mx.TimeStampFile(self.subject.output_file())
+        paths = [self.subject.output_file()]
+        if self.with_polyglot_config():
+            paths.append(self.subject.polyglot_config_output_file())
+        return mx.TimeStampFile.newest(paths)
+
+    def build(self):
+        if self.with_polyglot_config():
+            with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+                f.write(self.polyglot_config_contents())
 
     def clean(self, forBuild=False):
         out_file = self.subject.output_file()
         if exists(out_file):
             os.unlink(out_file)
+        if self.with_polyglot_config():
+            if exists(self.subject.polyglot_config_output_file()):
+                os.unlink(self.subject.polyglot_config_output_file())
 
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
@@ -1646,6 +1674,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         return None
 
     def build(self):
+        super(GraalVmBashLauncherBuildTask, self).build()
         output_file = self.subject.output_file()
         mx.ensure_dir_exists(dirname(output_file))
         graal_vm = self.subject.get_containing_graalvm()
@@ -1666,13 +1695,15 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return self.subject.native_image_config.main_class
 
         def _get_extra_jvm_args():
-            return mx.list_to_cmd_line(self.subject.native_image_config.extra_jvm_args)
+            image_config = self.subject.native_image_config
+            return mx.list_to_cmd_line(image_config.extra_jvm_args)
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
+        _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
@@ -1760,6 +1791,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         self.svm_support = svm_support
 
     def build(self):
+        super(GraalVmSVMNativeImageBuildTask, self).build()
         build_args = self.get_build_args()
         output_file = self.subject.output_file()
         mx.ensure_dir_exists(dirname(output_file))
@@ -1997,6 +2029,8 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             launcher_configs = _get_launcher_configs(comp)
 
             for path, source in graalvm._walk_layout():
+                if support_dir_pattern == support_dir_pattern and source['source_type'] == 'dependency' and source['path'] == 'polyglot.config':
+                    continue
                 if path.startswith(support_dir_pattern):
                     path_from_home = path.split(support_dir_pattern, 1)[1]
                     # take only the distributions that are not JAR distributions

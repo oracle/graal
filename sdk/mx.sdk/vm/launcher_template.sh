@@ -99,6 +99,15 @@ for o in "$@"; do
                 absolute_cp+=("${e}")
             done
         fi
+    elif [[ "$o" == --native || "$o" == --native.* ]]; then
+        >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$o'."
+        if [[ $(basename "$source") == polyglot ]]; then
+            extra=' --language:all'
+        else
+            extra=''
+        fi
+        >&2 echo "If native-image is installed, you may build it with 'native-image --macro:<macro_name>$extra'."
+        exit 1
     else
         launcher_args+=("$o")
     fi

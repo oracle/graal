@@ -75,8 +75,8 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
-import org.graalvm.home.HomeFinder;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
@@ -573,7 +573,7 @@ public abstract class Launcher {
     /**
      * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
      * {@code jre/bin} directory.
-     * 
+     *
      * @param binaryName binary name, without path.
      * @return OS-dependent binary filename.
      */
@@ -1216,9 +1216,10 @@ public abstract class Launcher {
                 remainingArgs.add(arg);
             }
         }
-
+        boolean isDefaultVMType = false;
         if (vmType == null) {
             vmType = defaultVmType;
+            isDefaultVMType = true;
         }
 
         if (vmType == VMType.JVM) {
@@ -1248,7 +1249,7 @@ public abstract class Launcher {
                 if (isStandalone()) {
                     throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
                 }
-                executeNativePolyglot(remainingArgs, polyglotOptions);
+                executePolyglot(remainingArgs, polyglotOptions, !isDefaultVMType);
             }
         }
     }
@@ -1269,12 +1270,12 @@ public abstract class Launcher {
     /**
      * Called to execute polyglot binary with the supplied options. Subclasses may eventually
      * override and implement in a different way.
-     * 
+     *
      * @param mainArgs program arguments
      * @param polyglotOptions polyglot options
      */
-    protected void executeNativePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions) {
-        nativeAccess.execNativePolyglot(mainArgs, polyglotOptions);
+    protected void executePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions, boolean forceNative) {
+        nativeAccess.executePolyglot(mainArgs, polyglotOptions, forceNative);
     }
 
     class Native {
@@ -1489,10 +1490,12 @@ public abstract class Launcher {
             }
         }
 
-        private void execNativePolyglot(List<String> args, Map<String, String> polyglotOptions) {
+        private void executePolyglot(List<String> args, Map<String, String> polyglotOptions, boolean forceNative) {
             List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 3);
             Path executable = getGraalVMBinaryPath("polyglot");
-            command.add("--native");
+            if (forceNative) {
+                command.add("--native");
+            }
             command.add("--use-launcher");
             command.add(getMainClass());
             serializePolyglotOptions(polyglotOptions, command);
