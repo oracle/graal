@@ -81,9 +81,8 @@ def igv(args):
     mx.warn(
         """IGV (idealgraphvisualizer) is available from
     https://www.oracle.com/technetwork/graalvm/downloads/index.html
-Please download the distribution and run
+Please download the Ideal Graph Visualizer (IGV) install and run
     bin/idealgraphvisualizer
-from the GraalVM EE installation.
 """)
 
 def c1visualizer(args):
