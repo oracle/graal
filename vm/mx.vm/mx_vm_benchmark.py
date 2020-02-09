@@ -272,7 +272,7 @@ class NativeImageVM(GraalVm):
             if needs_config:
                 base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
             if self.is_llvm:
-                base_image_build_args += ['-H:CompilerBackend=llvm']
+                base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature']
             base_image_build_args += config.extra_image_build_arguments
 
             # PGO instrumentation
