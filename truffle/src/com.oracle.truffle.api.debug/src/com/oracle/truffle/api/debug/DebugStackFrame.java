@@ -45,6 +45,7 @@ import java.util.Iterator;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -233,6 +234,54 @@ public final class DebugStackFrame {
         }
     }
 
+    /**
+     * Returns the current node for this stack frame, or <code>null</code> if the requesting
+     * language class does not match the root node guest language.
+     * 
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the node associated with the frame
+     *
+     * @since 20.1
+     */
+    public Node getRawNode(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = findCurrentRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? getCurrentNode() : null;
+    }
+
+    /**
+     * Returns the underlying materialized frame for this debug stack frame or <code>null</code> if
+     * the requesting language class does not match the root node guest language.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the materialized frame
+     *
+     * @since 20.1
+     */
+    public MaterializedFrame getRawFrame(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = findCurrentRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? findTruffleFrame() : null;
+    }
+
     DebugValue wrapHeapValue(Object result) {
         LanguageInfo language;
         RootNode root = findCurrentRoot();
@@ -322,6 +371,22 @@ public final class DebugStackFrame {
             Node callNode = currentFrame.getCallNode();
             if (callNode != null) {
                 return callNode.getRootNode();
+            }
+            CallTarget target = currentFrame.getCallTarget();
+            if (target instanceof RootCallTarget) {
+                return ((RootCallTarget) target).getRootNode();
+            }
+            return null;
+        }
+    }
+
+    Node getCurrentNode() {
+        if (currentFrame == null) {
+            return getContext().getInstrumentedNode();
+        } else {
+            Node callNode = currentFrame.getCallNode();
+            if (callNode != null) {
+                return callNode;
             }
             CallTarget target = currentFrame.getCallTarget();
             if (target instanceof RootCallTarget) {

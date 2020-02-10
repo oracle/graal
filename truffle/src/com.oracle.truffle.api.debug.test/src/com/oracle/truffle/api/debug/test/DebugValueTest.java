@@ -49,6 +49,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -97,6 +98,50 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertEquals("source integer", integerSS.getCharacters());
                 SourceSection infinitySS = frame.getScope().getDeclaredValue("inf").getSourceLocation();
                 assertEquals("source infinity", infinitySS.getCharacters());
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testGetRawValue() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue value42 = frame.getScope().getDeclaredValue("a");
+                assertEquals(42, value42.getRawValue(InstrumentationTestLanguage.class));
+                assertEquals(Double.POSITIVE_INFINITY, frame.getScope().getDeclaredValue("inf").getRawValue(InstrumentationTestLanguage.class));
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testGetRawValueRestricted() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue value42 = frame.getScope().getDeclaredValue("a");
+                assertNull(value42.getRawValue(ProxyLanguage.class));
+                assertNull(frame.getScope().getDeclaredValue("inf").getRawValue(ProxyLanguage.class));
             });
 
             expectDone();

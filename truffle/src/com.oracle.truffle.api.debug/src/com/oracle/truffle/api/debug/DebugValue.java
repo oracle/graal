@@ -44,12 +44,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -190,7 +193,7 @@ public abstract class DebugValue {
      * variables declared on a stack. It's <code>null<code> for object properties and other heap
      * values.
      *
-     * @return the scope, or <code>null</code> when this value does not belong into any scope.
+     * &#64;return the scope, or <code>null</code> when this value does not belong into any scope.
      *
      * @since 0.26
      */
@@ -334,6 +337,30 @@ public abstract class DebugValue {
             return new ValueInteropList(getSession(), resolveLanguage(), value);
         }
         return null;
+    }
+
+    /**
+     * Returns the underlying guest value object held by this {@link DebugValue}.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the guest language object or null if the language differs from the language that
+     *         created the underlying {@link DebugValue}
+     *
+     * @since 20.1
+     */
+    public Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = getScope().getRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? get() : null;
     }
 
     final LanguageInfo resolveLanguage() {

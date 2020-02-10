@@ -974,7 +974,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    static class ThrowNode extends InstrumentedNode {
+    public static class ThrowNode extends InstrumentedNode {
 
         private final String type;
         private final String message;
@@ -994,7 +994,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return new TestLanguageException(type, message, this);
         }
 
-        private static class TestLanguageException extends RuntimeException implements TruffleException {
+        public static class TestLanguageException extends RuntimeException implements TruffleException {
 
             private static final long serialVersionUID = 2709459650157465163L;
 

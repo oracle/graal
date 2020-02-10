@@ -42,6 +42,7 @@ package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -51,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -353,6 +355,106 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             fail();
         } catch (IllegalStateException s) {
         }
+    }
+
+    @Test
+    public void testRawNodes() {
+        int depth = 5;
+        TestStackLanguage language = new TestStackLanguage(depth);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(TestStackLanguage.TestStackRootNode.class, frame.getRawNode(ProxyLanguage.class).getRootNode().getClass());
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                for (int d = depth; d > 0; d--) {
+                    assertTrue("Depth: " + d, stackFrames.hasNext());
+                    frame = stackFrames.next();
+                    assertEquals(TestStackLanguage.TestStackRootNode.class, frame.getRawNode(ProxyLanguage.class).getRootNode().getClass());
+                }
+                assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testRawNodesRestricted() {
+        int depth = 5;
+        TestStackLanguage language = new TestStackLanguage(depth);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals(null, frame.getRawNode(InstrumentationTestLanguage.class));
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                for (int d = depth; d > 0; d--) {
+                    assertTrue("Depth: " + d, stackFrames.hasNext());
+                    frame = stackFrames.next();
+                    assertEquals(null, frame.getRawNode(InstrumentationTestLanguage.class));
+                }
+                assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testRawFrame() {
+        int depth = 5;
+        TestStackLanguage language = new TestStackLanguage(depth);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                for (int d = depth; d > 0; d--) {
+                    assertTrue("Depth: " + d, stackFrames.hasNext());
+                    frame = stackFrames.next();
+                    assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                }
+                assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testRawFrameRestricted() {
+        int depth = 5;
+        TestStackLanguage language = new TestStackLanguage(depth);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                for (int d = depth; d > 0; d--) {
+                    assertTrue("Depth: " + d, stackFrames.hasNext());
+                    frame = stackFrames.next();
+                    assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                }
+                assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
     }
 
     static final class TestStackLanguage extends ProxyLanguage {

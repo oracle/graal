@@ -271,6 +271,10 @@ public final class DebugScope {
         return getVariables().get(name);
     }
 
+    RootNode getRoot() {
+        return root;
+    }
+
     private ValuePropertiesCollection getVariables() {
         verifyValidState();
         try {
