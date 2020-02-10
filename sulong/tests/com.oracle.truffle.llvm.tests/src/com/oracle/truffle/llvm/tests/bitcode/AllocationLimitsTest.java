@@ -179,6 +179,12 @@ public class AllocationLimitsTest {
     }
 
     @Test
+    public void arrayNegativeOffset() {
+        Value v = library.getMember("alloca_array_negative_offset").execute();
+        Assert.assertEquals(2, v.asLong());
+    }
+
+    @Test
     public void allocaArrayExceedSize() {
         exception.expect(PolyglotException.class);
         exception.expectMessage(EXCEEDS_LIMIT);
