@@ -1116,10 +1116,9 @@ if not mx.is_windows():
         dependencies=['SubstrateVM'],
         builder_jar_distributions=[
             'substratevm:SVM_LLVM',
-            'compiler:GRAAL_LLVM',
-            'compiler:LLVM_WRAPPER_SHADOWED',
-            'compiler:JAVACPP_SHADOWED',
-            'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+            'substratevm:LLVM_WRAPPER_SHADOWED',
+            'substratevm:JAVACPP_SHADOWED',
+            'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
         ],
     ))
 

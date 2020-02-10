@@ -32,14 +32,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.llvm.LLVMUtils;
-import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -50,14 +49,12 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.llvm.LLVMGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -65,6 +62,9 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
+import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
+import com.oracle.svm.core.graal.llvm.runtime.LLVMPersonalityFunction;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
@@ -257,140 +257,5 @@ public class LLVMFeature implements Feature, GraalFeature {
 
             return output;
         }
-    }
-}
-
-@AutomaticFeature
-@Platforms(Platform.AMD64.class)
-class LLVMAMD64TargetSpecificFeature implements Feature {
-    private static final int AMD64_RSP_IDX = 7;
-    private static final int AMD64_RBP_IDX = 6;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("llvm");
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
-            @Override
-            public String getRegisterInlineAsm(String register) {
-                return "movq %" + register + ", $0";
-            }
-
-            @Override
-            public String getJumpInlineAsm() {
-                return "jmpq *$0";
-            }
-
-            @Override
-            public String getLLVMArchName() {
-                return "x86-64";
-            }
-
-            /*
-             * The return address is pushed to the stack just before each call, but is not part of
-             * the stack frame of the callee. It is therefore not accounted for in either call
-             * frame.
-             */
-            @Override
-            public int getCallFrameSeparation() {
-                return FrameAccess.returnAddressSize();
-            }
-
-            /*
-             * The frame pointer is stored as the first element on the stack, just below the return
-             * address.
-             */
-            @Override
-            public int getFramePointerOffset() {
-                return -FrameAccess.wordSize();
-            }
-
-            @Override
-            public int getStackPointerDwarfRegNum() {
-                return AMD64_RSP_IDX;
-            }
-
-            @Override
-            public int getFramePointerDwarfRegNum() {
-                return AMD64_RBP_IDX;
-            }
-
-            @Override
-            public List<String> getLLCAdditionalOptions() {
-                return Collections.singletonList("-no-x86-call-frame-opt");
-            }
-        });
-    }
-}
-
-@AutomaticFeature
-@Platforms(Platform.AARCH64.class)
-class LLVMAArch64TargetSpecificFeature implements Feature {
-    private static final int AARCH64_FP_IDX = 29;
-    private static final int AARCH64_SP_IDX = 31;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("llvm");
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
-            @Override
-            public String getRegisterInlineAsm(String register) {
-                return "MOV $0, " + getLLVMRegisterName(register);
-            }
-
-            @Override
-            public String getJumpInlineAsm() {
-                return "BR $0";
-            }
-
-            @Override
-            public String getLLVMArchName() {
-                return "aarch64";
-            }
-
-            /*
-             * The return address is not saved on the stack on ARM, so the stack frames have no
-             * space inbetween them.
-             */
-            @Override
-            public int getCallFrameSeparation() {
-                return 0;
-            }
-
-            /*
-             * The frame pointer is stored below the saved value for the link register.
-             */
-            @Override
-            public int getFramePointerOffset() {
-                return -2 * FrameAccess.wordSize();
-            }
-
-            @Override
-            public int getStackPointerDwarfRegNum() {
-                return AARCH64_SP_IDX;
-            }
-
-            @Override
-            public int getFramePointerDwarfRegNum() {
-                return AARCH64_FP_IDX;
-            }
-
-            @Override
-            public List<String> getLLCAdditionalOptions() {
-                return Collections.singletonList("--frame-pointer=all");
-            }
-
-            @Override
-            public String getLLVMRegisterName(String register) {
-                return register.replace("r", "x");
-            }
-        });
     }
 }

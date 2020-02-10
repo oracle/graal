@@ -24,23 +24,22 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMOptions.IncludeLLVMDebugInfo;
+import static com.oracle.svm.core.graal.llvm.util.LLVMOptions.IncludeLLVMDebugInfo;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
 
+import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.llvm.LLVMCompilerBackend;
-import org.graalvm.compiler.core.llvm.LLVMGenerationProvider;
-import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
-import org.graalvm.compiler.core.llvm.LLVMGenerator;
-import org.graalvm.compiler.core.llvm.LLVMIRBuilder;
-import org.graalvm.compiler.core.llvm.NodeLLVMBuilder;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
@@ -61,7 +60,11 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenerationProvider {
+public class SubstrateLLVMBackend extends SubstrateBackend {
+    private static final TimerKey EmitLLVM = DebugContext.timer("EmitLLVM").doc("Time spent generating LLVM from HIR.");
+    private static final TimerKey Populate = DebugContext.timer("EmitCode").doc("Time spent populating the compilation result.");
+    private static final TimerKey BackEnd = DebugContext.timer("BackEnd").doc("Time spent in EmitLLVM and Populate.");
+
     public SubstrateLLVMBackend(Providers providers) {
         super(providers);
     }
@@ -78,7 +81,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         CompilationResult result = new CompilationResult(identifier);
         LLVMGenerationResult genResult = new LLVMGenerationResult(method);
         LLVMContextRef context = LLVM.LLVMContextCreate();
-        SubstrateLLVMGenerator generator = new SubstrateLLVMGenerator(getProviders(), genResult, method, context, 0);
+        LLVMGenerator generator = new LLVMGenerator(getProviders(), genResult, method, context, 0);
         LLVMIRBuilder builder = generator.getBuilder();
 
         builder.addMainFunction(generator.getLLVMFunctionType(method, true));
@@ -121,24 +124,73 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
     }
 
     @Override
-    public void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+    @SuppressWarnings("try")
+    public void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, CompilationResult result, CompilationResultBuilderFactory factory,
                     RegisterConfig config, LIRSuites lirSuites) {
-        LLVMCompilerBackend.emitBackEnd(this, graph, compilationResult);
+        DebugContext debug = graph.getDebug();
+        try (DebugContext.Scope s = debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start(debug)) {
+            LLVMGenerationResult genRes = emitLLVM(graph);
+            result.setHasUnsafeAccess(graph.hasUnsafeAccess());
+            try (DebugCloseable p = Populate.start(debug)) {
+                genRes.populate(result, graph);
+            }
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        } finally {
+            graph.checkCancellation();
+        }
     }
 
-    @Override
-    public LLVMGenerator newLLVMGenerator(LLVMGenerationResult result) {
-        LLVMContextRef context = LLVM.LLVMContextCreate();
-        return new SubstrateLLVMGenerator(getProviders(), result, result.getMethod(), context, IncludeLLVMDebugInfo.getValue());
+    @SuppressWarnings("try")
+    private LLVMGenerationResult emitLLVM(StructuredGraph graph) {
+        DebugContext debug = graph.getDebug();
+        try (DebugContext.Scope ds = debug.scope("EmitLLVM"); DebugCloseable a = EmitLLVM.start(debug)) {
+            assert !graph.hasValueProxies();
+
+            ResolvedJavaMethod method = graph.method();
+            LLVMContextRef context = LLVM.LLVMContextCreate();
+            LLVMGenerationResult genResult = new LLVMGenerationResult(graph.method());
+            LLVMGenerator generator = new LLVMGenerator(getProviders(), genResult, method, context, IncludeLLVMDebugInfo.getValue());
+            NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
+
+            /* LLVM generation */
+            generate(nodeBuilder, graph);
+
+            try (DebugContext.Scope s = debug.scope("LIRStages", nodeBuilder, genResult, null)) {
+                /* Dump LIR along with HIR (the LIR is looked up from context) */
+                debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
+                return genResult;
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        } finally {
+            graph.checkCancellation();
+        }
     }
 
-    @Override
-    public NodeLLVMBuilder newNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator generator) {
-        return new SubstrateNodeLLVMBuilder(graph, generator, getRuntimeConfiguration());
+    protected NodeLLVMBuilder newNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator generator) {
+        return new NodeLLVMBuilder(graph, generator, getRuntimeConfiguration());
     }
 
-    @Override
-    public LLVMGenerationResult newLLVMGenerationResult(ResolvedJavaMethod method) {
-        return new SubstrateLLVMGenerationResult(method);
+    protected static void generate(NodeLLVMBuilder nodeBuilder, StructuredGraph graph) {
+        StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
+        LLVMGenerationResult genResult = nodeBuilder.getLIRGeneratorTool().getLLVMResult();
+        for (Block b : schedule.getCFG().getBlocks()) {
+            assert !genResult.isProcessed(b) : "Block already processed " + b;
+            assert verifyPredecessors(genResult, b);
+            nodeBuilder.doBlock(b, graph, schedule.getBlockToNodesMap());
+        }
+        nodeBuilder.finish();
+    }
+
+    private static boolean verifyPredecessors(LLVMGenerationResult genResult, Block block) {
+        for (Block pred : block.getPredecessors()) {
+            if (!block.isLoopHeader() || !pred.isLoopEnd()) {
+                assert genResult.isProcessed(pred) : "Predecessor not yet processed " + pred;
+            }
+        }
+        return true;
     }
 }
