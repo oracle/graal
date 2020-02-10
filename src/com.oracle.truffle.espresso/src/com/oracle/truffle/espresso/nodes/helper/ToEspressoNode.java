@@ -9,10 +9,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateUncached
 abstract class ToEspressoNode extends Node {
@@ -38,6 +41,13 @@ abstract class ToEspressoNode extends Node {
 
     private static Object convertImpl(Object value, Klass targetType, InteropLibrary interop) throws UnsupportedMessageException, UnsupportedTypeException {
         Symbol<Type> type = targetType.getType();
+        if (value instanceof StaticObject) {
+            if (targetType.getJavaKind() == JavaKind.Object) {
+                if (StaticObject.isNull((StaticObject) value) || InterpreterToVM.instanceOf((StaticObject) value, targetType)) {
+                    return value;
+                }
+            }
+        }
         if (interop.isNumber(value)) {
             if (type == Type._byte) {
                 return interop.asByte(value);
