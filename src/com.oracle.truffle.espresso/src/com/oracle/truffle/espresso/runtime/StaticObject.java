@@ -272,7 +272,7 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary
     public StaticObject getFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return (StaticObject) UNSAFE.getObjectVolatile(fields, getObjectFieldIndex(field.getFieldIndex()));
+        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()));
     }
 
     // Not to be used to access hidden fields !
@@ -283,7 +283,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             result = getFieldVolatile(field);
         } else {
-            result = getUnsafeField(field.getFieldIndex());
+            result = castExact(fields, Object[].class)[field.getFieldIndex()];
         }
         assert result != null;
         return (StaticObject) result;
@@ -291,13 +291,13 @@ public final class StaticObject implements TruffleObject {
 
     // Use with caution. Can be used with hidden fields
     public Object getUnsafeField(int fieldIndex) {
-        return UNSAFE.getObject(fields, getObjectFieldIndex(fieldIndex));
+        return UNSAFE.getObject(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
     }
 
     @TruffleBoundary
     public void setFieldVolatile(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putObjectVolatile(fields, getObjectFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()), value);
     }
 
     public void setField(Field field, Object value) {

@@ -173,7 +173,13 @@ public final class Target_java_lang_Class {
 
         // Class names must be interned.
         Meta meta = klass.getMeta();
-        return meta.getStrings().intern(meta.toGuestString(externalName));
+        StaticObject guestString = meta.toGuestString(externalName);
+        return internString(meta, guestString);
+    }
+
+    @TruffleBoundary
+    private static StaticObject internString(Meta meta, StaticObject guestString) {
+        return meta.getStrings().intern(guestString);
     }
 
     @Substitution(hasReceiver = true)

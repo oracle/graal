@@ -34,6 +34,7 @@ _suite = mx.suite('espresso')
 
 class EspressoDefaultTags:
     unittest = 'unittest'
+    unittest_with_compilation = 'unittest_with_compilation'
     jackpot = 'jackpot'
     meta = 'meta'
 
@@ -67,9 +68,19 @@ def _run_espresso_playground(args):
 
 
 def _espresso_gate_runner(args, tasks):
+    with Task('UnitTestsWithCompilation', tasks, tags=[EspressoDefaultTags.unittest_with_compilation]) as t:
+        if t:
+            unittest(['--enable-timing', '--very-verbose', '--suite', 'espresso',
+                      '--', # pass VM options
+                      '-Dgraal.TruffleCompileImmediately=true',
+                      '-Dgraal.TruffleBackgroundCompilation=false',
+                      '-Dgraal.TruffleCompileOnly=espresso',
+                      # '-Dgraal.TraceTruffleCompilation=true', # Too verbose
+                      ])
+
     with Task('UnitTests', tasks, tags=[EspressoDefaultTags.unittest]) as t:
         if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
+            unittest(['--enable-timing', '--very-verbose', '--suite', 'espresso'])
 
     # Jackpot configuration is inherited from Truffle.
     with Task('Jackpot', tasks, tags=[EspressoDefaultTags.jackpot]) as t:
