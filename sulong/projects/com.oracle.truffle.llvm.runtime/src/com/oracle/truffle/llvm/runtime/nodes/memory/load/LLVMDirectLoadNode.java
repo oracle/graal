@@ -54,7 +54,7 @@ public abstract class LLVMDirectLoadNode {
 
         public abstract int getBitWidth();
 
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
             return language.getLLVMMemory().getIVarBit(addr, getBitWidth());
@@ -64,9 +64,10 @@ public abstract class LLVMDirectLoadNode {
             return LLVMIVarBitDirectLoadNodeGen.create(null, getBitWidth());
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)")
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
         protected LLVMIVarBit doIVarBitDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached("createRecursive()") LLVMIVarBitDirectLoadNode load) {
             return load.executeManaged(getReceiver.execute(addr));
         }
@@ -97,15 +98,16 @@ public abstract class LLVMDirectLoadNode {
 
         protected abstract LLVM80BitFloat executeManaged(LLVMManagedPointer addr);
 
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVM80BitFloat do80BitFloatNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
             return language.getLLVMMemory().get80BitFloat(addr);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)")
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
         protected LLVM80BitFloat do80BitFloatDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVM80BitFloatDirectLoadNode load) {
             return load.executeManaged(getReceiver.execute(addr));
         }
@@ -126,15 +128,16 @@ public abstract class LLVMDirectLoadNode {
 
     public abstract static class LLVMPointerDirectLoadNode extends LLVMAbstractLoadNode {
 
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
             return language.getLLVMMemory().getPointer(addr);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)")
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
         protected LLVMPointer doDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return doIndirectedForeign(getReceiver.execute(addr), nativeRead);
         }

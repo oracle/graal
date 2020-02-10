@@ -41,14 +41,15 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, int value,
                     @CachedLanguage LLVMLanguage language) {
         language.getLLVMMemory().putI32(addr, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, int value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);

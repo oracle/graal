@@ -40,15 +40,16 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected short doShortNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return language.getLLVMMemory().getI16(addr);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected short doShortDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doShortManaged(getReceiver.execute(addr), nativeRead);
     }

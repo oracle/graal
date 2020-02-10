@@ -49,14 +49,15 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
     protected abstract void executeManaged(LLVMManagedPointer address, LLVM80BitFloat value);
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value,
                     @CachedLanguage LLVMLanguage language) {
         language.getLLVMMemory().put80BitFloat(addr, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached LLVM80BitFloatStoreNode store) {
         store.executeManaged(getReceiver.execute(addr), value);

@@ -44,22 +44,24 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
 
     private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected long doI64Native(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getI64(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
     protected long doI64DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
         return doI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doI64DerefHandle")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doI64DerefHandle")
     protected Object doGenericI64DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doGenericI64Managed(getReceiver.execute(addr), nativeRead);
     }

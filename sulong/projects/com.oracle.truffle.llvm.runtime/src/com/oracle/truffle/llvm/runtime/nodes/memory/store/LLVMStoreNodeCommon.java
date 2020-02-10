@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
@@ -41,23 +39,17 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
-    @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
-
     protected static LLVMObjectWriteNode createForeignWrite() {
         return LLVMObjectAccessFactory.createWrite();
     }
 
-    protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
-        return isAutoDerefHandle(addr.asNative());
+    protected static boolean isAutoDerefHandle(LLVMLanguage language, LLVMNativePointer addr) {
+        return isAutoDerefHandle(language, addr.asNative());
     }
 
-    protected boolean isAutoDerefHandle(long addr) {
-        if (languageRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            languageRef = lookupLanguageReference(LLVMLanguage.class);
-        }
+    protected static boolean isAutoDerefHandle(LLVMLanguage language, long addr) {
         // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
+        if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
             return false;
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);

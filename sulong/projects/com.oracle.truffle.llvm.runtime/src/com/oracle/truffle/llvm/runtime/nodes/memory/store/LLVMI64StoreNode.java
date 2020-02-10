@@ -42,33 +42,35 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     protected void doOp(LLVMNativePointer address, long value,
                     @CachedLanguage LLVMLanguage language) {
         language.getLLVMMemory().putI64(address, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandleI64(LLVMNativePointer addr, long value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doOpManagedI64(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doOpDerefHandleI64")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
     protected void doOpDerefHandle(LLVMNativePointer addr, Object value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value,
                     @CachedLanguage LLVMLanguage language) {
         language.getLLVMMemory().putI64(address, value.asNative());
     }
 
-    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(addr)")
+    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
                     @CachedLanguage LLVMLanguage language) {

@@ -43,15 +43,16 @@ public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
 
     private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected float doFloatNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getFloat(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected float doFloatDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doFloatManaged(getReceiver.execute(addr), nativeRead);
     }

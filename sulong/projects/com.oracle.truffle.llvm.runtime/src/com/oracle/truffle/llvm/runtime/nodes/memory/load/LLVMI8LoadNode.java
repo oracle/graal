@@ -43,15 +43,16 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
 
     private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected byte doI8Native(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getI8(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected byte doI8DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doI8Managed(getReceiver.execute(addr), nativeRead);
     }

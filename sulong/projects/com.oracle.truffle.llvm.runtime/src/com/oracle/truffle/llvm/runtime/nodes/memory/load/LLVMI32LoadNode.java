@@ -43,15 +43,16 @@ public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
 
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected int doI32Native(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getI32(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected int doI32DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doI32Managed(getReceiver.execute(addr), nativeRead);
     }

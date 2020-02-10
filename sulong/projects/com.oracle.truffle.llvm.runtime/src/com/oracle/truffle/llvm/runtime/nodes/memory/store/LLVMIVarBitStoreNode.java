@@ -48,14 +48,15 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
     protected abstract void executeManaged(LLVMManagedPointer address, LLVMIVarBit value);
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, LLVMIVarBit value,
                     @CachedLanguage LLVMLanguage language) {
         language.getLLVMMemory().putIVarBit(addr, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached LLVMIVarBitStoreNode store) {
         store.executeManaged(getReceiver.execute(addr), value);

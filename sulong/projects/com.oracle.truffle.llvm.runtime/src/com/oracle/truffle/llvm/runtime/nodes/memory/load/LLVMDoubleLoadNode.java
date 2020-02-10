@@ -43,15 +43,16 @@ public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
 
     private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected double doDoubleNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getDouble(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected double doDoubleDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doDoubleManaged(getReceiver.execute(addr), nativeRead);
     }
