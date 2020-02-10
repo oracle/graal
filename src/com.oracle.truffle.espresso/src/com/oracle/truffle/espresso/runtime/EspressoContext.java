@@ -457,17 +457,22 @@ public final class EspressoContext {
                         t.join();
                     }
                 } catch (InterruptedException e) {
-                    System.err.println("Interrupted while stopping thread in closing context.");
+                    EspressoLanguage.EspressoLogger.warning("Thread interrupted while stopping thread in closing context.");
                 }
             }
         }
 
-        hostToGuestReferenceDrainThread.interrupt();
-        try {
-            hostToGuestReferenceDrainThread.join();
-        } catch (InterruptedException e) {
-            // ignore
+        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.interrupt();
+            try {
+                hostToGuestReferenceDrainThread.join();
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        } else {
+            assert !hostToGuestReferenceDrainThread.isAlive();
         }
+
         initiatingThread.interrupt();
     }
 
