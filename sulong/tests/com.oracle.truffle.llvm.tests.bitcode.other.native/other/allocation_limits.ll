@@ -51,6 +51,16 @@ define i64* @alloca_array_exceed_size() {
   ret i64* %2
 }
 
+define i64 @alloca_array_negative_offset() {
+  %1 = alloca [16 x i16], align 16
+  %2 = getelementptr [16 x i16], [16 x i16]* %1, i64 0, i64 -1
+  %3 = bitcast [16 x i16]* %1 to i16*
+  %4 = ptrtoint i16* %2 to i64
+  %5 = ptrtoint i16* %3 to i64
+  %6 = sub i64 %5, %4
+  ret i64 %6
+}
+
 define i64* @alloca_array_overflow_int() {
   %1 = alloca [18446744069414584336 x i8], align 16 ; cast to int would be positive (0xFFFF_FFFF_0000_0010)
   %2 = bitcast [18446744069414584336 x i8]* %1 to i64*
