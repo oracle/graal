@@ -233,7 +233,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "javaProperties": {
-                "espresso.library.path": "<path:ESPRESSO_SUPPORT>/lib",
+                "org.graalvm.java.home": "<path:ESPRESSO_SUPPORT>",
             },
         },
 
