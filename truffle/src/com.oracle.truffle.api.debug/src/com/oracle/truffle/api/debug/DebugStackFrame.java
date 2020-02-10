@@ -379,9 +379,8 @@ public final class DebugStackFrame {
     }
 
     Node getCurrentNode() {
-        SuspendedContext context = getContext();
         if (currentFrame == null) {
-            return context.getInstrumentedNode();
+            return getContext().getInstrumentedNode();
         } else {
             Node callNode = currentFrame.getCallNode();
             if (callNode != null) {

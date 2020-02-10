@@ -89,6 +89,7 @@ meth public com.oracle.truffle.api.debug.DebugValue getExceptionObject()
 meth public com.oracle.truffle.api.source.SourceSection getThrowLocation()
 meth public java.lang.StackTraceElement[] getStackTrace()
 meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getRawException(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.util.List<com.oracle.truffle.api.debug.DebugStackTraceElement> getDebugStackTrace()
 meth public void printStackTrace()
 meth public void printStackTrace(java.io.PrintStream)
@@ -103,14 +104,6 @@ meth public com.oracle.truffle.api.debug.DebugStackFrame getFrame()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 supr java.lang.Object
 hfds depth,frame,frameInstance,section,session
-
-CLSS public final com.oracle.truffle.api.debug.DebugLanguageAccess
-meth public com.oracle.truffle.api.frame.MaterializedFrame getRawFrame(com.oracle.truffle.api.debug.DebugStackFrame)
-meth public com.oracle.truffle.api.nodes.Node getRawNode(com.oracle.truffle.api.debug.DebugStackFrame)
-meth public java.lang.Throwable getRawException(com.oracle.truffle.api.debug.DebugException)
-meth public static com.oracle.truffle.api.debug.DebugLanguageAccess get(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
-supr java.lang.Object
-hfds languageClass
 
 CLSS public final com.oracle.truffle.api.debug.DebugScope
 meth public boolean isFunctionScope()
@@ -130,7 +123,9 @@ meth public boolean equals(java.lang.Object)
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.debug.DebugScope getScope()
 meth public com.oracle.truffle.api.debug.DebugValue eval(java.lang.String)
+meth public com.oracle.truffle.api.frame.MaterializedFrame getRawFrame(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()
+meth public com.oracle.truffle.api.nodes.Node getRawNode(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public int hashCode()
 meth public java.lang.String getName()
@@ -173,6 +168,7 @@ meth public final com.oracle.truffle.api.source.SourceSection getSourceLocation(
 meth public final java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getProperties()
 meth public final java.util.List<com.oracle.truffle.api.debug.Breakpoint> getRootInstanceBreakpoints()
 meth public final java.util.List<com.oracle.truffle.api.debug.DebugValue> getArray()
+meth public java.lang.Object getRawValue(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.lang.String toString()
 supr java.lang.Object
 hfds INTEROP,preferredLanguage

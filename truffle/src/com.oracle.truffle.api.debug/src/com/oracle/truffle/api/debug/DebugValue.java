@@ -351,7 +351,7 @@ public abstract class DebugValue {
      *
      * @since 20.1
      */
-    Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {
+    public Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {
         RootNode rootNode = getScope().getRoot();
         if (rootNode == null) {
             return null;
