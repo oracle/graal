@@ -247,8 +247,9 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableManagement = new OptionKey<>(true);
 
-    // Threads are enabled by default.
-    public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
+    @Option(help = "Enable support for threads (disable for single-threaded implementation)", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(true);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

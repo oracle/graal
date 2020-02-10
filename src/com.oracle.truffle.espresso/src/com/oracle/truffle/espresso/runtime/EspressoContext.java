@@ -205,7 +205,9 @@ public final class EspressoContext {
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env);
         eventListener.vmStarted(getMainThread());
-        hostToGuestReferenceDrainThread.start();
+        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.start();
+        }
     }
 
     public VMListener getJDWPListener() {

@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.graalvm.options.OptionValues;
 
 // @formatter:off
 /**
@@ -194,7 +195,8 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
         // TODO(tg): inject meta
-        if (EspressoOptions.ENABLE_THREADS) {
+        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
+        if (options.get(EspressoOptions.MultiThreaded)) {
             // Thread.start() is synchronized.
             EspressoContext context = self.getKlass().getContext();
             Meta meta = context.getMeta();
@@ -260,8 +262,8 @@ public final class Target_java_lang_Thread {
             context.registerThread(hostThread, self);
             hostThread.start();
         } else {
-            System.err.println(
-                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use -Despresso.EnableThreads=true to enable thread support.");
+            EspressoLanguage.EspressoLogger.warning(
+                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
         }
     }
 
