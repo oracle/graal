@@ -316,6 +316,29 @@ public final class DebugException extends RuntimeException {
         return catchLocation;
     }
 
+    /**
+     * Returns the guest language representation of the exception, or <code>null</code> if the
+     * requesting language class does not match the root node language at the throw location.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the throwable guest language exception object
+     *
+     * @since 20.1
+     */
+    public Throwable getRawException(Class<? extends TruffleLanguage<?>> languageClass) {
+        RootNode rootNode = getThrowLocationNode().getRootNode();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? getRawException() : null;
+    }
+
     Node getThrowLocationNode() {
         return throwLocation;
     }
