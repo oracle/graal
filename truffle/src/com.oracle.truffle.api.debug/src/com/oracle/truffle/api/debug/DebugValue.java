@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -352,6 +353,7 @@ public abstract class DebugValue {
      * @since 20.1
      */
     public Object getRawValue(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
         RootNode rootNode = getScope().getRoot();
         if (rootNode == null) {
             return null;

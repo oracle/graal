@@ -248,6 +248,7 @@ public final class DebugStackFrame {
      * @since 20.1
      */
     public Node getRawNode(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
         RootNode rootNode = findCurrentRoot();
         if (rootNode == null) {
             return null;
@@ -271,6 +272,7 @@ public final class DebugStackFrame {
      * @since 20.1
      */
     public MaterializedFrame getRawFrame(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
         RootNode rootNode = findCurrentRoot();
         if (rootNode == null) {
             return null;
