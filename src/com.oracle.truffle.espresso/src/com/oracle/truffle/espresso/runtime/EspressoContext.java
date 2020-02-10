@@ -111,7 +111,6 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
-    @CompilationFinal private ArrayList<Method> frames;
 
     // Set on calling guest Thread.stop0(), or when closing context.
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
@@ -478,13 +477,9 @@ public final class EspressoContext {
         if (EspressoOptions.RUNNING_ON_SVM) {
             builder = EspressoProperties.newPlatformBuilder() //
                             .javaHome(Engine.findHome().resolve("jre")) //
-                            .espressoLibraryPath(Collections.singletonList(Paths.get(getLanguage().getEspressoHome()).resolve("lib")));
+                            .espressoLibraryPath(Paths.get(getLanguage().getEspressoHome()).resolve("lib"));
         } else {
-            builder = EspressoProperties.inheritFromHostVM();
-            String espressoLibraryPath = System.getProperty("espresso.library.path");
-            if (espressoLibraryPath != null) {
-                builder.espressoLibraryPath(Utils.parsePaths(espressoLibraryPath));
-            }
+            builder = EspressoProperties.newPlatformBuilder();
         }
         vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
 

@@ -190,7 +190,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             libjavaSearchPaths.addAll(props.bootLibraryPath());
             libjavaSearchPaths.addAll(props.javaLibraryPath());
 
-            mokapotLibrary = loadLibrary(props.espressoLibraryPath(), "mokapot");
+            mokapotLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "mokapot");
 
             assert mokapotLibrary != null;
             javaLibrary = loadLibrary(libjavaSearchPaths, "java");

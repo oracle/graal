@@ -87,7 +87,7 @@ public final class EspressoOptions {
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for user Espresso native libraries.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<List<Path>> EspressoLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
+    public static final OptionKey<Path> EspressoLibraryPath = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT) //
