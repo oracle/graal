@@ -218,13 +218,16 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
-                            synchronized (lock) {
-                                initializeTruffleCompiler(firstCallTarget);
-                                assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
-                                assert initializationTask != null;
-                                initializationTask = null;
+                            try {
+                                synchronized (lock) {
+                                    initializeTruffleCompiler(firstCallTarget);
+                                    assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
+                                    assert initializationTask != null;
+                                    initializationTask = null;
+                                }
+                            } finally {
+                                compilerPermits.release();
                             }
-                            compilerPermits.release();
                         }
                     });
                 }

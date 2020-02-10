@@ -32,6 +32,7 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -147,7 +148,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(runtime);
 
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins));
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(ExcludeAssertions.getDefaultValue()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
 
         this.partialEvaluator = createPartialEvaluator();
         this.firstTierProviders = firstTierProviders;
