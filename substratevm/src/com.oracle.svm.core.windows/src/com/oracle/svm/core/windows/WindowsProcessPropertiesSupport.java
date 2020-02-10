@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.core.windows;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,18 +63,23 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
         if (!Files.isExecutable(executable)) {
             throw new RuntimeException("Path " + executable + " does not point to executable file");
         }
-
-        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
-                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
-            /*
-             * On Windows we are not able to replace the current process image with a new process
-             * image and have the new process image take over the STD_{INPUT,OUTPUT,ERROR}_HANDLE
-             * from the current process. Therefore we approximate the Linux behaviour with blocking
-             * _spawnv + immediate exit after return.
-             */
-            int status = Process._spawnv(Process._P_WAIT(), pathHolder.get(), argvHolder.get());
-            System.exit(status);
+        List<String> cmd = new ArrayList<>(args.length);
+        cmd.add(executable.toString());
+        cmd.addAll(Arrays.asList(args).subList(1, args.length));
+        java.lang.Process process = null;
+        try {
+            process = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere();
         }
+        while (process.isAlive()) {
+            try {
+                System.exit(process.waitFor());
+            } catch (InterruptedException e) {
+                // continue
+            }
+        }
+        System.exit(process.exitValue());
     }
 
     @Override
