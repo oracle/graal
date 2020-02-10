@@ -175,7 +175,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         @Specialization(guards = "receiver.isArray()")
         static Object doArray(Klass receiver, Object[] args,
-                                    @CachedLibrary(limit = "1") InteropLibrary indexes) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                        @CachedLibrary(limit = "1") InteropLibrary indexes) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (args.length != 1) {
                 throw ArityException.create(1, args.length);
             }
@@ -197,7 +197,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         @Specialization
         static Object doConstructor(Klass receiver, Object[] arguments,
-                                    @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                        @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             for (Method m : receiver.getDeclaredMethods()) {
                 if (m.isPublic() && Name._init_.equals(m.getName()) && m.getParameterCount() == arguments.length) {
                     StaticObject instance = receiver.allocateInstance();

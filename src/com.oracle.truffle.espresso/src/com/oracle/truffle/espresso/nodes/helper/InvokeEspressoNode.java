@@ -38,7 +38,8 @@ public abstract class InvokeEspressoNode extends Node {
     @Specialization(guards = {"method == cachedMethod"}, limit = "LIMIT")
     Object doCached(Method method, Object receiver, Object[] arguments,
                     @Cached("method") Method cachedMethod,
-                    @Cached(value = "createToHost(method.getParameterCount())", allowUncached = true) ToEspressoNode[] toEspressoNodes) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+                    @Cached(value = "createToHost(method.getParameterCount())", allowUncached = true) ToEspressoNode[] toEspressoNodes)
+                    throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
         int arity = cachedMethod.getParameterCount();
         if (arguments.length != arity) {
             throw ArityException.create(arity, arguments.length);

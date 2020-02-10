@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.launcher;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -298,11 +297,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             }
         }
         throw exit(rc);
-    }
-
-    private void eval(Context context) throws IOException {
-        Source src = Source.newBuilder(getLanguageId(), "", mainClassName).build();
-        context.eval(src);
     }
 
     @Override

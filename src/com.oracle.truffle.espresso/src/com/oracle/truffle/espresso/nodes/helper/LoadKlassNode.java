@@ -32,8 +32,8 @@ public final class LoadKlassNode extends RootNode {
             EspressoContext context = EspressoLanguage.getCurrentContext();
             Meta meta = context.getMeta();
             StaticObject appClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
-            StaticObject guestClass = (StaticObject) meta.java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader)
-                    .invokeDirect(null, meta.toGuestString(className), false, appClassLoader);
+            StaticObject guestClass = (StaticObject) meta.java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader).invokeDirect(null,
+                            meta.toGuestString(className), false, appClassLoader);
             return guestClass.getMirrorKlass();
         } catch (EspressoException e) {
             StaticObject guestException = e.getExceptionObject();
