@@ -158,14 +158,17 @@ final class LLScanner {
         return true;
     }
 
-    private static final Pattern FUNCTION_NAME_REGEX = Pattern.compile("define .* @\"?(?<functionName>\\S+)\"?\\(.*");
+    private static final Pattern FUNCTION_NAME_REGEX = Pattern.compile("define .* @((?<functionNameUnquoted>[^\\s(\"]+)|\"(?<functionNameQuoted>[^\"]+)\")\\(.*");
 
     private void beginFunction(String line) {
         assert function == null;
 
         final Matcher matcher = FUNCTION_NAME_REGEX.matcher(line);
         if (matcher.matches()) {
-            String functionName = matcher.group("functionName");
+            String functionName = matcher.group("functionNameUnquoted");
+            if (functionName == null) {
+                functionName = matcher.group("functionNameQuoted");
+            }
             functionName = LLVMIdentifier.toGlobalIdentifier(functionName);
             function = new LLSourceMap.Function(functionName, currentLine);
             map.registerFunction(functionName, function);
