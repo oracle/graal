@@ -1571,7 +1571,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEINTERFACE:
@@ -1579,7 +1579,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() || resolved.isPrivate()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEVIRTUAL:
@@ -1587,7 +1587,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKESPECIAL:
@@ -1597,14 +1597,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(bs.readCPI(curBCI)).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
-                        throw getMeta().throwException(getMeta().java_lang_NoSuchMethodError);
+                        throw Meta.throwException(getMeta().java_lang_NoSuchMethodError);
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -1758,13 +1758,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 ptypes[i] = meta.resolveSymbol(paramType, accessingKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
-            throw meta.throwException(meta.java_lang_NoClassDefFoundError);
+            throw Meta.throwException(meta.java_lang_NoClassDefFoundError);
         }
         StaticObject rtype;
         try {
             rtype = meta.resolveSymbol(rt, accessingKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
-            throw meta.throwException(meta.java_lang_BootstrapMethodError);
+            throw Meta.throwException(meta.java_lang_BootstrapMethodError);
         }
         return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
@@ -1937,14 +1937,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (value != 0) {
             return value;
         }
-        throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
         if (value != 0L) {
             return value;
         }
-        throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -1970,7 +1970,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             // IncompatibleClassChangeError.
             if (field.isStatic()) {
                 CompilerDirectives.transferToInterpreter();
-                throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
             }
             // Otherwise, if the field is final, it must be declared in the current class, and
             // the instruction must occur in an instance initialization method (<init>) of the
@@ -1980,7 +1980,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 // Enforced in class files >= v53 (9).
                 if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IllegalAccessError);
+                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
                 }
             }
         } else if (opcode == PUTSTATIC) {
@@ -1988,7 +1988,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             // field, putstatic throws an IncompatibleClassChange
             if (!field.isStatic()) {
                 CompilerDirectives.transferToInterpreter();
-                throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
             }
             // Otherwise, if the field is final, it must be declared in the current class, and the
             // instruction must occur in the <clinit> method of the current class. Otherwise, an
@@ -1998,7 +1998,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 // Enforced in class files >= v53 (9).
                 if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
                     CompilerDirectives.transferToInterpreter();
-                    throw getMeta().throwException(getMeta().java_lang_IllegalAccessError);
+                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
                 }
             }
         }
@@ -2100,14 +2100,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             // IncompatibleClassChangeError.
             if (field.isStatic()) {
                 CompilerDirectives.transferToInterpreter();
-                throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
             }
         } else if (opcode == GETSTATIC) {
             // Otherwise, if the resolved field is not a static (class) field or an interface
             // field, getstatic throws an IncompatibleClassChangeError.
             if (!field.isStatic()) {
                 CompilerDirectives.transferToInterpreter();
-                throw getMeta().throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
             }
         }
 

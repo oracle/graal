@@ -243,7 +243,7 @@ public final class ClassfileParser {
 
     private static EspressoException unsupportedClassVersionError(String message) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
+        throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
     }
 
     /**

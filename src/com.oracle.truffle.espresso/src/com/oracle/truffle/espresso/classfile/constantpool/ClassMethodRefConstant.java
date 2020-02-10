@@ -173,7 +173,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
             }
 
             Symbol<Name> name = getName(pool);
@@ -181,13 +181,13 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
             if (method == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
                 System.err.println(EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                 " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
             if (!method.isMethodHandleIntrinsic()) {
