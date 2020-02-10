@@ -484,8 +484,7 @@ public final class EspressoContext {
                 builder.espressoLibraryPath(Utils.parsePaths(espressoLibraryPath));
             }
         }
-
-        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
+        vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
 
     }
 

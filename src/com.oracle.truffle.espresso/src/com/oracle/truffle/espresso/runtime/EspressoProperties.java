@@ -30,6 +30,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -201,7 +203,7 @@ public interface EspressoProperties {
                         .extDirs(Utils.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(Builder builder, OptionValues options) {
+    static Builder processOptions(EspressoLanguage language, Builder builder, OptionValues options) {
         // Always set JavaHome first.
         if (options.hasBeenSet(EspressoOptions.JavaHome)) {
             builder.javaHome(options.get(EspressoOptions.JavaHome));
@@ -209,6 +211,9 @@ public interface EspressoProperties {
 
         if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
             builder.espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
+        } else {
+            Path espressoHome = Paths.get(language.getEspressoHome());
+            builder.espressoLibraryPath(Arrays.asList(espressoHome.resolve("lib")));
         }
 
         if (options.hasBeenSet(EspressoOptions.Classpath)) {
