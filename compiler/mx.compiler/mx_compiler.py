@@ -848,12 +848,8 @@ def _check_using_latest_jars(dists):
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
 
-    argsPrefix = []
-    jacocoArgs = mx_gate.get_jacoco_agent_args()
-    if jacocoArgs:
-        argsPrefix.extend(jacocoArgs)
-
     # add default graal.options.file
+    argsPrefix = []
     options_file = join(mx.primary_suite().dir, 'graal.options')
     if exists(options_file):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
