@@ -49,6 +49,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -201,6 +204,49 @@ public class DebugExceptionTest extends AbstractDebugTest {
                                 "<instrumentation-test-language>.(Unnamed:9)");
             });
             expectDone();
+        }
+    }
+
+    @Test
+    public void testGetRawUncaughtException() {
+        Source testSource = testSource("STATEMENT(THROW(a, b))");
+        Breakpoint uncaughtBreakpoint = Breakpoint.newExceptionBuilder(false, true).build();
+        try (DebuggerSession session = startSession()) {
+            session.install(uncaughtBreakpoint);
+            assertTrue(uncaughtBreakpoint.isResolved()); // Exception breakpoints are resolved right
+            // away
+
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(uncaughtBreakpoint, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.AFTER, event.getSuspendAnchor());
+                DebugException exception = event.getException();
+                assertEquals(InstrumentationTestLanguage.ThrowNode.TestLanguageException.class, exception.getRawException(InstrumentationTestLanguage.class).getClass());
+            });
+            Throwable t = expectThrowable();
+            assertEquals("b", t.getMessage());
+        }
+    }
+
+    @Test
+    public void testGetRawUncaughtExceptionRestricted() {
+        Source testSource = testSource("STATEMENT(THROW(a, b))");
+        Breakpoint uncaughtBreakpoint = Breakpoint.newExceptionBuilder(false, true).build();
+        try (DebuggerSession session = startSession()) {
+            session.install(uncaughtBreakpoint);
+            assertTrue(uncaughtBreakpoint.isResolved()); // Exception breakpoints are resolved right
+            // away
+
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(uncaughtBreakpoint, event.getBreakpoints().iterator().next());
+                assertSame(SuspendAnchor.AFTER, event.getSuspendAnchor());
+                DebugException exception = event.getException();
+                // no access from other languages
+                assertEquals(null, exception.getRawException(ProxyLanguage.class));
+            });
+            Throwable t = expectThrowable();
+            assertEquals("b", t.getMessage());
         }
     }
 
