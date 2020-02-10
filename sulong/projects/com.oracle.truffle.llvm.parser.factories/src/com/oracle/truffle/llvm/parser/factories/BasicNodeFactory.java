@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
@@ -58,7 +54,9 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -184,10 +182,10 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI64VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetStackSpaceInstruction.LLVMGetStackForConstInstruction;
@@ -314,9 +312,16 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
@@ -330,7 +335,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index) {
         VectorType vectorType = (VectorType) resultType;
-        int vectorLength = vectorType.getNumberOfElements();
+        int vectorLength = vectorType.getNumberOfElementsInt();
         if (vectorType.getElementType() instanceof PrimitiveType) {
             switch (((PrimitiveType) vectorType.getElementType()).getPrimitiveKind()) {
                 case I1:
@@ -389,7 +394,7 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createShuffleVector(Type llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask) {
         VectorType resultType = (VectorType) llvmType;
-        int resultLength = resultType.getNumberOfElements();
+        int resultLength = resultType.getNumberOfElementsInt();
         if (resultType.getElementType() instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
                 case I1:
@@ -417,7 +422,11 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
-        return createStore(pointerNode, valueNode, type, getByteSize(type));
+        try {
+            return createStore(pointerNode, valueNode, type, getByteSize(type));
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowStatement(e);
+        }
     }
 
     @Override
@@ -598,8 +607,12 @@ public class BasicNodeFactory implements NodeFactory {
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             return LLVMAddressRetNodeGen.create(retValue);
         } else if (type instanceof StructureType) {
-            int size = getByteSize(type);
-            return LLVMStructRetNodeGen.create(createMemMove(), retValue, size);
+            try {
+                long size = getByteSize(type);
+                return LLVMStructRetNodeGen.create(createMemMove(), retValue, size);
+            } catch (TypeOverflowException e) {
+                return LLVMStructRetNodeGen.create(createMemMove(), Type.handleOverflowExpression(e), 0);
+            }
         } else if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
@@ -698,7 +711,7 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
-            int vectorLength = vectorType.getNumberOfElements();
+            int vectorLength = vectorType.getNumberOfElementsInt();
             Type elementType = vectorType.getElementType();
             if (elementType instanceof PrimitiveType) {
                 switch (((PrimitiveType) elementType).getPrimitiveKind()) {
@@ -746,7 +759,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             final Type elementType = vectorType.getElementType();
-            int vectorLength = vectorType.getNumberOfElements();
+            int vectorLength = vectorType.getNumberOfElementsInt();
             if (elementType == PrimitiveType.I1) {
                 return LLVMI1VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.I8) {
@@ -891,58 +904,86 @@ public class BasicNodeFactory implements NodeFactory {
         assert arrayType.getNumberOfElements() == arrayValues.length;
         LLVMExpressionNode arrayGetStackSpace = arrayGetStackSpaceFactory.createGetStackSpace(this, arrayType);
         Type elementType = arrayType.getElementType();
-        int elementSize = getByteSize(elementType);
-        if (elementSize == 0) {
-            throw new AssertionError(elementType + " has size of 0!");
-        }
-        if (elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof FunctionType || elementType instanceof VariableBitWidthType) {
-            return LLVMArrayLiteralNodeGen.create(arrayValues, elementSize, createMemoryStore(elementType), arrayGetStackSpace);
-        } else if (elementType instanceof ArrayType || elementType instanceof StructureType) {
-            return LLVMStructArrayLiteralNodeGen.create(arrayValues, createMemMove(), elementSize, arrayGetStackSpace);
+        try {
+            long elementSize = getByteSize(elementType);
+            if (elementSize == 0) {
+                throw new TypeOverflowException(elementType + " has size of 0!");
+            }
+            if (elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof FunctionType || elementType instanceof VariableBitWidthType) {
+                return LLVMArrayLiteralNodeGen.create(arrayValues, elementSize, createMemoryStore(elementType), arrayGetStackSpace);
+            } else if (elementType instanceof ArrayType || elementType instanceof StructureType) {
+                return LLVMStructArrayLiteralNodeGen.create(arrayValues, createMemMove(), elementSize, arrayGetStackSpace);
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
         }
         throw new AssertionError(elementType);
     }
 
     @Override
     public LLVMExpressionNode createAlloca(Type type) {
-        int alignment = getByteAlignment(type);
-        int byteSize = getByteSize(type);
-        LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-        return createGetStackSpace(type, alloc, byteSize);
+        try {
+            int alignment = getByteAlignment(type);
+            long byteSize = getByteSize(type);
+            LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
+            return createGetStackSpace(type, alloc, byteSize);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
-        int byteSize = getByteSize(type);
-        LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-        return createGetStackSpace(type, alloc, byteSize);
+        try {
+            long byteSize = getByteSize(type);
+            LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
+            return createGetStackSpace(type, alloc, byteSize);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     @Override
     public LLVMExpressionNode createGetUniqueStackSpace(Type type, UniquesRegion uniquesRegion) {
-        int alignment = getByteAlignment(type);
-        int byteSize = getByteSize(type);
-        UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
-        LLVMGetStackForConstInstruction getStackSpace = LLVMGetUniqueStackSpaceInstructionNodeGen.create(byteSize, alignment, type, slot);
-        return createGetStackSpace(type, getStackSpace, byteSize);
+        try {
+            int alignment = getByteAlignment(type);
+            long byteSize = getByteSize(type);
+            UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
+            LLVMGetStackForConstInstruction getStackSpace = LLVMGetUniqueStackSpaceInstructionNodeGen.create(byteSize, alignment, type, slot);
+            return createGetStackSpace(type, getStackSpace, byteSize);
+        } catch (LLVMStackOverflowError soe) {
+            return new LLVMExpressionNode() {
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new LLVMAllocationFailureException(this, soe);
+                }
+            };
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
-    protected LLVMExpressionNode createGetStackSpace(Type type, LLVMGetStackForConstInstruction getStackSpace, int byteSize) {
+    protected LLVMExpressionNode createGetStackSpace(Type type, LLVMGetStackForConstInstruction getStackSpace, long byteSize) {
         if (type instanceof StructureType) {
             StructureType struct = (StructureType) type;
-            final int[] offsets = new int[struct.getNumberOfElements()];
-            final Type[] types = new Type[struct.getNumberOfElements()];
-            int currentOffset = 0;
-            for (int i = 0; i < struct.getNumberOfElements(); i++) {
-                final Type elemType = struct.getElementType(i);
+            final long[] offsets = new long[struct.getNumberOfElementsInt()];
+            final Type[] types = new Type[struct.getNumberOfElementsInt()];
+            long currentOffset = 0;
+            try {
+                for (int i = 0; i < struct.getNumberOfElements(); i++) {
+                    final Type elemType = struct.getElementType(i);
 
-                if (!struct.isPacked()) {
-                    currentOffset += getBytePadding(currentOffset, elemType);
+                    if (!struct.isPacked()) {
+                        currentOffset = Type.addUnsignedExact(currentOffset, getBytePadding(currentOffset, elemType));
+                    }
+
+                    offsets[i] = currentOffset;
+                    types[i] = elemType;
+                    currentOffset = Type.addUnsignedExact(currentOffset, getByteSize(elemType));
                 }
-
-                offsets[i] = currentOffset;
-                types[i] = elemType;
-                currentOffset += getByteSize(elemType);
+            } catch (TypeOverflowException e) {
+                return Type.handleOverflowExpression(e);
             }
             assert currentOffset <= byteSize : "currentOffset " + currentOffset + " vs. byteSize " + byteSize;
             getStackSpace.setTypes(types);
@@ -953,8 +994,12 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createAllocaArray(Type elementType, LLVMExpressionNode numElements, int alignment) {
-        int byteSize = getByteSize(elementType);
-        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, elementType, numElements);
+        try {
+            long byteSize = getByteSize(elementType);
+            return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, elementType, numElements);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     @Override
@@ -963,7 +1008,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, long offset, LLVMExpressionNode valueToInsert, Type llvmType) {
+    public LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, long size, long offset, LLVMExpressionNode valueToInsert, Type llvmType) {
         LLVMStoreNode store;
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
@@ -995,7 +1040,7 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError(llvmType + " is not supported for insertvalue");
             }
         } else if (llvmType instanceof VectorType) {
-            store = LLVMStoreVectorNodeGen.create(null, null, ((VectorType) llvmType).getNumberOfElements());
+            store = LLVMStoreVectorNodeGen.create(null, null, ((VectorType) llvmType).getNumberOfElementsInt());
         } else if (llvmType instanceof PointerType) {
             store = LLVMPointerStoreNodeGen.create(null, null);
         } else {
@@ -1005,33 +1050,37 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size) {
-        return LLVMMemSetNodeGen.create(createMemSet(), addressNode, new LLVMI8LiteralNode((byte) 0), new LLVMI32LiteralNode(size), new LLVMI1LiteralNode(false));
+    public LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, long size) {
+        return LLVMMemSetNodeGen.create(createMemSet(), addressNode, new LLVMI8LiteralNode((byte) 0), new LLVMI64LiteralNode(size), new LLVMI1LiteralNode(false));
     }
 
     @Override
     public LLVMExpressionNode createStructureConstantNode(Type structType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types,
                     LLVMExpressionNode[] constants) {
-        int[] offsets = new int[types.length];
+        long[] offsets = new long[types.length];
         LLVMStoreNode[] nodes = new LLVMStoreNode[types.length];
-        int currentOffset = 0;
+        long currentOffset = 0;
         LLVMExpressionNode getStackSpace = getStackSpaceFactory.createGetStackSpace(this, structType);
-        for (int i = 0; i < types.length; i++) {
-            Type resolvedType = types[i];
-            if (!packed) {
-                currentOffset += getBytePadding(currentOffset, resolvedType);
+        try {
+            for (int i = 0; i < types.length; i++) {
+                Type resolvedType = types[i];
+                if (!packed) {
+                    currentOffset = Type.addUnsignedExact(currentOffset, getBytePadding(currentOffset, resolvedType));
+                }
+                offsets[i] = currentOffset;
+                long byteSize = getByteSize(resolvedType);
+                nodes[i] = createMemoryStore(resolvedType);
+                currentOffset = Type.addUnsignedExact(currentOffset, byteSize);
             }
-            offsets[i] = currentOffset;
-            int byteSize = getByteSize(resolvedType);
-            nodes[i] = createMemoryStore(resolvedType);
-            currentOffset += byteSize;
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
         }
         return StructLiteralNodeGen.create(offsets, nodes, constants, getStackSpace);
     }
 
-    private LLVMStoreNode createMemoryStore(Type resolvedType) {
+    private LLVMStoreNode createMemoryStore(Type resolvedType) throws TypeOverflowException {
         if (resolvedType instanceof ArrayType || resolvedType instanceof StructureType) {
-            int byteSize = getByteSize(resolvedType);
+            long byteSize = getByteSize(resolvedType);
             return LLVMStructStoreNodeGen.create(createMemMove(), null, null, byteSize);
         } else if (resolvedType instanceof PrimitiveType) {
             switch (((PrimitiveType) resolvedType).getPrimitiveKind()) {
@@ -1081,7 +1130,7 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes,
                     Type retType) {
         Type[] retTypes = null;
-        int[] retOffsets = null;
+        long[] retOffsets = null;
         if (retType instanceof StructureType) { // multiple out values
             assert args[1] instanceof LLVMGetStackForConstInstruction;
             LLVMGetStackForConstInstruction getStackSpace = (LLVMGetStackForConstInstruction) args[1];
@@ -1154,7 +1203,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createCompareExchangeInstruction(AggregateType returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
                     LLVMExpressionNode newNode) {
-        return LLVMCompareExchangeNodeGen.create(returnType, dataLayout, ptrNode, cmpNode, newNode);
+        try {
+            return LLVMCompareExchangeNode.create(returnType, dataLayout, ptrNode, cmpNode, newNode);
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     @Override
@@ -1240,241 +1293,246 @@ public class BasicNodeFactory implements NodeFactory {
     protected LLVMExpressionNode getLLVMBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, int callerArgumentCount) {
 
         String intrinsicName = declaration.getName();
-        switch (intrinsicName) {
-            case "llvm.memset.p0i8.i32":
-            case "llvm.memset.p0i8.i64":
-                return createMemsetIntrinsic(args);
-            case "llvm.assume":
-                return LLVMAssumeNodeGen.create(args[1]);
-            case "llvm.clear_cache": // STUB
-            case "llvm.donothing":
-                return LLVMNoOpNodeGen.create();
-            case "llvm.prefetch":
-                return LLVMPrefetchNodeGen.create(args[1], args[2], args[3], args[4]);
-            case "llvm.ctlz.i8":
-                return CountLeadingZeroesI8NodeGen.create(args[1], args[2]);
-            case "llvm.ctlz.i16":
-                return CountLeadingZeroesI16NodeGen.create(args[1], args[2]);
-            case "llvm.ctlz.i32":
-                return CountLeadingZeroesI32NodeGen.create(args[1], args[2]);
-            case "llvm.ctlz.i64":
-                return CountLeadingZeroesI64NodeGen.create(args[1], args[2]);
-            case "llvm.memcpy.p0i8.p0i8.i64":
-            case "llvm.memcpy.p0i8.p0i8.i32":
-                return createMemcpyIntrinsic(args);
-            case "llvm.ctpop.i32":
-                return CountSetBitsI32NodeGen.create(args[1]);
-            case "llvm.ctpop.i64":
-                return CountSetBitsI64NodeGen.create(args[1]);
-            case "llvm.cttz.i8":
-                return CountTrailingZeroesI8NodeGen.create(args[1], args[2]);
-            case "llvm.cttz.i16":
-                return CountTrailingZeroesI16NodeGen.create(args[1], args[2]);
-            case "llvm.cttz.i32":
-                return CountTrailingZeroesI32NodeGen.create(args[1], args[2]);
-            case "llvm.cttz.i64":
-                return CountTrailingZeroesI64NodeGen.create(args[1], args[2]);
-            case "llvm.trap":
-                return LLVMTrapNodeGen.create();
-            case "llvm.bswap.i16":
-                return LLVMByteSwapI16NodeGen.create(args[1]);
-            case "llvm.bswap.i32":
-                return LLVMByteSwapI32NodeGen.create(args[1]);
-            case "llvm.bswap.i64":
-                return LLVMByteSwapI64NodeGen.create(args[1]);
-            case "llvm.bswap.v8i16":
-                return LLVMByteSwapI16VectorNodeGen.create(8, args[1]);
-            case "llvm.bswap.v16i16":
-                return LLVMByteSwapI16VectorNodeGen.create(16, args[1]);
-            case "llvm.bswap.v4i32":
-                return LLVMByteSwapI32VectorNodeGen.create(4, args[1]);
-            case "llvm.bswap.v8i32":
-                return LLVMByteSwapI32VectorNodeGen.create(8, args[1]);
-            case "llvm.bswap.v2i64":
-                return LLVMByteSwapI64VectorNodeGen.create(2, args[1]);
-            case "llvm.bswap.v4i64":
-                return LLVMByteSwapI64VectorNodeGen.create(4, args[1]);
-            case "llvm.memmove.p0i8.p0i8.i64":
-                return createMemmoveIntrinsic(args);
-            case "llvm.pow.f32":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.pow.f64":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.pow.f80":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.powi.f32":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.powi.f64":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.powi.f80":
-                return LLVMPowNodeGen.create(args[1], args[2]);
-            case "llvm.fabs.f32":
-            case "llvm.fabs.f64":
-            case "llvm.fabs.f80":
-                return LLVMFAbsNodeGen.create(args[1]);
-            case "llvm.fabs.v2f64":
-                return LLVMFAbsVectorNodeGen.create(args[1], 2);
-            case "llvm.minnum.f32":
-            case "llvm.minnum.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2]);
-            case "llvm.maxnum.f32":
-            case "llvm.maxnum.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2]);
-            case "llvm.returnaddress":
-                return LLVMReturnAddressNodeGen.create(args[1]);
-            case "llvm.lifetime.start.p0i8":
-            case "llvm.lifetime.start":
-                return LLVMLifetimeStartNodeGen.create(args[1], args[2]);
-            case "llvm.lifetime.end.p0i8":
-            case "llvm.lifetime.end":
-                return LLVMLifetimeEndNodeGen.create(args[1], args[2]);
-            case "llvm.invariant.start":
-            case "llvm.invariant.start.p0i8":
-                return LLVMInvariantStartNodeGen.create(args[1], args[2]);
-            case "llvm.invariant.end":
-            case "llvm.invariant.end.p0i8":
-                return LLVMInvariantEndNodeGen.create(args[1], args[2]);
-            case "llvm.stacksave":
-                return createStackSave();
-            case "llvm.stackrestore":
-                return createStackRestore(args[1]);
-            case "llvm.frameaddress":
-                return LLVMFrameAddressNodeGen.create(args[1]);
-            case "llvm.va_start":
-                return LLVMX86_64VAStartNodeGen.create(callerArgumentCount, createVarargsAreaStackAllocation(), createMemMove(), args[1]);
-            case "llvm.va_end":
-                return new LLVMX86_64BitVAEnd(args[1]);
-            case "llvm.va_copy":
-                return LLVMX86_64BitVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
-            case "llvm.eh.sjlj.longjmp":
-            case "llvm.eh.sjlj.setjmp":
-                return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.SET_JMP_LONG_JMP);
-            case "llvm.dbg.declare":
-            case "llvm.dbg.addr":
-            case "llvm.dbg.value":
-                throw new IllegalStateException("Unhandled call to intrinsic function " + declaration.getName());
-            case "llvm.dbg.label":
-                // a call to dbg.label describes that execution has arrived at a label in the
-                // original source code. the source location of the call will be applied, rather
-                // than the explicit descriptor of the label which is passed to dbg.label. both
-                // reference the same line number, this just avoids special-casing dbg.label like
-                // the other dbg.* intrinsics.
-                return LLVMNoOpNodeGen.create();
-            case "llvm.eh.typeid.for":
-                return new LLVMTypeIdForExceptionNode(args[1]);
-            case "llvm.expect.i1": {
-                boolean expectedValue = LLVMTypesGen.asBoolean(args[2].executeGeneric(null));
-                LLVMExpressionNode actualValueNode = args[1];
-                return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
-            }
-            case "llvm.expect.i32": {
-                int expectedValue = LLVMTypesGen.asInteger(args[2].executeGeneric(null));
-                LLVMExpressionNode actualValueNode = args[1];
-                return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
-            }
-            case "llvm.expect.i64": {
-                long expectedValue = LLVMTypesGen.asLong(args[2].executeGeneric(null));
-                LLVMExpressionNode actualValueNode = args[1];
-                return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
-            }
-            case "llvm.objectsize.i64.p0i8":
-            case "llvm.objectsize.i64":
-                return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
-            case "llvm.copysign.f32":
-            case "llvm.copysign.f64":
-            case "llvm.copysign.f80":
-                return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2]);
+        try {
+            switch (intrinsicName) {
+                case "llvm.memset.p0i8.i32":
+                case "llvm.memset.p0i8.i64":
+                    return createMemsetIntrinsic(args);
+                case "llvm.assume":
+                    return LLVMAssumeNodeGen.create(args[1]);
+                case "llvm.clear_cache": // STUB
+                case "llvm.donothing":
+                    return LLVMNoOpNodeGen.create();
+                case "llvm.prefetch":
+                    return LLVMPrefetchNodeGen.create(args[1], args[2], args[3], args[4]);
+                case "llvm.ctlz.i8":
+                    return CountLeadingZeroesI8NodeGen.create(args[1], args[2]);
+                case "llvm.ctlz.i16":
+                    return CountLeadingZeroesI16NodeGen.create(args[1], args[2]);
+                case "llvm.ctlz.i32":
+                    return CountLeadingZeroesI32NodeGen.create(args[1], args[2]);
+                case "llvm.ctlz.i64":
+                    return CountLeadingZeroesI64NodeGen.create(args[1], args[2]);
+                case "llvm.memcpy.p0i8.p0i8.i64":
+                case "llvm.memcpy.p0i8.p0i8.i32":
+                    return createMemcpyIntrinsic(args);
+                case "llvm.ctpop.i32":
+                    return CountSetBitsI32NodeGen.create(args[1]);
+                case "llvm.ctpop.i64":
+                    return CountSetBitsI64NodeGen.create(args[1]);
+                case "llvm.cttz.i8":
+                    return CountTrailingZeroesI8NodeGen.create(args[1], args[2]);
+                case "llvm.cttz.i16":
+                    return CountTrailingZeroesI16NodeGen.create(args[1], args[2]);
+                case "llvm.cttz.i32":
+                    return CountTrailingZeroesI32NodeGen.create(args[1], args[2]);
+                case "llvm.cttz.i64":
+                    return CountTrailingZeroesI64NodeGen.create(args[1], args[2]);
+                case "llvm.trap":
+                    return LLVMTrapNodeGen.create();
+                case "llvm.bswap.i16":
+                    return LLVMByteSwapI16NodeGen.create(args[1]);
+                case "llvm.bswap.i32":
+                    return LLVMByteSwapI32NodeGen.create(args[1]);
+                case "llvm.bswap.i64":
+                    return LLVMByteSwapI64NodeGen.create(args[1]);
+                case "llvm.bswap.v8i16":
+                    return LLVMByteSwapI16VectorNodeGen.create(8, args[1]);
+                case "llvm.bswap.v16i16":
+                    return LLVMByteSwapI16VectorNodeGen.create(16, args[1]);
+                case "llvm.bswap.v4i32":
+                    return LLVMByteSwapI32VectorNodeGen.create(4, args[1]);
+                case "llvm.bswap.v8i32":
+                    return LLVMByteSwapI32VectorNodeGen.create(8, args[1]);
+                case "llvm.bswap.v2i64":
+                    return LLVMByteSwapI64VectorNodeGen.create(2, args[1]);
+                case "llvm.bswap.v4i64":
+                    return LLVMByteSwapI64VectorNodeGen.create(4, args[1]);
+                case "llvm.memmove.p0i8.p0i8.i64":
+                    return createMemmoveIntrinsic(args);
+                case "llvm.pow.f32":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.pow.f64":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.pow.f80":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.powi.f32":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.powi.f64":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.powi.f80":
+                    return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.fabs.f32":
+                case "llvm.fabs.f64":
+                case "llvm.fabs.f80":
+                    return LLVMFAbsNodeGen.create(args[1]);
+                case "llvm.fabs.v2f64":
+                    return LLVMFAbsVectorNodeGen.create(args[1], 2);
+                case "llvm.minnum.f32":
+                case "llvm.minnum.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2]);
+                case "llvm.maxnum.f32":
+                case "llvm.maxnum.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2]);
+                case "llvm.returnaddress":
+                    return LLVMReturnAddressNodeGen.create(args[1]);
+                case "llvm.lifetime.start.p0i8":
+                case "llvm.lifetime.start":
+                    return LLVMLifetimeStartNodeGen.create(args[1], args[2]);
+                case "llvm.lifetime.end.p0i8":
+                case "llvm.lifetime.end":
+                    return LLVMLifetimeEndNodeGen.create(args[1], args[2]);
+                case "llvm.invariant.start":
+                case "llvm.invariant.start.p0i8":
+                    return LLVMInvariantStartNodeGen.create(args[1], args[2]);
+                case "llvm.invariant.end":
+                case "llvm.invariant.end.p0i8":
+                    return LLVMInvariantEndNodeGen.create(args[1], args[2]);
+                case "llvm.stacksave":
+                    return createStackSave();
+                case "llvm.stackrestore":
+                    return createStackRestore(args[1]);
+                case "llvm.frameaddress":
+                    return LLVMFrameAddressNodeGen.create(args[1]);
+                case "llvm.va_start":
+                    return LLVMX86_64VAStartNodeGen.create(callerArgumentCount, createVarargsAreaStackAllocation(), createMemMove(), args[1]);
+                case "llvm.va_end":
+                    return new LLVMX86_64BitVAEnd(args[1]);
+                case "llvm.va_copy":
+                    return LLVMX86_64BitVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
+                case "llvm.eh.sjlj.longjmp":
+                case "llvm.eh.sjlj.setjmp":
+                    return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.SET_JMP_LONG_JMP);
+                case "llvm.dbg.declare":
+                case "llvm.dbg.addr":
+                case "llvm.dbg.value":
+                    throw new IllegalStateException("Unhandled call to intrinsic function " + declaration.getName());
+                case "llvm.dbg.label":
+                    // a call to dbg.label describes that execution has arrived at a label in the
+                    // original source code. the source location of the call will be applied, rather
+                    // than the explicit descriptor of the label which is passed to dbg.label. both
+                    // reference the same line number, this just avoids special-casing dbg.label
+                    // like
+                    // the other dbg.* intrinsics.
+                    return LLVMNoOpNodeGen.create();
+                case "llvm.eh.typeid.for":
+                    return new LLVMTypeIdForExceptionNode(args[1]);
+                case "llvm.expect.i1": {
+                    boolean expectedValue = LLVMTypesGen.asBoolean(args[2].executeGeneric(null));
+                    LLVMExpressionNode actualValueNode = args[1];
+                    return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
+                }
+                case "llvm.expect.i32": {
+                    int expectedValue = LLVMTypesGen.asInteger(args[2].executeGeneric(null));
+                    LLVMExpressionNode actualValueNode = args[1];
+                    return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
+                }
+                case "llvm.expect.i64": {
+                    long expectedValue = LLVMTypesGen.asLong(args[2].executeGeneric(null));
+                    LLVMExpressionNode actualValueNode = args[1];
+                    return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
+                }
+                case "llvm.objectsize.i64.p0i8":
+                case "llvm.objectsize.i64":
+                    return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
+                case "llvm.copysign.f32":
+                case "llvm.copysign.f64":
+                case "llvm.copysign.f80":
+                    return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2]);
 
-            case "llvm.uadd.with.overflow.i8":
-            case "llvm.uadd.with.overflow.i16":
-            case "llvm.uadd.with.overflow.i32":
-            case "llvm.uadd.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_ADD, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.usub.with.overflow.i8":
-            case "llvm.usub.with.overflow.i16":
-            case "llvm.usub.with.overflow.i32":
-            case "llvm.usub.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_SUB, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.umul.with.overflow.i8":
-            case "llvm.umul.with.overflow.i16":
-            case "llvm.umul.with.overflow.i32":
-            case "llvm.umul.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_MUL, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.sadd.with.overflow.i8":
-            case "llvm.sadd.with.overflow.i16":
-            case "llvm.sadd.with.overflow.i32":
-            case "llvm.sadd.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_ADD, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.ssub.with.overflow.i8":
-            case "llvm.ssub.with.overflow.i16":
-            case "llvm.ssub.with.overflow.i32":
-            case "llvm.ssub.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_SUB, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.smul.with.overflow.i8":
-            case "llvm.smul.with.overflow.i16":
-            case "llvm.smul.with.overflow.i32":
-            case "llvm.smul.with.overflow.i64":
-                return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_MUL, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
-            case "llvm.exp2.f32":
-            case "llvm.exp2.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen.create(args[1]);
-            case "llvm.sqrt.f32":
-            case "llvm.sqrt.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
-            case "llvm.sqrt.v2f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
-            case "llvm.sin.f32":
-            case "llvm.sin.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMSinNodeGen.create(args[1]);
-            case "llvm.cos.f32":
-            case "llvm.cos.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen.create(args[1]);
-            case "llvm.exp.f32":
-            case "llvm.exp.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMExpNodeGen.create(args[1]);
-            case "llvm.log.f32":
-            case "llvm.log.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen.create(args[1]);
-            case "llvm.log2.f32":
-            case "llvm.log2.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen.create(args[1]);
-            case "llvm.log10.f32":
-            case "llvm.log10.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen.create(args[1]);
-            case "llvm.floor.f32":
-            case "llvm.floor.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen.create(args[1]);
-            case "llvm.ceil.f32":
-            case "llvm.ceil.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen.create(args[1]);
-            case "llvm.rint.f32":
-            case "llvm.rint.f64":
-                return LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen.create(args[1]);
-            case "llvm.x86.sse.cvtss2si":
-                return LLVMX86_ConversionFloatToIntNodeGen.create(args[1]);
-            case "llvm.x86.sse.cmp.ss":
-                return LLVMX86_CmpssNodeGen.create(args[1], args[2], args[3]);
-            case "llvm.x86.sse2.cvtsd2si":
-                return LLVMX86_ConversionDoubleToIntNodeGen.create(args[1]);
-            case "llvm.x86.sse2.sqrt.pd":
-                return LLVMX86_VectorSquareRootNodeGen.create(args[1]);
-            case "llvm.x86.sse2.max.pd":
-                return LLVMX86_VectorMaxNodeGen.create(args[1], args[2]);
-            case "llvm.x86.sse2.max.sd":
-                return LLVMX86_VectorMaxsdNodeGen.create(args[1], args[2]);
-            case "llvm.x86.sse2.min.pd":
-                return LLVMX86_VectorMinNodeGen.create(args[1], args[2]);
-            case "llvm.x86.sse2.cmp.sd":
-                return LLVMX86_VectorCmpNodeGen.create(args[1], args[2], args[3]);
-            case "llvm.x86.sse2.packssdw.128":
-            case "llvm.x86.sse2.packsswb.128":
-                return LLVMX86_VectorPackNodeGen.create(args[1], args[2]);
-            case "llvm.x86.sse2.pmovmskb.128":
-                return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
-            case "llvm.x86.sse2.movmsk.pd":
-                return LLVMX86_MovmskpdNodeGen.create(args[1]);
-            default:
-                break;
+                case "llvm.uadd.with.overflow.i8":
+                case "llvm.uadd.with.overflow.i16":
+                case "llvm.uadd.with.overflow.i32":
+                case "llvm.uadd.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_ADD, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.usub.with.overflow.i8":
+                case "llvm.usub.with.overflow.i16":
+                case "llvm.usub.with.overflow.i32":
+                case "llvm.usub.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_SUB, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.umul.with.overflow.i8":
+                case "llvm.umul.with.overflow.i16":
+                case "llvm.umul.with.overflow.i32":
+                case "llvm.umul.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.UNSIGNED_MUL, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.sadd.with.overflow.i8":
+                case "llvm.sadd.with.overflow.i16":
+                case "llvm.sadd.with.overflow.i32":
+                case "llvm.sadd.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_ADD, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.ssub.with.overflow.i8":
+                case "llvm.ssub.with.overflow.i16":
+                case "llvm.ssub.with.overflow.i32":
+                case "llvm.ssub.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_SUB, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.smul.with.overflow.i8":
+                case "llvm.smul.with.overflow.i16":
+                case "llvm.smul.with.overflow.i32":
+                case "llvm.smul.with.overflow.i64":
+                    return LLVMArithmeticWithOverflowNodeGen.create(LLVMArithmetic.SIGNED_MUL, getOverflowFieldOffset(declaration), args[2], args[3], args[1]);
+                case "llvm.exp2.f32":
+                case "llvm.exp2.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen.create(args[1]);
+                case "llvm.sqrt.f32":
+                case "llvm.sqrt.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
+                case "llvm.sqrt.v2f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
+                case "llvm.sin.f32":
+                case "llvm.sin.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMSinNodeGen.create(args[1]);
+                case "llvm.cos.f32":
+                case "llvm.cos.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen.create(args[1]);
+                case "llvm.exp.f32":
+                case "llvm.exp.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMExpNodeGen.create(args[1]);
+                case "llvm.log.f32":
+                case "llvm.log.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen.create(args[1]);
+                case "llvm.log2.f32":
+                case "llvm.log2.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen.create(args[1]);
+                case "llvm.log10.f32":
+                case "llvm.log10.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen.create(args[1]);
+                case "llvm.floor.f32":
+                case "llvm.floor.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen.create(args[1]);
+                case "llvm.ceil.f32":
+                case "llvm.ceil.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen.create(args[1]);
+                case "llvm.rint.f32":
+                case "llvm.rint.f64":
+                    return LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen.create(args[1]);
+                case "llvm.x86.sse.cvtss2si":
+                    return LLVMX86_ConversionFloatToIntNodeGen.create(args[1]);
+                case "llvm.x86.sse.cmp.ss":
+                    return LLVMX86_CmpssNodeGen.create(args[1], args[2], args[3]);
+                case "llvm.x86.sse2.cvtsd2si":
+                    return LLVMX86_ConversionDoubleToIntNodeGen.create(args[1]);
+                case "llvm.x86.sse2.sqrt.pd":
+                    return LLVMX86_VectorSquareRootNodeGen.create(args[1]);
+                case "llvm.x86.sse2.max.pd":
+                    return LLVMX86_VectorMaxNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse2.max.sd":
+                    return LLVMX86_VectorMaxsdNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse2.min.pd":
+                    return LLVMX86_VectorMinNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse2.cmp.sd":
+                    return LLVMX86_VectorCmpNodeGen.create(args[1], args[2], args[3]);
+                case "llvm.x86.sse2.packssdw.128":
+                case "llvm.x86.sse2.packsswb.128":
+                    return LLVMX86_VectorPackNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse2.pmovmskb.128":
+                    return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
+                case "llvm.x86.sse2.movmsk.pd":
+                    return LLVMX86_MovmskpdNodeGen.create(args[1]);
+                default:
+                    break;
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
         }
 
         // strip the type suffix for intrinsics that are supported for more than one data type. If
@@ -1502,7 +1560,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             LLVMArithmeticNode arithmeticNode = createScalarArithmeticOp(op, vectorType.getElementType(), null, null);
-            return LLVMVectorArithmeticNodeGen.create(vectorType.getNumberOfElements(), arithmeticNode, left, right);
+            return LLVMVectorArithmeticNodeGen.create(vectorType.getNumberOfElementsInt(), arithmeticNode, left, right);
         } else {
             return createScalarArithmeticOp(op, type, left, right);
         }
@@ -1548,7 +1606,7 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMStackRestoreNodeGen.create(stackPointer);
     }
 
-    private long getOverflowFieldOffset(FunctionDeclaration declaration) {
+    private long getOverflowFieldOffset(FunctionDeclaration declaration) throws TypeOverflowException {
         return getIndexOffset(1, (AggregateType) declaration.getType().getReturnType());
     }
 
@@ -1618,12 +1676,16 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createCopyStructByValue(Type type, GetStackSpaceFactory getStackSpaceFactory, LLVMExpressionNode parameterNode) {
-        LLVMExpressionNode getStackSpaceNode = getStackSpaceFactory.createGetStackSpace(this, type);
-        return LLVMStructByValueNodeGen.create(createMemMove(), getStackSpaceNode, parameterNode, getByteSize(type));
+        try {
+            LLVMExpressionNode getStackSpaceNode = getStackSpaceFactory.createGetStackSpace(this, type);
+            return LLVMStructByValueNodeGen.create(createMemMove(), getStackSpaceNode, parameterNode, getByteSize(type));
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowExpression(e);
+        }
     }
 
     @Override
-    public LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode) {
+    public LLVMExpressionNode createVarArgCompoundValue(long length, int alignment, LLVMExpressionNode parameterNode) {
         return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
     }
 
@@ -1634,10 +1696,14 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType, boolean readOnly) {
-        if (readOnly) {
-            return new AllocateReadOnlyGlobalsBlockNode(context, structType, dataLayout);
-        } else {
-            return AllocateGlobalsBlockNodeGen.create(structType, dataLayout);
+        try {
+            if (readOnly) {
+                return new AllocateReadOnlyGlobalsBlockNode(context, structType, dataLayout);
+            } else {
+                return AllocateGlobalsBlockNode.create(structType, dataLayout);
+            }
+        } catch (TypeOverflowException e) {
+            return Type.handleOverflowAllocate(e);
         }
     }
 
@@ -1724,7 +1790,7 @@ public class BasicNodeFactory implements NodeFactory {
         return addressZeroInits;
     }
 
-    private LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size) {
+    private LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, long size) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
@@ -1754,7 +1820,7 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMPointerStoreNodeGen.create(pointerNode, valueNode);
         } else if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
-            return LLVMStoreVectorNodeGen.create(pointerNode, valueNode, vectorType.getNumberOfElements());
+            return LLVMStoreVectorNodeGen.create(pointerNode, valueNode, vectorType.getNumberOfElementsInt());
         } else {
             throw new AssertionError(type);
         }
@@ -1764,7 +1830,7 @@ public class BasicNodeFactory implements NodeFactory {
         return type.getAlignment(dataLayout);
     }
 
-    public int getByteSize(Type type) {
+    public long getByteSize(Type type) throws TypeOverflowException {
         return type.getSize(dataLayout);
     }
 
@@ -1772,7 +1838,7 @@ public class BasicNodeFactory implements NodeFactory {
         return Type.getPadding(offset, type, dataLayout);
     }
 
-    public long getIndexOffset(long index, AggregateType type) {
+    public long getIndexOffset(long index, AggregateType type) throws TypeOverflowException {
         return type.getOffsetOf(index, dataLayout);
     }
 }

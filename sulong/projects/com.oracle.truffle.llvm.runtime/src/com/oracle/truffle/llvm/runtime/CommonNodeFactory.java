@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -225,6 +225,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -448,9 +449,9 @@ public class CommonNodeFactory {
 
     public static LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
         if (resolvedResultType instanceof VectorType) {
-            return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElements());
+            return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElementsInt());
         } else {
-            int bits = resolvedResultType instanceof VariableBitWidthType ? resolvedResultType.getBitSize() : 0;
+            int bits = resolvedResultType instanceof VariableBitWidthType ? ((VariableBitWidthType) resolvedResultType).getBitSizeInt() : 0;
             return createLoad(resolvedResultType, loadTarget, bits);
         }
     }
@@ -587,7 +588,7 @@ public class CommonNodeFactory {
         if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             LLVMArithmeticNode arithmeticNode = createScalarArithmeticOp(op, vectorType.getElementType(), null, null);
-            return LLVMVectorArithmeticNodeGen.create(vectorType.getNumberOfElements(), arithmeticNode, left, right);
+            return LLVMVectorArithmeticNodeGen.create(vectorType.getNumberOfElementsInt(), arithmeticNode, left, right);
         } else {
             return createScalarArithmeticOp(op, type, left, right);
         }
@@ -627,7 +628,7 @@ public class CommonNodeFactory {
         if (type instanceof VectorType) {
             VectorType vectorType = ((VectorType) type);
             LLVMAbstractCompareNode comparison = createScalarComparison(operator, vectorType.getElementType(), null, null);
-            return LLVMVectorCompareNodeGen.create(vectorType.getNumberOfElements(), comparison, lhs, rhs);
+            return LLVMVectorCompareNodeGen.create(vectorType.getNumberOfElementsInt(), comparison, lhs, rhs);
         } else {
             return createScalarComparison(operator, type, lhs, rhs);
         }
@@ -735,10 +736,14 @@ public class CommonNodeFactory {
     public static LLVMExpressionNode createSimpleConstantNoArray(Object constant, Type type) {
         if (type instanceof VariableBitWidthType) {
             Number c = (Number) constant;
-            if (type.getBitSize() <= Long.SIZE) {
-                return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(type.getBitSize(), c.longValue()));
-            } else {
-                return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromBigInteger(type.getBitSize(), (BigInteger) c));
+            try {
+                if (Long.compareUnsigned(type.getBitSize(), Long.SIZE) <= 0) {
+                    return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(((VariableBitWidthType) type).getBitSizeInt(), c.longValue()));
+                } else {
+                    return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromBigInteger(((VariableBitWidthType) type).getBitSizeInt(), (BigInteger) c));
+                }
+            } catch (TypeOverflowException e) {
+                return Type.handleOverflowExpression(e);
             }
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             if (constant == null) {
@@ -789,11 +794,11 @@ public class CommonNodeFactory {
         } else if (targetType instanceof PointerType || targetType instanceof FunctionType) {
             return LLVMToAddressNodeGen.create(fromNode);
         } else if (targetType instanceof VariableBitWidthType) {
-            return LLVMBitcastToIVarNodeGen.create(fromNode, targetType.getBitSize());
+            return LLVMBitcastToIVarNodeGen.create(fromNode, ((VariableBitWidthType) targetType).getBitSizeInt());
         } else if (targetType instanceof VectorType) {
             VectorType vectorType = (VectorType) targetType;
             Type elemType = vectorType.getElementType();
-            int vectorLength = vectorType.getNumberOfElements();
+            int vectorLength = vectorType.getNumberOfElementsInt();
             if (elemType instanceof PrimitiveType) {
                 switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                     case I1:
@@ -853,11 +858,11 @@ public class CommonNodeFactory {
         } else if (targetType instanceof PointerType || targetType instanceof FunctionType) {
             return LLVMToAddressNodeGen.create(fromNode);
         } else if (targetType instanceof VariableBitWidthType) {
-            return LLVMUnsignedCastToIVarNodeGen.create(fromNode, targetType.getBitSize());
+            return LLVMUnsignedCastToIVarNodeGen.create(fromNode, ((VariableBitWidthType) targetType).getBitSizeInt());
         } else if (targetType instanceof VectorType) {
             VectorType vectorType = (VectorType) targetType;
             Type elemType = vectorType.getElementType();
-            int vectorLength = vectorType.getNumberOfElements();
+            int vectorLength = vectorType.getNumberOfElementsInt();
             if (elemType instanceof PrimitiveType) {
                 switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                     case I1:
@@ -919,11 +924,11 @@ public class CommonNodeFactory {
         if (targetType instanceof PrimitiveType) {
             return createSignedCast(fromNode, ((PrimitiveType) targetType).getPrimitiveKind());
         } else if (targetType instanceof VariableBitWidthType) {
-            return LLVMSignedCastToIVarNodeGen.create(fromNode, targetType.getBitSize());
+            return LLVMSignedCastToIVarNodeGen.create(fromNode, ((VariableBitWidthType) targetType).getBitSizeInt());
         } else if (targetType instanceof VectorType) {
             VectorType vectorType = (VectorType) targetType;
             Type elemType = vectorType.getElementType();
-            int vectorLength = vectorType.getNumberOfElements();
+            int vectorLength = vectorType.getNumberOfElementsInt();
             if (elemType instanceof PrimitiveType) {
                 switch (((PrimitiveType) ((VectorType) targetType).getElementType()).getPrimitiveKind()) {
                     case I1:

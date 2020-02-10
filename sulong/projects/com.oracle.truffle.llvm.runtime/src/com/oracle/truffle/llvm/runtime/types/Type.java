@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,80 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
 
+    /**
+     * Indicates that calculations based on properties {@link Type} would overflow. For example,
+     * calculating the {@link VectorType#getSize size of a vector} containing huge arrays will
+     * easily overflow the value range of {@code long}. The exceptions should be caught and
+     * presented to the user in a meaningful way, e.g., by wrapping it in an
+     * {@link LLVMUnsupportedException} with reason {@code UNSUPPORTED_VALUE_RANGE}.
+     */
+    public static final class TypeOverflowException extends Exception {
+        private static final long serialVersionUID = 2239196977333486425L;
+
+        public TypeOverflowException(Throwable cause) {
+            super(cause);
+        }
+
+        public TypeOverflowException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Wraps an {@code TypeOverflowException} in a @code {@link RuntimeException} so that it can be
+     * used in {@code Streams}.
+     */
+    protected static final class TypeOverflowExceptionUnchecked extends RuntimeException {
+        private static final long serialVersionUID = 1284366666528782360L;
+
+        public TypeOverflowExceptionUnchecked(TypeOverflowException cause) {
+            super(cause);
+        }
+
+        @Override
+        public synchronized TypeOverflowException getCause() {
+            return (TypeOverflowException) super.getCause();
+        }
+    }
+
     public static final Type[] EMPTY_ARRAY = {};
 
-    public abstract int getBitSize();
+    public abstract long getBitSize() throws TypeOverflowException;
+
+    /**
+     * Wrapped version of {@code #getBitSize} for use within {@code Streams}. Surround usages with
+     * try-catch and rethrow the {@code TypeOverflowExceptionUnchecked#getCause}.
+     */
+    protected final long getBitSizeUnchecked() {
+        try {
+            return getBitSize();
+        } catch (TypeOverflowException e) {
+            throw new TypeOverflowExceptionUnchecked(e);
+        }
+    }
 
     public abstract void accept(TypeVisitor visitor);
 
     public abstract int getAlignment(DataLayout targetDataLayout);
 
-    public abstract int getSize(DataLayout targetDataLayout);
+    public abstract long getSize(DataLayout targetDataLayout) throws TypeOverflowException;
 
     @Override
     public abstract boolean equals(Object obj);
@@ -73,7 +131,7 @@ public abstract class Type {
         if (type instanceof PrimitiveType) {
             return new PrimitiveType(((PrimitiveType) type).getPrimitiveKind(), value);
         } else {
-            return new VariableBitWidthType(((VariableBitWidthType) type).getBitSize(), value);
+            return new VariableBitWidthType(((VariableBitWidthType) type).getBitSizeInt(), value);
         }
     }
 
@@ -119,18 +177,21 @@ public abstract class Type {
 
             }
         } else if (type instanceof VariableBitWidthType) {
-            switch (type.getBitSize()) {
-                case 1:
-                    return FrameSlotKind.Boolean;
-                case 8:
-                    return FrameSlotKind.Byte;
-                case 16:
-                case 32:
-                    return FrameSlotKind.Int;
-                case 64:
-                    return FrameSlotKind.Long;
-                default:
-                    return FrameSlotKind.Object;
+            long bitSize = ((VariableBitWidthType) type).getBitSize();
+            if (fitsIntoUnsignedInt(bitSize)) {
+                switch (toUnsignedInt(bitSize)) {
+                    case 1:
+                        return FrameSlotKind.Boolean;
+                    case 8:
+                        return FrameSlotKind.Byte;
+                    case 16:
+                    case 32:
+                        return FrameSlotKind.Int;
+                    case 64:
+                        return FrameSlotKind.Long;
+                    default:
+                        return FrameSlotKind.Object;
+                }
             }
         }
         return FrameSlotKind.Object;
@@ -144,5 +205,97 @@ public abstract class Type {
     public static int getPadding(long offset, Type type, DataLayout targetDataLayout) {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
+    }
+
+    public static boolean fitsIntoUnsignedInt(long l) {
+        return (l & 0xFFFF_FFFF_0000_0000L) == 0;
+    }
+
+    public static int toUnsignedInt(long l) {
+        assert fitsIntoUnsignedInt(l);
+        return (int) l; // drop 32 MSB
+    }
+
+    public static long multiplyUnsignedExact(long x, long y) throws TypeOverflowException {
+        long res = x * y;
+        long overflow = ExactMath.multiplyHighUnsigned(x, y);
+        if (overflow != 0) {
+            throw new TypeOverflowException("unsigned multiplication overflow");
+        }
+        return res;
+    }
+
+    public static long addUnsignedExact(long x, long y) throws TypeOverflowException {
+        long res = x + y;
+        if (Long.compareUnsigned(res, x) < 0) {
+            throw new TypeOverflowException("unsigned addition overflow");
+        }
+        return res;
+    }
+
+    public static long subUnsignedExact(long x, long y) throws TypeOverflowException {
+        if (Long.compareUnsigned(x, y) < 0) {
+            throw new TypeOverflowException("unsigned subtraction underflow");
+        }
+        return x - y;
+    }
+
+    /**
+     * Wrapped version of {@code #addExact} for use within {@code Streams}. Surround usages with
+     * try-catch and rethrow the {@code TypeOverflowExceptionUnchecked#getCause}.
+     */
+    protected static long addUnsignedExactUnchecked(long x, long y) {
+        try {
+            return addUnsignedExact(x, y);
+        } catch (TypeOverflowException e) {
+            throw new TypeOverflowExceptionUnchecked(e);
+        }
+    }
+
+    /**
+     * Creates an {@link LLVMExpressionNode} that will throw an {@link LLVMUnsupportedException}
+     * when executed.
+     */
+    public static LLVMExpressionNode handleOverflowExpression(TypeOverflowException e) {
+        return new LLVMExpressionNode() {
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                throwOverflowExceptionAsLLVMException(this, e);
+                return null;
+            }
+        };
+    }
+
+    /**
+     * Creates an {@link LLVMStatementNode} that will throw an {@link LLVMUnsupportedException} when
+     * executed.
+     */
+    public static LLVMStatementNode handleOverflowStatement(TypeOverflowException e) {
+        return new LLVMStatementNode() {
+            @Override
+            public void execute(VirtualFrame frame) {
+                throwOverflowExceptionAsLLVMException(this, e);
+            }
+        };
+    }
+
+    /**
+     * Creates an {@link LLVMAllocateNode} that will throw an {@link LLVMUnsupportedException} when
+     * executed.
+     */
+    public static LLVMAllocateNode handleOverflowAllocate(TypeOverflowException e) {
+        final class UnsupportedAllocateNode extends LLVMNode implements LLVMAllocateNode {
+            @Override
+            public LLVMPointer executeWithTarget() {
+                throwOverflowExceptionAsLLVMException(this, e);
+                return null;
+            }
+        }
+        return new UnsupportedAllocateNode();
+    }
+
+    public static void throwOverflowExceptionAsLLVMException(Node node, TypeOverflowException e) {
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
     }
 }

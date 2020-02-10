@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,10 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public final class IntegerConstant extends AbstractConstant {
 
@@ -59,24 +62,37 @@ public final class IntegerConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        if (getType().getBitSize() == 1) {
-            return value == 0 ? "false" : "true";
+        try {
+            if (getType().getBitSize() == 1) {
+                return value == 0 ? "false" : "true";
+            }
+        } catch (TypeOverflowException e) {
+            // fall-through
         }
         return String.valueOf(value);
     }
 
     public static IntegerConstant createFromData(Type type, RecordBuffer buffer) {
         // Sign extend for everything except i1 (boolean)
-        final int bits = type.getBitSize();
-        long d = buffer.read();
-        if (bits > 1 && bits < Long.SIZE) {
-            d = extendSign(bits, d);
-        }
+        assert type instanceof PrimitiveType || type instanceof VariableBitWidthType;
+        try {
+            final long bits = type.getBitSize();
+            long d = buffer.read();
+            if (bits > 1 && bits < Long.SIZE) {
+                d = extendSign(bits, d);
+            }
 
-        return new IntegerConstant(type, d);
+            return new IntegerConstant(type, d);
+        } catch (TypeOverflowException e) {
+            /*
+             * Should not reach here since getSize of PrimitiveType and VariableBitWidthType do not
+             * throw.
+             */
+            throw new AssertionError(e);
+        }
     }
 
-    private static long extendSign(int bits, long value) {
+    private static long extendSign(long bits, long value) {
         long v = value;
         long mask = (~((1L << (bits)) - 1)) >> 1;
         if ((v & mask) != 0) {
