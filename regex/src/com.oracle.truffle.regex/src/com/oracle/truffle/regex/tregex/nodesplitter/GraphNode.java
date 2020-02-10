@@ -46,7 +46,6 @@ import java.util.Set;
 
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
@@ -79,7 +78,7 @@ final class GraphNode implements Comparable<GraphNode> {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = StateSet.create(graph, StateSetBackingSetFactory.SORTED_ARRAY);
+        predecessorSet = StateSet.createWithBackingSortedArray(graph);
         backEdges = StateSet.create(graph);
         domChildren = NO_DOM_CHILDREN;
     }

@@ -48,7 +48,6 @@ import java.util.Set;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
@@ -251,7 +250,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     }
 
     private void handleScc(GraphNode topNode, Set<GraphNode> scc) throws DFANodeSplitBailoutException {
-        StateSet<GraphNode> msed = StateSet.create(this, StateSetBackingSetFactory.SORTED_ARRAY);
+        StateSet<GraphNode> msed = StateSet.createWithBackingSortedArray(this);
         for (GraphNode n : scc) {
             if (n.getDomTreeDepth() == topNode.getDomTreeDepth() + 1) {
                 n.setWeightAndHeaders(this, n, scc);
