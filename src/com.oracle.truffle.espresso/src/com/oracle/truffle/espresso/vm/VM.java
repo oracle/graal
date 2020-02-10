@@ -324,7 +324,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return self.copy();
         }
 
-        // TODO(meta)
+        // TODO(tg): inject Meta
         Meta meta = self.getKlass().getMeta();
         if (!meta.java_lang_Cloneable.isAssignableFrom(self.getKlass())) {
             throw Meta.throwException(meta.java_lang_CloneNotSupportedException);
@@ -616,7 +616,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private static void checkTag(ConstantPool pool, int index, ConstantPool.Tag expected) {
         ConstantPool.Tag target = pool.tagAt(index);
         if (target != expected) {
-            // TODO(meta)
+            // TODO(tg): inject Meta
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Wrong type at constant pool index");
         }

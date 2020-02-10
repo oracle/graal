@@ -490,7 +490,7 @@ public final class InterpreterToVM implements ContextAccess {
      * reworked.
      */
     @SuppressWarnings("unused")
-    public static StaticObject fillInStackTrace(StaticObject throwable, Meta meta) {
+    public static StaticObject fillInStackTrace(@Host(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
         VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getFieldIndex());
         if (frames != null) {
@@ -539,7 +539,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     // Recursion depth = 4
-    public static StaticObject fillInStackTrace(StaticObject throwable, boolean skipFirst, Meta meta) {
+    public static StaticObject fillInStackTrace(@Host(Throwable.class) StaticObject throwable, boolean skipFirst, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         VM.StackTrace frames = new VM.StackTrace();
