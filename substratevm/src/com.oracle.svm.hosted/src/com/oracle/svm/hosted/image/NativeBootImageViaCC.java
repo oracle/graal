@@ -237,7 +237,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                cmd.add("/PDBSTRIPPED");
+                String outputFileString = getOutputFile().toString();
+                String outputFileSuffix = getOutputKind().getFilenameSuffix();
+                String pdbFile = outputFileString.substring(0, outputFileString.length() - outputFileSuffix.length()) + ".stripped.pdb";
+                cmd.add("/PDBSTRIPPED:" + pdbFile);
             }
 
             if (removeUnusedSymbols()) {
