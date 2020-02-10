@@ -1590,7 +1590,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static int ThrowNew(@Host(Class.class) StaticObject clazz, String message) {
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
-        // TODO(meta)
+        // TODO(tg): inject Meta
         throw Meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(), message);
     }
 
