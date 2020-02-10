@@ -107,10 +107,10 @@ public class DebugValueTest extends AbstractDebugTest {
     @Test
     public void testGetRawValue() throws Throwable {
         final Source source = testSource("ROOT(\n" +
-                "  VARIABLE(a, 42), \n" +
-                "  VARIABLE(inf, infinity), \n" +
-                "  STATEMENT()\n" +
-                ")\n");
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();
             startEval(source);
@@ -129,10 +129,10 @@ public class DebugValueTest extends AbstractDebugTest {
     @Test
     public void testGetRawValueRestricted() throws Throwable {
         final Source source = testSource("ROOT(\n" +
-                "  VARIABLE(a, 42), \n" +
-                "  VARIABLE(inf, infinity), \n" +
-                "  STATEMENT()\n" +
-                ")\n");
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
         try (DebuggerSession session = startSession()) {
             session.suspendNextExecution();
             startEval(source);
