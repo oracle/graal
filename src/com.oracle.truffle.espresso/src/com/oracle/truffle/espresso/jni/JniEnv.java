@@ -1193,7 +1193,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object[].class) StaticObject NewObjectArray(int length, @Host(Class.class) StaticObject elementClass, @Host(Object.class) StaticObject initialElement) {
         assert !elementClass.getMirrorKlass().isPrimitive();
-        StaticObject arr = elementClass.getMirrorKlass().allocateArray(length);
+        StaticObject arr = elementClass.getMirrorKlass().allocateReferenceArray(length);
         if (length > 0) {
             // Single store check
             getInterpreterToVM().setArrayObject(initialElement, 0, arr);

@@ -68,7 +68,7 @@ public class Target_java_lang_ref_Reference {
         PUBLIC_FINAL_REFERENCE = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
     }
 
-    public static void init() {
+    public static void ensureInitialized() {
         /* nop */
     }
 

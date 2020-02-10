@@ -140,7 +140,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Name extends ModifiedUTF8 {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 
@@ -389,7 +389,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Type extends Descriptor {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 
@@ -593,7 +593,7 @@ public final class Symbol<T> extends ByteSequence {
      */
     public static final class Signature extends Descriptor {
 
-        public static void init() {
+        public static void ensureInitialized() {
             /* nop */
         }
 

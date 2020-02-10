@@ -211,7 +211,7 @@ public final class EspressoContext {
         assert !this.initialized;
         eventListener = new EmptyListener();
         // Inject PublicFinalReference in the host VM.
-        Target_java_lang_ref_Reference.init();
+        Target_java_lang_ref_Reference.ensureInitialized();
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);

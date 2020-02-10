@@ -29,6 +29,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.helper.LoadKlassNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -59,7 +60,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
-import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -79,7 +79,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String VM_SPECIFICATION_VERSION = "1.8";
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
     public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
-    public static final String VM_VERSION = "1.8.0_212";
+    public static final String VM_VERSION = "1.8.0_241";
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
@@ -98,10 +98,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
-        Name.init();
-        Type.init();
-        Signature.init();
-        Substitutions.init();
+        Name.ensureInitialized();
+        Type.ensureInitialized();
+        Signature.ensureInitialized();
+        Substitutions.ensureInitialized();
 
         // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
         // Signatures instead.
@@ -260,27 +260,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        final Source source = request.getSource();
         final EspressoContext context = getCurrentContext();
-
         assert context.isInitialized();
         context.begin();
-
-        String className = source.getName();
-
-        Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirrorKlass();
-
-        EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
-
-        Method mainMethod = mainClass.lookupDeclaredMethod(Name.main, Signature._void_String_array);
-
-        EspressoError.guarantee(mainMethod != null && mainMethod.isStatic(),
-                        "Error: Main method not found in class %s, please define the main method as:\n" +
-                                        "            public static void main(String[] args)\n",
-                        className);
-
-        assert mainMethod != null && mainMethod.isPublic() && mainMethod.isStatic();
-        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod));
+        String className = request.getSource().getCharacters().toString();
+        return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
     }
 
     /*

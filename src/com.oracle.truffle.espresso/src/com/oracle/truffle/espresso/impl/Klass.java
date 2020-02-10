@@ -23,17 +23,14 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.*;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.IntFunction;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -52,6 +49,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.nodes.helper.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -60,7 +58,157 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef {
+@ExportLibrary(InteropLibrary.class)
+public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
+
+    // region Interop
+
+    private static final String STATIC_TO_CLASS = "class";
+    private static final String ARRAY = "array";
+    private static final String COMPONENT = "component";
+
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        if (STATIC_TO_CLASS.equals(member)) {
+            return true;
+        }
+        if (getMeta()._void != this && ARRAY.equals(member)) {
+            return true;
+        }
+        if (isArray() && COMPONENT.equals(member)) {
+            return true;
+        }
+        for (Field f : getDeclaredFields()) {
+            if (f.isStatic() && f.isPublic() && member.equals(f.getName().toString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (STATIC_TO_CLASS.equals(member)) {
+            return mirror();
+        }
+        if (getMeta()._void != this && ARRAY.equals(member)) {
+            return array();
+        }
+        if (isArray() && COMPONENT.equals(member)) {
+            return getComponentType();
+        }
+        for (Field f : getDeclaredFields()) {
+            if (f.isStatic() && f.isPublic() && member.equals(f.getName().toString())) {
+                return f.get(tryInitializeAndGetStatics());
+            }
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        for (Method m : getDeclaredMethods()) {
+            if (m.isStatic() && m.isPublic() && member.equals(m.getName().toString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    public Object invokeMember(String member, Object[] arguments, @Exclusive @Cached InvokeEspressoNode invoke)
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        for (Method m : getDeclaredMethods()) {
+            if (m.isStatic() && m.isPublic() && member.equals(m.getName().toString()) && m.getParameterCount() == arguments.length) {
+                return invoke.execute(m, null, arguments);
+            }
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(boolean includeInternal) {
+        EconomicSet<String> members = EconomicSet.create();
+        members.add(STATIC_TO_CLASS);
+        for (Field f : getDeclaredFields()) {
+            if (f.isStatic() && f.isPublic()) {
+                members.add(f.getName().toString());
+            }
+        }
+        for (Method m : getDeclaredMethods()) {
+            if (m.isStatic() && m.isPublic()) {
+                members.add(m.getName().toString());
+            }
+        }
+        return new KeysArray(members.toArray(new String[0]));
+    }
+
+    @ExportMessage
+    static class IsInstantiable {
+
+        @Specialization(guards = "receiver.isArray()")
+        static boolean doArray(@SuppressWarnings("unused") Klass receiver) {
+            return true;
+        }
+
+        @Specialization(replaces = "doArray")
+        static boolean doConstructor(Klass receiver) {
+            if (receiver.isAbstract()) {
+                return false;
+            }
+            for (Method m : receiver.getDeclaredMethods()) {
+                if (m.isPublic() && Name._init_.equals(m.getName())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class Instantiate {
+
+        @Specialization(guards = "receiver.isArray()")
+        static Object doArray(Klass receiver, Object[] args,
+                                    @CachedLibrary(limit = "1") InteropLibrary indexes) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+            if (args.length != 1) {
+                throw ArityException.create(1, args.length);
+            }
+            Object arg0 = args[0];
+            int length;
+            if (indexes.fitsInInt(arg0)) {
+                length = indexes.asInt(arg0);
+            } else {
+                throw UnsupportedTypeException.create(args);
+            }
+            Klass component = receiver.getComponentType();
+            // TODO(peterssen): Add specialization for primitive arrays.
+            if (component.isPrimitive()) {
+                byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
+                return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
+            }
+            return component.allocateReferenceArray(length);
+        }
+
+        @Specialization
+        static Object doConstructor(Klass receiver, Object[] arguments,
+                                    @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+            for (Method m : receiver.getDeclaredMethods()) {
+                if (m.isPublic() && Name._init_.equals(m.getName()) && m.getParameterCount() == arguments.length) {
+                    StaticObject instance = receiver.allocateInstance();
+                    return invoke.execute(m, instance, arguments);
+                }
+            }
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    // endregion Interop
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
         @Override
@@ -225,7 +373,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Final override for performance reasons.
-     * 
+     *
      * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
      * {@link ContextAccess#getMeta} implementation.
      *
@@ -560,12 +708,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @TruffleBoundary
-    public StaticObject allocateArray(int length) {
-        return InterpreterToVM.newArray(this, length);
+    public StaticObject allocateReferenceArray(int length) {
+        return InterpreterToVM.newReferenceArray(this, length);
     }
 
     @TruffleBoundary
-    public StaticObject allocateArray(int length, IntFunction<StaticObject> generator) {
+    public StaticObject allocateReferenceArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {

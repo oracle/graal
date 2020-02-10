@@ -228,7 +228,7 @@ public final class Target_java_lang_Class {
                         /* signature */ Type.java_lang_String,
                         /* annotations */ Type._byte_array));
 
-        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
+        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateReferenceArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Field f = fields[i];
@@ -297,7 +297,7 @@ public final class Target_java_lang_Class {
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array));
 
-        StaticObject arr = meta.java_lang_reflect_Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Constructor.allocateReferenceArray(constructors.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Method m = constructors[i];
@@ -318,7 +318,7 @@ public final class Target_java_lang_Class {
                                 : StaticObject.NULL;
 
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -328,7 +328,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -405,7 +405,7 @@ public final class Target_java_lang_Class {
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array));
 
-        StaticObject arr = meta.java_lang_reflect_Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 Method m = methods[i];
@@ -429,7 +429,7 @@ public final class Target_java_lang_Class {
                                 ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
                                 : StaticObject.NULL;
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -439,7 +439,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -487,7 +487,7 @@ public final class Target_java_lang_Class {
 
         // TODO(tg): inject meta
         Meta meta = self.getKlass().getMeta();
-        StaticObject instance = meta.java_lang_Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
+        StaticObject instance = meta.java_lang_Class.allocateReferenceArray(superInterfaces.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return superInterfaces[i].mirror();
@@ -553,7 +553,7 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr.getMethodIndex() == 0) {
                 return StaticObject.NULL;
             }
-            StaticObject arr = meta.java_lang_Object.allocateArray(3);
+            StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
             RuntimeConstantPool pool = klass.getConstantPool();
             Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
 
@@ -730,13 +730,13 @@ public final class Target_java_lang_Class {
         Meta meta = self.getKlass().getMeta();
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive() || klass.isArray()) {
-            return meta.java_lang_Class.allocateArray(0);
+            return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
         InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
 
         if (innerClasses == null || innerClasses.entries().isEmpty()) {
-            return meta.java_lang_Class.allocateArray(0);
+            return meta.java_lang_Class.allocateReferenceArray(0);
         }
 
         RuntimeConstantPool pool = instanceKlass.getConstantPool();
@@ -764,7 +764,7 @@ public final class Target_java_lang_Class {
             }
         }
 
-        return meta.java_lang_Class.allocateArray(innerKlasses.size(), new IntFunction<StaticObject>() {
+        return meta.java_lang_Class.allocateReferenceArray(innerKlasses.size(), new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 return innerKlasses.get(index).mirror();

@@ -39,6 +39,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
     public static void main(String[] args) {
@@ -268,14 +269,25 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         int rc = 1;
         try (Context context = contextBuilder.build()) {
 
-            runVersionAction(versionAction, context.getEngine());
+            // runVersionAction(versionAction, context.getEngine());
+            if (versionAction != VersionAction.None) {
+                Value version = context.eval("java", "sun.misc.Version");
+                version.invokeMember("print");
+                if (versionAction == VersionAction.PrintAndExit) {
+                    throw exit(0);
+                }
+            }
 
             if (mainClassName == null) {
                 throw abort(usage());
             }
 
             try {
-                eval(context);
+                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                Value mainKlass = launcherHelper //
+                                .invokeMember("checkAndLoadMain", true, 1 /* LM_CLASS */, mainClassName) //
+                                .getMember("static");
+                mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
                 rc = 0;
             } catch (PolyglotException e) {
                 if (!e.isExit()) {
@@ -283,12 +295,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 } else {
                     rc = e.getExitStatus();
                 }
-            } catch (NoSuchFileException e) {
-                e.printStackTrace();
             }
-        } catch (IOException e) {
-            rc = 1;
-            e.printStackTrace();
         }
         throw exit(rc);
     }

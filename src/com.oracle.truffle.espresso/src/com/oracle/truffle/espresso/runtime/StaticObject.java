@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -40,6 +41,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -134,6 +136,37 @@ public final class StaticObject implements TruffleObject {
             return Meta.toHostString(this);
         }
         return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
+    }
+    
+    private static final String CLASS_TO_STATIC = "static";
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (notNull(this)) {
+            if (CLASS_TO_STATIC.equals(member)) {
+                if (getKlass() == getKlass().getMeta().java_lang_Class) {
+                    return getMirrorKlass();
+                }
+            }
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return !isNull(this);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        return notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class && CLASS_TO_STATIC.equals(member);
+    }
+
+    @ExportMessage
+    Object getMembers(boolean includeInternal) {
+        return isNull(this)
+                        ? new KeysArray(new String[0])
+                        : new KeysArray(new String[]{CLASS_TO_STATIC});
     }
 
     // endregion Interop
