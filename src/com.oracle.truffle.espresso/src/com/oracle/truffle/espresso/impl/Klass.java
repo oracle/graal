@@ -201,7 +201,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             for (Method m : receiver.getDeclaredMethods()) {
                 if (m.isPublic() && Name._init_.equals(m.getName()) && m.getParameterCount() == arguments.length) {
                     StaticObject instance = receiver.allocateInstance();
-                    return invoke.execute(m, instance, arguments);
+                    invoke.execute(m, instance, arguments);
+                    return instance;
                 }
             }
             throw UnsupportedMessageException.create();
