@@ -36,11 +36,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -93,6 +96,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.DebugLevel;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMAddressValue;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
@@ -112,6 +116,8 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -123,10 +129,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     protected final RuntimeConfiguration runtimeConfiguration;
     private final DebugInfoBuilder debugInfoBuilder;
 
+    private final Set<AbstractBlockBase<?>> processedBlocks = new HashSet<>();
     private Map<Node, LLVMValueWrapper> valueMap = new HashMap<>();
 
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
-    private long startPatchpointID = -1L;
     private long nextCGlobalId = 0L;
 
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen, RuntimeConfiguration runtimeConfiguration) {
@@ -134,6 +140,19 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         this.builder = gen.getBuilder();
         this.runtimeConfiguration = runtimeConfiguration;
         this.debugInfoBuilder = new SubstrateDebugInfoBuilder(this, graph.getDebug());
+
+        Assumptions assumptions = graph.getAssumptions();
+        if (assumptions != null && !assumptions.isEmpty()) {
+            gen.getCompilationResult().setAssumptions(assumptions.toArray());
+        }
+
+        ResolvedJavaMethod rootMethod = graph.method();
+        if (rootMethod != null) {
+            gen.getCompilationResult().setMethods(rootMethod, graph.getMethods());
+            gen.getCompilationResult().setFields(graph.getFields());
+        }
+
+        gen.getCompilationResult().setHasUnsafeAccess(graph.hasUnsafeAccess());
 
         gen.getBuilder().addMainFunction(gen.getLLVMFunctionType(graph.method(), true));
 
@@ -159,13 +178,16 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+        assert !processedBlocks.contains(block) : "Block already processed " + block;
+        assert verifyPredecessors(block);
+
         gen.beginBlock(block);
         if (block == graph.getLastSchedule().getCFG().getStartBlock()) {
             assert block.getPredecessorCount() == 0;
 
-            startPatchpointID = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
-            gen.getLLVMResult().setStartPatchpointID(startPatchpointID);
+            long startPatchpointID = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
             builder.buildStackmap(builder.constantLong(startPatchpointID));
+            gen.getCompilationResult().recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);
 
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 LLVMValueRef paramValue = builder.getParam(getParamIndex(param.index()));
@@ -200,7 +222,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
                     boolean hasBackwardIncomingEdges = false;
                     for (Block predecessor : block.getPredecessors()) {
-                        if (gen.getLLVMResult().isProcessed(predecessor)) {
+                        if (processedBlocks.contains(predecessor)) {
                             ValueNode phiValue = phiNode.valueAt((AbstractEndNode) predecessor.getEndNode());
                             LLVMValueRef value = llvmOperand(phiValue);
                             LLVMBasicBlockRef parentBlock = gen.getBlockEnd(predecessor);
@@ -263,15 +285,38 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             builder.buildBranch(gen.getBlock(block.getFirstSuccessor()));
         }
 
-        gen.getLLVMResult().setProcessed(block);
+        processedBlocks.add(block);
     }
+
+    private boolean verifyPredecessors(Block block) {
+        for (Block pred : block.getPredecessors()) {
+            if (!block.isLoopHeader() || !pred.isLoopEnd()) {
+                assert processedBlocks.contains(pred) : "Predecessor not yet processed " + pred;
+            }
+        }
+        return true;
+    }
+
+    private final Map<String, CGlobalDataReference> cGlobals = new HashMap<>();
 
     @Override
     public void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node) {
         CGlobalDataInfo dataInfo = node.getDataInfo();
 
         String symbolName = (dataInfo.getData().symbolName != null) ? dataInfo.getData().symbolName : "global_" + builder.getFunctionName() + "#" + nextCGlobalId++;
-        gen.getLLVMResult().recordCGlobal(new CGlobalDataReference(dataInfo), symbolName);
+        CGlobalDataReference reference = new CGlobalDataReference(dataInfo);
+        if (cGlobals.containsKey(symbolName)) {
+            /*
+             * This global was defined both as a symbol name and a defined value. We only register
+             * the defined value as it contains all the necessary information.
+             */
+            assert reference.getDataInfo().isSymbolReference() != cGlobals.get(symbolName).getDataInfo().isSymbolReference();
+            if (!reference.getDataInfo().isSymbolReference()) {
+                cGlobals.put(symbolName, reference);
+            }
+        } else {
+            cGlobals.put(symbolName, reference);
+        }
 
         setResult(node, builder.buildPtrToInt(builder.getExternalSymbol(symbolName), builder.longType()));
     }
@@ -316,7 +361,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     void finish() {
-        gen.getLLVMResult().setBitcode(builder.getBitcode());
+        cGlobals.forEach((symbolName, reference) -> gen.getCompilationResult().recordDataPatchWithNote(0, reference, symbolName));
+    }
+
+    byte[] getBitcode() {
+        return builder.getBitcode();
     }
 
     @Override
@@ -457,7 +506,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (callTarget instanceof DirectCallTargetNode) {
             callee = gen.getFunction(targetMethod);
             isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
-            gen.getLLVMResult().recordDirectCall(targetMethod, patchpointId, debugInfo);
+            gen.getCompilationResult().recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, debugInfo, true);
         } else if (callTarget instanceof IndirectCallTargetNode) {
             LLVMValueRef computedAddress = llvmOperand(((IndirectCallTargetNode) callTarget).computedAddress());
             if (LLVMIRBuilder.isObject(typeOf(computedAddress))) {
@@ -476,7 +525,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 callee = builder.buildIntToPtr(computedAddress,
                                 builder.pointerType(builder.functionType(returnType, argTypes), false, false));
             }
-            gen.getLLVMResult().recordIndirectCall(targetMethod, patchpointId, debugInfo);
+            gen.getCompilationResult().recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, debugInfo, false);
 
             if (gen.getDebugLevel() >= DebugLevel.NODE) {
                 gen.emitPrintf("Indirect call to " + ((targetMethod != null) ? targetMethod.getName() : "[unknown]"), new JavaKind[]{JavaKind.Object}, new LLVMValueRef[]{callee});

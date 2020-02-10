@@ -48,6 +48,7 @@ import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
@@ -60,8 +61,11 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
+import jdk.vm.ci.code.site.DataSectionReference;
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -128,7 +132,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     protected final LLVMIRBuilder builder;
     protected final LIRKindTool lirKindTool;
     private final Providers providers;
-    private final LLVMGenerationResult generationResult;
+    private final CompilationResult compilationResult;
     private final boolean returnsEnum;
     private final boolean explicitSelects;
     private final int debugLevel;
@@ -140,6 +144,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private Map<AbstractBeginNode, LLVMBasicBlockRef> basicBlockMap = new HashMap<>();
     Map<Block, LLVMBasicBlockRef> splitBlockEndMap = new HashMap<>();
 
+    private final Map<Constant, String> constants = new HashMap<>();
+    private static final SubstrateDataBuilder dataBuilder = new SubstrateDataBuilder();
+
     /*
      * Special registers (thread pointer and heap base) are implemented in the LLVM backend by
      * passing them as arguments to functions. As these registers can be modified in entry point
@@ -148,9 +155,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      */
     private LLVMValueRef[] registerStackSlots = new LLVMValueRef[LLVMFeature.SPECIAL_REGISTER_COUNT];
 
-    public LLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
+    public LLVMGenerator(Providers providers, CompilationResult result, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
         this.providers = providers;
-        this.generationResult = generationResult;
+        this.compilationResult = result;
         this.returnsEnum = method.getSignature().getReturnType(null).resolve(null).isEnum();
         this.explicitSelects = LLVMFeature.LLVMVersionChecker.useExplicitSelects();
 
@@ -200,6 +207,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     public LLVMIRBuilder getBuilder() {
         return builder;
+    }
+
+    public CompilationResult getCompilationResult() {
+        return compilationResult;
     }
 
     void appendBasicBlock(Block block) {
@@ -285,10 +296,17 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private long nextConstantId = 0L;
 
     private LLVMValueRef getLLVMPlaceholderForConstant(Constant constant) {
-        String symbolName = generationResult.getSymbolNameForConstant(constant);
+        String symbolName = constants.get(constant);
         if (symbolName == null) {
             symbolName = "constant_" + builder.getFunctionName() + "#" + nextConstantId++;
-            generationResult.recordConstant(constant, symbolName);
+            constants.put(constant, symbolName);
+
+            Constant storedConstant = constant;
+            if (SubstrateOptions.SpawnIsolates.getValue() && constant instanceof SubstrateObjectConstant && !((SubstrateObjectConstant) constant).isCompressed()) {
+                storedConstant = ((SubstrateObjectConstant) constant).compress();
+            }
+            DataSectionReference reference = compilationResult.getDataSection().insertData(dataBuilder.createDataItem(storedConstant));
+            compilationResult.recordDataPatchWithNote(0, reference, symbolName);
         }
         return builder.getExternalObject(symbolName, isConstantCompressed(constant));
     }
@@ -562,7 +580,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         state.initDebugInfo(null, false);
         long patchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
-        generationResult.recordDirectCall(targetMethod, patchpointId, state.debugInfo());
+        compilationResult.recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, state.debugInfo(), true);
 
         LLVMValueRef callee = getFunction(targetMethod);
         LLVMValueRef[] args = Arrays.stream(arguments).map(LLVMUtils::getVal).toArray(LLVMValueRef[]::new);
@@ -1061,10 +1079,6 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     public LLVMValueRef getRetrieveExceptionFunction() {
         return getFunction(LLVMFeature.retrieveExceptionMethod);
-    }
-
-    public LLVMGenerationResult getLLVMResult() {
-        return generationResult;
     }
 
     int getDebugLevel() {

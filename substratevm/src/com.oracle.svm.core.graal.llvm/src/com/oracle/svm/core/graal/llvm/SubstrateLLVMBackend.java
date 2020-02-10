@@ -28,11 +28,18 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMOptions.IncludeLLVMDebugIn
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
+import java.util.List;
 
 import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TimerKey;
@@ -62,7 +69,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateLLVMBackend extends SubstrateBackend {
     private static final TimerKey EmitLLVM = DebugContext.timer("EmitLLVM").doc("Time spent generating LLVM from HIR.");
-    private static final TimerKey Populate = DebugContext.timer("EmitCode").doc("Time spent populating the compilation result.");
     private static final TimerKey BackEnd = DebugContext.timer("BackEnd").doc("Time spent in EmitLLVM and Populate.");
 
     public SubstrateLLVMBackend(Providers providers) {
@@ -79,9 +85,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
-        LLVMGenerationResult genResult = new LLVMGenerationResult(method);
         LLVMContextRef context = LLVM.LLVMContextCreate();
-        LLVMGenerator generator = new LLVMGenerator(getProviders(), genResult, method, context, 0);
+        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, context, 0);
         LLVMIRBuilder builder = generator.getBuilder();
 
         builder.addMainFunction(generator.getLLVMFunctionType(method, true));
@@ -109,9 +114,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
         builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 
-        genResult.setBitcode(generator.getBuilder().getBitcode());
-
-        byte[] bitcode = genResult.getBitcode();
+        byte[] bitcode = generator.getBuilder().getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
         result.setMethods(method, Collections.emptySet());
         result.recordInfopoint(NumUtil.safeToInt(startPatchpointId), null, InfopointReason.METHOD_START);
@@ -129,11 +132,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
                     RegisterConfig config, LIRSuites lirSuites) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start(debug)) {
-            LLVMGenerationResult genRes = emitLLVM(graph);
-            result.setHasUnsafeAccess(graph.hasUnsafeAccess());
-            try (DebugCloseable p = Populate.start(debug)) {
-                genRes.populate(result, graph);
-            }
+            emitLLVM(graph, result);
+            dumpDebugInfo(result, graph);
         } catch (Throwable e) {
             throw debug.handle(e);
         } finally {
@@ -142,24 +142,24 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     @SuppressWarnings("try")
-    private LLVMGenerationResult emitLLVM(StructuredGraph graph) {
+    private void emitLLVM(StructuredGraph graph, CompilationResult result) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope ds = debug.scope("EmitLLVM"); DebugCloseable a = EmitLLVM.start(debug)) {
             assert !graph.hasValueProxies();
 
             ResolvedJavaMethod method = graph.method();
             LLVMContextRef context = LLVM.LLVMContextCreate();
-            LLVMGenerationResult genResult = new LLVMGenerationResult(graph.method());
-            LLVMGenerator generator = new LLVMGenerator(getProviders(), genResult, method, context, IncludeLLVMDebugInfo.getValue());
+            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, context, IncludeLLVMDebugInfo.getValue());
             NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
 
             /* LLVM generation */
             generate(nodeBuilder, graph);
+            byte[] bitcode = nodeBuilder.getBitcode();
+            result.setTargetCode(bitcode, bitcode.length);
 
-            try (DebugContext.Scope s = debug.scope("LIRStages", nodeBuilder, genResult, null)) {
+            try (DebugContext.Scope s = debug.scope("LIRStages", nodeBuilder, null, null)) {
                 /* Dump LIR along with HIR (the LIR is looked up from context) */
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
-                return genResult;
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -176,21 +176,39 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
 
     protected static void generate(NodeLLVMBuilder nodeBuilder, StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        LLVMGenerationResult genResult = nodeBuilder.getLIRGeneratorTool().getLLVMResult();
         for (Block b : schedule.getCFG().getBlocks()) {
-            assert !genResult.isProcessed(b) : "Block already processed " + b;
-            assert verifyPredecessors(genResult, b);
             nodeBuilder.doBlock(b, graph, schedule.getBlockToNodesMap());
         }
         nodeBuilder.finish();
     }
 
-    private static boolean verifyPredecessors(LLVMGenerationResult genResult, Block block) {
-        for (Block pred : block.getPredecessors()) {
-            if (!block.isLoopHeader() || !pred.isLoopEnd()) {
-                assert genResult.isProcessed(pred) : "Predecessor not yet processed " + pred;
+    private void dumpDebugInfo(CompilationResult compilationResult, StructuredGraph graph) {
+        DebugContext debug = graph.getDebug();
+
+        if (debug.isCountEnabled()) {
+            List<DataPatch> ldp = compilationResult.getDataPatches();
+            JavaKind[] kindValues = JavaKind.values();
+            CounterKey[] dms = new CounterKey[kindValues.length];
+            for (int i = 0; i < dms.length; i++) {
+                dms[i] = DebugContext.counter("DataPatches-%s", kindValues[i]);
             }
+
+            for (DataPatch dp : ldp) {
+                JavaKind kind = JavaKind.Illegal;
+                if (dp.reference instanceof ConstantReference) {
+                    VMConstant constant = ((ConstantReference) dp.reference).getConstant();
+                    if (constant instanceof JavaConstant) {
+                        kind = ((JavaConstant) constant).getJavaKind();
+                    }
+                }
+                dms[kind.ordinal()].add(debug, 1);
+            }
+
+            DebugContext.counter("CompilationResults").increment(debug);
+            DebugContext.counter("InfopointsEmitted").add(debug, compilationResult.getInfopoints().size());
+            DebugContext.counter("DataPatches").add(debug, ldp.size());
         }
-        return true;
+
+        debug.dump(DebugContext.BASIC_LEVEL, compilationResult, "After code generation");
     }
 }
