@@ -302,12 +302,13 @@ public final class DebuggerSession implements Closeable {
      */
     public Map<String, ? extends DebugValue> getExportedSymbols() {
         return new AbstractMap<String, DebugValue>() {
+            private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
+
             @Override
             public Set<Map.Entry<String, DebugValue>> entrySet() {
                 Set<Map.Entry<String, DebugValue>> entries = new LinkedHashSet<>();
-                for (Map.Entry<String, ? extends Object> symbol : debugger.getEnv().getExportedSymbols().entrySet()) {
-                    DebugValue value = new DebugValue.HeapValue(DebuggerSession.this, symbol.getKey(), symbol.getValue());
-                    entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
+                for (DebugValue property : polyglotBindings.getProperties()) {
+                    entries.add(new SimpleImmutableEntry<>(property.getName(), property));
                 }
                 return Collections.unmodifiableSet(entries);
             }
@@ -318,11 +319,7 @@ public final class DebuggerSession implements Closeable {
                     return null;
                 }
                 String name = (String) key;
-                Object value = debugger.getEnv().getExportedSymbols().get(name);
-                if (value == null) {
-                    return null;
-                }
-                return new DebugValue.HeapValue(DebuggerSession.this, name, value);
+                return polyglotBindings.getProperty(name);
             }
         };
     }
