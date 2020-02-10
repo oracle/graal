@@ -37,6 +37,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,8 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -461,126 +464,80 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
+        List<String> args = new ArrayList<>();
+        if (LLVMOptions.BitcodeOptimizations.getValue()) {
+            args.add("-disable-inlining");
+            args.add("-O2");
+        } else {
+            /*
+             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
+             * are not supported for statepoints.
+             */
+            args.add("-mem2reg");
+        }
+        args.add("-rewrite-statepoints-for-gc");
+        args.add("-always-inline");
+
+        args.add("-o");
+        args.add(outputPath);
+        args.add(inputPath);
+
         try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add(LLVMUtils.getLLVMBinDir().resolve("opt").toString());
-
-            if (LLVMOptions.BitcodeOptimizations.getValue()) {
-                cmd.add("-disable-inlining");
-                cmd.add("-O2");
-            } else {
-                /*
-                 * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
-                 * are not supported for statepoints.
-                 */
-                cmd.add("-mem2reg");
-            }
-            cmd.add("-rewrite-statepoints-for-gc");
-            cmd.add("-always-inline");
-
-            cmd.add("-o");
-            cmd.add(outputPath);
-            cmd.add(inputPath);
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.directory(basePath.toFile());
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-
-            OutputStream output = new ByteArrayOutputStream();
-            FileUtils.drainInputStream(p.getInputStream(), output);
-
-            int status = p.waitFor();
-            if (status != 0) {
-                debug.log("%s", output.toString());
-                throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + status + "\nCommand: " + String.join(" ", cmd));
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new GraalError(e);
+            LLVMToolchain.runLLVMCommand("opt", basePath, args);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: opt " + String.join(" ", args));
         }
     }
 
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
+        List<String> args = new ArrayList<>();
+        args.add("-relocation-model=pic");
+        args.add("--trap-unreachable");
+        args.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
+        args.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
+        args.add("-O2");
+        args.add("-filetype=obj");
+        args.add("-o");
+        args.add(outputPath);
+        args.add(inputPath);
+
         try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llc").toString());
-            cmd.add("-relocation-model=pic");
-            cmd.add("--trap-unreachable");
-            cmd.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
-            cmd.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
-            cmd.add("-O2");
-            cmd.add("-filetype=obj");
-            cmd.add("-o");
-            cmd.add(outputPath);
-            cmd.add(inputPath);
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.directory(basePath.toFile());
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-
-            OutputStream output = new ByteArrayOutputStream();
-            FileUtils.drainInputStream(p.getInputStream(), output);
-
-            int status = p.waitFor();
-            if (status != 0) {
-                debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status + "\nCommand: " + String.join(" ", cmd));
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new GraalError(e);
+            LLVMToolchain.runLLVMCommand("llc", basePath, args);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: llc " + String.join(" ", args));
         }
     }
 
     private void llvmLink(DebugContext debug, String outputPath, List<String> inputPaths) {
+        List<String> args = new ArrayList<>();
+        args.add("-v");
+        args.add("-o");
+        args.add(outputPath);
+        args.addAll(inputPaths);
+
         try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llvm-link").toString());
-            cmd.add("-v");
-            cmd.add("-o");
-            cmd.add(outputPath);
-            cmd.addAll(inputPaths);
-
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.directory(basePath.toFile());
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-
-            OutputStream output = new ByteArrayOutputStream();
-            FileUtils.drainInputStream(p.getInputStream(), output);
-
-            int status = p.waitFor();
-            if (status != 0) {
-                debug.log("%s", output.toString());
-                throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + status);
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new GraalError(e);
+            LLVMToolchain.runLLVMCommand("llvm-link", basePath, args);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }
     }
 
     private void nativeLink(DebugContext debug, String outputPath, List<String> inputPaths) {
+        List<String> cmd = new ArrayList<>();
+        cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
+        cmd.add("-r");
+        cmd.add("-o");
+        cmd.add(outputPath);
+        cmd.addAll(inputPaths);
+
         try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
-            cmd.add("-r");
-            cmd.add("-o");
-            cmd.add(outputPath);
-            cmd.addAll(inputPaths);
-
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.directory(basePath.toFile());
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-
-            OutputStream output = new ByteArrayOutputStream();
-            FileUtils.drainInputStream(p.getInputStream(), output);
-
-            int status = p.waitFor();
-            if (status != 0) {
-                debug.log("%s", output.toString());
-                throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + status);
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new GraalError(e);
+            LLVMToolchain.runCommand(basePath, cmd);
+        } catch (RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }
     }
 

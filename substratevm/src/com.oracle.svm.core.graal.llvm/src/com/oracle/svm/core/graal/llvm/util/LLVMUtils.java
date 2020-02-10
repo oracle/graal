@@ -79,34 +79,6 @@ public class LLVMUtils {
         public static final int NODE = 3;
     }
 
-    public static Path getLLVMBinDir() {
-        final String property = System.getProperty("llvm.bin.dir");
-        if (property != null) {
-            return Paths.get(property);
-        }
-
-        // TODO (GR-18389): Set only for standalones currently
-        Path toolchainHome = HomeFinder.getInstance().getLanguageHomes().get("llvm-toolchain");
-        if (toolchainHome != null) {
-            return toolchainHome.resolve("bin");
-        }
-
-        return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
-    }
-
-    private static boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
-
-    private static Path getRuntimeDir() {
-        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
-        if (runtimeDir == null) {
-            throw new IllegalStateException("Could not find GraalVM home");
-        }
-        if (hasJreDir) {
-            runtimeDir = runtimeDir.resolve("jre");
-        }
-        return runtimeDir;
-    }
-
     public static int getLLVMIntCond(Condition cond) {
         switch (cond) {
             case EQ:

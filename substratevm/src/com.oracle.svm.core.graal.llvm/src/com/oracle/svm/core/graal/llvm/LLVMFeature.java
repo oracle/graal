@@ -32,10 +32,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -197,28 +200,25 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    static class LLVMVersionChecker {
+    public static class LLVMVersionChecker {
         private static final int MIN_LLVM_VERSION = 8;
         private static final int MIN_LLVM_OPTIMIZATIONS_VERSION = 9;
-        private static final int llvmVersion = checkLLVMVersion();
+        private static final int llvmVersion = getLLVMVersion();
 
         public static boolean useExplicitSelects() {
             if (!Platform.includedIn(Platform.AMD64.class)) {
                 return false;
             }
-            if (llvmVersion == -1) {
-                return !LLVMOptions.BitcodeOptimizations.getValue();
-            } else {
-                return llvmVersion < MIN_LLVM_OPTIMIZATIONS_VERSION;
-            }
+            return llvmVersion < MIN_LLVM_OPTIMIZATIONS_VERSION;
         }
 
-        private static int checkLLVMVersion() {
-            if (!CompilerBackend.getValue().equals("llvm") || LLVMOptions.CustomLLC.hasBeenSet()) {
-                return -1;
+        private static int getLLVMVersion() {
+            String versionString;
+            try {
+                versionString = LLVMToolchain.runLLVMCommand("llvm-config", null, "--version");
+            } catch (RunFailureException e) {
+                throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
             }
-
-            String versionString = getLLVMVersion();
             String[] splitVersion = versionString.split("\\.");
             assert splitVersion.length == 3;
             int version = Integer.parseInt(splitVersion[0]);
@@ -230,32 +230,6 @@ public class LLVMFeature implements Feature, GraalFeature {
             }
 
             return version;
-        }
-
-        private static String getLLVMVersion() {
-            int status;
-            String output = null;
-            try (OutputStream os = new ByteArrayOutputStream()) {
-                List<String> cmd = new ArrayList<>();
-                cmd.add(LLVMUtils.getLLVMBinDir().resolve("llvm-config").toString());
-                cmd.add("--version");
-                ProcessBuilder pb = new ProcessBuilder(cmd);
-                pb.redirectErrorStream(true);
-                Process p = pb.start();
-
-                FileUtils.drainInputStream(p.getInputStream(), os);
-
-                status = p.waitFor();
-                output = os.toString().trim();
-            } catch (IOException | InterruptedException e) {
-                status = -1;
-            }
-
-            if (status != 0) {
-                throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
-            }
-
-            return output;
         }
     }
 }

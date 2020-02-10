@@ -43,14 +43,11 @@ public class LLVMOptions {
     @Option(help = "How many batches per thread should be used for LLVM compilation. 0 means a single batch, -1 means all functions separately", type = OptionType.Expert)//
     public static final HostedOptionKey<Integer> LLVMBatchesPerThread = new HostedOptionKey<>(1);
 
-    @Option(help = "Path to a custom llc binary for LLVM compilation")//
-    public static final HostedOptionKey<String> CustomLLC = new HostedOptionKey<>("");
-
     @Option(help = "Path to a custom ld binary for LLVM linking")//
     public static final HostedOptionKey<String> CustomLD = new HostedOptionKey<>("");
 
     @Option(help = "Enable LLVM bitcode optimizations")//
     public static final HostedOptionKey<Boolean> BitcodeOptimizations = new HostedOptionKey<>(false);
 
-    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMBatchesPerThread, CustomLLC, CustomLD, BitcodeOptimizations);
+    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMBatchesPerThread, CustomLD, BitcodeOptimizations);
 }
