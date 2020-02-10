@@ -457,7 +457,7 @@ public class NativeImageGenerator {
             }).get();
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding(e);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof RuntimeException) {
                 throw (RuntimeException) e.getCause();
