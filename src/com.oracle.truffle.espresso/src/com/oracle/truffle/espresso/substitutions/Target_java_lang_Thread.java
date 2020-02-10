@@ -147,7 +147,7 @@ public final class Target_java_lang_Thread {
                     }
                     // check if death cause throwable is set, if not throw ThreadDeath
                     StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
-                    throw deathThrowable != null ? Meta.throwException(deathThrowable) : meta.throwException(meta.java_lang_ThreadDeath);
+                    throw deathThrowable != null ? Meta.throwException(deathThrowable) : Meta.throwException(meta.java_lang_ThreadDeath);
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
@@ -178,7 +178,7 @@ public final class Target_java_lang_Thread {
         }
         Meta meta = threads.getKlass().getMeta();
         if (threads.length() == 0) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         StaticObject trace = StaticObject.createArray(meta.java_lang_StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
         StaticObject[] toWrap = new StaticObject[threads.length()];
@@ -315,9 +315,9 @@ public final class Target_java_lang_Thread {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             setInterrupt(thread, false);
-            throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
         } catch (IllegalArgumentException e) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {
             toRunnable(thread, meta, State.RUNNABLE);
         }

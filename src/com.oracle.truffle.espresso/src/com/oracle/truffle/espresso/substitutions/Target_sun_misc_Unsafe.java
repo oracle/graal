@@ -78,7 +78,7 @@ public final class Target_sun_misc_Unsafe {
         Meta meta = context.getMeta();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();

@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -38,7 +37,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class ExceptionDispatch implements ContextAccess {
     private final Meta meta;
 
-    private final ObjectKlass java_lang_runtimeException;
+    private final ObjectKlass runtimeException;
 
     @Override
     public EspressoContext getContext() {
@@ -52,17 +51,17 @@ public final class ExceptionDispatch implements ContextAccess {
 
     public ExceptionDispatch(Meta meta) {
         this.meta = meta;
-        this.java_lang_runtimeException = meta.java_lang_RuntimeException;
+        this.runtimeException = meta.java_lang_RuntimeException;
     }
 
     /**
      * Quickly initializes frequent runtime exceptions without needing a boundary.
      */
-    @ExplodeLoop
     StaticObject initEx(ObjectKlass klass, StaticObject message, StaticObject cause) {
         if (!CompilerDirectives.inInterpreter() && CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            if (StaticObject.isNull(klass.getDefiningClassLoader()) && java_lang_runtimeException.isAssignableFrom(klass))
+            if (StaticObject.isNull(klass.getDefiningClassLoader()) && runtimeException.isAssignableFrom(klass)) {
                 return fastPath(klass, message, cause);
+            }
         }
         return slowPath(klass, message, cause);
     }

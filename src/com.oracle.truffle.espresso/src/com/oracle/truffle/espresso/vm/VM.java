@@ -327,7 +327,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(meta)
         Meta meta = self.getKlass().getMeta();
         if (!meta.java_lang_Cloneable.isAssignableFrom(self.getKlass())) {
-            throw meta.throwException(meta.java_lang_CloneNotSupportedException);
+            throw Meta.throwException(meta.java_lang_CloneNotSupportedException);
         }
 
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_Reference)) {
@@ -349,7 +349,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                             || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference) //
                             || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference)) {
 
-                throw meta.throwExceptionWithMessage(meta.java_lang_CloneNotSupportedException, self.getKlass().getName().toString());
+                throw Meta.throwExceptionWithMessage(meta.java_lang_CloneNotSupportedException, self.getKlass().getName().toString());
             }
         }
 
@@ -399,7 +399,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             self.getLock().signalAll();
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwException(getMeta().java_lang_IllegalMonitorStateException);
+            throw Meta.throwException(getMeta().java_lang_IllegalMonitorStateException);
         }
     }
 
@@ -410,7 +410,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             self.getLock().signal();
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwException(getMeta().java_lang_IllegalMonitorStateException);
+            throw Meta.throwException(getMeta().java_lang_IllegalMonitorStateException);
         }
     }
 
@@ -431,11 +431,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             self.getLock().await(timeout);
         } catch (InterruptedException e) {
             Target_java_lang_Thread.setInterrupt(currentThread, false);
-            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InterruptedException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_InterruptedException, e.getMessage());
         } catch (IllegalMonitorStateException e) {
-            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalMonitorStateException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalMonitorStateException, e.getMessage());
         } catch (IllegalArgumentException e) {
-            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
         } finally {
             if (context.EnableManagement) {
                 currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
@@ -589,12 +589,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         if (index < 0) {
-            throw getMeta().throwException(meta.java_lang_IndexOutOfBoundsException);
+            throw Meta.throwException(meta.java_lang_IndexOutOfBoundsException);
         }
         StaticObject ste = meta.java_lang_StackTraceElement.allocateInstance();
         StackTrace frames = EspressoException.getFrames(self, meta);
         if (frames == null || index >= frames.size) {
-            throw getMeta().throwException(meta.java_lang_IndexOutOfBoundsException);
+            throw Meta.throwException(meta.java_lang_IndexOutOfBoundsException);
         }
         StackElement stackElement = frames.trace[index];
         Method method = stackElement.getMethod();
@@ -618,7 +618,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (target != expected) {
             // TODO(meta)
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Wrong type at constant pool index");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Wrong type at constant pool index");
         }
     }
 
@@ -697,7 +697,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 internalName = "L" + name + ";";
             }
             if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), false)) {
-                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, name);
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, name);
             }
             type = getTypes().fromClassGetName(internalName);
         }
@@ -887,7 +887,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             return Array.getLength(MetaUtil.unwrapArrayOrNull(array));
         } catch (IllegalArgumentException e) {
-            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
         } catch (NullPointerException e) {
             throw getMeta().throwNullPointerException();
         }
@@ -1007,14 +1007,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                                             // This must only be called from
                                             // Reflection.getCallerClass.
                                             if (method != meta.sun_reflect_Reflection_getCallerClass) {
-                                                exception[0] = meta.initExceptionWithMessage(meta.java_lang_InternalError, "JVM_GetCallerClass must only be called from Reflection.getCallerClass");
+                                                exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "JVM_GetCallerClass must only be called from Reflection.getCallerClass");
                                                 return /* ignore */ method;
                                             }
                                             // fall-through
                                         case 1:
                                             // Frame 0 and 1 must be caller sensitive.
                                             if ((method.getModifiers() & ACC_CALLER_SENSITIVE) == 0) {
-                                                exception[0] = meta.initExceptionWithMessage(meta.java_lang_InternalError, "CallerSensitive annotation expected at frame " + depth);
+                                                exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "CallerSensitive annotation expected at frame " + depth);
                                                 return /* ignore */ method;
                                             }
                                             break;
@@ -1237,7 +1237,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
         if (run == null || !run.isPublic() || run.isStatic()) {
-            throw getMeta().throwException(getMeta().java_lang_InternalError);
+            throw Meta.throwException(getMeta().java_lang_InternalError);
         }
 
         // Prepare the privileged stack
@@ -1423,11 +1423,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             return getInterpreterToVM().getArrayObject(index, array);
         }
         if (!array.getClass().isArray()) {
-            throw getMeta().throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Argument is not an array");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Argument is not an array");
         }
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (index < 0 || index >= JVM_GetArrayLength(array)) {
-            throw getMeta().throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, "index");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, "index");
         }
         Object elem = Array.get(array, index);
         return guestBox(elem);
@@ -1504,10 +1504,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         for (MethodParametersAttribute.Entry entry : methodParameters.getEntries()) {
             int nameIndex = entry.getNameIndex();
             if (nameIndex < 0 || nameIndex >= cpLength) {
-                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Constant pool index out of bounds");
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Constant pool index out of bounds");
             }
             if (nameIndex != 0 && method.getConstantPool().tagAt(nameIndex) != ConstantPool.Tag.UTF8) {
-                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Wrong type at constant pool index");
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Wrong type at constant pool index");
             }
         }
 
@@ -1907,7 +1907,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         for (int i = 0; i < numThreads; ++i) {
             long tid = threadIds.<long[]> unwrap()[i];
             if (tid <= 0) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid thread ID entry");
             }
         }
     }
@@ -1918,7 +1918,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (infoArray.isArray()) {
             Klass component = ((ArrayKlass) infoArrayKlass).getComponentType();
             if (!meta.java_lang_management_ThreadInfo.equals(component)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "infoArray element type is not ThreadInfo class");
             }
         }
     }
@@ -1932,14 +1932,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         if (maxDepth < -1) {
-            throw getMeta().throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid maxDepth");
         }
 
         validateThreadIdArray(meta, ids);
         validateThreadInfoArray(meta, infoArray);
 
         if (ids.length() != infoArray.length()) {
-            throw getMeta().throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
         Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(/* returns */Type._void,
@@ -1995,7 +1995,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                 StaticObject stackTrace;
                 if (maxDepth != 0 && thread == currentThread) {
-                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(meta.initException(meta.java_lang_Throwable));
+                    stackTrace = (StaticObject) getMeta().java_lang_Throwable_getStackTrace.invokeDirect(Meta.initException(meta.java_lang_Throwable));
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
@@ -2180,7 +2180,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         if (StaticObject.notNull(names)) {
             if (!names.getKlass().equals(meta.java_lang_String.array())) {
-                throw getMeta().throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Array element type is not String class");
             }
 
             StaticObject[] entries = names.unwrap();
