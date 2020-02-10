@@ -83,4 +83,19 @@ public final class EmptyListener implements VMListener {
     public void monitorWaited(Object monitor, boolean timedOut) {
 
     }
+
+    @Override
+    public void addOwnedMonitor(Object monitor) {
+
+    }
+
+    @Override
+    public void removeOwnedMonitor(Object monitor) {
+
+    }
+
+    @Override
+    public Object[] getOwnedMonitors(Object thread) {
+        return new Object[0];
+    }
 }

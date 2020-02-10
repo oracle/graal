@@ -113,11 +113,29 @@ public interface VMListener {
 
     /**
      * This method should be called just after the monitor wait(timeout) method is invoked in the
-     * guest VM. A monitor waited event will then be sent through JDWP, if there was a request for the
-     * current thread.
+     * guest VM. A monitor waited event will then be sent through JDWP, if there was a request for
+     * the current thread.
      *
      * @param monitor the monitor object
      * @param timedOut if the wait timed out or not
      */
     void monitorWaited(Object monitor, boolean timedOut);
+
+    /**
+     * Adds the monitor object to the list of currently owned monitors for the thread having called
+     * this method.
+     *
+     * @param monitor the monitor object
+     */
+    void addOwnedMonitor(Object monitor);
+
+    /**
+     * Removes the monitor object from the list of owned monitors for the thread having called this
+     * method.
+     *
+     * @param monitor the monitor object
+     */
+    void removeOwnedMonitor(Object monitor);
+
+    Object[] getOwnedMonitors(Object thread);
 }

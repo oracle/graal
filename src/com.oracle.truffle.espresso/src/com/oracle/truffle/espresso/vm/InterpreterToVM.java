@@ -210,6 +210,7 @@ public final class InterpreterToVM implements ContextAccess {
                 monitorContendedEnterCallback.run();
             }
             lock.lock();
+            context.getJDWPListener().addOwnedMonitor(obj);
             if (monitorContendedEnteredCallback != null) {
                 monitorContendedEnteredCallback.run();
             }
@@ -217,6 +218,9 @@ public final class InterpreterToVM implements ContextAccess {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
+        } else {
+            // obtained non-contended monitor
+            obj.getKlass().getContext().getJDWPListener().addOwnedMonitor(obj);
         }
     }
 
@@ -229,6 +233,7 @@ public final class InterpreterToVM implements ContextAccess {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalMonitorStateException.class);
         }
         lock.unlock();
+        obj.getKlass().getContext().getJDWPListener().removeOwnedMonitor(obj);
     }
 
     // endregion

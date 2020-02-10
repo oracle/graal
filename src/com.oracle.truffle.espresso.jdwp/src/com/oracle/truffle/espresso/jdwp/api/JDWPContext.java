@@ -431,4 +431,11 @@ public interface JDWPContext {
      */
     MonitorInfo getMonitorInfo(Object monitor);
 
+    /**
+     * Returns all owned guest-language monitor object of the input guest thread.
+     *
+     * @param thread the guest thread
+     * @return the owned monitor objects
+     */
+    Object[] getOwnedMonitors(Object thread);
 }

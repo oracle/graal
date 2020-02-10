@@ -612,4 +612,9 @@ public final class JDWPContextImpl implements JDWPContext {
         }
         return null;
     }
+
+    @Override
+    public Object[] getOwnedMonitors(Object thread) {
+        return eventListener.getOwnedMonitors(thread);
+    }
 }

@@ -40,8 +40,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,6 +73,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private int vmDeathRequestId;
     private int vmStartRequestId;
     private List<PacketStream> heldEvents = new ArrayList<>();
+    private Map<Object, Set<Object>> ownedMonitors = new HashMap<>();
 
     public VMEventListenerImpl(DebuggerController controller) {
         this.debuggerController = controller;
@@ -796,6 +799,40 @@ public final class VMEventListenerImpl implements VMEventListener {
                 });
             }
         }
+    }
+
+    @Override
+    public void addOwnedMonitor(Object monitor) {
+        Object guestThread = context.asGuestThread(Thread.currentThread());
+        Set<Object> monitors = ownedMonitors.get(guestThread);
+        if (monitors == null) {
+            monitors = new HashSet<>();
+            ownedMonitors.put(guestThread, monitors);
+        }
+        monitors.add(monitor);
+    }
+
+    @Override
+    public void removeOwnedMonitor(Object monitor) {
+        Object guestThread = context.asGuestThread(Thread.currentThread());
+        Set<Object> monitors = ownedMonitors.get(guestThread);
+        if (monitors != null) {
+            monitors.remove(monitor);
+        }
+    }
+
+    @Override
+    public Object[] getOwnedMonitors(Object thread) {
+        Set<Object> monitors = ownedMonitors.get(thread);
+        if (monitors != null) {
+            System.out.println("owned monitors: " + monitors.size());
+            for (Object monitor : monitors) {
+                System.out.println("monitor: " + monitor);
+            }
+            return monitors.toArray();
+        }
+        return new Object[0];
+
     }
 
     @Override

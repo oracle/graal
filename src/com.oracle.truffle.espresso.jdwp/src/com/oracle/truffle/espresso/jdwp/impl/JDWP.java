@@ -346,7 +346,7 @@ final class JDWP {
                 reply.writeBoolean(false); // canSetDefaultStratum
                 reply.writeBoolean(CAN_GET_INSTANCE_INFO); // canGetInstanceInfo
                 reply.writeBoolean(true); // canRequestMonitorEvents
-                reply.writeBoolean(true); // canGetMonitorFrameInfo
+                reply.writeBoolean(CAN_GET_MONITOR_FRAME_INFO); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
                 reply.writeBoolean(true); // canGetConstantPool
                 reply.writeBoolean(CAN_FORCE_EARLY_RETURN); // canForceEarlyReturn
@@ -1977,6 +1977,31 @@ final class JDWP {
                 reply.writeInt(suspendedInfo.getStackFrames().length);
                 JDWPLogger.log("current frame count: %d for thread: %s", JDWPLogger.LogLevel.THREAD, length, controller.getContext().getThreadName(thread));
 
+                return new CommandResult(reply);
+            }
+        }
+
+        static class OWNED_MONITORS {
+            public static final int ID = 8;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                Object thread = verifyThread(input.readLong(), reply, context);
+
+                if (thread == null) {
+                    reply.errorCode(ErrorCodes.INVALID_THREAD);
+                    return new CommandResult(reply);
+                }
+
+                Object[] ownedMonitors = context.getOwnedMonitors(thread);
+                reply.writeInt(ownedMonitors.length);
+
+                for (Object ownedMonitor : ownedMonitors) {
+                    reply.writeByte(context.getTag(ownedMonitor));
+                    reply.writeLong(context.getIds().getIdAsLong(ownedMonitor));
+                }
                 return new CommandResult(reply);
             }
         }
