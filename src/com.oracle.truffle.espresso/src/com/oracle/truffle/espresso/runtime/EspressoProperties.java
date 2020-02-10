@@ -30,10 +30,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
-import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -296,12 +295,12 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     @Override
     Path defaultJavaHome() {
-        throw new IllegalStateException("javaHome not defined");
+        throw EspressoError.shouldNotReachHere("Java 8 home not defined, use --java.JavaHome=/path/to/java8/home/jre");
     }
 
     @Override
     Path defaultEspressoLibraryPath() {
-        throw new IllegalStateException("espressoLibraryPath not defined");
+        throw EspressoError.shouldNotReachHere("Espresso library path not defined, use --java.EspressoLibraryPath=/path/to/espresso/lib/");
     }
 }
 
@@ -327,7 +326,7 @@ enum OS {
         if (name.startsWith("Windows")) {
             return OS.Windows;
         }
-        throw new IllegalArgumentException("unknown OS: " + name);
+        throw EspressoError.shouldNotReachHere("unknown OS: " + name);
     }
 
     public static OS getCurrent() {
