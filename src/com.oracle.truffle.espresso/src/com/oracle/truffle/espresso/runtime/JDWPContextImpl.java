@@ -51,6 +51,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
+import com.oracle.truffle.espresso.jdwp.impl.MonitorInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -587,5 +588,28 @@ public final class JDWPContextImpl implements JDWPContext {
         KlassRef klass = context.getMeta().Object;
         MethodRef method = context.getMeta().Object_wait;
         return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
+    }
+
+    @Override
+    public Object getMonitorOwnerThread(Object object) {
+        if (object instanceof StaticObject) {
+            EspressoLock lock = ((StaticObject) object).getLock();
+            return asGuestThread(lock.getOwnerThread());
+        }
+        return null;
+    }
+
+    @Override
+    public MonitorInfo getMonitorInfo(Object object) {
+        if (object instanceof StaticObject) {
+            EspressoLock lock = ((StaticObject) object).getLock();
+            Thread[] queuedThreads = lock.getWaitingThreads();
+            Object[] asGuestThreads = new Object[queuedThreads.length];
+            for (int i = 0; i < asGuestThreads.length; i++) {
+                asGuestThreads[i] = asGuestThread(queuedThreads[i]);
+            }
+            return new MonitorInfo(asGuestThread(lock.getOwnerThread()), lock.getHoldCount(lock.getOwnerThread()), asGuestThreads);
+        }
+        return null;
     }
 }

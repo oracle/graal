@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.MonitorInfo;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -413,4 +414,21 @@ public interface JDWPContext {
      * @return the {@link CallFrame} that represents the monitor wait method
      */
     CallFrame locateObjectWaitFrame();
+
+    /**
+     * Returns the owner thread of an object used as a monitor.
+     *
+     * @param monitor the monitor object
+     * @return the guest language thread object that currently owns the monitor
+     */
+    Object getMonitorOwnerThread(Object monitor);
+
+    /**
+     * Returns monitor information for the given monitor.
+     *
+     * @param monitor the monitor object
+     * @return the monitor info
+     */
+    MonitorInfo getMonitorInfo(Object monitor);
+
 }

@@ -444,6 +444,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.SET_VALUES.ID:
                                     result = JDWP.ObjectReference.SET_VALUES.createReply(packet, context);
                                     break;
+                                case JDWP.ObjectReference.MONITOR_INFO.ID:
+                                    result = JDWP.ObjectReference.MONITOR_INFO.createReply(packet, controller);
+                                    break;
                                 case JDWP.ObjectReference.INVOKE_METHOD.ID:
                                     result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller);
                                     break;

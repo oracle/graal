@@ -105,6 +105,21 @@ public interface EspressoLock extends Lock {
     static EspressoLock create() {
         return new EspressoLockImpl();
     }
+
+    /**
+     * Returns the number of entries for which the thread obtained the lock.
+     *
+     * @param thread a thread
+     * @return the hold count of the lock for the given thread
+     */
+    int getHoldCount(Thread thread);
+
+    /**
+     * Returns an array of all waiting threads of the lock.
+     *
+     * @return an estimate of all currently waiting threads
+     */
+    Thread[] getWaitingThreads();
 }
 
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
@@ -160,5 +175,18 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     public Condition newCondition() {
         // Disable arbitrary conditions.
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Thread[] getWaitingThreads() {
+        return getQueuedThreads().toArray(new Thread[0]);
+    }
+
+    @Override
+    public int getHoldCount(Thread thread) {
+        if (thread != getOwnerThread()) {
+            return 0;
+        }
+        return 0;
     }
 }

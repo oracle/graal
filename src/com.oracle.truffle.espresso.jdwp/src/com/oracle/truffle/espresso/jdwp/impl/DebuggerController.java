@@ -72,7 +72,7 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
-    private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
+    private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
     private final Map<Object, MonitorEvent> monitorContendedExpected = new HashMap<>();
@@ -601,7 +601,7 @@ public final class DebuggerController implements ContextsListener {
             getSuspendLock(thread).acquire();
             // a thread job was posted on this thread
             // only wake up to perform the job a go back to sleep
-            ThreadJob job = threadJobs.remove(thread);
+            ThreadJob<?> job = threadJobs.remove(thread);
             byte suspensionStrategy = job.getSuspensionStrategy();
 
             if (suspensionStrategy == SuspendStrategy.ALL) {
@@ -628,7 +628,7 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public void postJobForThread(ThreadJob job) {
+    public void postJobForThread(ThreadJob<?> job) {
         threadJobs.put(job.getThread(), job);
         SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {

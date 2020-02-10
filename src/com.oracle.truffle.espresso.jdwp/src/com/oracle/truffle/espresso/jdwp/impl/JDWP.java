@@ -49,6 +49,7 @@ final class JDWP {
     private static final boolean CAN_GET_INSTANCE_INFO = false;
     private static final boolean CAN_FORCE_EARLY_RETURN = false;
     private static final boolean CAN_GET_MONITOR_FRAME_INFO = false;
+    private static final boolean CAN_GET_MONITOR_INFO = false;
 
     private static final int ACC_SYNTHETIC = 0x00001000;
     private static final int JDWP_SYNTHETIC = 0xF0000000;
@@ -254,7 +255,7 @@ final class JDWP {
                 reply.writeBoolean(true); // canGetSyntheticAttribute
                 reply.writeBoolean(true); // canGetOwnedMonitorInfo
                 reply.writeBoolean(true); // canGetCurrentContendedMonitor
-                reply.writeBoolean(true); // canGetMonitorInfo
+                reply.writeBoolean(CAN_GET_MONITOR_INFO); // canGetMonitorInfo
                 return new CommandResult(reply);
             }
         }
@@ -334,7 +335,7 @@ final class JDWP {
                 reply.writeBoolean(true); // canGetSyntheticAttribute
                 reply.writeBoolean(true); // canGetOwnedMonitorInfo
                 reply.writeBoolean(true); // canGetCurrentContendedMonitor
-                reply.writeBoolean(true); // canGetMonitorInfo
+                reply.writeBoolean(CAN_GET_MONITOR_INFO); // canGetMonitorInfo
                 reply.writeBoolean(CAN_REDEFINE_CLASSES); // canRedefineClasses
                 reply.writeBoolean(false); // canAddMethod
                 reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
@@ -1002,7 +1003,7 @@ final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
 
                         @Override
                         public Object call() throws Exception {
@@ -1010,7 +1011,7 @@ final class JDWP {
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob.JobResult result = job.getResult();
+                    ThreadJob<?>.JobResult<?> result = job.getResult();
 
                     writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
@@ -1062,7 +1063,7 @@ final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
+                    ThreadJob<?> job = new ThreadJob<>(thread, new Callable<Object>() {
 
                         @Override
                         public Object call() throws Exception {
@@ -1070,7 +1071,7 @@ final class JDWP {
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob.JobResult result = job.getResult();
+                    ThreadJob<?>.JobResult<?> result = job.getResult();
 
                     writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
@@ -1156,7 +1157,7 @@ final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
 
                         @Override
                         public Object call() throws Exception {
@@ -1164,7 +1165,7 @@ final class JDWP {
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob.JobResult result = job.getResult();
+                    ThreadJob<Object>.JobResult<Object> result = job.getResult();
 
                     if (result.getException() != null) {
                         JDWPLogger.log("interface method threw exception", JDWPLogger.LogLevel.PACKET);
@@ -1507,6 +1508,59 @@ final class JDWP {
             }
         }
 
+        static class MONITOR_INFO {
+            public static final int ID = 5;
+
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                JDWPContext context = controller.getContext();
+
+                if (!CAN_GET_MONITOR_INFO) {
+                    reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                    return new CommandResult(reply);
+                }
+
+                long objectId = input.readLong();
+                Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
+
+                Object monitorOwnerThread = context.getMonitorOwnerThread(object);
+                if (monitorOwnerThread == null) {
+                    reply.writeLong(0);
+                    reply.writeInt(0);
+                    reply.writeInt(0);
+                } else {
+                    MonitorInfo info = context.getMonitorInfo(object);
+
+                    if (info == null) {
+                        reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        return new CommandResult(reply);
+                    }
+
+                    Object ownerThread = info.getOwnerThread();
+                    if (ownerThread == null) {
+                        reply.writeLong(0);
+                    } else {
+                        reply.writeLong(context.getIds().getIdAsLong(ownerThread));
+                    }
+                    reply.writeInt(info.getEntryCount());
+                    Object[] waiters = info.getWaiters();
+                    reply.writeInt(waiters.length);
+
+                    for (Object waiter : waiters) {
+                        reply.writeLong(context.getIds().getIdAsLong(waiter));
+                    }
+                }
+                return new CommandResult(reply);
+            }
+        }
+
         static class INVOKE_METHOD {
             public static final int ID = 6;
 
@@ -1555,14 +1609,14 @@ final class JDWP {
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
-                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
+                    ThreadJob<Object> job = new ThreadJob<>(thread, new Callable<Object>() {
                         @Override
                         public Object call() throws Exception {
                             return method.invokeMethod(callee, args);
                         }
                     }, suspensionStrategy);
                     controller.postJobForThread(job);
-                    ThreadJob.JobResult result = job.getResult();
+                    ThreadJob<?>.JobResult<?> result = job.getResult();
 
                     writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
@@ -2587,7 +2641,7 @@ final class JDWP {
         }
     }
 
-    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob.JobResult result) {
+    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result) {
         if (result.getException() != null) {
             JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
             reply.writeByte(TagConstants.OBJECT);
