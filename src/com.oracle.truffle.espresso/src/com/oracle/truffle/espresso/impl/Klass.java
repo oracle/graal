@@ -145,7 +145,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                 members.add(m.getName().toString());
             }
         }
-        return new KeysArray(members.toArray(new String[0]));
+        return new KeysArray(members.toArray(new String[members.size()]));
     }
 
     @ExportMessage
