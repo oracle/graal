@@ -2172,7 +2172,7 @@ public class FileSystemsTest {
             env.setCurrentWorkingDirectory(env.getInternalTruffleFile(cwd.toString()));
         };
         if (langHome != null) {
-            System.setProperty(LANGUAGE_ID + ".home", langHome.toString());
+            System.setProperty("org.graalvm." + LANGUAGE_ID + ".home", langHome.toString());
             resetLanguageHomes();
         }
         ctx.eval(LANGUAGE_ID, "");

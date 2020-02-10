@@ -90,9 +90,13 @@ public final class GraalVMLocator extends TruffleLocator
 
     private static void setLanguageHomeProperty(String languageId, Path languageLocation) {
         if (Files.isDirectory(languageLocation)) {
-            final String homeFolderKey = languageId + ".home";
+            final String homeFolderKey = "org.graalvm." + languageId + ".home";
             if (System.getProperty(homeFolderKey) == null) {
                 System.setProperty(homeFolderKey, languageLocation.toString());
+            }
+            final String legacyHomeFolderKey = languageId + ".home";
+            if (System.getProperty(legacyHomeFolderKey) == null) {
+                System.setProperty(legacyHomeFolderKey, languageLocation.toString());
             }
         }
     }
