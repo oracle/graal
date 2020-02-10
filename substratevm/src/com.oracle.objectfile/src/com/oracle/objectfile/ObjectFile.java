@@ -26,7 +26,6 @@ package com.oracle.objectfile;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,9 +49,7 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
-import sun.misc.Unsafe;
 import sun.nio.ch.DirectBuffer;
-
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
  * including DWARF debug sections. The currently supported file formats are ELF and Mach-O. In
@@ -1626,37 +1623,14 @@ public abstract class ObjectFile {
 
     protected abstract int getMinimumFileSize();
 
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    public static int getHostPageSize() {
-        try {
-            return getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
-    }
-
-    private int pageSize = hostPageSize;
+    private int pageSize = -1;
 
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
     }
 
     public int getPageSize() {
+        assert pageSize > 0 : "must be initialized";
         return pageSize;
     }
 
