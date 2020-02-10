@@ -86,7 +86,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String FILE_EXTENSION = ".class";
 
-    public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
     private static final String SCOPE_NAME = "block";
 
     private final Utf8ConstantTable utf8Constants;
@@ -128,17 +127,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
-        OptionValues options = env.getOptions();
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
-
-        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "classpath must be defined");
-
-        Object sourceFile = env.getConfig().get(EspressoLanguage.ESPRESSO_SOURCE_FILE_KEY);
-        if (sourceFile != null) {
-            context.setMainSourceFile((Source) sourceFile);
-        }
         return context;
     }
 
@@ -265,18 +256,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.begin();
         String className = request.getSource().getCharacters().toString();
         return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
-    }
-
-    /*
-     * Loads a class and verifies that the main class is present and it is ok to call it for more
-     * details refer to the java implementation.
-     */
-    private static StaticObject loadMainClass(EspressoContext context, LaunchMode mode, String name) {
-        assert context.isInitialized();
-        Meta meta = context.getMeta();
-        Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
-        Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain, Signature.Class_boolean_int_String);
-        return (StaticObject) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {

@@ -101,7 +101,6 @@ public final class EspressoContext {
 
     private Classpath bootClasspath;
     private String[] mainArguments;
-    private Source mainSourceFile;
 
     // Must be initialized after the context instance creation.
     @CompilationFinal private InterpreterToVM interpreterToVM;
@@ -194,17 +193,6 @@ public final class EspressoContext {
     public EspressoProperties getVmProperties() {
         assert vmProperties != null;
         return vmProperties;
-    }
-
-    /**
-     * @return The source code unit of the main function.
-     */
-    public Source getMainSourceFile() {
-        return mainSourceFile;
-    }
-
-    public void setMainSourceFile(Source mainSourceFile) {
-        this.mainSourceFile = mainSourceFile;
     }
 
     public void initializeContext() {
