@@ -420,14 +420,12 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertNotNull(frame.getRawFrame(ProxyLanguage.class));
-                assertTrue(frame.getRawFrame(ProxyLanguage.class) instanceof MaterializedFrame);
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
                 for (int d = depth; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
                     assertNotNull(frame.getRawFrame(ProxyLanguage.class));
-                    assertTrue(frame.getRawFrame(ProxyLanguage.class) instanceof MaterializedFrame);
                 }
                 assertFalse(stackFrames.hasNext());
             });
