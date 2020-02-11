@@ -476,7 +476,7 @@ public abstract class DebugValue {
         }
         try {
             Object retValue = INTEROP.execute(value, args);
-            return new HeapValue(getSession(), null, retValue);
+            return new HeapValue(getSession(), resolveLanguage(), null, retValue);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
