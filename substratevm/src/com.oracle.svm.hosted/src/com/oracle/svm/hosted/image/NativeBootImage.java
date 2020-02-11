@@ -39,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
@@ -62,7 +63,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -1055,32 +1055,41 @@ public abstract class NativeBootImage extends AbstractBootImage {
         @Override
         public String fileName() {
             HostedType declaringClass = method.getDeclaringClass();
-            String name = declaringClass.getSourceFileName();
-            if (name != null) {
-                // the file name will not include any path
-                // use the package to create a path prefix
-                Package pkg = declaringClass.getJavaClass().getPackage();
-                if (pkg != null) {
-                    String prefix = pkg.getName();
-                    prefix = prefix.replace('.', '/');
-                    name = prefix + "/" + name;
+            String sourceFileName = declaringClass.getSourceFileName();
+
+            if (sourceFileName == null) {
+                String className = declaringClass.getJavaClass().getName();
+                int idx = className.lastIndexOf('.');
+                if (idx > 0) {
+                    // strip off package prefix
+                    className = className.substring(idx + 1);
                 }
-            } else {
-                // build file name from the class name which includes the package
-                name = className();
-                // try to map inner classes back to their parent class's file
-                int idx = name.indexOf('$');
+                idx = className.indexOf('$');
                 if (idx == 0) {
                     // name is $XXX so cannot associate with a file
-                    return "";
+                    // create a path with an empty name
+                    sourceFileName = "";
+                } else {
+                    if (idx > 0) {
+                        // name is XXX$YYY so use outer class to derive file name
+                        className = className.substring(0, idx);
+                    }
+                    sourceFileName = className + ".java";
                 }
-                if (idx > 0) {
-                    // name is XXX$YYY so use outer class to derive file name
-                    name = name.substring(0, idx);
-                }
-                name = name.replace('.', '/') + ".java";
             }
-            return name;
+
+            return sourceFileName;
+        }
+        @Override
+        public Path filePath() {
+            HostedType declaringClass = method.getDeclaringClass();
+            Package pkg = declaringClass.getJavaClass().getPackage();
+            if (pkg != null) {
+                // use the package name as a path to the file
+                return Paths.get("", pkg.getName().split("\\."));
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -1124,7 +1133,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
-            if (fileName().length() == 0) {
+            if (fileName().toString().length() == 0) {
                 return () -> new Iterator<DebugLineInfo>() {
                     @Override
                     public boolean hasNext() {
@@ -1200,16 +1209,35 @@ public abstract class NativeBootImage extends AbstractBootImage {
         @Override
         public String fileName() {
             String name = className();
-            int idx = name.indexOf('$');
+            int idx = name.lastIndexOf('.');
+            if (idx > 0) {
+                // strip off package prefix
+                name = name.substring(idx + 1);
+            }
+            idx = name.indexOf('$');
             if (idx == 0) {
                 // name is $XXX so cannot associate with a file
-                return "";
+                name = "";
+            } else {
+                if (idx > 0) {
+                    // name is XXX$YYY so use outer class to derive file name
+                    name = name.substring(0, idx);
+                }
+                name = name + ".java";
             }
+
+            return name;
+        }
+
+        public Path filePath() {
+            String name = className();
+            int idx = name.lastIndexOf('.');
             if (idx > 0) {
-                // name is XXX$YYY so use outer class to derive file name
                 name = name.substring(0, idx);
+                return Paths.get("", name.split("\\."));
+            } else {
+                return null;
             }
-            return name.replace('.', '/') + ".java";
         }
 
         @Override

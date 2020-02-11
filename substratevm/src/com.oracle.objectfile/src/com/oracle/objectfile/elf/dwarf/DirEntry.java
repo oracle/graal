@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.nio.file.Path;
+
 /**
  * Tracks the directory associated with one or
  * more source files.
@@ -38,13 +40,17 @@ package com.oracle.objectfile.elf.dwarf;
  * per file.
  */
 public class DirEntry {
-    private String path;
+    private Path path;
 
-    public DirEntry(String path) {
+    public DirEntry(Path path) {
         this.path = path;
     }
 
-    public String getPath() {
+    public Path getPath() {
         return path;
+    }
+
+    public String getPathString() {
+        return path.toString();
     }
 }
