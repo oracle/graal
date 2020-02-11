@@ -209,6 +209,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (monitorContendedEnterCallback != null) {
                 monitorContendedEnterCallback.run();
             }
+            context.getJDWPListener().addCurrentContendedMonitor(obj);
             lock.lock();
             context.getJDWPListener().addOwnedMonitor(obj);
             if (monitorContendedEnteredCallback != null) {

@@ -409,7 +409,8 @@ public interface JDWPContext {
     long readBCIFromFrame(RootNode root, FrameInstance frameInstance);
 
     /**
-     * Returns a {@link CallFrame} representation of the location of {@code Object.wait(long timeout)}.
+     * Returns a {@link CallFrame} representation of the location of
+     * {@code Object.wait(long timeout)}.
      *
      * @return the {@link CallFrame} that represents the monitor wait method
      */
@@ -434,8 +435,17 @@ public interface JDWPContext {
     /**
      * Returns all owned guest-language monitor object of the input guest thread.
      *
-     * @param thread the guest thread
+     * @param guestThread the guest thread
      * @return the owned monitor objects
      */
-    Object[] getOwnedMonitors(Object thread);
+    Object[] getOwnedMonitors(Object guestThread);
+
+    /**
+     * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
+     * no current contended monitor for this thread.
+     *
+     * @param guestThread the guest thread
+     * @return the current contended monitor
+     */
+    Object getCurrentContendedMonitor(Object guestThread);
 }

@@ -72,8 +72,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     private byte threadDeathSuspendPolicy;
     private int vmDeathRequestId;
     private int vmStartRequestId;
-    private List<PacketStream> heldEvents = new ArrayList<>();
-    private Map<Object, Set<Object>> ownedMonitors = new HashMap<>();
+    private final List<PacketStream> heldEvents = new ArrayList<>();
+    private final Map<Object, Set<Object>> ownedMonitors = new HashMap<>();
+    private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
 
     public VMEventListenerImpl(DebuggerController controller) {
         this.debuggerController = controller;
@@ -714,10 +715,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void monitorWait(Object monitor, long timeout) {
+        Object currentThread = context.asGuestThread(Thread.currentThread());
+        // always add to current contended monitor on the thread before a wait
+        currentContendedMonitor.put(currentThread, monitor);
+
         if (monitorWaitRequests.isEmpty()) {
             return;
         }
-        Object currentThread = context.asGuestThread(Thread.currentThread());
         for (Map.Entry<Integer, RequestFilter> entry : monitorWaitRequests.entrySet()) {
             RequestFilter filter = entry.getValue();
             if (currentThread == filter.getThread()) {
@@ -779,10 +783,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void monitorWaited(Object monitor, boolean timedOut) {
+        Object currentThread = context.asGuestThread(Thread.currentThread());
+        // remove contended monitor from the thread
+        currentContendedMonitor.remove(currentThread);
+
         if (monitorWaitedRequests.isEmpty()) {
             return;
         }
-        Object currentThread = context.asGuestThread(Thread.currentThread());
         for (Map.Entry<Integer, RequestFilter> entry : monitorWaitedRequests.entrySet()) {
             RequestFilter filter = entry.getValue();
             if (currentThread == filter.getThread()) {
@@ -810,6 +817,8 @@ public final class VMEventListenerImpl implements VMEventListener {
             ownedMonitors.put(guestThread, monitors);
         }
         monitors.add(monitor);
+        // also clear contended monitor for the thread
+        currentContendedMonitor.remove(guestThread);
     }
 
     @Override
@@ -832,7 +841,17 @@ public final class VMEventListenerImpl implements VMEventListener {
             return monitors.toArray();
         }
         return new Object[0];
+    }
 
+    @Override
+    public void addCurrentContendedMonitor(Object monitor) {
+        Object guestThread = context.asGuestThread(Thread.currentThread());
+        currentContendedMonitor.put(guestThread, monitor);
+    }
+
+    @Override
+    public Object getCurrentContendedMonitor(Object guestThread) {
+        return currentContendedMonitor.get(guestThread);
     }
 
     @Override

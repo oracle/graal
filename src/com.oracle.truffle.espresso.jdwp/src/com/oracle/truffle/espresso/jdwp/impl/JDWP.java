@@ -2006,6 +2006,32 @@ final class JDWP {
             }
         }
 
+        static class CURRENT_CONTENDED_MONITOR {
+            public static final int ID = 9;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                Object thread = verifyThread(input.readLong(), reply, context);
+
+                if (thread == null) {
+                    reply.errorCode(ErrorCodes.INVALID_THREAD);
+                    return new CommandResult(reply);
+                }
+
+                Object currentContendedMonitor = context.getCurrentContendedMonitor(thread);
+                if (currentContendedMonitor == null) {
+                    reply.writeByte(TagConstants.OBJECT);
+                    reply.writeLong(0);
+                } else {
+                    reply.writeByte(context.getTag(currentContendedMonitor));
+                    reply.writeLong(context.getIds().getIdAsLong(currentContendedMonitor));
+                }
+                return new CommandResult(reply);
+            }
+        }
+
         static class STOP {
             public static final int ID = 10;
 

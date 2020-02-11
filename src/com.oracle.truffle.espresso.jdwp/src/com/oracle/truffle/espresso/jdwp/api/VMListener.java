@@ -137,5 +137,27 @@ public interface VMListener {
      */
     void removeOwnedMonitor(Object monitor);
 
+    /**
+     * Returns the current owned monitors for the input guest thread.
+     *
+     * @param thread the guest thread
+     * @return all currently held monitors for the thread
+     */
     Object[] getOwnedMonitors(Object thread);
+
+    /**
+     * Marks a monitor object as a current contending object on the current thread.
+     *
+     * @param monitor the monitor object
+     */
+    void addCurrentContendedMonitor(Object monitor);
+
+    /**
+     * Returns the current contended monitor object, or <code>null</code> if the thread is not in
+     * contention on any monitor.
+     *
+     * @param guestThread
+     * @return the current contended monitor object
+     */
+    Object getCurrentContendedMonitor(Object guestThread);
 }
