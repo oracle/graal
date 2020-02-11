@@ -38,6 +38,7 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -575,6 +576,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region Lookup
 
+    @ExplodeLoop
     public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         KLASS_LOOKUP_DECLARED_FIELD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
@@ -627,28 +629,28 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).lookupFieldTableImpl(slot);
         } else if (this instanceof ArrayKlass) {
+            // Arrays extend j.l.Object, which shouldn't have any declared instance fields.
             assert getMeta().java_lang_Object == getSuperKlass();
+            assert getMeta().java_lang_Object.getDeclaredFields().length == 0;
             // Always null?
             return getMeta().java_lang_Object.lookupFieldTable(slot);
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;
-        return null;
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoError.shouldNotReachHere("lookupFieldTable on primitive type");
     }
 
     public final Field lookupStaticFieldTable(int slot) {
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).lookupStaticFieldTableImpl(slot);
-        } else if (this instanceof ArrayKlass) {
-            assert getMeta().java_lang_Object == getSuperKlass();
-            // Always null?
-            return getMeta().java_lang_Object.lookupStaticFieldTable(slot);
         }
-        // Unreachable?
-        assert this instanceof PrimitiveKlass;
-        return null;
+        // Array nor primitives have static fields.
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoError.shouldNotReachHere("lookupStaticFieldTable on primitive/array type");
     }
 
+    @ExplodeLoop
     public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         KLASS_LOOKUP_DECLARED_METHOD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
