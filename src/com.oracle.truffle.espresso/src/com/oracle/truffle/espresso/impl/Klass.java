@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -49,7 +50,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.nodes.helper.InvokeEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -116,12 +117,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    public Object invokeMember(String member, Object[] arguments, @Exclusive @Cached InvokeEspressoNode invoke)
+    public Object invokeMember(String member,
+                    Object[] arguments,
+                    @Cached LookupDeclaredMethod lookupMethod,
+                    @Exclusive @Cached InvokeEspressoNode invoke)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        for (Method m : getDeclaredMethods()) {
-            if (m.isStatic() && m.isPublic() && member.equals(m.getName().toString()) && m.getParameterCount() == arguments.length) {
-                return invoke.execute(m, null, arguments);
-            }
+        Method m = lookupMethod.execute(this, member, true, true, arguments.length);
+        assert m.isStatic() && m.isPublic() && member.equals(m.getName().toString()) && m.getParameterCount() == arguments.length;
+        if (m != null) {
+            return invoke.execute(m, null, arguments);
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -132,7 +136,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         EconomicSet<String> members = EconomicSet.create();
         members.add(STATIC_TO_CLASS);
         for (Field f : getDeclaredFields()) {

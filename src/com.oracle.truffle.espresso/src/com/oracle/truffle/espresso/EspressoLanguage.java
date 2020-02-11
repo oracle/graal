@@ -29,9 +29,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.helper.LoadKlassNode;
+import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;

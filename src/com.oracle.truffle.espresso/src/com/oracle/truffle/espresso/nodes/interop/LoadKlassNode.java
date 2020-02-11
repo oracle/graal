@@ -1,6 +1,4 @@
-package com.oracle.truffle.espresso.nodes.helper;
-
-import java.util.function.IntFunction;
+package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -37,17 +35,7 @@ public final class LoadKlassNode extends RootNode {
         StaticObject appClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
         StaticObject guestClass = (StaticObject) meta.java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader).invokeDirect(null,
                         meta.toGuestString(className), false, appClassLoader);
+
         return guestClass.getMirrorKlass();
-
-    }
-
-    private static StaticObject toGuestArguments(EspressoContext context, String... args) {
-        Meta meta = context.getMeta();
-        return meta.java_lang_String.allocateReferenceArray(args.length, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int i) {
-                return meta.toGuestString(args[i]);
-            }
-        });
     }
 }
