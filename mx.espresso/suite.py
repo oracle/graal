@@ -158,6 +158,7 @@ suite = {
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
             "javaCompliance": "8",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
