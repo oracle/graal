@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -68,14 +69,17 @@ public final class Target_java_lang_System {
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
+
             // System.arraycopy does the bounds checks
             if (src == dest) {
                 // Same array, no need to type check
                 boundsCheck(meta, src, srcPos, dest, destPos, length);
                 System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
             } else {
-                Klass destType = dest.getKlass().getComponentType();
-                Klass srcType = src.getKlass().getComponentType();
+                ArrayKlass destKlass = (ArrayKlass) dest.getKlass();
+                ArrayKlass srcKlass = (ArrayKlass) src.getKlass();
+                Klass destType = destKlass.getComponentType();
+                Klass srcType = srcKlass.getComponentType();
                 if (destType.isPrimitive() && srcType.isPrimitive()) {
                     if (srcType != destType) {
                         throw Meta.throwException(meta.java_lang_ArrayStoreException);

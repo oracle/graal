@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -523,11 +524,11 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject getComponentType(@Host(Class.class) StaticObject self) {
-        Klass comp = self.getMirrorKlass().getComponentType();
-        if (comp == null) {
-            return StaticObject.NULL;
+        if (self.getMirrorKlass().isArray()) {
+            Klass componentType = ((ArrayKlass) self.getMirrorKlass()).getComponentType();
+            return componentType.mirror();
         }
-        return comp.mirror();
+        return StaticObject.NULL;
     }
 
     @Substitution(hasReceiver = true)
