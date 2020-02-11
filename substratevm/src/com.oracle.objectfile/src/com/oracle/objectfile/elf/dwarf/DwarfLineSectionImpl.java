@@ -147,17 +147,19 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         int pos = 0;
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            int startPos = pos;
-            classEntry.setLineIndex(startPos);
-            int headerSize = headerSize();
-            int dirTableSize = computeDirTableSize(classEntry);
-            int fileTableSize = computeFileTableSize(classEntry);
-            int prologueSize = headerSize + dirTableSize + fileTableSize;
-            classEntry.setLinePrologueSize(prologueSize);
-            int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
-            int totalSize = prologueSize + lineNumberTableSize;
-            classEntry.setTotalSize(totalSize);
-            pos += totalSize;
+            if (classEntry.getFileName().length() != 0) {
+                int startPos = pos;
+                classEntry.setLineIndex(startPos);
+                int headerSize = headerSize();
+                int dirTableSize = computeDirTableSize(classEntry);
+                int fileTableSize = computeFileTableSize(classEntry);
+                int prologueSize = headerSize + dirTableSize + fileTableSize;
+                classEntry.setLinePrologueSize(prologueSize);
+                int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
+                int totalSize = prologueSize + lineNumberTableSize;
+                classEntry.setTotalSize(totalSize);
+                pos += totalSize;
+            }
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -193,7 +195,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         int dirSize = 0;
         for (DirEntry dir : classEntry.getLocalDirs()) {
-            dirSize += dir.getPath().length() + 1;
+            dirSize += dir.getPathString().length() + 1;
         }
         /*
          * allow for separator nul
@@ -217,10 +219,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * we want the file base name excluding path
              */
-            String baseName = localEntry.getBaseName();
+            String baseName = localEntry.getFileName();
             int length = baseName.length();
             fileSize += length + 1;
-            DirEntry dirEntry = localEntry.dirEntry;
+            DirEntry dirEntry = localEntry.getDirEntry();
             int idx = classEntry.localDirsIdx(dirEntry);
             fileSize += putULEB(idx, scratch, 0);
             /*
@@ -270,21 +272,23 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         debug("  [0x%08x] DEBUG_LINE\n", pos);
 
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            int startPos = pos;
-            assert classEntry.getLineIndex() == startPos;
-            debug("  [0x%08x] Compile Unit for %s\n", pos, classEntry.getFileName());
-            pos = writeHeader(classEntry, buffer, pos);
-            debug("  [0x%08x] headerSize = 0x%08x\n", pos, pos - startPos);
-            int dirTablePos = pos;
-            pos = writeDirTable(classEntry, buffer, pos);
-            debug("  [0x%08x] dirTableSize = 0x%08x\n", pos, pos - dirTablePos);
-            int fileTablePos = pos;
-            pos = writeFileTable(classEntry, buffer, pos);
-            debug("  [0x%08x] fileTableSize = 0x%08x\n", pos, pos - fileTablePos);
-            int lineNumberTablePos = pos;
-            pos = writeLineNumberTable(classEntry, buffer, pos);
-            debug("  [0x%08x] lineNumberTableSize = 0x%x\n", pos, pos - lineNumberTablePos);
-            debug("  [0x%08x] size = 0x%x\n", pos, pos - startPos);
+            if (classEntry.getFileName().length() != 0) {
+                int startPos = pos;
+                assert classEntry.getLineIndex() == startPos;
+                debug("  [0x%08x] Compile Unit for %s\n", pos, classEntry.getFileName());
+                pos = writeHeader(classEntry, buffer, pos);
+                debug("  [0x%08x] headerSize = 0x%08x\n", pos, pos - startPos);
+                int dirTablePos = pos;
+                pos = writeDirTable(classEntry, buffer, pos);
+                debug("  [0x%08x] dirTableSize = 0x%08x\n", pos, pos - dirTablePos);
+                int fileTablePos = pos;
+                pos = writeFileTable(classEntry, buffer, pos);
+                debug("  [0x%08x] fileTableSize = 0x%08x\n", pos, pos - fileTablePos);
+                int lineNumberTablePos = pos;
+                pos = writeLineNumberTable(classEntry, buffer, pos);
+                debug("  [0x%08x] lineNumberTableSize = 0x%x\n", pos, pos - lineNumberTablePos);
+                debug("  [0x%08x] size = 0x%x\n", pos, pos - startPos);
+            }
         }
         assert pos == buffer.length;
     }
@@ -367,7 +371,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * write nul terminated string text.
              */
             debug("  [0x%08x] %-4d %s\n", pos, dirIdx, dir.getPath());
-            pos = putAsciiStringBytes(dir.getPath(), buffer, pos);
+            pos = putAsciiStringBytes(dir.getPathString(), buffer, pos);
             dirIdx++;
         }
         /*
@@ -385,8 +389,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * we need the file name minus path, the associated dir index, and 0 for time stamps
              */
-            String baseName = localEntry.getBaseName();
-            DirEntry dirEntry = localEntry.dirEntry;
+            String baseName = localEntry.getFileName();
+            DirEntry dirEntry = localEntry.getDirEntry();
             int dirIdx = classEntry.localDirsIdx(dirEntry);
             debug("  [0x%08x] %-5d %-5d %s\n", pos, fileIdx, dirIdx, baseName);
             pos = putAsciiStringBytes(baseName, buffer, pos);

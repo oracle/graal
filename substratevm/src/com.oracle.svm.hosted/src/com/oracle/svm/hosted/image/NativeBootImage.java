@@ -39,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
@@ -54,15 +55,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.LineNumberTable;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -1038,6 +1040,43 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
+    private static final String[] GRAAL_SRC_PACKAGE_PREFIXES = {
+            "org.graalvm",
+            "com.oracle.graal",
+            "com.oracle.objectfile",
+            "com.oracle.svm",
+            "com.oracle.truffle",
+    };
+
+
+    /**
+     * compute a prefix to be added to the front of the file path for
+     * a class in order to locate it under a GRaal or JDK-specific
+     * search root
+     * @param packageName the name of the package the class belongs to
+     * or possibly an empty string if it is in the default package.
+     * @param moduleName the name of the module the class belongs to
+     * or possibly null or an empty string if it is not located
+     * in a module
+     * @return any required prefix or the empty string if no prefix is required
+     */
+    private String getPathPrefix(String packageName, String moduleName) {
+        /*
+         * if we have a module name it is used as a prefix except
+         * when the class belongs to Graal itself.
+         */
+        if (moduleName == null || moduleName.length() == 0) {
+            return "";
+        } else {
+            for (String prefix : GRAAL_SRC_PACKAGE_PREFIXES) {
+                if (packageName.startsWith(prefix)) {
+                    return "";
+                }
+            }
+            return moduleName;
+        }
+    }
+
     /**
      * implementation of the DebugCodeInfo API interface
      * that allows code info to be passed to an ObjectFile
@@ -1055,32 +1094,51 @@ public abstract class NativeBootImage extends AbstractBootImage {
         @Override
         public String fileName() {
             HostedType declaringClass = method.getDeclaringClass();
-            String name = declaringClass.getSourceFileName();
-            if (name != null) {
-                // the file name will not include any path
-                // use the package to create a path prefix
-                Package pkg = declaringClass.getJavaClass().getPackage();
-                if (pkg != null) {
-                    String prefix = pkg.getName();
-                    prefix = prefix.replace('.', '/');
-                    name = prefix + "/" + name;
+            String sourceFileName = declaringClass.getSourceFileName();
+
+            if (sourceFileName == null) {
+                String className = declaringClass.getJavaClass().getName();
+                int idx = className.lastIndexOf('.');
+                if (idx > 0) {
+                    // strip off package prefix
+                    className = className.substring(idx + 1);
                 }
-            } else {
-                // build file name from the class name which includes the package
-                name = className();
-                // try to map inner classes back to their parent class's file
-                int idx = name.indexOf('$');
+                idx = className.indexOf('$');
                 if (idx == 0) {
                     // name is $XXX so cannot associate with a file
-                    return "";
+                    // create a path with an empty name
+                    sourceFileName = "";
+                } else {
+                    if (idx > 0) {
+                        // name is XXX$YYY so use outer class to derive file name
+                        className = className.substring(0, idx);
+                    }
+                    sourceFileName = className + ".java";
                 }
-                if (idx > 0) {
-                    // name is XXX$YYY so use outer class to derive file name
-                    name = name.substring(0, idx);
-                }
-                name = name.replace('.', '/') + ".java";
             }
-            return name;
+
+            return sourceFileName;
+        }
+        @Override
+        public Path filePath() {
+            HostedType declaringClass = method.getDeclaringClass();
+            Class<?> javaClass = declaringClass.getJavaClass();
+            Package pkg = javaClass.getPackage();
+            String packageName = (pkg != null ? pkg.getName() : "");
+            String module = ModuleSupport.getModuleName(javaClass);
+            if (packageName.length() != 0) {
+                String prefix = getPathPrefix(packageName, module);
+                /*
+                 * use the package name as a path to the file
+                 * for jdk11 classes we assume that the path includes
+                 * the module name then the package name components
+                 * for jdk8 classes this will just collapse to
+                 * the sequence of package name elements
+                 */
+                return Paths.get(prefix, pkg.getName().split("\\."));
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -1124,7 +1182,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
-            if (fileName().length() == 0) {
+            if (fileName().toString().length() == 0) {
                 return () -> new Iterator<DebugLineInfo>() {
                     @Override
                     public boolean hasNext() {
@@ -1199,17 +1257,66 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public String fileName() {
-            String name = className();
-            int idx = name.indexOf('$');
-            if (idx == 0) {
-                // name is $XXX so cannot associate with a file
-                return "";
+            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            String sourceFileName = declaringClass.getSourceFileName();
+
+            if (sourceFileName == null) {
+                String className = declaringClass.getName();
+                int idx = className.lastIndexOf('.');
+                if (idx > 0) {
+                    // strip off package prefix
+                    className = className.substring(idx + 1);
+                }
+                idx = className.indexOf('$');
+                if (idx == 0) {
+                    // name is $XXX so cannot associate with a file
+                    // create a path with an empty name
+                    sourceFileName = "";
+                } else {
+                    if (idx > 0) {
+                        // name is XXX$YYY so use outer class to derive file name
+                        className = className.substring(0, idx);
+                    }
+                    sourceFileName = className + ".java";
+                }
             }
-            if (idx > 0) {
-                // name is XXX$YYY so use outer class to derive file name
-                name = name.substring(0, idx);
+
+            return sourceFileName;
+        }
+
+        public Path filePath() {
+            ResolvedJavaType declaringClass = (method.getDeclaringClass());
+            if (declaringClass instanceof OriginalClassProvider) {
+                Class<?> javaClass = ((OriginalClassProvider) declaringClass).getJavaClass();
+                Package pkg = javaClass.getPackage();
+                String packageName = (pkg != null ? pkg.getName() : "");
+                String module = ModuleSupport.getModuleName(javaClass);
+                if (packageName.length() != 0) {
+                    String prefix = getPathPrefix(packageName, module);
+                    /*
+                     * use the package name as a path to the file
+                     *
+                     * for jdk11 classes we assume that the path includes
+                     * the module name then the package name components
+                     *
+                     * for jdk8 classes this will just collapse to
+                     * the sequence of package name components
+                     */
+                    return Paths.get(prefix, pkg.getName().split("\\."));
+                } else {
+                    return null;
+                }
+            } else {
+                // use the class name to generate a path
+                String name = className();
+                int idx = name.lastIndexOf('.');
+                if (idx > 0) {
+                    name = name.substring(0, idx);
+                    return Paths.get("", name.split("\\."));
+                } else {
+                    return null;
+                }
             }
-            return name.replace('.', '/') + ".java";
         }
 
         @Override
