@@ -42,12 +42,16 @@ import com.oracle.truffle.api.Option;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
-final class TruffleDebugOptions {
+public final class TruffleDebugOptions {
 
     @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
 
     private TruffleDebugOptions() {
         throw new IllegalStateException("No instance allowed.");
+    }
+
+    public static boolean verboseBailouts() {
+        return getValue(CompilationBailoutAsFailure) && getValue(CompilationFailureAction).ordinal() >= ExceptionAction.Print.ordinal();
     }
 
     static <T> T getValue(final OptionKey<T> key) {
@@ -61,7 +65,7 @@ final class TruffleDebugOptions {
     /**
      * Shadows {@code org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget}.
      */
-    public enum PrintGraphTarget {
+    enum PrintGraphTarget {
         File,
         Network,
         Disable;
@@ -72,6 +76,24 @@ final class TruffleDebugOptions {
 
         static OptionType<PrintGraphTarget> getOptionType() {
             return new OptionType<>(PrintGraphTarget.class.getSimpleName(), PrintGraphTarget::valueOf);
+        }
+    }
+
+    /**
+     * Shadows {@code org.graalvm.compiler.core.ompilationWrapper.ExceptionAction}.
+     */
+    enum ExceptionAction {
+        Silent,
+        Print,
+        Diagnose,
+        ExitVM;
+
+        static ExceptionAction translate(Object value) {
+            return valueOf(String.valueOf(value));
+        }
+
+        static OptionType<ExceptionAction> getOptionType() {
+            return new OptionType<>(ExceptionAction.class.getSimpleName(), ExceptionAction::valueOf);
         }
     }
 
@@ -99,5 +121,12 @@ final class TruffleDebugOptions {
     }
 
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
-    @Option(help = "", category = OptionCategory.INTERNAL) public static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
+    @Option(help = "", category = OptionCategory.INTERNAL) //
+    static final OptionKey<PrintGraphTarget> PrintGraph = new OptionKey<>(File, PrintGraphTarget.getOptionType());
+    // Initialized by the options of the same name in org.graalvm.compiler.core.GraalCompilerOptions
+    @Option(help = "", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> CompilationBailoutAsFailure = new OptionKey<>(false);
+    // Initialized by the options of the same name in org.graalvm.compiler.core.GraalCompilerOptions
+    @Option(help = "", category = OptionCategory.USER) //
+    static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, ExceptionAction.getOptionType());
 }

@@ -77,6 +77,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
@@ -102,6 +103,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import java.io.StringWriter;
+import java.util.function.Supplier;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -118,6 +121,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.truffle.runtime.debug.JFRListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationFailureListener;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
@@ -396,6 +400,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected void installDefaultListeners() {
+        TraceCompilationFailureListener.install(this);
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
         TraceCallTreeListener.install(this);
@@ -706,38 +711,60 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
-        TruffleCompiler compiler = getTruffleCompiler(callTarget);
-        try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
-            try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
-                listeners.onCompilationStarted(callTarget);
-                TruffleInlining inlining = createInliningPlan(callTarget, task);
-                try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
-                    // Open the "Truffle::methodName" dump group if dumping is enabled.
-                    try (TruffleOutputGroup o = TruffleDebugOptions.getValue(PrintGraph) == Disable ? null
-                                    : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
-                        // Create "AST" and "Call Tree" groups if dumping is enabled.
-                        maybeDumpTruffleTree(debug, callTarget, inlining);
-                        // Compile the method (puts dumps in "Graal Graphs" group if dumping is
-                        // enabled).
-                        compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+        try {
+            TruffleCompiler compiler = getTruffleCompiler(callTarget);
+            try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
+                final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
+                try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
+                    listeners.onCompilationStarted(callTarget);
+                    TruffleInlining inlining = createInliningPlan(callTarget, task);
+                    try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
+                        // Open the "Truffle::methodName" dump group if dumping is enabled.
+                        try (TruffleOutputGroup o = TruffleDebugOptions.getValue(PrintGraph) == Disable ? null
+                                        : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
+                            // Create "AST" and "Call Tree" groups if dumping is enabled.
+                            maybeDumpTruffleTree(debug, callTarget, inlining);
+                            // Compile the method (puts dumps in "Graal Graphs" group if dumping is
+                            // enabled).
+                            compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+                        }
+                    } finally {
+                        if (debug != null) {
+                            /*
+                             * The graph dumping code of Graal might leave inlining dump groups open, in
+                             * case there are more graphs coming. Close these groups at the end of the
+                             * compilation.
+                             */
+                            debug.closeDebugChannels();
+                        }
                     }
-                } finally {
-                    if (debug != null) {
-                        /*
-                         * The graph dumping code of Graal might leave inlining dump groups open, in
-                         * case there are more graphs coming. Close these groups at the end of the
-                         * compilation.
-                         */
-                        debug.closeDebugChannels();
-                    }
+                    dequeueInlinedCallSites(inlining, callTarget);
                 }
-                dequeueInlinedCallSites(inlining, callTarget);
             }
+        } catch (OptimizationFailedException e) {
+            // Listeners already notified
+            throw e;
         } catch (RuntimeException | Error e) {
+            notifyCompilationFailure(callTarget, e);
             throw e;
         } catch (Throwable e) {
+            notifyCompilationFailure(callTarget, e);
             throw new InternalError(e);
+        }
+    }
+
+    private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t) {
+        try {
+            listeners.onCompilationFailed(callTarget, t.toString(), false, false);
+        } finally {
+            callTarget.onCompilationFailed(new Supplier<String>() {
+                @Override
+                public String get() {
+                    StringWriter writer = new StringWriter();
+                    t.printStackTrace(new PrintWriter(writer));
+                    return writer.toString();
+                }
+            }, false, false);
         }
     }
 

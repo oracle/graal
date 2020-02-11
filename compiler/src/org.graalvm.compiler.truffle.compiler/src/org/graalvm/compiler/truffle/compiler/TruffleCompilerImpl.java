@@ -89,7 +89,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.compiler.debug.TraceCompilationFailureListener;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -283,15 +282,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
     }
 
-    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener inListener,
+    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
                     TruffleCompilationIdentifier compilationId,
                     CompilableTruffleAST compilable, DebugContext graalDebug) {
-        final TruffleCompilerListener listener;
-        if (inListener == null) {
-            listener = null;
-        } else {
-            listener = new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
-        }
         final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
                         options,
                         getDebugOutputDirectory(),
@@ -814,41 +807,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public boolean isLastTier() {
             return delegate.isLastTier();
-        }
-    }
-
-    private static final class TruffleCompilerListenerPair implements TruffleCompilerListener {
-
-        private final TruffleCompilerListener first;
-        private final TruffleCompilerListener second;
-
-        TruffleCompilerListenerPair(TruffleCompilerListener first, TruffleCompilerListener second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        @Override
-        public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
-            first.onGraalTierFinished(compilable, graph);
-            second.onGraalTierFinished(compilable, graph);
-        }
-
-        @Override
-        public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph) {
-            first.onTruffleTierFinished(compilable, inliningPlan, graph);
-            second.onTruffleTierFinished(compilable, inliningPlan, graph);
-        }
-
-        @Override
-        public void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-            first.onSuccess(compilable, inliningPlan, graphInfo, compilationResultInfo);
-            second.onSuccess(compilable, inliningPlan, graphInfo, compilationResultInfo);
-        }
-
-        @Override
-        public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
-            first.onFailure(compilable, reason, bailout, permanentBailout);
-            second.onFailure(compilable, reason, bailout, permanentBailout);
         }
     }
 }
