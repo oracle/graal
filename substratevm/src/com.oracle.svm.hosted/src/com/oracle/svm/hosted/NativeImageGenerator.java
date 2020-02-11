@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -55,6 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -155,9 +155,8 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.GLibc;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.c.libc.Libc;
 import com.oracle.svm.core.c.libc.MuslLibc;
+import com.oracle.svm.core.c.libc.Libc;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -470,7 +469,9 @@ public class NativeImageGenerator {
     }
 
     private void cleanup() {
-        deleteTempDirectory();
+        if (deleteTempDirectory) {
+            deleteAll(tempDirectory());
+        }
         featureHandler.forEachFeature(Feature::cleanup);
     }
 
@@ -1665,7 +1666,7 @@ public class NativeImageGenerator {
     }
 
     private Path tempDirectory;
-    private volatile boolean deleteTempDirectory;
+    private boolean deleteTempDirectory;
 
     public synchronized Path tempDirectory() {
         if (tempDirectory == null) {
@@ -1686,34 +1687,19 @@ public class NativeImageGenerator {
         return tempDirectory.toAbsolutePath();
     }
 
-    private void deleteTempDirectory() {
-        if (!deleteTempDirectory) {
-            return;
-        }
+    private static void deleteAll(Path path) {
         try {
-            Files.walkFileTree(tempDirectory(), new SimpleFileVisitor<Path>() {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    deleteImpl(file);
+                    Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    if (Files.isDirectory(dir) && !Files.list(dir).findAny().isPresent()) {
-                        // only delete dir if it is empty.
-                        // dirs might not be empty if a file deletion got an access denied error.
-                        deleteImpl(dir);
-                    }
+                    Files.delete(dir);
                     return FileVisitResult.CONTINUE;
-                }
-
-                private void deleteImpl(Path file) throws IOException {
-                    try {
-                        Files.delete(file);
-                    } catch (AccessDeniedException e) {
-                        // we cannot do anything about access denied
-                    }
                 }
             });
         } catch (IOException ex) {
