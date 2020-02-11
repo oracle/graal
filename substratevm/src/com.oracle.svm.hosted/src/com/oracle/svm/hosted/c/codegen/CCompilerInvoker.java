@@ -33,7 +33,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.InputMismatchException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -219,13 +218,9 @@ public abstract class CCompilerInvoker {
                 scanner.useDelimiter("[. ]");
                 int major = scanner.nextInt();
                 int minor0 = scanner.nextInt();
-                int minor1 = 0;
-                try {
-                    minor1 = scanner.nextInt();
-                } catch (InputMismatchException ex) {
-                    // On Yosemite and prior the compiler might not report a patch version
-                    // https://trac.macports.org/wiki/XcodeVersionInfo
-                }
+                // On Yosemite and prior the compiler might not report a patch version
+                // https://trac.macports.org/wiki/XcodeVersionInfo
+                int minor1 = scanner.hasNextInt() ? scanner.nextInt() : 0;
                 scanner.reset(); /* back to default delimiters */
                 String[] triplet = guessTargetTriplet(scanner);
                 return new CompilerInfo(triplet[1], "LLVM", "clang", major, minor0, minor1, triplet[0]);
