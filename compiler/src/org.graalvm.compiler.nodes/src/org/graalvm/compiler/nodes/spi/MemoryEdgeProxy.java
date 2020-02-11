@@ -22,13 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.memory;
+package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.ValueNodeInterface;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.word.LocationIdentity;
 
-/**
- * This interface marks nodes that are part of the memory graph.
- */
-public interface MemoryNode extends ValueNodeInterface {
+public interface MemoryEdgeProxy extends Proxy, MemoryKill {
 
+    LocationIdentity getLocationIdentity();
+
+    MemoryKill getOriginalMemoryNode();
 }

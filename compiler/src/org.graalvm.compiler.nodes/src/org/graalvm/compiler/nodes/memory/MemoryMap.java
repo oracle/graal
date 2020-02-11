@@ -35,7 +35,7 @@ public interface MemoryMap {
     /**
      * Gets the last node that that (potentially) wrote to {@code locationIdentity}.
      */
-    MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
+    MemoryKill getLastLocationAccess(LocationIdentity locationIdentity);
 
     /**
      * Gets the location identities in the domain of this map.
