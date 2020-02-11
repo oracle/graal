@@ -42,6 +42,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
@@ -110,6 +111,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     Files.write(exportedSymbolsPath, exportedSymbols);
                     additionalPreOptions.add("-Wl,--dynamic-list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+
+                    // Drop global symbols in linked static libraries: not covered by --dynamic-list
+                    additionalPreOptions.add("-Wl,--exclude-libs,ALL");
                 } catch (IOException e) {
                     VMError.shouldNotReachHere();
                 }
@@ -219,8 +223,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         @Override
         public List<String> getCommand() {
-            ArrayList<String> cmd = new ArrayList<>();
-            cmd.addAll(getCompilerCommand());
+            List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
+
+            List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
             // Add debugging info
@@ -256,6 +261,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
 
+            Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
             return cmd;
         }
     }
