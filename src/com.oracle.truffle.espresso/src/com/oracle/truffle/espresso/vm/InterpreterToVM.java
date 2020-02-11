@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -403,7 +404,7 @@ public final class InterpreterToVM implements ContextAccess {
         return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                return newMultiArrayWithoutChecks(component.getComponentType(), newDimensions);
+                return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);
             }
         });
     }
