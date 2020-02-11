@@ -1020,6 +1020,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         // add enclosing type to static imports. merge with existing static imports
         AnnotationMirror generateUncached = findAnnotationMirror(nodeType, types.GenerateUncached);
+        AnnotationMirror reportPolymorphism = findAnnotationMirror(nodeType, types.ReportPolymorphism);
         AnnotationMirror importStatic = findAnnotationMirror(nodeType, types.ImportStatic);
         List<AnnotationValue> staticImports = new ArrayList<>();
         if (importStatic != null) {
@@ -1038,6 +1039,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             clonedType.getAnnotationMirrors().add(generateUncached);
         } else {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
+        }
+        if (reportPolymorphism != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphism);
         }
 
         NodeData parsedNodeData = NodeParser.createExportParser(
