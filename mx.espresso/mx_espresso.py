@@ -24,12 +24,40 @@
 from argparse import ArgumentParser
 
 import mx
+import mx_benchmark
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
 
 _suite = mx.suite('espresso')
+
+
+class EspressoVM(mx_benchmark.GuestVm, mx_benchmark.JavaVm):
+    def __init__(self, host_vm, config_name, host_vm_args):
+        super(EspressoVM, self).__init__(host_vm)
+        self._config_name = config_name
+        self._host_vm_args = host_vm_args
+
+    def with_host_vm(self, host_vm):
+        return self.__class__(host_vm, self._config_name, self._host_vm_args)
+
+    def hosting_registry(self):
+        return mx_benchmark.java_vm_registry
+
+    def name(self):
+        return "espresso"
+
+    def config_name(self):
+        return self._config_name
+
+    def run(self, cwd, args):
+        return self.host_vm().run(cwd, self._host_vm_args + _espresso_command(args))
+
+
+# Register Espresso as a VM for running `mx benchmark`.
+mx_benchmark.java_vm_registry.add_vm(EspressoVM(None, 'interpreter', ['-Dgraal.TruffleCompilation=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVM(None, 'jit', []), _suite, priority=1)
 
 
 class EspressoDefaultTags:
