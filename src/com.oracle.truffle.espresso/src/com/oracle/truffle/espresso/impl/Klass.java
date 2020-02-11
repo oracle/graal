@@ -106,7 +106,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return array();
         }
         if (isArray() && COMPONENT.equals(member)) {
-            return getComponentType();
+            return ((ArrayKlass) this).getComponentType();
         }
         throw UnknownIdentifierException.create(member);
     }
