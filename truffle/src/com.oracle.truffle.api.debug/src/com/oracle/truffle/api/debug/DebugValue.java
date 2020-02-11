@@ -193,7 +193,7 @@ public abstract class DebugValue {
      * variables declared on a stack. It's <code>null<code> for object properties and other heap
      * values.
      *
-     * &#64;return the scope, or <code>null</code> when this value does not belong into any scope.
+     * @return the scope, or <code>null</code> when this value does not belong into any scope.
      *
      * @since 0.26
      */
