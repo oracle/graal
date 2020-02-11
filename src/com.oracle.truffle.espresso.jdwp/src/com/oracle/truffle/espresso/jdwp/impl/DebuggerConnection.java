@@ -515,7 +515,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet);
                                     break;
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
-                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet);
+                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
                             }
                             break;

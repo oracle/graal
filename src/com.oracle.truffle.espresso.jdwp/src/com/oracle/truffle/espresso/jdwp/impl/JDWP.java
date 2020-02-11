@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
+import static com.oracle.truffle.espresso.jdwp.api.TagConstants.VOID;
 
 final class JDWP {
 
@@ -47,7 +48,6 @@ final class JDWP {
 
     private static final boolean CAN_REDEFINE_CLASSES = false;
     private static final boolean CAN_GET_INSTANCE_INFO = false;
-    private static final boolean CAN_FORCE_EARLY_RETURN = false;
     private static final boolean CAN_GET_MONITOR_FRAME_INFO = false;
     private static final boolean CAN_GET_MONITOR_INFO = false;
 
@@ -349,7 +349,7 @@ final class JDWP {
                 reply.writeBoolean(CAN_GET_MONITOR_FRAME_INFO); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
                 reply.writeBoolean(true); // canGetConstantPool
-                reply.writeBoolean(CAN_FORCE_EARLY_RETURN); // canForceEarlyReturn
+                reply.writeBoolean(true); // canForceEarlyReturn
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
@@ -2116,16 +2116,34 @@ final class JDWP {
         static class FORCE_EARLY_RETURN {
             public static final int ID = 14;
 
-            static CommandResult createReply(Packet packet) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                if (!CAN_FORCE_EARLY_RETURN) {
-                    // tracked by: /browse/GR-20412
-                    reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                PacketStream input = new PacketStream(packet);
+
+                Object thread = verifyThread(input.readLong(), reply, controller.getContext());
+
+                if (thread == null) {
+                    reply.errorCode(ErrorCodes.INVALID_THREAD);
                     return new CommandResult(reply);
-                } else {
-                    throw new RuntimeException("Not implemented!");
                 }
+
+                Object returnValue = readValue(input, controller.getContext());
+
+                ThreadJob<Boolean> job = new ThreadJob<>(thread, new Callable<Boolean>() {
+                    @Override
+                    public Boolean call() {
+                        return controller.getContext().forceEarlyReturn(returnValue);
+                    }
+                });
+                controller.postJobForThread(job);
+
+                if (!job.getResult().getResult()) {
+                    reply.errorCode(ErrorCodes.OPAQUE_FRAME);
+                    return new CommandResult(reply);
+                }
+
+                return new CommandResult(reply);
             }
         }
 
@@ -2581,6 +2599,40 @@ final class JDWP {
 
     private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
+            case BOOLEAN:
+                return input.readBoolean();
+            case TagConstants.BYTE:
+                return input.readByte();
+            case TagConstants.SHORT:
+                return input.readShort();
+            case TagConstants.CHAR:
+                return input.readChar();
+            case TagConstants.INT:
+                return input.readInt();
+            case TagConstants.FLOAT:
+                return input.readFloat();
+            case TagConstants.LONG:
+                return input.readLong();
+            case TagConstants.DOUBLE:
+                return input.readDouble();
+            case TagConstants.ARRAY:
+            case TagConstants.STRING:
+            case TagConstants.OBJECT:
+            case TagConstants.THREAD:
+            case TagConstants.THREAD_GROUP:
+            case TagConstants.CLASS_LOADER:
+            case TagConstants.CLASS_OBJECT:
+                return context.getIds().fromId((int) input.readLong());
+            default:
+                throw new RuntimeException("Should not reach here!");
+        }
+    }
+
+    private static Object readValue(PacketStream input, JDWPContext context) {
+        byte valueKind = input.readByte();
+        switch (valueKind) {
+            case VOID:
+                return Void.class;
             case BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:

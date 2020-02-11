@@ -347,6 +347,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
+    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
+
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
@@ -601,6 +603,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
+
+                    // check for early returns
+                    Object earlyReturnValue = earlyReturns.get();
+                    if (earlyReturnValue != null) {
+                        earlyReturns.remove();
+                        return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
+                    }
                 }
 
                 // @formatter:off
@@ -1189,6 +1198,10 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
+    }
+
+    public void forceEarlyReturn(Object returnValue) {
+        earlyReturns.set(returnValue);
     }
 
     private static final class MonitorStack {
@@ -1874,6 +1887,15 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private static Object exitMethodAndReturn() {
         return exitMethodAndReturnObject(StaticObject.NULL);
+    }
+
+    private Object exitMethodEarlyAndReturn(Object result) {
+        if (Signatures.returnKind(getMethod().getParsedSignature()) == JavaKind.Void) {
+            return exitMethodAndReturn();
+        } else {
+            System.out.println("returning result: " + result + " of type: " + result.getClass());
+            return result;
+        }
     }
 
     // endregion Method return

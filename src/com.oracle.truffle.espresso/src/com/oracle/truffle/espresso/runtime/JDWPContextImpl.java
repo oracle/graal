@@ -28,9 +28,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -54,16 +58,14 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.MonitorInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class JDWPContextImpl implements JDWPContext {
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
-    public static final String JAVA_LANG_THREAD = "Ljava/lang/Thread;";
-    public static final String JAVA_LANG_CLASS = "Ljava/lang/Class;";
-    public static final String JAVA_LANG_CLASS_LOADER = "Ljava/lang/ClassLoader;";
-    public static final String JAVA_LANG_THREAD_GROUP = "Ljava/lang/ThreadGroup;";
 
     private final EspressoContext context;
     private final Ids<Object> ids;
@@ -586,7 +588,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
-        MethodRef method = context.getMeta().Object_wait;
+        MethodRef method = context.getMeta().java_lang_Object_wait;
         return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
     }
 
@@ -621,5 +623,47 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return eventListener.getCurrentContendedMonitor(guestThread);
+    }
+
+    @Override
+    public boolean forceEarlyReturn(Object returnValue) {
+        // find the currently executing method by locating the latest BytecodeNode from stack frames
+        BytecodeNode bytecodeNode = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<BytecodeNode>() {
+            @Override
+            public BytecodeNode visitFrame(FrameInstance frameInstance) {
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget == null) {
+                    return null;
+                }
+                if (callTarget instanceof RootCallTarget) {
+                    RootCallTarget rootCallTarget = (RootCallTarget) callTarget;
+                    RootNode rootNode = rootCallTarget.getRootNode();
+                    if (rootNode instanceof EspressoRootNode) {
+                        EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+                        if (espressoRootNode.isBytecodeNode()) {
+                            return espressoRootNode.getBytecodeNode();
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+
+        if (bytecodeNode == null) {
+            return false;
+        }
+
+        // release held monitor objects
+        if (!bytecodeNode.getMethod().isSynchronized()) {
+            // if a monitor is obtained in a synchronized block inside the method
+            // we must release it before returning early.
+            Object[] ownedMonitors = eventListener.getOwnedMonitors(asGuestThread(Thread.currentThread()));
+            for (Object ownedMonitor : ownedMonitors) {
+                InterpreterToVM.monitorExit((StaticObject) ownedMonitor);
+            }
+        }
+
+        bytecodeNode.forceEarlyReturn(returnValue);
+        return true;
     }
 }
