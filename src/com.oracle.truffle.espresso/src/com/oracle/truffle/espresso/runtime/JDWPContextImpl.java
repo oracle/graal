@@ -585,7 +585,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
-        KlassRef klass = context.getMeta().Object;
+        KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().Object_wait;
         return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
     }
