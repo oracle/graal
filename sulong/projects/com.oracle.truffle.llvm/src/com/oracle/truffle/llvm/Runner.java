@@ -213,11 +213,11 @@ final class Runner {
             this.initModules = new InitializeModuleNode[libCount];
         }
 
-        static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, LLVMContext context, boolean lazyParsing) {
+        static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, boolean lazyParsing) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, context, lazyParsing, true);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, context, lazyParsing, false);
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, lazyParsing, true);
+                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, lazyParsing, false);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -225,10 +225,10 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules, LLVMContext context, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
+                        InitializeModuleNode[] initModules, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), context, lazyParsing, isSulongLibrary);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), lazyParsing, isSulongLibrary);
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -317,6 +317,11 @@ final class Runner {
 
     }
 
+    /*
+     * Allocation for internal functions, they can either be regular LLVM bitcode function, eager
+     * LLVM bitcode function, and intrinsic function.
+     *
+     */
     private static final class AllocLLVMFunctionNode extends AllocFunctionNode {
 
         AllocLLVMFunctionNode(LLVMFunction function) {
@@ -359,32 +364,11 @@ final class Runner {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
             LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
 
-            if (intrinsicProvider.isIntrinsified(functionDescriptor.getFunctionDetail().getName())) {
+            if (intrinsicProvider.isIntrinsified(function.getName())) {
                 functionDescriptor.define(intrinsicProvider, nodeFactory);
                 return LLVMManagedPointer.create(functionDescriptor);
             }
             throw new IllegalStateException("Failed to allocate intrinsic function " + function.getName());
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class AllocNativeFunctionNode extends AllocFunctionNode {
-
-        AllocNativeFunctionNode(LLVMFunction function) {
-            super(function);
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context) {
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, function.getName());
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
-
-            if (nativeFunction != null) {
-                functionDescriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
-                return LLVMManagedPointer.create(context.createFunctionDescriptor(function));
-            }
-            throw new IllegalStateException("Failed to allocate native function " + function.getName());
         }
     }
 
@@ -488,7 +472,7 @@ final class Runner {
         private final int globalLength;
 
         @SuppressWarnings("unchecked")
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
@@ -515,6 +499,9 @@ final class Runner {
                 }
             }
 
+            // Functions are allocated based on whether they are intrinsic function, regular llvm
+            // bitcode function
+            // or eager llvm bitcode function.
             ArrayList<AllocFunctionNode> allocFunctionsList = new ArrayList<>();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             for (FunctionSymbol global : res.getDefinedFunctions()) {
@@ -1262,8 +1249,10 @@ final class Runner {
             SulongLibrary lib = new SulongLibrary(name, scope, mainFunctionCallTarget, context);
 
             FrameDescriptor rootFrame = StackManager.createRootFrame();
+
+            // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
-            LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib, context, lazyParsing);
+            LoadModulesNode loadModules = LoadModulesNode.create(this, rootFrame, initializationOrder, lib, lazyParsing);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }
