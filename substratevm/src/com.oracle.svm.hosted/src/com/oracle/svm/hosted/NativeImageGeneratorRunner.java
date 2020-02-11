@@ -56,6 +56,7 @@ import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
@@ -371,6 +372,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 return 3;
             }
         } catch (FallbackFeature.FallbackImageRequest e) {
+            if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
+                NativeImageGeneratorRunner.reportFatalError(e, "FallbackImageRequest while building fallback image.");
+                return 1;
+            }
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
         } catch (ParsingError e) {
@@ -438,7 +443,18 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param e error to be reported.
      */
     private static void reportFatalError(Throwable e) {
-        System.err.print("Fatal error: ");
+        System.err.print("Fatal error:");
+        e.printStackTrace();
+    }
+
+    /**
+     * Reports an unexpected error caused by a crash in the SVM image builder.
+     *
+     * @param e error to be reported.
+     * @param msg message to report.
+     */
+    private static void reportFatalError(Throwable e, String msg) {
+        System.err.print("Fatal error: " + msg);
         e.printStackTrace();
     }
 
