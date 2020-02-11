@@ -64,7 +64,7 @@ public abstract class InvokeEspressoNode extends Node {
     @ExplodeLoop
     @Specialization
     Object doGeneric(Method method, Object receiver, Object[] arguments,
-                     @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToEspressoNode toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
 

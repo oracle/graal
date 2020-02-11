@@ -1,6 +1,5 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -13,7 +12,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 @ExportLibrary(InteropLibrary.class)
 public final class KeysArray implements TruffleObject {
 
-    public static KeysArray EMPTY = new KeysArray(new String[0]);
+    public static final KeysArray EMPTY = new KeysArray(new String[0]);
 
     @CompilationFinal(dimensions = 1) private final String[] keys;
 
