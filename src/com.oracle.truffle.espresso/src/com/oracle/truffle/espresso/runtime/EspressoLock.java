@@ -187,6 +187,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         if (thread != getOwnerThread()) {
             return 0;
         }
-        return 0;
+        return getHoldCount();
     }
 }
