@@ -142,8 +142,8 @@ public class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord BOOT_IMAGE                    = WordFactory.unsigned(0b110);  // 6 or e.
     private static final UnsignedWord FORWARDED                     = WordFactory.unsigned(0b111);  // 7 or f.
 
-    private static final int ALL_RESERVED_BITS                      = NumUtil.safeToInt(FORWARDED.rawValue());
-    private static final UnsignedWord MASK_HEADER_BITS              = WordFactory.unsigned(ALL_RESERVED_BITS);
+    private static final int RESERVED_BITS_MASK                     = NumUtil.safeToInt(FORWARDED.rawValue());
+    private static final UnsignedWord MASK_HEADER_BITS              = WordFactory.unsigned(RESERVED_BITS_MASK);
     private static final UnsignedWord CLEAR_HEADER_BITS             = MASK_HEADER_BITS.not();
     // @formatter:on
 
@@ -165,9 +165,9 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     @Override
     public int getReservedBitsMask() {
-        assert MASK_HEADER_BITS.rawValue() == ALL_RESERVED_BITS;
-        assert CLEAR_HEADER_BITS.rawValue() == ~ALL_RESERVED_BITS;
-        return ALL_RESERVED_BITS;
+        assert MASK_HEADER_BITS.rawValue() == RESERVED_BITS_MASK;
+        assert CLEAR_HEADER_BITS.rawValue() == ~RESERVED_BITS_MASK;
+        return RESERVED_BITS_MASK;
     }
 
     /**

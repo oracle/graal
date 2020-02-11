@@ -26,6 +26,9 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +49,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,6 +72,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
@@ -292,26 +296,28 @@ final class Target_java_lang_System {
         if (obj == null) {
             return 0;
         }
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
-        int hashCodeOffset = hub.getHashCodeOffset();
-        if (hashCodeOffset == 0) {
+
+        // Try to fold the identity hashcode offset to a constant.
+        int hashCodeOffset;
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        if (layout.getInstanceIdentityHashCodeOffset() >= 0 && layout.getInstanceIdentityHashCodeOffset() == layout.getArrayIdentityHashcodeOffset()) {
+            hashCodeOffset = layout.getInstanceIdentityHashCodeOffset();
+        } else {
+            DynamicHub hub = KnownIntrinsics.readHub(obj);
+            hashCodeOffset = hub.getHashCodeOffset();
+        }
+
+        if (probability(LUDICROUSLY_SLOW_PATH_PROBABILITY, hashCodeOffset == 0)) {
             throw VMError.shouldNotReachHere("identityHashCode called on illegal object");
         }
+
         UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
-        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
-        if (hashCode != 0) {
+        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+        if (probability(FAST_PATH_PROBABILITY, hashCode != 0)) {
             return hashCode;
         }
 
-        /* On the first invocation for an object create a new hash code. */
-        hashCode = IdentityHashCodeSupport.generateHashCode();
-
-        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, hashCode)) {
-            /* We lost the race, so there now must be a hash code installed from another thread. */
-            hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
-        }
-        VMError.guarantee(hashCode != 0, "Missing identity hash code");
-        return hashCode;
+        return IdentityHashCodeSupport.generateIdentityHashCode(obj, hashCodeOffset);
     }
 
     /* Ensure that we do not leak the full set of properties from the image generator. */

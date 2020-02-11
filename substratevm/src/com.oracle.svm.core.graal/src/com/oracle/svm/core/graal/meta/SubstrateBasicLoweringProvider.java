@@ -83,6 +83,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -173,8 +174,9 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
-        Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * getObjectLayout().getReferenceSize());
-        ConstantNode headerOffset = ConstantNode.forIntegerKind(target.wordJavaKind, getObjectLayout().getHubOffset(), graph);
+        ObjectLayout objectLayout = getObjectLayout();
+        Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());
+        ConstantNode headerOffset = ConstantNode.forIntegerKind(target.wordJavaKind, objectLayout.getHubOffset(), graph);
         AddressNode headerAddress = graph.unique(new OffsetAddressNode(object, headerOffset));
         ValueNode headerBits = graph.unique(new FloatingReadNode(headerAddress, NamedLocationIdentity.FINAL_LOCATION, null, headerBitsStamp, null, BarrierType.NONE));
         ValueNode hubBits;
@@ -182,11 +184,15 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         if (reservedBitsMask != 0) {
             // get rid of the reserved header bits and extract the actual pointer to the hub
             int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
-            if (encodingShift != 0) {
-                assert (reservedBitsMask >>> encodingShift) == 0 : "Compression shift must mask object header bits";
+            if ((reservedBitsMask >>> encodingShift) == 0) {
                 hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
-            } else {
+            } else if (reservedBitsMask < objectLayout.getAlignment()) {
                 hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBitsMask, graph)));
+            } else {
+                assert encodingShift > 0 : "shift below results in a compressed value";
+                assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
+                int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
+                hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(numReservedBits, graph)));
             }
         } else {
             hubBits = headerBits;

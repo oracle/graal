@@ -97,7 +97,7 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getFillStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
+        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, getArrayZeroingStartOffset(), emitMemoryBarrier, false, supportsBulkZeroing,
                         snippetCounters);
     }
 
