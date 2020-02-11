@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 /**
  * Details of a specific address range in a compiled method
  * either a primary range identifying a whole method
@@ -35,6 +37,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 public class Range {
     private String fileName;
+    private Path filePath;
     private String className;
     private String methodName;
     private String paramNames;
@@ -51,19 +54,20 @@ public class Range {
     /*
      * create a primary range
      */
-    Range(String fileName, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
-        this(fileName, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
+    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
+        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
     }
 
     /*
      * create a primary or secondary range
      */
-    Range(String fileName, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
+    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
         /*
          * currently file name and full method name need to go into the debug_str section
          * other strings just need to be deduplicated to save space
          */
         this.fileName = stringTable.uniqueDebugString(fileName);
+        this.filePath =  filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);
@@ -89,6 +93,18 @@ public class Range {
 
     public String getFileName() {
         return fileName;
+    }
+
+    public Path getFilePath() {
+        return filePath;
+    }
+
+    public Path getFileAsPath() {
+        if (filePath != null) {
+            return filePath.resolve(fileName);
+        } else {
+            return Paths.get(fileName);
+        }
     }
 
     public String getClassName() {
