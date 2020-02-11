@@ -126,6 +126,17 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
+    public static final int SPECIAL_REGISTER_COUNT;
+    public static final int THREAD_POINTER_INDEX;
+    public static final int HEAP_BASE_INDEX;
+
+    static {
+        int firstArgumentOffset = 0;
+        THREAD_POINTER_INDEX = (SubstrateOptions.MultiThreaded.getValue()) ? firstArgumentOffset++ : -1;
+        HEAP_BASE_INDEX = (SubstrateOptions.SpawnIsolates.getValue()) ? firstArgumentOffset++ : -1;
+        SPECIAL_REGISTER_COUNT = firstArgumentOffset;
+    }
+
     protected final boolean isEntryPoint;
     protected final boolean canModifySpecialRegisters;
     protected final boolean returnsCEnum;
@@ -154,7 +165,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      * methods, these hold the values of these registers in stack slots, which get passed to callees
      * that can potentially modify them and hold the updated version of the "register" upon return.
      */
-    private LLVMValueRef[] registerStackSlots = new LLVMValueRef[LLVMFeature.SPECIAL_REGISTER_COUNT];
+    private LLVMValueRef[] registerStackSlots = new LLVMValueRef[SPECIAL_REGISTER_COUNT];
 
     public LLVMGenerator(Providers providers, CompilationResult result, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
         this.providers = providers;
@@ -285,7 +296,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newParameterTypes[i] = canModifySpecialRegisters(method) ? builder.rawPointerType() : builder.longType();
             }
-            System.arraycopy(parameterTypes, 0, newParameterTypes, LLVMFeature.SPECIAL_REGISTER_COUNT, parameterTypes.length);
+            System.arraycopy(parameterTypes, 0, newParameterTypes, SPECIAL_REGISTER_COUNT, parameterTypes.length);
         }
         return newParameterTypes;
     }
@@ -599,9 +610,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public Variable emitReadRegister(Register register, ValueKind<?> kind) {
         LLVMValueRef value;
         if (register.equals(getRegisterConfig().getThreadRegister())) {
-            value = getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
+            value = getSpecialRegister(THREAD_POINTER_INDEX);
         } else if (register.equals(getRegisterConfig().getHeapBaseRegister())) {
-            value = getSpecialRegister(LLVMFeature.HEAP_BASE_INDEX);
+            value = getSpecialRegister(HEAP_BASE_INDEX);
         } else if (register.equals(getRegisterConfig().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(getRegisterConfig().getFrameRegister().name));
         } else {
@@ -614,11 +625,11 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
         if (dst.equals(getRegisterConfig().getThreadRegister())) {
             assert isEntryPoint || canModifySpecialRegisters;
-            builder.buildStore(getVal(src), getSpecialRegisterPointer(LLVMFeature.THREAD_POINTER_INDEX));
+            builder.buildStore(getVal(src), getSpecialRegisterPointer(THREAD_POINTER_INDEX));
             return;
         } else if (dst.equals(getRegisterConfig().getHeapBaseRegister())) {
             assert isEntryPoint || canModifySpecialRegisters;
-            builder.buildStore(getVal(src), getSpecialRegisterPointer(LLVMFeature.HEAP_BASE_INDEX));
+            builder.buildStore(getVal(src), getSpecialRegisterPointer(HEAP_BASE_INDEX));
             return;
         }
         throw VMError.shouldNotReachHere();
@@ -676,7 +687,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newArgs[i] = getSpecialRegisterArgument(i, targetMethod);
             }
-            System.arraycopy(args, 0, newArgs, LLVMFeature.SPECIAL_REGISTER_COUNT, args.length);
+            System.arraycopy(args, 0, newArgs, SPECIAL_REGISTER_COUNT, args.length);
         }
         return newArgs;
     }
@@ -689,7 +700,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newTypes[i] = builder.longType();
             }
-            System.arraycopy(types, 0, newTypes, LLVMFeature.SPECIAL_REGISTER_COUNT, types.length);
+            System.arraycopy(types, 0, newTypes, SPECIAL_REGISTER_COUNT, types.length);
         }
         return newTypes;
     }
@@ -1001,13 +1012,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LLVMValueRef heapBase = getSpecialRegister(LLVMFeature.HEAP_BASE_INDEX);
+        LLVMValueRef heapBase = getSpecialRegister(HEAP_BASE_INDEX);
         return new LLVMVariable(builder.buildCompress(getVal(pointer), heapBase, nonNull, encoding.getShift()));
     }
 
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        LLVMValueRef heapBase = getSpecialRegister(LLVMFeature.HEAP_BASE_INDEX);
+        LLVMValueRef heapBase = getSpecialRegister(HEAP_BASE_INDEX);
         return new LLVMVariable(builder.buildUncompress(getVal(pointer), heapBase, nonNull, encoding.getShift()));
     }
 
@@ -1079,7 +1090,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     public LLVMValueRef getRetrieveExceptionFunction() {
-        return getFunction(LLVMFeature.retrieveExceptionMethod);
+        return getFunction(LLVMFeature.getRetrieveExceptionMethod());
     }
 
     int getDebugLevel() {

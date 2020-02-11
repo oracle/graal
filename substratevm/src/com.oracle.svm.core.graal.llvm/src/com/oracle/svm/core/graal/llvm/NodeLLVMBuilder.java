@@ -332,7 +332,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     protected int getParamIndex(int index) {
-        int offset = (getGenerator().isEntryPoint() ? 0 : LLVMFeature.SPECIAL_REGISTER_COUNT);
+        int offset = (getGenerator().isEntryPoint() ? 0 : LLVMGenerator.SPECIAL_REGISTER_COUNT);
         return offset + index;
     }
 
@@ -402,7 +402,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             return builder.buildIsNull(and);
         }
         if (condition instanceof SafepointCheckNode) {
-            LLVMValueRef threadData = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
+            LLVMValueRef threadData = getGenerator().getSpecialRegister(LLVMGenerator.THREAD_POINTER_INDEX);
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
             LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
@@ -556,7 +556,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), lastSPAddr);
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            LLVMValueRef threadLocalArea = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
+            LLVMValueRef threadLocalArea = getGenerator().getSpecialRegister(LLVMGenerator.THREAD_POINTER_INDEX);
             LLVMValueRef statusIndex = builder.constantInt(runtimeConfiguration.getVMThreadStatusOffset());
             LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
             builder.buildStore(builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget)), statusAddress);

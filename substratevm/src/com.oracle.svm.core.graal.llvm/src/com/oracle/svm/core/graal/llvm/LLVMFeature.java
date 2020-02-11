@@ -24,31 +24,13 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
@@ -65,20 +47,20 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
 import com.oracle.svm.core.graal.llvm.runtime.LLVMPersonalityFunction;
+import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
-import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
@@ -90,33 +72,26 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 public class LLVMFeature implements Feature, GraalFeature {
 
     private static HostedMethod personalityStub;
-    public static HostedMethod retrieveExceptionMethod;
+    private static HostedMethod retrieveExceptionMethod;
 
-    public static final int SPECIAL_REGISTER_COUNT;
-    public static final int THREAD_POINTER_INDEX;
-    public static final int HEAP_BASE_INDEX;
+    static HostedMethod getPersonalityStub() {
+        return personalityStub;
+    }
 
-    static {
-        int firstArgumentOffset = 0;
-        THREAD_POINTER_INDEX = (SubstrateOptions.MultiThreaded.getValue()) ? firstArgumentOffset++ : -1;
-        HEAP_BASE_INDEX = (SubstrateOptions.SpawnIsolates.getValue()) ? firstArgumentOffset++ : -1;
-        SPECIAL_REGISTER_COUNT = firstArgumentOffset;
+    static HostedMethod getRetrieveExceptionMethod() {
+        return retrieveExceptionMethod;
     }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (!CompilerBackend.getValue().equals("llvm")) {
+        if (!SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
             for (HostedOptionKey<?> llvmOption : LLVMOptions.allOptions) {
                 if (llvmOption.hasBeenSet()) {
                     throw UserError.abort("Flag " + llvmOption.getName() + " can only be used together with -H:CompilerBackend=llvm");
                 }
             }
         }
-        return CompilerBackend.getValue().equals("llvm");
-    }
-
-    public static HostedMethod getPersonalityStub() {
-        return personalityStub;
+        return SubstrateOptions.CompilerBackend.getValue().equals("llvm");
     }
 
     @Override
@@ -145,28 +120,22 @@ public class LLVMFeature implements Feature, GraalFeature {
         });
 
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
+
         ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateSuitesCreatorProvider());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        try {
-            accessImpl.registerAsCompiled(LLVMPersonalityFunction.class.getMethod("retrieveException"));
-        } catch (NoSuchMethodException e) {
-            throw shouldNotReachHere();
-        }
+        accessImpl.registerAsCompiled(LLVMPersonalityFunction.getRetrieveExceptionFunction());
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
-        personalityStub = accessImpl.getUniverse().lookup(LLVMPersonalityFunction.getPersonalityStub());
-        try {
-            retrieveExceptionMethod = accessImpl.getMetaAccess().lookupJavaMethod(LLVMPersonalityFunction.class.getMethod("retrieveException"));
-        } catch (NoSuchMethodException e) {
-            throw shouldNotReachHere();
-        }
+        personalityStub = accessImpl.getUniverse().lookup(CEntryPointCallStubSupport.singleton()
+                .getStubForMethod(LLVMPersonalityFunction.getPersonalityFunction()));
+        retrieveExceptionMethod = accessImpl.getMetaAccess().lookupJavaMethod(LLVMPersonalityFunction.getRetrieveExceptionFunction());
     }
 
     @Override
@@ -175,37 +144,12 @@ public class LLVMFeature implements Feature, GraalFeature {
         lowerings.put(LoadExceptionObjectNode.class, new LLVMLoadExceptionObjectLowering());
     }
 
-    private static class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<LoadExceptionObjectNode> {
-
-        @Override
-        public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
-            FrameState exceptionState = node.stateAfter();
-            assert exceptionState != null;
-
-            StructuredGraph graph = node.graph();
-            FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
-            graph.replaceFixedWithFixed(node, readRegNode);
-
-            /*
-             * When libunwind has found an exception handler, it jumps directly to it from native
-             * code. We therefore need the CFunctionEpilogueNode to restore the Java state before we
-             * handle the exception.
-             */
-            CFunctionEpilogueNode cFunctionEpilogueNode = new CFunctionEpilogueNode(StatusSupport.STATUS_IN_NATIVE);
-            graph.add(cFunctionEpilogueNode);
-            graph.addAfterFixed(readRegNode, cFunctionEpilogueNode);
-            cFunctionEpilogueNode.lower(tool);
-
-            graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
-        }
-    }
-
-    public static class LLVMVersionChecker {
+    static class LLVMVersionChecker {
         private static final int MIN_LLVM_VERSION = 8;
         private static final int MIN_LLVM_OPTIMIZATIONS_VERSION = 9;
         private static final int llvmVersion = getLLVMVersion();
 
-        public static boolean useExplicitSelects() {
+        static boolean useExplicitSelects() {
             if (!Platform.includedIn(Platform.AMD64.class)) {
                 return false;
             }

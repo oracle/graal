@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.llvm.runtime;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.core.common.NumUtil;
@@ -42,14 +43,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 
 @CContext(LLVMDirectives.class)
 public class LLVMPersonalityFunction {
@@ -114,10 +113,17 @@ public class LLVMPersonalityFunction {
         }
     }
 
-    public static AnalysisMethod getPersonalityStub() {
+    public static Method getPersonalityFunction() {
         try {
-            return CEntryPointCallStubSupport.singleton()
-                            .getStubForMethod(LLVMPersonalityFunction.class.getMethod("personality", int.class, int.class, IsolateThread.class, _Unwind_Exception.class, _Unwind_Context.class));
+            return LLVMPersonalityFunction.class.getMethod("personality", int.class, int.class, IsolateThread.class, _Unwind_Exception.class, _Unwind_Context.class);
+        } catch (NoSuchMethodException e) {
+            throw shouldNotReachHere();
+        }
+    }
+
+    public static Method getRetrieveExceptionFunction() {
+        try {
+            return LLVMPersonalityFunction.class.getMethod("retrieveException");
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere();
         }
