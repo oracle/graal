@@ -36,7 +36,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -72,7 +72,7 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     public boolean isString() {
-        return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().String;
+        return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().java_lang_String;
     }
 
     @ExportMessage
@@ -160,7 +160,7 @@ public final class StaticObject implements TruffleObject {
     // Constructor for Class objects
     public StaticObject(ObjectKlass guestClass, Klass thisKlass) {
         assert thisKlass != null;
-        assert guestClass == guestClass.getMeta().Class;
+        assert guestClass == guestClass.getMeta().java_lang_Class;
         this.klass = guestClass;
         // assert !isStatic || klass.isInitialized(); else {
         int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
@@ -171,7 +171,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public StaticObject(ObjectKlass klass, boolean isStatic) {
-        assert klass != klass.getMeta().Class || isStatic;
+        assert klass != klass.getMeta().java_lang_Class || isStatic;
         this.klass = klass;
         // assert !isStatic || klass.isInitialized();
         if (isStatic) {
@@ -272,7 +272,7 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary
     public StaticObject getFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return (StaticObject) UNSAFE.getObjectVolatile(fields, getObjectFieldIndex(field.getFieldIndex()));
+        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()));
     }
 
     // Not to be used to access hidden fields !
@@ -283,7 +283,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             result = getFieldVolatile(field);
         } else {
-            result = getUnsafeField(field.getFieldIndex());
+            result = castExact(fields, Object[].class)[field.getFieldIndex()];
         }
         assert result != null;
         return (StaticObject) result;
@@ -291,13 +291,13 @@ public final class StaticObject implements TruffleObject {
 
     // Use with caution. Can be used with hidden fields
     public Object getUnsafeField(int fieldIndex) {
-        return UNSAFE.getObject(fields, getObjectFieldIndex(fieldIndex));
+        return UNSAFE.getObject(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
     }
 
     @TruffleBoundary
     public void setFieldVolatile(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putObjectVolatile(fields, getObjectFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()), value);
     }
 
     public void setField(Field field, Object value) {
@@ -594,10 +594,10 @@ public final class StaticObject implements TruffleObject {
 
     // Given a guest Class, get the corresponding Klass.
     public Klass getMirrorKlass() {
-        assert getKlass().getType() == Symbol.Type.Class;
+        assert getKlass().getType() == Type.java_lang_Class;
         Klass result = (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
         if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
         }
         return result;
@@ -612,13 +612,13 @@ public final class StaticObject implements TruffleObject {
         if (this == NULL) {
             return "null";
         }
-        if (getKlass() == getKlass().getMeta().String) {
+        if (getKlass() == getKlass().getMeta().java_lang_String) {
             return Meta.toHostString(this);
         }
         if (isArray()) {
             return unwrap().toString();
         }
-        if (getKlass() == getKlass().getMeta().Class) {
+        if (getKlass() == getKlass().getMeta().java_lang_Class) {
             return "mirror: " + getMirrorKlass().toString();
         }
         return getKlass().getType().toString();
@@ -632,13 +632,13 @@ public final class StaticObject implements TruffleObject {
         if (this == NULL) {
             return "null";
         }
-        if (getKlass() == getKlass().getMeta().String) {
+        if (getKlass() == getKlass().getMeta().java_lang_String) {
             return Meta.toHostString(this);
         }
         if (isArray()) {
             return unwrap().toString();
         }
-        if (getKlass() == getKlass().getMeta().Class) {
+        if (getKlass() == getKlass().getMeta().java_lang_Class) {
             return "mirror: " + getMirrorKlass().toString();
         }
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
@@ -683,7 +683,7 @@ public final class StaticObject implements TruffleObject {
             UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, klass.getComponentType(), meta));
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -691,7 +691,7 @@ public final class StaticObject implements TruffleObject {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
-            throw meta.throwEx(ArrayStoreException.class);
+            throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
@@ -731,7 +731,7 @@ public final class StaticObject implements TruffleObject {
 
     public static StaticObject wrap(StaticObject[] array) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta.Object_array, array);
+        return new StaticObject(meta.java_lang_Object_array, array);
     }
 
     public static StaticObject wrap(byte[] array) {
@@ -826,7 +826,7 @@ public final class StaticObject implements TruffleObject {
         if (index >= 0 && index < length()) {
             UNSAFE.putByte(fields, getArrayByteOffset(index), value);
         } else {
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -835,7 +835,7 @@ public final class StaticObject implements TruffleObject {
         if (index >= 0 && index < length()) {
             return UNSAFE.getByte(fields, getArrayByteOffset(index));
         } else {
-            throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 

@@ -52,7 +52,7 @@ public final class Target_java_lang_Object {
 
     @TruffleBoundary
     public static void registerFinalizer(@Host(Object.class) StaticObject self) {
-        self.getKlass().getMeta().Finalizer_register.invokeDirect(null, self);
+        self.getKlass().getMeta().java_lang_ref_Finalizer_register.invokeDirect(null, self);
     }
 
     // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking

@@ -109,13 +109,13 @@ public class Target_java_lang_ref_Reference {
         Meta meta = self.getKlass().getMeta();
         // Guest referent field is ignored for weak/soft/final/phantom references.
         EspressoReference<StaticObject> ref = null;
-        if (InterpreterToVM.instanceOf(self, meta.WeakReference)) {
+        if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference)) {
             ref = new EspressoWeakReference(self, referent, meta.getContext().getReferenceQueue());
-        } else if (InterpreterToVM.instanceOf(self, meta.SoftReference)) {
+        } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference)) {
             ref = new EspressoSoftReference(self, referent, meta.getContext().getReferenceQueue());
-        } else if (InterpreterToVM.instanceOf(self, meta.FinalReference)) {
+        } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
             ref = new EspressoFinalReference(self, referent, meta.getContext().getReferenceQueue());
-        } else if (InterpreterToVM.instanceOf(self, meta.PhantomReference)) {
+        } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference)) {
             ref = new EspressoPhantomReference(self, referent, meta.getContext().getReferenceQueue());
         }
         if (ref != null) {
@@ -123,14 +123,14 @@ public class Target_java_lang_ref_Reference {
             self.setHiddenField(meta.HIDDEN_HOST_REFERENCE, ref);
         } else {
             // Strong reference.
-            meta.Reference_referent.set(self, referent);
+            meta.java_lang_ref_Reference_referent.set(self, referent);
         }
 
         if (StaticObject.isNull(queue)) {
-            meta.Reference_queue.set(self,
-                            meta.ReferenceQueue_NULL.get(meta.ReferenceQueue.tryInitializeAndGetStatics()));
+            meta.java_lang_ref_Reference_queue.set(self,
+                            meta.java_lang_ref_ReferenceQueue_NULL.get(meta.java_lang_ref_ReferenceQueue.tryInitializeAndGetStatics()));
         } else {
-            meta.Reference_queue.set(self, queue);
+            meta.java_lang_ref_Reference_queue.set(self, queue);
         }
     }
 
@@ -138,10 +138,10 @@ public class Target_java_lang_ref_Reference {
     @Substitution(hasReceiver = true)
     public static @Host(Object.class) StaticObject get(@Host(java.lang.ref.Reference.class) StaticObject self) {
         Meta meta = self.getKlass().getMeta();
-        assert !InterpreterToVM.instanceOf(self, meta.PhantomReference) : "Cannot call Reference.get on PhantomReference";
-        if (InterpreterToVM.instanceOf(self, meta.WeakReference) //
-                        || InterpreterToVM.instanceOf(self, meta.SoftReference) //
-                        || InterpreterToVM.instanceOf(self, meta.FinalReference)) {
+        assert !InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
+        if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
             // Ignore guest referent field.
             EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
             if (ref == null) {
@@ -151,7 +151,7 @@ public class Target_java_lang_ref_Reference {
             StaticObject obj = (StaticObject) ref.get();
             return obj == null ? StaticObject.NULL : obj;
         } else {
-            return (StaticObject) meta.Reference_referent.get(self);
+            return (StaticObject) meta.java_lang_ref_Reference_referent.get(self);
         }
     }
 
@@ -159,10 +159,10 @@ public class Target_java_lang_ref_Reference {
     @Substitution(hasReceiver = true)
     public static void clear(@Host(java.lang.ref.Reference.class) StaticObject self) {
         Meta meta = self.getKlass().getMeta();
-        if (InterpreterToVM.instanceOf(self, meta.WeakReference) //
-                        || InterpreterToVM.instanceOf(self, meta.SoftReference) //
-                        || InterpreterToVM.instanceOf(self, meta.PhantomReference) //
-                        || InterpreterToVM.instanceOf(self, meta.FinalReference)) {
+        if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
+                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
             EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
             if (ref != null) {
                 assert ref instanceof Reference;
@@ -171,7 +171,7 @@ public class Target_java_lang_ref_Reference {
                 self.setHiddenField(meta.HIDDEN_HOST_REFERENCE, null);
             }
         } else {
-            meta.Reference_referent.set(self, StaticObject.NULL);
+            meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
         }
     }
 }

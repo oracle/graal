@@ -66,7 +66,6 @@ class FieldTable {
 
     private static int indexFromKind(JavaKind kind) {
         // @formatter:off
-        // Checkstyle: stop
         switch (kind) {
             case Boolean: return 7;
             case Byte   : return 6;
@@ -80,7 +79,6 @@ class FieldTable {
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public static CreationResult create(ObjectKlass superKlass, ObjectKlass thisKlass, LinkedKlass linkedKlass) {
@@ -198,19 +196,19 @@ class FieldTable {
         // crashes.
         int c = 0;
 
-        if (type == Type.MemberName) {
+        if (type == Type.java_lang_invoke_MemberName) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMTARGET));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMINDEX));
             return c;
-        } else if (type == Type.Method) {
+        } else if (type == Type.java_lang_reflect_Method) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_KEY));
             return c;
-        } else if (type == Type.Constructor) {
+        } else if (type == Type.java_lang_reflect_Constructor) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_KEY));
             return c;
-        } else if (type == Type.Field) {
+        } else if (type == Type.java_lang_reflect_Field) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_KEY));
             return c;
@@ -219,10 +217,10 @@ class FieldTable {
             // for weak/soft/phantom/final references.
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_REFERENCE));
             return c;
-        } else if (type == Type.Throwable) {
+        } else if (type == Type.java_lang_Throwable) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FRAMES));
             return c;
-        } else if (type == Type.Thread) {
+        } else if (type == Type.java_lang_Thread) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_THREAD));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_IS_ALIVE));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_INTERRUPTED));
@@ -238,7 +236,7 @@ class FieldTable {
                 tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_WAITED_COUNT));
             }
             return c;
-        } else if (type == Type.Class) {
+        } else if (type == Type.java_lang_Class) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SIGNERS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_MIRROR_KLASS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_PROTECTION_DOMAIN));

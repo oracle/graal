@@ -53,18 +53,20 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -77,13 +79,12 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -174,7 +175,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = method.codeAttribute;
@@ -202,7 +203,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = split;
@@ -234,7 +235,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
@@ -314,7 +315,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public int[] getSOEHandlerInfo() {
         ArrayList<Integer> toArray = new ArrayList<>();
         for (ExceptionHandler handler : getExceptionHandlers()) {
-            if (handler.getCatchType() == Type.StackOverflowError) {
+            if (handler.getCatchType() == Type.java_lang_StackOverflowError) {
                 toArray.add(handler.getStartBCI());
                 toArray.add(handler.getEndBCI());
                 toArray.add(handler.getHandlerBCI());
@@ -367,8 +368,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public CallTarget getCallTarget() {
         if (callTarget == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            Meta meta = getMeta();
             if (poisonPill) {
-                getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Conflicting default methods: " + this.getName());
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
             }
             // Initializing a class costs a lock, do it outside of this method's lock to avoid
             // congestion.
@@ -393,10 +395,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 } else {
                     if (this.isNative()) {
                         // Bind native method.
-                        // System.err.println("Linking native method: " +
-                        // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
-                        // getSignature());
-
                         // If the loader is null we have a system class, so we attempt a lookup in
                         // the native Java library.
                         if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
@@ -414,7 +412,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                             }
                         }
 
-                        Method findNative = getMeta().ClassLoader_findNative;
+                        Method findNative = meta.java_lang_ClassLoader_findNative;
 
                         // Lookup the short name first, otherwise lookup the long name (with
                         // signature).
@@ -427,7 +425,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         // (print_jni_name_suffix_on ...)
 
                         if (callTarget == null) {
-                            if (getDeclaringKlass() == getMeta().MethodHandle && (getName() == Name.invokeExact || getName() == Name.invoke)) {
+                            if (getDeclaringKlass() == meta.java_lang_invoke_MethodHandle && (Name.invokeExact.equals(getName()) || Name.invoke.equals(getName()))) {
                                 /*
                                  * Happens only when trying to obtain call target of
                                  * MethodHandle.invoke(Object... args), or
@@ -441,13 +439,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                  */
                                 this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
-                                System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                                throw getMeta().throwEx(UnsatisfiedLinkError.class);
+                                EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
+                                throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                             }
                         }
                     } else {
                         if (codeAttribute == null) {
-                            throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                            throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
+                                            "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
 
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
@@ -508,7 +507,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isConstructor() {
-        return Name.INIT.equals(getName());
+        return Name._init_.equals(getName());
     }
 
     public boolean isDefault() {
@@ -567,7 +566,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * Determines if this method is {@link java.lang.Object#Object()}.
      */
     public boolean isJavaLangObjectInit() {
-        return getDeclaringKlass().isJavaLangObject() && Name.INIT.equals(getName());
+        return getDeclaringKlass().isJavaLangObject() && Name._init_.equals(getName());
     }
 
     // region Meta.Method
@@ -624,7 +623,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isClassInitializer() {
-        return Name.CLINIT.equals(getName()) && isStatic();
+        return Name._clinit_.equals(getName()) && isStatic();
     }
 
     @Override
@@ -668,28 +667,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public static Method getHostReflectiveMethodRoot(StaticObject seed) {
-        assert seed.getKlass().getMeta().Method.isAssignableFrom(seed.getKlass());
+        assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
         Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
             target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
-                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
             }
         }
         return target;
     }
 
     public static Method getHostReflectiveConstructorRoot(StaticObject seed) {
-        assert seed.getKlass().getMeta().Constructor.isAssignableFrom(seed.getKlass());
+        assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
         Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
             target = (Method) curMethod.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (target == null) {
-                curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
+                curMethod = (StaticObject) meta.java_lang_reflect_Constructor_root.get(curMethod);
             }
         }
         return target;
@@ -756,11 +755,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isMethodHandleInvokeIntrinsic() {
-        return isNative() && declaringKlass == getMeta().MethodHandle && MethodHandleIntrinsics.getId(this) == MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+        return isNative() && declaringKlass == getMeta().java_lang_invoke_MethodHandle && MethodHandleIntrinsics.getId(this) == MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
     }
 
     public boolean isMethodHandleIntrinsic() {
-        return isNative() && declaringKlass == getMeta().MethodHandle && MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None;
+        return isNative() && declaringKlass == getMeta().java_lang_invoke_MethodHandle && MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None;
     }
 
     public boolean isInlinableGetter() {
@@ -834,12 +833,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         new BytecodeStream(getCode()).printBytecode(declaringKlass);
     }
 
-    public LineNumberTable getLineNumberTable() {
+    public LineNumberTableAttribute getLineNumberTable() {
         CodeAttribute attribute = getCodeAttribute();
         if (attribute != null) {
             return attribute.getLineNumberTableAttribute();
         }
-        return LineNumberTable.EMPTY;
+        return LineNumberTableAttribute.EMPTY;
     }
 
     public LocalVariableTable getLocalVariableTable() {
@@ -961,7 +960,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @Override
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
-            Object theCallee = InterpreterToVM.newObject(getDeclaringKlass());
+            Object theCallee = InterpreterToVM.newObject(getDeclaringKlass(), false);
             invokeWithConversions(theCallee, args);
             return theCallee;
         }
@@ -970,7 +969,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public boolean isLastLine(long codeIndex) {
-        LineNumberTable table = getLineNumberTable();
+        LineNumberTableAttribute table = getLineNumberTable();
         int lastLine = table.getLastLine();
         int lineAt = table.getLineNumber((int) codeIndex);
         return lastLine == lineAt;

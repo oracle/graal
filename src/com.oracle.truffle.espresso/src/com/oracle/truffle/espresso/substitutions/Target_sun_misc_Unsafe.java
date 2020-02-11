@@ -43,12 +43,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
+
 import sun.misc.Unsafe;
 
 @EspressoSubstitutions
@@ -78,7 +77,7 @@ public final class Target_sun_misc_Unsafe {
         Meta meta = context.getMeta();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw meta.throwEx(meta.IllegalArgumentException);
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();
@@ -695,7 +694,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(clazz)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         Klass klass = clazz.getMirrorKlass();
         return !klass.isInitialized();
@@ -934,10 +933,10 @@ public final class Target_sun_misc_Unsafe {
      * been.
      */
     @TruffleBoundary
+    @Throws(InstantiationException.class)
     @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) { // throws
-        // InstantiationException;
-        return InterpreterToVM.newObject(clazz.getMirrorKlass());
+    public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+        return InterpreterToVM.newObject(clazz.getMirrorKlass(), false);
     }
 
     /**
@@ -1011,7 +1010,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         object.getLock().lock();
     }
@@ -1020,14 +1019,14 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         object.getLock().unlock();
     }
 
     @Substitution(hasReceiver = true)
     public static void throwException(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Throwable.class) StaticObject ee) {
-        throw new EspressoException(ee);
+        throw Meta.throwException(ee);
     }
 
     /**
@@ -1054,7 +1053,7 @@ public final class Target_sun_misc_Unsafe {
         Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
-        Field parkBlocker = context.getMeta().Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.Object);
+        Field parkBlocker = context.getMeta().java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
         StaticObject guestBlocker = thread.getField(parkBlocker);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {
@@ -1184,7 +1183,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
         if (StaticObject.isNull(object)) {
-            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+            throw self.getKlass().getMeta().throwNullPointerException();
         }
         return object.getLock().tryLock();
     }

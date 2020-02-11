@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
-import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -85,10 +85,11 @@ public final class Target_java_lang_Class {
             case "void":
                 return meta._void.mirror();
             default:
-                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
     }
 
+    @TruffleBoundary
     @Substitution
     public static boolean desiredAssertionStatus0(@Host(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {
@@ -110,12 +111,12 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         if (StaticObject.isNull(name)) {
-            throw meta.throwExWithMessage(meta.NullPointerException, name);
+            throw meta.throwNullPointerException();
         }
 
         String hostName = Meta.toHostString(name);
         if (hostName.indexOf('/') >= 0) {
-            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         hostName = hostName.replace('.', '/');
@@ -125,7 +126,7 @@ public final class Target_java_lang_Class {
         }
 
         if (!Validation.validTypeDescriptor(ByteSequence.create(hostName), false)) {
-            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
@@ -139,7 +140,7 @@ public final class Target_java_lang_Class {
             }
 
             if (klass == null) {
-                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
             }
 
             if (initialize) {
@@ -172,7 +173,13 @@ public final class Target_java_lang_Class {
 
         // Class names must be interned.
         Meta meta = klass.getMeta();
-        return meta.getStrings().intern(meta.toGuestString(externalName));
+        StaticObject guestString = meta.toGuestString(externalName);
+        return internString(meta, guestString);
+    }
+
+    @TruffleBoundary
+    private static StaticObject internString(Meta meta, StaticObject guestString) {
+        return meta.getStrings().intern(guestString);
     }
 
     @Substitution(hasReceiver = true)
@@ -207,20 +214,20 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method fieldInit = meta.Field.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.Class,
-                        /* name */ Type.String,
-                        /* type */ Type.Class,
+        Method fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* type */ Type.java_lang_Class,
                         /* modifiers */ Type._int,
                         /* slot */ Type._int,
-                        /* signature */ Type.String,
+                        /* signature */ Type.java_lang_String,
                         /* annotations */ Type._byte_array));
 
-        StaticObject fieldsArray = meta.Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
+        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Field f = fields[i];
-                StaticObject instance = meta.Field.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Field.allocateInstance();
 
                 Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
@@ -262,7 +269,7 @@ public final class Target_java_lang_Class {
          */
         klass.verify();
         for (Method m : klass.getDeclaredConstructors()) {
-            if (Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic())) {
+            if (Name._init_.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
             }
         }
@@ -274,17 +281,17 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method constructorInit = meta.Constructor.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.Class,
-                        /* parameterTypes */ Type.Class_array,
-                        /* checkedExceptions */ Type.Class_array,
+        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
                         /* modifiers */ Type._int,
                         /* slot */ Type._int,
-                        /* signature */ Type.String,
+                        /* signature */ Type.java_lang_String,
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array));
 
-        StaticObject arr = meta.Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Constructor.allocateArray(constructors.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 final Method m = constructors[i];
@@ -305,7 +312,7 @@ public final class Target_java_lang_Class {
                                 : StaticObject.NULL;
 
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -315,7 +322,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -329,7 +336,7 @@ public final class Target_java_lang_Class {
                     genericSignature = meta.toGuestString(sig);
                 }
 
-                StaticObject instance = meta.Constructor.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance();
                 constructorInit.invokeDirect(
                                 /* this */ instance,
                                 /* declaringKlass */ m.getDeclaringKlass().mirror(),
@@ -366,7 +373,7 @@ public final class Target_java_lang_Class {
         for (Method m : klass.getDeclaredMethods()) {
             if ((!publicOnly || m.isPublic()) &&
                             // Filter out <init> and <clinit> from reflection.
-                            !Name.INIT.equals(m.getName()) && !Name.CLINIT.equals(m.getName())) {
+                            !Name._init_.equals(m.getName()) && !Name._clinit_.equals(m.getName())) {
                 collectedMethods.add(m);
             }
         }
@@ -378,20 +385,20 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Method constructor.
         // Calling the constructor is just for validation, manually setting the fields would
         // be faster.
-        Method methodInit = meta.Method.lookupDeclaredMethod(Name.INIT, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.Class,
-                        /* name */ Type.String,
-                        /* parameterTypes */ Type.Class_array,
-                        /* returnType */ Type.Class,
-                        /* checkedExceptions */ Type.Class_array,
+        Method methodInit = meta.java_lang_reflect_Method.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* returnType */ Type.java_lang_Class,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
                         /* modifiers */ Type._int,
                         /* slot */ Type._int,
-                        /* signature */ Type.String,
+                        /* signature */ Type.java_lang_String,
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array));
 
-        StaticObject arr = meta.Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
+        StaticObject arr = meta.java_lang_reflect_Method.allocateArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 Method m = methods[i];
@@ -415,7 +422,7 @@ public final class Target_java_lang_Class {
                                 ? StaticObject.wrap(rawAnnotationDefault.getData())
                                 : StaticObject.NULL;
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.Class.allocateArray(
+                StaticObject parameterTypes = meta.java_lang_Class.allocateArray(
                                 m.getParameterCount(),
                                 new IntFunction<StaticObject>() {
                                     @Override
@@ -425,7 +432,7 @@ public final class Target_java_lang_Class {
                                 });
 
                 final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int j) {
                         return rawCheckedExceptions[j].mirror();
@@ -439,7 +446,7 @@ public final class Target_java_lang_Class {
                     genericSignature = meta.toGuestString(sig);
                 }
 
-                StaticObject instance = meta.Method.allocateInstance();
+                StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
 
                 methodInit.invokeDirect(
                                 /* this */ instance,
@@ -472,7 +479,7 @@ public final class Target_java_lang_Class {
         final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
 
         Meta meta = self.getKlass().getMeta();
-        StaticObject instance = meta.Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
+        StaticObject instance = meta.java_lang_Class.allocateArray(superInterfaces.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return superInterfaces[i].mirror();
@@ -537,7 +544,7 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr.getMethodIndex() == 0) {
                 return StaticObject.NULL;
             }
-            StaticObject arr = meta.Object.allocateArray(3);
+            StaticObject arr = meta.java_lang_Object.allocateArray(3);
             RuntimeConstantPool pool = klass.getConstantPool();
             Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
 
@@ -685,7 +692,7 @@ public final class Target_java_lang_Class {
         }
         Meta meta = self.getKlass().getMeta();
         StaticObject cp = new StaticObject(meta.sun_reflect_ConstantPool);
-        cp.setField(meta.constantPoolOop, self);
+        cp.setField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
         return cp;
     }
 
@@ -708,13 +715,13 @@ public final class Target_java_lang_Class {
         Meta meta = self.getKlass().getMeta();
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive() || klass.isArray()) {
-            return meta.Class.allocateArray(0);
+            return meta.java_lang_Class.allocateArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
         InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
 
         if (innerClasses == null || innerClasses.entries().isEmpty()) {
-            return meta.Class.allocateArray(0);
+            return meta.java_lang_Class.allocateArray(0);
         }
 
         RuntimeConstantPool pool = instanceKlass.getConstantPool();
@@ -742,7 +749,7 @@ public final class Target_java_lang_Class {
             }
         }
 
-        return meta.Class.allocateArray(innerKlasses.size(), new IntFunction<StaticObject>() {
+        return meta.java_lang_Class.allocateArray(innerKlasses.size(), new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 return innerKlasses.get(index).mirror();

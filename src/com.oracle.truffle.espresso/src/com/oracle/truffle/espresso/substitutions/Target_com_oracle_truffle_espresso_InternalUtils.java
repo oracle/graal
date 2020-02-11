@@ -45,7 +45,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
         if (k instanceof ObjectKlass) {
             maxLen = ((ObjectKlass) k).getPrimitiveFieldTotalByteCount();
         } else {
-            return StaticObject.createArray(k.getMeta().String.getArrayClass(), StaticObject.EMPTY_ARRAY);
+            return StaticObject.createArray(k.getMeta().java_lang_String.getArrayClass(), StaticObject.EMPTY_ARRAY);
         }
         StaticObject[] result = new StaticObject[maxLen];
         Meta meta = k.getMeta();
@@ -64,7 +64,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
         } catch (AssertionError | IndexOutOfBoundsException e) {
 
         }
-        return StaticObject.createArray(k.getMeta().String.getArrayClass(), result);
+        return StaticObject.createArray(k.getMeta().java_lang_String.getArrayClass(), result);
     }
 
     @Substitution

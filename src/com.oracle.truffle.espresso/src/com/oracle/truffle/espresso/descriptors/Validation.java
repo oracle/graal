@@ -68,7 +68,7 @@ public final class Validation {
         }
         char first = (char) bytes.byteAt(0);
         if (first == '<') {
-            return bytes.contentEquals(Name.INIT) || (allowClinit && bytes.contentEquals(Name.CLINIT));
+            return bytes.contentEquals(Name._init_) || (allowClinit && bytes.contentEquals(Name._clinit_));
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);

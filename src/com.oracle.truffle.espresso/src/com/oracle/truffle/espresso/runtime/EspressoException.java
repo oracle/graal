@@ -36,10 +36,14 @@ public final class EspressoException extends RuntimeException implements Truffle
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 
-    public EspressoException(@Host(Throwable.class) StaticObject exception) {
-        assert StaticObject.notNull(exception);
-        assert InterpreterToVM.instanceOf(exception, exception.getKlass().getMeta().Throwable);
-        this.exception = exception;
+    private EspressoException(@Host(Throwable.class) StaticObject throwable) {
+        assert StaticObject.notNull(throwable);
+        assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
+        this.exception = throwable;
+    }
+
+    public static EspressoException wrap(@Host(Throwable.class) StaticObject throwable) {
+        return new EspressoException(throwable);
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {
