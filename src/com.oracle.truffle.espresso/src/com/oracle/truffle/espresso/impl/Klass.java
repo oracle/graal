@@ -152,67 +152,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return new KeysArray(members.toArray(new String[members.size()]));
     }
 
-    @ExportMessage
-    static class IsInstantiable {
-
-        @Specialization(guards = "receiver.isArray()")
-        static boolean doArray(@SuppressWarnings("unused") Klass receiver) {
-            return true;
-        }
-
-        @Specialization(replaces = "doArray")
-        static boolean doConstructor(Klass receiver) {
-            if (receiver.isAbstract()) {
-                return false;
-            }
-            for (Method m : receiver.getDeclaredMethods()) {
-                if (m.isPublic() && Name._init_.equals(m.getName())) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    @ExportMessage
-    static class Instantiate {
-
-        @Specialization(guards = "receiver.isArray()")
-        static Object doArray(Klass receiver, Object[] args,
-                        @CachedLibrary(limit = "1") InteropLibrary indexes) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
-            if (args.length != 1) {
-                throw ArityException.create(1, args.length);
-            }
-            Object arg0 = args[0];
-            int length;
-            if (indexes.fitsInInt(arg0)) {
-                length = indexes.asInt(arg0);
-            } else {
-                throw UnsupportedTypeException.create(args);
-            }
-            Klass component = receiver.getComponentType();
-            // TODO(peterssen): Add specialization for primitive arrays.
-            if (component.isPrimitive()) {
-                byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
-                return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
-            }
-            return component.allocateReferenceArray(length);
-        }
-
-        @Specialization
-        static Object doConstructor(Klass receiver, Object[] arguments,
-                        @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
-            for (Method m : receiver.getDeclaredMethods()) {
-                if (m.isPublic() && Name._init_.equals(m.getName()) && m.getParameterCount() == arguments.length) {
-                    StaticObject instance = receiver.allocateInstance();
-                    invoke.execute(m, instance, arguments);
-                    return instance;
-                }
-            }
-            throw UnsupportedMessageException.create();
-        }
-    }
-
     // endregion Interop
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
