@@ -663,7 +663,7 @@ public final class JDWPContextImpl implements JDWPContext {
             }
         }
 
-        bytecodeNode.forceEarlyReturn(returnValue);
+        eventListener.forceEarlyReturn(returnValue);
         return true;
     }
 }

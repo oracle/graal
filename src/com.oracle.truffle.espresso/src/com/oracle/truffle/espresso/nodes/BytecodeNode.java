@@ -348,9 +348,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    // Only accessed if instrumentation is not null
-    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
-
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
@@ -606,8 +603,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
 
-                    // check for early returns
-                    Object earlyReturnValue = getAndRemoveEarlyReturnValue();
+                    // check for early return
+                    Object earlyReturnValue = getContext().getJDWPListener().getAndRemoveEarlyReturnValue();
                     if (earlyReturnValue != null) {
                         return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
                     }
@@ -1199,20 +1196,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
-    }
-
-    @TruffleBoundary
-    public void forceEarlyReturn(Object returnValue) {
-        earlyReturns.set(returnValue);
-    }
-
-    @TruffleBoundary
-    private Object getAndRemoveEarlyReturnValue() {
-        Object earlyReturnValue = earlyReturns.get();
-        if (earlyReturnValue != null) {
-            earlyReturns.remove();
-        }
-        return earlyReturnValue;
     }
 
     private static final class MonitorStack {

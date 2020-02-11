@@ -108,4 +108,14 @@ public final class EmptyListener implements VMListener {
     public Object getCurrentContendedMonitor(Object guestThread) {
         return null;
     }
+
+    @Override
+    public Object getAndRemoveEarlyReturnValue() {
+        return null;
+    }
+
+    @Override
+    public void forceEarlyReturn(Object returnValue) {
+
+    }
 }

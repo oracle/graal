@@ -160,4 +160,18 @@ public interface VMListener {
      * @return the current contended monitor object
      */
     Object getCurrentContendedMonitor(Object guestThread);
+
+    /**
+     * Returns the value of a force early return value or <code>null</code> if not set.
+     *
+     * @return the return value for a force early return
+     */
+    Object getAndRemoveEarlyReturnValue();
+
+    /**
+     * Sets the force early return value.
+     *
+     * @param returnValue the value
+     */
+    void forceEarlyReturn(Object returnValue);
 }

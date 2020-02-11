@@ -75,6 +75,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final List<PacketStream> heldEvents = new ArrayList<>();
     private final Map<Object, Set<Object>> ownedMonitors = new HashMap<>();
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
+    private final ThreadLocal<Object> earlyReturns = new ThreadLocal<>();
 
     public VMEventListenerImpl(DebuggerController controller) {
         this.debuggerController = controller;
@@ -848,6 +849,20 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public Object getCurrentContendedMonitor(Object guestThread) {
         return currentContendedMonitor.get(guestThread);
+    }
+
+    public void forceEarlyReturn(Object returnValue) {
+        earlyReturns.set(returnValue);
+    }
+
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    public Object getAndRemoveEarlyReturnValue() {
+        Object earlyReturnValue = earlyReturns.get();
+        if (earlyReturnValue != null) {
+            earlyReturns.remove();
+        }
+        return earlyReturnValue;
     }
 
     @Override
