@@ -1512,16 +1512,16 @@ final class JDWP {
             public static final int ID = 5;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
-                PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-
-                JDWPContext context = controller.getContext();
 
                 if (!CAN_GET_MONITOR_INFO) {
                     reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
                     return new CommandResult(reply);
                 }
 
+                PacketStream input = new PacketStream(packet);
+
+                JDWPContext context = controller.getContext();
                 long objectId = input.readLong();
                 Object object = context.getIds().fromId((int) objectId);
 
