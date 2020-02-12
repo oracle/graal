@@ -1887,7 +1887,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (Signatures.returnKind(getMethod().getParsedSignature()) == JavaKind.Void) {
             return exitMethodAndReturn();
         } else {
-            System.out.println("returning result: " + result + " of type: " + result.getClass());
             return result;
         }
     }
