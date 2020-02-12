@@ -55,8 +55,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.LineNumberTable;
 import org.graalvm.collections.Pair;
@@ -1085,10 +1087,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
         @Override
         public Path filePath() {
             HostedType declaringClass = method.getDeclaringClass();
-            Package pkg = declaringClass.getJavaClass().getPackage();
+            Class<?> javaClass = declaringClass.getJavaClass();
+            Package pkg = javaClass.getPackage();
+            String module = ModuleSupport.getModuleName(javaClass);
             if (pkg != null) {
-                // use the package name as a path to the file
-                return Paths.get("", pkg.getName().split("\\."));
+                /*
+                 * use the package name as a path to the file
+                 * for jdk11 classes we assume that the path includes
+                 * the module name then the package name components
+                 * for jdk8 classes this will just collapse to
+                 * the sequence of package name elements
+                 */
+                return Paths.get((module == null ? "" : module), pkg.getName().split("\\."));
             } else {
                 return null;
             }
@@ -1210,35 +1220,63 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public String fileName() {
-            String name = className();
-            int idx = name.lastIndexOf('.');
-            if (idx > 0) {
-                // strip off package prefix
-                name = name.substring(idx + 1);
-            }
-            idx = name.indexOf('$');
-            if (idx == 0) {
-                // name is $XXX so cannot associate with a file
-                name = "";
-            } else {
+            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            String sourceFileName = declaringClass.getSourceFileName();
+
+            if (sourceFileName == null) {
+                String className = declaringClass.getName();
+                int idx = className.lastIndexOf('.');
                 if (idx > 0) {
-                    // name is XXX$YYY so use outer class to derive file name
-                    name = name.substring(0, idx);
+                    // strip off package prefix
+                    className = className.substring(idx + 1);
                 }
-                name = name + ".java";
+                idx = className.indexOf('$');
+                if (idx == 0) {
+                    // name is $XXX so cannot associate with a file
+                    // create a path with an empty name
+                    sourceFileName = "";
+                } else {
+                    if (idx > 0) {
+                        // name is XXX$YYY so use outer class to derive file name
+                        className = className.substring(0, idx);
+                    }
+                    sourceFileName = className + ".java";
+                }
             }
 
-            return name;
+            return sourceFileName;
         }
 
         public Path filePath() {
-            String name = className();
-            int idx = name.lastIndexOf('.');
-            if (idx > 0) {
-                name = name.substring(0, idx);
-                return Paths.get("", name.split("\\."));
+            ResolvedJavaType declaringClass = (method.getDeclaringClass());
+            if (declaringClass instanceof OriginalClassProvider) {
+                Class<?> javaClass = ((OriginalClassProvider) declaringClass).getJavaClass();
+                Package pkg = javaClass.getPackage();
+                String module = ModuleSupport.getModuleName(javaClass);
+                if (pkg != null) {
+                    /*
+                     * use the package name as a path to the file
+                     *
+                     * for jdk11 classes we assume that the path includes
+                     * the module name then the package name components
+                     *
+                     * for jdk8 classes this will just collapse to
+                     * the sequence of package name components
+                     */
+                    return Paths.get((module == null ? "" : module), pkg.getName().split("\\."));
+                } else {
+                    return null;
+                }
             } else {
-                return null;
+                // use the class name to generate a path
+                String name = className();
+                int idx = name.lastIndexOf('.');
+                if (idx > 0) {
+                    name = name.substring(0, idx);
+                    return Paths.get("", name.split("\\."));
+                } else {
+                    return null;
+                }
             }
         }
 
