@@ -1087,8 +1087,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
             HostedType declaringClass = method.getDeclaringClass();
             Class<?> javaClass = declaringClass.getJavaClass();
             Package pkg = javaClass.getPackage();
+            String packageName = (pkg != null ? pkg.getName() : "");
             String module = ModuleSupport.getModuleName(javaClass);
-            if (pkg != null) {
+            if (packageName.length() != 0) {
                 /*
                  * use the package name as a path to the file
                  * for jdk11 classes we assume that the path includes
@@ -1250,8 +1251,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
             if (declaringClass instanceof OriginalClassProvider) {
                 Class<?> javaClass = ((OriginalClassProvider) declaringClass).getJavaClass();
                 Package pkg = javaClass.getPackage();
+                String packageName = (pkg != null ? pkg.getName() : "");
                 String module = ModuleSupport.getModuleName(javaClass);
-                if (pkg != null) {
+                if (packageName.length() != 0) {
                     /*
                      * use the package name as a path to the file
                      *
