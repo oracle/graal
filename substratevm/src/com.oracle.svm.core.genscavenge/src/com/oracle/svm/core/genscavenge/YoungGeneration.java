@@ -52,7 +52,7 @@ public class YoungGeneration extends Generation {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
-        this(name, new Space("edenSpace", true, true, 0));
+        this(name, new Space("edenSpace", true, 0));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -64,8 +64,8 @@ public class YoungGeneration extends Generation {
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
         this.survivorGreyObjectsWalkers = new GreyObjectsWalker[maxSurvivorSpaces];
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            this.survivorFromSpaces[i] = new Space("Survivor-" + (i + 1) + " From", true, true, (i + 1));
-            this.survivorToSpaces[i] = new Space("Survivor-" + (i + 1) + " To", true, false, (i + 1));
+            this.survivorFromSpaces[i] = new Space("Survivor-" + (i + 1) + " From", true, (i + 1));
+            this.survivorToSpaces[i] = new Space("Survivor-" + (i + 1) + " To", false, (i + 1));
             this.survivorGreyObjectsWalkers[i] = GreyObjectsWalker.factory();
         }
     }

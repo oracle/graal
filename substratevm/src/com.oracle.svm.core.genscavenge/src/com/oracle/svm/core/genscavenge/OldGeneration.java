@@ -57,8 +57,8 @@ public class OldGeneration extends Generation {
     OldGeneration(String name) {
         super(name);
         int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
-        this.fromSpace = new Space("fromSpace", false, true, age);
-        this.toSpace = new Space("toSpace", false, false, age);
+        this.fromSpace = new Space("fromSpace", true, age);
+        this.toSpace = new Space("toSpace", false, age);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
     }
 
