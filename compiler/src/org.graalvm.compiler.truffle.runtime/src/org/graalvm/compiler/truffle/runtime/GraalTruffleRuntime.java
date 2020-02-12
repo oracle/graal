@@ -187,8 +187,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * This method allows retrieval of the compiler configuration without requiring to initialize
-     * the {@link TruffleCompiler} with {@link #getTruffleCompiler()}. The result of this method
-     * should always match {@link TruffleCompiler#getCompilerConfigurationName()}.
+     * the {@link TruffleCompiler} with
+     * {@link #getTruffleCompiler(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
+     * getTruffleCompiler}. The result of this method should always match
+     * {@link TruffleCompiler#getCompilerConfigurationName()}.
      */
     protected abstract String getCompilerConfigurationName();
 
@@ -391,11 +393,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             throw new NoClassDefFoundError(className);
         }
         return metaAccess.lookupJavaType(c);
-    }
-
-    @Override
-    public TruffleCompiler getTruffleCompilerIfAvailable() {
-        return truffleCompiler;
     }
 
     protected void installDefaultListeners() {
@@ -709,7 +706,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
-        TruffleCompiler compiler = getTruffleCompiler();
+        TruffleCompiler compiler = getTruffleCompiler(callTarget);
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
             final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
@@ -880,7 +877,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * means the code with the special entry point was deoptimized or otherwise removed from the
      * code cache and needs to be re-installed.
      */
-    public void bypassedInstalledCode() {
+    @SuppressWarnings("unused")
+    public void bypassedInstalledCode(OptimizedCallTarget target) {
     }
 
     protected CallMethods getCallMethods() {

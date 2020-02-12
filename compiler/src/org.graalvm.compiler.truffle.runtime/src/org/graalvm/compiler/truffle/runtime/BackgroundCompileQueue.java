@@ -82,7 +82,7 @@ public class BackgroundCompileQueue {
             }
             threads = Math.max(1, threads);
 
-            ThreadFactory factory = newThreadFactory("TruffleCompilerThread");
+            ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
             return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
                             new PriorityBlockingQueue<>(), factory) {
@@ -94,7 +94,8 @@ public class BackgroundCompileQueue {
         }
     }
 
-    protected ThreadFactory newThreadFactory(String threadNamePrefix) {
+    @SuppressWarnings("unused")
+    protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
         return new TruffleCompilerThreadFactory(threadNamePrefix);
     }
 

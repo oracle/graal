@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -42,6 +43,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -124,6 +126,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
+        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
         if (SubstateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
@@ -134,7 +137,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
-        getTruffleCompiler().initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
         installDefaultListeners();
     }
 
@@ -152,7 +154,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     protected String getCompilerConfigurationName() {
-        TruffleCompiler compiler = getTruffleCompiler();
+        TruffleCompiler compiler = truffleCompiler;
         if (compiler != null) {
             return compiler.getCompilerConfigurationName();
         }
@@ -175,7 +177,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public SubstrateTruffleCompiler getTruffleCompiler() {
+    public SubstrateTruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+        Objects.requireNonNull(compilable, "Compilable must be non null.");
+        ensureInitializedAtRuntime((OptimizedCallTarget) compilable);
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 

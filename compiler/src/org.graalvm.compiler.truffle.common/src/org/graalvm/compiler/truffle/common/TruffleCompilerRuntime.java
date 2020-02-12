@@ -238,18 +238,10 @@ public interface TruffleCompilerRuntime {
     LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method);
 
     /**
-     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating it
-     * in a thread-safe manner first if necessary.
+     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating and
+     * initializing it in a thread-safe manner first if necessary.
      */
-    TruffleCompiler getTruffleCompiler();
-
-    /**
-     * Gets the primary {@link TruffleCompiler} instance associated with this runtime if it's
-     * already created, otherwise returns {@code null}.
-     *
-     * @since 20.1.0
-     */
-    TruffleCompiler getTruffleCompilerIfAvailable();
+    TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
 
     /**
      * Gets a plan for inlining in terms of a Truffle AST call graph.
