@@ -47,10 +47,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class TruffleReadOnlyKeysArray implements RegexLanguageObject {
+public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
 
     @CompilationFinal(dimensions = 1) private final String[] keys;
 

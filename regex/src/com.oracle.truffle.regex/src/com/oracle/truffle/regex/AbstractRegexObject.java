@@ -40,7 +40,33 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public interface RegexLanguageObject extends TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+public abstract class AbstractRegexObject implements TruffleObject {
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return RegexLanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    @TruffleBoundary
+    public final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
+    }
+
 }
