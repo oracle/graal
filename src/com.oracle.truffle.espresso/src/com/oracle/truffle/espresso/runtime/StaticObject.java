@@ -165,7 +165,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return isNull(this)
-                        ? new KeysArray(new String[0])
+                        ? KeysArray.EMPTY
                         : new KeysArray(new String[]{CLASS_TO_STATIC});
     }
 
