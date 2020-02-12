@@ -50,6 +50,7 @@ import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import sun.nio.ch.DirectBuffer;
+
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
  * including DWARF debug sections. The currently supported file formats are ELF and Mach-O. In
@@ -113,6 +114,13 @@ public abstract class ObjectFile {
      */
     public interface ValueEnum {
         long value();
+    }
+
+    private final int pageSize;
+
+    public ObjectFile(int pageSize) {
+        assert pageSize > 0 : "invalid page size";
+        this.pageSize = pageSize;
     }
 
     /*
@@ -205,25 +213,25 @@ public abstract class ObjectFile {
         }
     }
 
-    private static ObjectFile getNativeObjectFile(boolean runtimeDebugInfoGeneration) {
+    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
         switch (ObjectFile.getNativeFormat()) {
             case ELF:
-                return new ELFObjectFile(runtimeDebugInfoGeneration);
+                return new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
             case MACH_O:
-                return new MachOObjectFile();
+                return new MachOObjectFile(pageSize);
             case PECOFF:
-                return new PECoffObjectFile();
+                return new PECoffObjectFile(pageSize);
             default:
                 throw new AssertionError("unreachable");
         }
     }
 
-    public static ObjectFile getNativeObjectFile() {
-        return getNativeObjectFile(true);
+    public static ObjectFile getNativeObjectFile(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
-    public static ObjectFile createRuntimeDebugInfo() {
-        return getNativeObjectFile(true);
+    public static ObjectFile createRuntimeDebugInfo(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
     /*
@@ -1622,12 +1630,6 @@ public abstract class ObjectFile {
     }
 
     protected abstract int getMinimumFileSize();
-
-    private int pageSize = -1;
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
 
     public int getPageSize() {
         assert pageSize > 0 : "must be initialized";
