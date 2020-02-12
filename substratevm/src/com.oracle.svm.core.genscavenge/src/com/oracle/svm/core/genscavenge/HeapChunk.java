@@ -167,17 +167,6 @@ public class HeapChunk {
         @RawField
         @UniqueLocationIdentity
         void setNext(T newNext);
-
-        /**
-         * The age information maintained by Chunk.
-         */
-        @RawField
-        @UniqueLocationIdentity
-        int getAge();
-
-        @RawField
-        @UniqueLocationIdentity
-        void setAge(int age);
     }
 
     /** Apply an ObjectVisitor to all the Objects in the given HeapChunk. */
