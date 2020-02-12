@@ -122,6 +122,8 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
+    @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
     public static final OptionKey<Boolean> InterceptBailout = new OptionKey<>(false);
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
