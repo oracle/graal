@@ -291,12 +291,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = System.getProperty("org.graalvm." + languageId + ".home");
+        String home = System.getProperty("org.graalvm.language." + languageId + ".home");
         if (home == null) {
+            // check legacy property
             home = System.getProperty(languageId + ".home");
-            if (home != null) {
-                System.err.println("org.graalvm." + languageId + ".home is not set but " + languageId + ".home is!");
-            }
         }
         return home;
     }

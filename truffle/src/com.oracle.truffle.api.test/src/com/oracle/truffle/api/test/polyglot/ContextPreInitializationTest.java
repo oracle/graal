@@ -881,7 +881,7 @@ public class ContextPreInitializationTest {
     public void testLanguageHome() throws Exception {
         setPatchable(FIRST);
         String expectedPath = Paths.get(String.format("/compile-graalvm/languages/%s", FIRST)).toString();
-        System.setProperty(String.format("org.graalvm.%s.home", FIRST), expectedPath);
+        System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), expectedPath);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -889,7 +889,7 @@ public class ContextPreInitializationTest {
         Assert.assertEquals(expectedPath, firstLangCtx.languageHome);
 
         expectedPath = Paths.get(String.format("/run-graalvm/languages/%s", FIRST)).toString();
-        System.setProperty(String.format("org.graalvm.%s.home", FIRST), expectedPath);
+        System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), expectedPath);
         try (Context ctx = Context.newBuilder().build()) {
             Value res = ctx.eval(Source.create(FIRST, "test"));
             assertEquals("test", res.asString());
@@ -1031,10 +1031,10 @@ public class ContextPreInitializationTest {
                     }
                 }
             };
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), buildHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildHome.toString());
             doContextPreinitialize(FIRST);
             assertFalse(files.isEmpty());
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), execHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), execHome.toString());
             try (Context ctx = Context.newBuilder().allowIO(true).build()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
                 assertEquals("test", res.asString());
@@ -1341,7 +1341,7 @@ public class ContextPreInitializationTest {
             Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), buildtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeUnCachedSource = new AtomicReference<>();
             ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
@@ -1356,7 +1356,7 @@ public class ContextPreInitializationTest {
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertNotNull(buildtimeCachedSource.get());
             assertNotNull(buildtimeUnCachedSource.get());
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), runtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), runtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> runtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> runtimeUnCachedSource = new AtomicReference<>();
             ContextPreInitializationTestFirstLanguage.onPatchAction = (env) -> {
@@ -1388,7 +1388,7 @@ public class ContextPreInitializationTest {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path resource = Files.write(testFolder.resolve("lib.test"), Collections.singleton("test"));
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), buildtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeUnCachedSource = new AtomicReference<>();
             ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
@@ -1403,7 +1403,7 @@ public class ContextPreInitializationTest {
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertNotNull(buildtimeCachedSource.get());
             assertNotNull(buildtimeUnCachedSource.get());
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), runtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), runtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> runtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> runtimeUnCachedSource = new AtomicReference<>();
             ContextPreInitializationTestFirstLanguage.onPatchAction = (env) -> {
@@ -1435,7 +1435,7 @@ public class ContextPreInitializationTest {
             Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), buildtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeSource = new AtomicReference<>();
             ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
                 buildtimeSource.set(createSource(env, buildtimeResource, true));
@@ -1446,7 +1446,7 @@ public class ContextPreInitializationTest {
             CountingContext firstLangCtx = findContext(FIRST, contexts);
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertNotNull(buildtimeSource.get());
-            System.setProperty(String.format("org.graalvm.%s.home", FIRST), runtimeHome.toString());
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), runtimeHome.toString());
             Source.newBuilder(FIRST, runtimeResource.toFile()).build();
         } finally {
             delete(testFolder);
