@@ -70,6 +70,7 @@ public final class Target_java_lang_System {
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
+            profiler.profile(14);
             // System.arraycopy does the bounds checks
             if (src == dest) {
                 profiler.profile(4);

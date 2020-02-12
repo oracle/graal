@@ -36,9 +36,25 @@ public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
         this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
     }
 
+    private IntrinsicSubstitutorRootNode(IntrinsicSubstitutorRootNode toSplit) {
+        super(toSplit.getMethod());
+        assert toSplit.substitution.shouldSplit();
+        this.substitution = toSplit.substitution.split();
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         return substitution.invoke(frame.getArguments());
+    }
+
+    @Override
+    public boolean shouldSplit() {
+        return substitution.shouldSplit();
+    }
+
+    @Override
+    public IntrinsicSubstitutorRootNode split() {
+        return new IntrinsicSubstitutorRootNode(this);
     }
 
 }

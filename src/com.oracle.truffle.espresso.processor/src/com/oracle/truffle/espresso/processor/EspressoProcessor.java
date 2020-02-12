@@ -64,7 +64,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * <li>Iterate over all methods annotated with what was returned by
      * {@link Processor#getSupportedAnnotationTypes()}, and process them so that each one spawns a
      * class.
-     * 
+     *
      * @see EspressoProcessor#commitSubstitution(Element, String, String)
      */
     abstract void processImpl(RoundEnvironment roundEnvironment);
@@ -74,7 +74,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * <p>
      * Note that the required imports vary between classes, as some might not be used, triggering
      * style issues, which is why this is delegated.
-     * 
+     *
      * @see EspressoProcessor#IMPORT_INTEROP_LIBRARY
      * @see EspressoProcessor#IMPORT_STATIC_OBJECT
      * @see EspressoProcessor#IMPORT_TRUFFLE_OBJECT
@@ -84,7 +84,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     /**
      * Generates the string corresponding to the Constructor for the current substitutor. In
      * particular, it should call its super class substitutor's constructor.
-     * 
+     *
      * @see EspressoProcessor#SUBSTITUTOR
      */
     abstract String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
@@ -95,7 +95,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * Object[]) so that they correspond to the substituted method's signature. Furthermore, all
      * TruffleObject nulls must be replaced with Espresso nulls (Null check can be done through
      * truffle libraries).
-     * 
+     *
      * @see EspressoProcessor#castTo(String, String)
      * @see EspressoProcessor#IMPORT_INTEROP_LIBRARY
      * @see EspressoProcessor#FACTORY_IS_NULL
@@ -202,6 +202,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     static final String DIRECT_CALL_NODE = "DirectCallNode";
     static final String CREATE = "create";
+
+    static final String SHOULD_SPLIT = "shouldSplit";
+    static final String SPLIT = "split";
 
     static final String PUBLIC_FINAL_OBJECT = "public final Object ";
     static final String ARGS_NAME = "args";
@@ -491,16 +494,17 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     static private String generateInstanceFields(SubstitutionHelper helper) {
-        if (helper.guestCalls.isEmpty() && !helper.hasMetaInjection) {
+        if (helper.guestCalls.isEmpty() && !helper.hasMetaInjection && !helper.hasProfileInjection) {
             return "";
         }
         StringBuilder str = new StringBuilder();
         for (String call : helper.guestCalls) {
             str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(DIRECT_CALL_NODE).append(" ").append(call).append(";\n");
         }
-        if (helper.hasMetaInjection) {
+        if (helper.hasMetaInjection || helper.hasProfileInjection) {
             str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(META_ARG).append(";\n");
         }
+        str.append('\n');
         return str.toString();
     }
 
@@ -540,7 +544,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         StringBuilder str = new StringBuilder();
         str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {");
         str.append(generateGuestCalls(helper.guestCalls)).append("\n");
-        if (helper.hasMetaInjection) {
+        if (helper.hasMetaInjection || helper.hasProfileInjection) {
             str.append(TAB_2).append(SET_META).append("\n");
         }
         str.append(TAB_1).append("}\n");
@@ -582,7 +586,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     /**
      * Creates the substitutor.
-     * 
+     *
      * @param className The name of the class where the substituted method is found.
      * @param targetMethodName The name of the substituted method.
      * @param parameterTypeName The list of *Host* parameter types of the substituted method.
@@ -612,14 +616,27 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         classFile.append(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper)).append("\n");
 
         // Instance variables
-        classFile.append(generateInstanceFields(helper)).append("\n");
+        classFile.append(generateInstanceFields(helper));
 
         // Constructor
         classFile.append(TAB_1).append(SUPPRESS_UNUSED).append("\n");
         classFile.append(generateConstructor(substitutorName, helper)).append("\n");
 
         // Getter
-        classFile.append(generateGetter(FACTORY_INSTANCE, FACTORY, FACTORY_GETTER)).append("\n");
+        classFile.append(generateGetter(FACTORY_INSTANCE, FACTORY, FACTORY_GETTER));
+
+        if (helper.hasProfileInjection) {
+            // Splitting logic
+            classFile.append('\n');
+            classFile.append(TAB_1).append(OVERRIDE).append("\n");
+            classFile.append(generateShouldSplit());
+
+            classFile.append('\n');
+            classFile.append(TAB_1).append(OVERRIDE).append("\n");
+            classFile.append(generateSplit());
+        }
+
+        classFile.append('\n');
 
         // Invoke method
         classFile.append(TAB_1).append(OVERRIDE).append("\n");
@@ -627,5 +644,25 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // End
         return classFile.toString();
+    }
+
+    private static String generateShouldSplit() {
+        StringBuilder str = new StringBuilder();
+
+        str.append(TAB_1).append(PUBLIC_FINAL).append(" boolean ").append(SHOULD_SPLIT).append("() {\n");
+        str.append(TAB_2).append("return true;\n");
+        str.append(TAB_1).append("}\n");
+
+        return str.toString();
+    }
+
+    private String generateSplit() {
+        StringBuilder str = new StringBuilder();
+
+        str.append(TAB_1).append(PUBLIC_FINAL).append(" ").append(SUBSTITUTOR).append(" ").append(SPLIT).append("() {\n");
+        str.append(TAB_2).append("return ").append(FACTORY_INSTANCE).append(".").append(CREATE).append("(").append(META_VAR).append(");\n");
+        str.append(TAB_1).append("}\n");
+
+        return str.toString();
     }
 }

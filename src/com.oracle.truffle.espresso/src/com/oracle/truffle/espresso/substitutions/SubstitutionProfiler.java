@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class SubstitutionProfiler {
 
@@ -36,5 +37,16 @@ public class SubstitutionProfiler {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profiles |= (1 << branch);
         }
+    }
+
+    public boolean shouldSplit() {
+        return false;
+    }
+
+    /**
+     * Spawns a new Substitution with uninitialized profiles.
+     */
+    public SubstitutionProfiler split() {
+        throw EspressoError.shouldNotReachHere();
     }
 }

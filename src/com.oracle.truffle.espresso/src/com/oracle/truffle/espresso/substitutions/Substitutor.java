@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class Substitutor extends SubstitutionProfiler {
@@ -69,4 +70,9 @@ public abstract class Substitutor extends SubstitutionProfiler {
     }
 
     public abstract Object invoke(Object[] args);
+
+    @Override
+    public Substitutor split() {
+        throw EspressoError.shouldNotReachHere();
+    }
 }

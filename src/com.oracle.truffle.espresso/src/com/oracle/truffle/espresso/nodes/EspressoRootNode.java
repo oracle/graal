@@ -53,6 +53,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getMethod();
     }
 
+    public final boolean shouldSplit() {
+        return getMethodNode().shouldSplit();
+    }
+
+    public final EspressoRootNode split() {
+        return create(getFrameDescriptor(), getMethodNode().split());
+    }
+
     @Override
     public final EspressoContext getContext() {
         return getMethodNode().getContext();

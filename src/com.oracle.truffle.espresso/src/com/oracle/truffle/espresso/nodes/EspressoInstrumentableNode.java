@@ -41,5 +41,4 @@ public abstract class EspressoInstrumentableNode extends Node implements Instrum
     public final WrapperNode createWrapper(ProbeNode probeNode) {
         return new EspressoInstrumentableNodeWrapper(this, probeNode);
     }
-
 }
