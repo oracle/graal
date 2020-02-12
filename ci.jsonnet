@@ -153,7 +153,7 @@ local jdk8_weekly_linux           = base.jdk8 + base.weekly + base.linux;
 
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
                                                                            DYNAMIC_IMPORTS: '/compiler'},
-                                                            timelimit: '30:00'}                           + {name: 'espresso-unittest-compilation-linux-amd64'},
+                                                            timelimit: '1:00:00'}                         + {name: 'espresso-unittest-compilation-linux-amd64'},
 
     // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
