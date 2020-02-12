@@ -1020,7 +1020,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         // add enclosing type to static imports. merge with existing static imports
         AnnotationMirror generateUncached = findAnnotationMirror(nodeType, types.GenerateUncached);
-        AnnotationMirror reportPolymorphism = findAnnotationMirror(nodeType, types.ReportPolymorphism);
         AnnotationMirror importStatic = findAnnotationMirror(nodeType, types.ImportStatic);
         List<AnnotationValue> staticImports = new ArrayList<>();
         if (importStatic != null) {
@@ -1040,9 +1039,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         } else {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
         }
-        if (reportPolymorphism != null) {
-            clonedType.getAnnotationMirrors().add(reportPolymorphism);
-        }
+        transferReportPolymorphismAnnotations(nodeType, clonedType);
 
         NodeData parsedNodeData = NodeParser.createExportParser(
                         exportedMessage.getExportsLibrary().getLibrary().getTemplateType().asType(),
@@ -1053,6 +1050,17 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         return parsedNodeData;
 
+    }
+
+    private void transferReportPolymorphismAnnotations(TypeElement nodeType, CodeTypeElement clonedType) {
+        AnnotationMirror reportPolymorphism = findAnnotationMirror(nodeType, types.ReportPolymorphism);
+        if (reportPolymorphism != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphism);
+        }
+        AnnotationMirror reportPolymorphismExclude = findAnnotationMirror(nodeType, types.ReportPolymorphism_Exclude);
+        if (reportPolymorphismExclude != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphismExclude);
+        }
     }
 
     private static boolean isNodeElement(Element member) {
