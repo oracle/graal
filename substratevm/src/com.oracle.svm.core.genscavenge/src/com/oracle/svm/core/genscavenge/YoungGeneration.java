@@ -319,8 +319,8 @@ public class YoungGeneration extends Generation {
     UnsignedWord getSurvivorChunkUsedBytes() {
         UnsignedWord usedBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            usedBytes.add(this.survivorFromSpaces[i].getChunkBytes());
-            usedBytes.add(this.survivorToSpaces[i].getChunkBytes());
+            usedBytes = usedBytes.add(this.survivorFromSpaces[i].getChunkBytes());
+            usedBytes = usedBytes.add(this.survivorToSpaces[i].getChunkBytes());
         }
         return usedBytes;
     }
@@ -336,8 +336,8 @@ public class YoungGeneration extends Generation {
     UnsignedWord getSurvivorObjectBytes() {
         UnsignedWord usedObjectBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            usedObjectBytes.add(this.survivorFromSpaces[i].getObjectBytes());
-            usedObjectBytes.add(this.survivorToSpaces[i].getObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(this.survivorFromSpaces[i].getObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(this.survivorToSpaces[i].getObjectBytes());
         }
         return usedObjectBytes;
     }
