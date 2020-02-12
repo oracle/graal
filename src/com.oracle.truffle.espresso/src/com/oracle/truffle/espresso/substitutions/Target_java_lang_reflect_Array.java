@@ -145,7 +145,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getBoolean(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -157,7 +156,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getByte(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -169,7 +167,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getChar(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -181,7 +178,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getShort(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -193,7 +189,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getInt(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -205,7 +200,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getFloat(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -217,7 +211,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getDouble(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -229,7 +222,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             return Array.getLong(array.unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -249,7 +241,6 @@ public final class Target_java_lang_reflect_Array {
     }
 
     private static void checkNonNullArray(StaticObject array, Meta meta) {
-        // TODO(tg): inject meta
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
         }
@@ -265,7 +256,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setBoolean(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -277,7 +267,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setByte(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -289,7 +278,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setChar(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -301,7 +289,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setShort(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -313,7 +300,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setInt(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -325,7 +311,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setFloat(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -337,7 +322,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setDouble(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }
@@ -349,7 +333,6 @@ public final class Target_java_lang_reflect_Array {
         try {
             Array.setLong(array.unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            // TODO(tg): inject meta
             throw rethrowAsGuestException(e, meta);
         }
     }

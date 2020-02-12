@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.meta.Meta;
 
-public abstract class Substitutor {
+public abstract class Substitutor extends SubstitutionProfiler {
 
     public abstract static class Factory {
         public abstract Substitutor create(Meta meta);

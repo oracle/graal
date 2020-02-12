@@ -23,8 +23,9 @@
 package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
-public abstract class VMSubstitutor {
+public abstract class VMSubstitutor extends SubstitutionProfiler {
 
     public abstract static class Factory {
         public abstract VMSubstitutor create(Meta meta);

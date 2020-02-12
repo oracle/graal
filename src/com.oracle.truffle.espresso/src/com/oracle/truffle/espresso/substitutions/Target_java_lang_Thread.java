@@ -161,20 +161,17 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static @Host(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
-        // TODO(tg): inject meta
         return meta.getContext().getCurrentThread();
     }
 
     @TruffleBoundary
     @Substitution
     public static @Host(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
-        // TODO(tg): inject meta
         return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
     }
 
     @Substitution
     public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
-        // TODO(tg): inject meta
         if (StaticObject.isNull(threads)) {
             throw meta.throwNullPointerException();
         }
@@ -191,13 +188,13 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self,
-                    @GuestCall DirectCallNode Thread_dispatchUncaughtException,
-                    @GuestCall DirectCallNode Thread_exit) {
-        // TODO(tg): inject meta
+                    // Checkstyle: stop
+                    @GuestCall DirectCallNode java_lang_Thread_exit,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
         if (EspressoOptions.ENABLE_THREADS) {
             // Thread.start() is synchronized.
             EspressoContext context = self.getKlass().getContext();
-            Meta meta = context.getMeta();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
 
@@ -229,7 +226,7 @@ public final class Target_java_lang_Thread {
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
-                        Thread_exit.call(self);
+                        java_lang_Thread_exit.call(self);
                         self.getLock().lock();
                         try {
                             self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
@@ -288,8 +285,11 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self,
-                    @InjectMeta Meta meta, @GuestCall DirectCallNode toThreadState) {
-        return (StaticObject) toThreadState.call(null, self.getIntField(meta.java_lang_Thread_threadStatus));
+                    // Checkstyle: stop
+                    @GuestCall DirectCallNode sun_misc_VM_toThreadState,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
+        return (StaticObject) sun_misc_VM_toThreadState.call(self.getIntField(meta.java_lang_Thread_threadStatus));
     }
 
     @SuppressWarnings("unused")
@@ -410,7 +410,6 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
-        // TODO(tg): inject meta
         Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(Meta.toHostString(name));
     }

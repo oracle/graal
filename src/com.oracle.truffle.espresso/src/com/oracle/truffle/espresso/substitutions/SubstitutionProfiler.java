@@ -23,13 +23,18 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.TYPE_USE;
+import com.oracle.truffle.api.CompilerDirectives;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+public class SubstitutionProfiler {
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE_USE})
-public @interface GuestCall {
+    @CompilerDirectives.CompilationFinal //
+    private char profiles = 0;
+
+    public final void profile(int branch) {
+        assert branch < 16;
+        if ((profiles << branch) == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profiles |= (1 << branch);
+        }
+    }
 }

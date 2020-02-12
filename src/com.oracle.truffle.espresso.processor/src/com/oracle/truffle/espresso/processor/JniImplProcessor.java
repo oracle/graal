@@ -66,7 +66,8 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         final String returnType;
         final boolean isStatic;
 
-        public JniHelper(String jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic) {
+        public JniHelper(EspressoProcessor processor, ExecutableElement method, String jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic) {
+            super(processor, method);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
             this.returnType = returnType;
@@ -88,7 +89,6 @@ public class JniImplProcessor extends IntrinsicsProcessor {
             List<String> espressoTypes = new ArrayList<>();
             List<Boolean> referenceTypes = new ArrayList<>();
             getEspressoTypes(jniMethod, espressoTypes, referenceTypes);
-            List<String> guestCalls = getGuestCalls(jniMethod);
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
             if (!classes.contains(substitutorName)) {
@@ -99,14 +99,12 @@ public class JniImplProcessor extends IntrinsicsProcessor {
                 // Check if we need to call an instance method
                 boolean isStatic = jniMethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
-                JniHelper helper = new JniHelper(jniNativeSignature, referenceTypes, returnType, isStatic);
+                JniHelper helper = new JniHelper(this, (ExecutableElement) method, jniNativeSignature, referenceTypes, returnType, isStatic);
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(
                                 className,
                                 targetMethodName,
                                 espressoTypes,
-                                guestCalls,
-                                hasMetaInjection(jniMethod),
                                 helper);
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
@@ -138,7 +136,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, boolean hasMetaInjection, SubstitutionHelper helper) {
+    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(IMPORT_JNI_ENV);
@@ -156,7 +154,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, boolean hasMetaInjection, SubstitutionHelper helper) {
+    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(TAB_3).append("super(\n");
@@ -170,7 +168,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, List<String> guestCalls, SubstitutionHelper helper, boolean hasMetaInjection) {
+    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
@@ -181,21 +179,22 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         }
         switch (h.returnType) {
             case "char":
-                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
+                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 break;
             case "boolean":
-                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
+                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return b ? (byte) 1 : (byte) 0;\n");
                 break;
             case "void":
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
+                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
             case "StaticObject":
-                str.append(TAB_2).append("return ").append("(long) env.getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic) + ")").append(";\n");
+                str.append(TAB_2).append("return ").append(
+                                "(long) env.getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
+                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

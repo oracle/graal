@@ -68,16 +68,14 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
     public static @Host(Class.class) StaticObject defineAnonymousClass(
                     @Host(Unsafe.class) StaticObject self,
                     @Host(Class.class) StaticObject hostClass,
                     @Host(byte[].class) StaticObject data,
-                    @Host(Object[].class) StaticObject constantPoolPatches) {
-
-        // TODO(tg): inject meta
-
-        EspressoContext context = self.getKlass().getContext();
-        Meta meta = context.getMeta();
+                    @Host(Object[].class) StaticObject constantPoolPatches,
+                    @InjectMeta Meta meta) {
+        EspressoContext context = meta.getContext();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
@@ -214,9 +212,9 @@ public final class Target_sun_misc_Unsafe {
      * @see #getInt
      */
     @Substitution(hasReceiver = true)
-    public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        // TODO(tg): inject meta
-        Field target = Field.getReflectiveFieldRoot(field);
+    public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
+                    @InjectMeta Meta meta) {
+        Field target = Field.getReflectiveFieldRoot(field, meta);
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
@@ -236,13 +234,13 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
-                    @Host(ProtectionDomain.class) StaticObject pd) {
+                    @Host(ProtectionDomain.class) StaticObject pd,
+                    @InjectMeta Meta meta) {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        // TODO(tg): inject meta
-        Klass klass = self.getKlass().getMeta().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader);
-        klass.mirror().setHiddenField(klass.getMeta().HIDDEN_PROTECTION_DOMAIN, pd);
+        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader);
+        klass.mirror().setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
         return klass.mirror();
     }
 
@@ -700,10 +698,11 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+    public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz,
+                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(clazz)) {
-            // TODO(tg): inject meta
-            throw self.getKlass().getMeta().throwNullPointerException();
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
         }
         Klass klass = clazz.getMirrorKlass();
         return !klass.isInitialized();
@@ -997,8 +996,9 @@ public final class Target_sun_misc_Unsafe {
      * @see #getInt
      */
     @Substitution(hasReceiver = true)
-    public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        return Field.getReflectiveFieldRoot(field).getSlot() + SAFETY_FIELD_OFFSET;
+    public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
+                    @InjectMeta Meta meta) {
+        return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_FIELD_OFFSET;
     }
 
     /**
@@ -1010,27 +1010,30 @@ public final class Target_sun_misc_Unsafe {
      * except as argument to the get and put routines in this class.
      */
     @Substitution(hasReceiver = true)
-    public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
-        Field target = Field.getReflectiveFieldRoot(field);
+    public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
+                    @InjectMeta Meta meta) {
+        Field target = Field.getReflectiveFieldRoot(field, meta);
         return target.getDeclaringKlass().getStatics();
     }
 
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
-    public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+    public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
+                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
-            // TODO(tg): inject meta
-            throw self.getKlass().getMeta().throwNullPointerException();
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
         }
         object.getLock().lock();
     }
 
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
-    public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+    public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
+                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
-            // TODO(tg): inject meta
-            throw self.getKlass().getMeta().throwNullPointerException();
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
         }
         object.getLock().unlock();
     }
@@ -1049,30 +1052,30 @@ public final class Target_sun_misc_Unsafe {
      * strange to place it elsewhere.
      */
     @Substitution(hasReceiver = true)
-    public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time) {
+    public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
+                    @InjectMeta Meta meta) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
             return;
         }
 
-        // TODO(tg): inject meta
-        EspressoContext context = self.getKlass().getContext();
+        EspressoContext context = meta.getContext();
         StaticObject thread = context.getCurrentThread();
 
         if (Target_java_lang_Thread.checkInterrupt(thread)) {
             return;
         }
 
-        Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
+        Target_java_lang_Thread.fromRunnable(thread, meta, time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
-        Field parkBlocker = context.getMeta().java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
+        Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
         StaticObject guestBlocker = thread.getField(parkBlocker);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {
             UNSAFE.putObject(hostThread, parkBlockerOffset, guestBlocker);
         }
         UNSAFE.park(isAbsolute, time);
-        Target_java_lang_Thread.toRunnable(thread, context.getMeta(), State.RUNNABLE);
+        Target_java_lang_Thread.toRunnable(thread, meta, State.RUNNABLE);
         UNSAFE.putObject(hostThread, parkBlockerOffset, blocker);
     }
 
@@ -1090,9 +1093,9 @@ public final class Target_sun_misc_Unsafe {
      *
      */
     @Substitution(hasReceiver = true)
-    public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread) {
-        // TODO(tg): inject meta
-        Thread hostThread = (Thread) thread.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+    public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread,
+                    @InjectMeta Meta meta) {
+        Thread hostThread = (Thread) thread.getHiddenField(meta.HIDDEN_HOST_THREAD);
         UNSAFE.unpark(hostThread);
     }
 
@@ -1194,10 +1197,10 @@ public final class Target_sun_misc_Unsafe {
 
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
-    public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+    public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
+                    @InjectMeta Meta meta) {
         if (StaticObject.isNull(object)) {
-            // TODO(tg): inject meta
-            throw self.getKlass().getMeta().throwNullPointerException();
+            throw meta.throwNullPointerException();
         }
         return object.getLock().tryLock();
     }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
@@ -43,24 +44,24 @@ public final class Target_java_lang_Object {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@Host(Object.class) StaticObject self) {
+    public static void init(@Host(Object.class) StaticObject self, @InjectMeta Meta meta) {
         assert self.getKlass() instanceof ObjectKlass;
         if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
-            registerFinalizer(self);
+            registerFinalizer(self, meta);
         }
     }
 
     @TruffleBoundary
-    public static void registerFinalizer(@Host(Object.class) StaticObject self) {
-        // TODO(tg): inject meta
-        self.getKlass().getMeta().java_lang_ref_Finalizer_register.invokeDirect(null, self);
+    public static void registerFinalizer(@Host(Object.class) StaticObject self, @InjectMeta Meta meta) {
+        meta.java_lang_ref_Finalizer_register.invokeDirect(null, self);
     }
 
     // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking
     // cloned objects. Remove once GR-19247 is resolved.
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
-    public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self) {
-        return VM.JVM_Clone(self);
+    public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
+                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+        return VM.JVM_Clone(self, meta, profiler);
     }
 }

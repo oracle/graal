@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -44,59 +43,69 @@ public final class Target_java_lang_System {
     }
 
     @Substitution
-    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length, @InjectMeta Meta meta) {
-        // TODO(tg): inject meta
+    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
+                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
-            doArrayCopy(src, srcPos, dest, destPos, length);
+            doArrayCopy(src, srcPos, dest, destPos, length, meta, profiler);
         } catch (NullPointerException e) {
+            profiler.profile(0);
             throw meta.throwNullPointerException();
         } catch (ArrayStoreException e) {
+            profiler.profile(1);
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
         } catch (ArrayIndexOutOfBoundsException e) {
+            profiler.profile(2);
             // System.arraycopy javadoc states it throws IndexOutOfBoundsException, the
             // actual implementation throws ArrayIndexOutOfBoundsException (IooBE subclass).
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
-    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
-        final Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
+                    Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
+            profiler.profile(3);
             throw meta.throwNullPointerException();
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
-
             // System.arraycopy does the bounds checks
             if (src == dest) {
+                profiler.profile(4);
                 // Same array, no need to type check
-                boundsCheck(meta, src, srcPos, dest, destPos, length);
+                boundsCheck(meta, src, srcPos, dest, destPos, length, profiler);
                 System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
             } else {
+                profiler.profile(5);
                 ArrayKlass destKlass = (ArrayKlass) dest.getKlass();
                 ArrayKlass srcKlass = (ArrayKlass) src.getKlass();
                 Klass destType = destKlass.getComponentType();
                 Klass srcType = srcKlass.getComponentType();
                 if (destType.isPrimitive() && srcType.isPrimitive()) {
                     if (srcType != destType) {
+                        profiler.profile(6);
                         throw Meta.throwException(meta.java_lang_ArrayStoreException);
                     }
-                    boundsCheck(meta, src, srcPos, dest, destPos, length);
+                    profiler.profile(7);
+                    boundsCheck(meta, src, srcPos, dest, destPos, length, profiler);
                     System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                 } else if (!destType.isPrimitive() && !srcType.isPrimitive()) {
+                    profiler.profile(8);
                     if (destType.isAssignableFrom(srcType)) {
+                        profiler.profile(9);
                         // We have guarantee we can copy, as all elements in src conform to dest.
-                        boundsCheck(meta, src, srcPos, dest, destPos, length);
+                        boundsCheck(meta, src, srcPos, dest, destPos, length, profiler);
                         System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                     } else {
+                        profiler.profile(10);
                         // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
                         // individual type checks. Should rarely happen ( < 1% of cases).
                         // @formatter:off
                         // Use cases:
                         // - System startup.
                         // - MethodHandle and CallSite linking.
-                        boundsCheck(meta, src, srcPos, dest, destPos, length);
+                        boundsCheck(meta, src, srcPos, dest, destPos, length, profiler);
                         StaticObject[] s = src.unwrap();
                         StaticObject[] d = dest.unwrap();
                         for (int i = 0; i < length; i++) {
@@ -104,22 +113,26 @@ public final class Target_java_lang_System {
                             if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
                                 d[destPos + i] = cpy;
                             } else {
+                                profiler.profile(11);
                                 throw Meta.throwException(meta.java_lang_ArrayStoreException);
                             }
                         }
                     }
                 } else {
+                    profiler.profile(12);
                     throw Meta.throwException(meta.java_lang_ArrayStoreException);
                 }
             }
         } else {
+            profiler.profile(13);
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
-    private static void boundsCheck(Meta meta, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+    private static void boundsCheck(Meta meta, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length, SubstitutionProfiler profiler) {
         if (srcPos < 0 || destPos < 0 || length < 0 || srcPos > src.length() - length || destPos > dest.length() - length) {
             // Other checks are caught during execution without side effects.
+            profiler.profile(15);
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }

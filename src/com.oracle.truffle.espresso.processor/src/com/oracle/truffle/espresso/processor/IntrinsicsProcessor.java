@@ -118,7 +118,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         }
     }
 
-    String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, List<String> guestCalls, boolean hasMetaInjection) {
+    String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (isStatic) {
             str.append(className).append(".").append(methodName).append("(");
@@ -130,7 +130,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             first = checkFirst(str, first);
             str.append(ARG_NAME).append(i);
         }
-        first = appendInvocationMetaInformation(str, guestCalls, hasMetaInjection, first);
+        first = appendInvocationMetaInformation(str, first, helper);
         str.append(")"); // ;\n");
         return str.toString();
     }

@@ -23,8 +23,9 @@
 package com.oracle.truffle.espresso.jni;
 
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
-public abstract class JniSubstitutor {
+public abstract class JniSubstitutor extends SubstitutionProfiler {
 
     public abstract static class Factory {
         public abstract JniSubstitutor create(Meta meta);

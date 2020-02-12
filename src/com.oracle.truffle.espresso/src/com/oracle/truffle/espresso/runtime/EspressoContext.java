@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.EspressoLanguage.EspressoLogger;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,7 +38,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -65,12 +66,12 @@ import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoReference;
+import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-
-import static com.oracle.truffle.espresso.EspressoLanguage.EspressoLogger;
 
 public final class EspressoContext {
 
@@ -279,6 +280,8 @@ public final class EspressoContext {
 
         // Initialize ReferenceQueues
         this.hostToGuestReferenceDrainThread = getEnv().createThread(new Runnable() {
+            SubstitutionProfiler profiler = new SubstitutionProfiler();
+
             @SuppressWarnings("rawtypes")
             @Override
             public void run() {
@@ -296,7 +299,7 @@ public final class EspressoContext {
 
                         lock.getLock().lock();
                         try {
-                            assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
+                            assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
 
                             EspressoReference prev = head;
@@ -314,7 +317,7 @@ public final class EspressoContext {
                             StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
                             meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
 
-                            getVM().JVM_MonitorNotify(lock);
+                            getVM().JVM_MonitorNotify(lock, profiler);
                         } finally {
                             lock.getLock().unlock();
                         }
