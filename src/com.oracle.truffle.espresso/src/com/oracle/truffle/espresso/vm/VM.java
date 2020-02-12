@@ -906,6 +906,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
      */
     private static FrameInstance getCallerFrame(int depth, boolean securityStackWalk) {
+        // TODO(tg): inject meta
         if (depth == JVM_CALLER_DEPTH) {
             return getCallerFrame(1, securityStackWalk);
         }
@@ -1319,6 +1320,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 Method m = getMethodFromFrame(frameInstance);
                 if (m != null) {
                     Klass holder = m.getDeclaringKlass();
+                    // TODO(tg): inject meta
                     Meta meta = holder.getMeta();
                     // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
                     if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holder) || meta.sun_reflect_ConstructorAccessorImpl.isAssignableFrom(holder)) {
@@ -1434,6 +1436,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Method.class) StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Method.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Method);
         StaticObject curMethod = seed;
@@ -1448,6 +1451,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Field.class) StaticObject getGuestReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Field);
         StaticObject curField = seed;
@@ -1462,6 +1466,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Constructor.class) StaticObject getGuestReflectiveConstructorRoot(@Host(java.lang.reflect.Constructor.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Constructor);
         StaticObject curConstructor = seed;
@@ -1547,11 +1552,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Method)) {
             StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
             assert methodRoot != null;
-            return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+            return (StaticObject) methodRoot.getHiddenField(getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Constructor)) {
             StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
             assert constructorRoot != null;
-            return (StaticObject) constructorRoot.getHiddenField(constructorRoot.getKlass().getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+            return (StaticObject) constructorRoot.getHiddenField(getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -1563,7 +1568,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().java_lang_reflect_Field);
         StaticObject fieldRoot = getGuestReflectiveFieldRoot(guestReflectionField);
         assert fieldRoot != null;
-        return (StaticObject) fieldRoot.getHiddenField(fieldRoot.getKlass().getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        return (StaticObject) fieldRoot.getHiddenField(getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
     }
 
     private StaticObject guestBox(Object elem) {

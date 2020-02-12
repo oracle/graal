@@ -73,6 +73,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self, @Host(Object.class) StaticObject ref) {
         Klass mnKlass = self.getKlass();
         EspressoContext context = mnKlass.getContext();
+        // TODO(tg): inject meta
         Meta meta = context.getMeta();
 
         Klass targetKlass = ref.getKlass();
@@ -110,11 +111,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void setCallSiteTargetNormal(@Host(CallSite.class) StaticObject site, @Host(MethodHandle.class) StaticObject target) {
+        // TODO(tg): inject meta
         site.setField(site.getKlass().getMeta().java_lang_invoke_CallSite_target, target);
     }
 
     @Substitution
     public static void setCallSiteTargetVolatile(@Host(CallSite.class) StaticObject site, @Host(MethodHandle.class) StaticObject target) {
+        // TODO(tg): inject meta
         site.setFieldVolatile(site.getKlass().getMeta().java_lang_invoke_CallSite_target, target);
     }
 
@@ -180,21 +183,25 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static long objectFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         return (long) self.getHiddenField(self.getKlass().getMeta().HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static long staticFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         return (long) self.getHiddenField(self.getKlass().getMeta().HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static @Host(Object.class) StaticObject staticFieldBase(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         return self.getField(self.getKlass().getMeta().java_lang_invoke_MemberName_clazz).getMirrorKlass().getStatics();
     }
 
     @Substitution
     public static @Host(Object.class) StaticObject getMemberVMInfo(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         Meta meta = self.getKlass().getMeta();
 
         Object vmtarget = self.getHiddenField(meta.HIDDEN_VMTARGET);
@@ -232,6 +239,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @Host(value = Class.class) StaticObject caller) {
         // TODO(Garcia) Perhaps perform access checks ?
         Klass mnKlass = self.getKlass();
+        // TODO(tg): inject meta
         Meta meta = mnKlass.getContext().getMeta();
         StaticObject memberName = self;
         if (memberName.getHiddenField(meta.HIDDEN_VMTARGET) != null) {
