@@ -1040,6 +1040,43 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
+    private static final String[] GRAAL_SRC_PACKAGE_PREFIXES = {
+            "org.graalvm",
+            "com.oracle.graal",
+            "com.oracle.objectfile",
+            "com.oracle.svm",
+            "com.oracle.truffle",
+    };
+
+
+    /**
+     * compute a prefix to be added to the front of the file path for
+     * a class in order to locate it under a GRaal or JDK-specific
+     * search root
+     * @param packageName the name of the package the class belongs to
+     * or possibly an empty string if it is in the default package.
+     * @param moduleName the name of the module the class belongs to
+     * or possibly null or an empty string if it is not located
+     * in a module
+     * @return any required prefix or the empty string if no prefix is required
+     */
+    private String getPathPrefix(String packageName, String moduleName) {
+        /*
+         * if we have a module name it is used as a prefix except
+         * when the class belongs to Graal itself.
+         */
+        if (moduleName == null || moduleName.length() == 0) {
+            return "";
+        } else {
+            for (String prefix : GRAAL_SRC_PACKAGE_PREFIXES) {
+                if (packageName.startsWith(prefix)) {
+                    return "";
+                }
+            }
+            return moduleName;
+        }
+    }
+
     /**
      * implementation of the DebugCodeInfo API interface
      * that allows code info to be passed to an ObjectFile
@@ -1090,6 +1127,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             String packageName = (pkg != null ? pkg.getName() : "");
             String module = ModuleSupport.getModuleName(javaClass);
             if (packageName.length() != 0) {
+                String prefix = getPathPrefix(packageName, module);
                 /*
                  * use the package name as a path to the file
                  * for jdk11 classes we assume that the path includes
@@ -1097,7 +1135,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                  * for jdk8 classes this will just collapse to
                  * the sequence of package name elements
                  */
-                return Paths.get((module == null ? "" : module), pkg.getName().split("\\."));
+                return Paths.get(prefix, pkg.getName().split("\\."));
             } else {
                 return null;
             }
@@ -1254,6 +1292,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 String packageName = (pkg != null ? pkg.getName() : "");
                 String module = ModuleSupport.getModuleName(javaClass);
                 if (packageName.length() != 0) {
+                    String prefix = getPathPrefix(packageName, module);
                     /*
                      * use the package name as a path to the file
                      *
@@ -1263,7 +1302,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                      * for jdk8 classes this will just collapse to
                      * the sequence of package name components
                      */
-                    return Paths.get((module == null ? "" : module), pkg.getName().split("\\."));
+                    return Paths.get(prefix, pkg.getName().split("\\."));
                 } else {
                     return null;
                 }
