@@ -152,7 +152,7 @@ public final class Meta implements ContextAccess {
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
         HIDDEN_FRAMES = java_lang_Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
         java_lang_Throwable_backtrace = java_lang_Throwable.lookupField(Name.backtrace, Type.java_lang_Object);
-        java_lang_Throwable_message = java_lang_Throwable.lookupField(Name.message, Type.java_lang_String);
+        java_lang_Throwable_detailMessage = java_lang_Throwable.lookupField(Name.detailMessage, Type.java_lang_String);
         java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
 
         java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
@@ -571,7 +571,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Throwable_getStackTrace;
     public final Field HIDDEN_FRAMES;
     public final Field java_lang_Throwable_backtrace;
-    public final Field java_lang_Throwable_message;
+    public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
 
     public final ObjectKlass java_lang_Error;
