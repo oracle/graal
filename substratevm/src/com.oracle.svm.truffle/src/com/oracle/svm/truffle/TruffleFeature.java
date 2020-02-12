@@ -521,6 +521,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             } else if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (original.getAnnotation(ExplodeLoop.class) != null) {
+                /*
+                 * We cannot inline a method annotated with @ExplodeLoop, because then loops are no
+                 * longer exploded.
+                 */
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            } else if (builder.getMethod().getAnnotation(ExplodeLoop.class) != null) {
+                /*
+                 * We cannot inline anything into a method annotated with @ExplodeLoop, because then
+                 * loops of the inlined callee are exploded too.
+                 */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (replacements.hasSubstitution(original, builder.bci())) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
