@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.processor;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -121,12 +143,12 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String FACTORY_GETTER = "getFactory";
     private static final String COLLECTOR_GETTER = "getCollector";
 
-    private static final String COPYRIGHT = "/* Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.\n" +
+    private static final String COPYRIGHT = "/* Copyright (c) 2019, 2019 Oracle and/or its affiliates. All rights reserved.\n" +
                     " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
                     " *\n" +
                     " * This code is free software; you can redistribute it and/or modify it\n" +
                     " * under the terms of the GNU General Public License version 2 only, as\n" +
- * published by the Free Software Foundation.
+                    " * published by the Free Software Foundation.\n" +
                     " *\n" +
                     " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
                     " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
@@ -197,8 +219,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return Collections.unmodifiableMap(map);
     }
 
-    public static NativeSimpleType classToType(String clazz, boolean javaToNative) {
-        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT);
+    public static NativeSimpleType classToType(String clazz) {
+        // TODO(peterssen): Allow native-sized words.
+        return classToNative.getOrDefault(clazz, NativeSimpleType.SINT64);
     }
 
     @Override
@@ -309,16 +332,28 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     static String extractSimpleType(String arg) {
-        int beginIndex = arg.lastIndexOf('.');
-        String result;
+        // The argument can be a fully qualified type e.g. java.lang.String, int, long...
+        // Or an annotated type e.g. "(@com.example.Annotation :: long)",
+        // "(@com.example.Annotation :: java.lang.String)".
+        // javac always includes annotations, ecj does not.
+
+        // Purge enclosing parentheses.
+        String result = arg;
+        if (result.startsWith("(")) {
+            result = result.substring(1, result.length() - 1);
+        }
+
+        // Purge leading annotations.
+        String[] parts = result.split("::");
+        result = parts[parts.length - 1].trim();
+        // Prune additional spaces produced by javac 11.
+        parts = result.split(" ");
+        result = parts[parts.length - 1].trim();
+
+        // Get unqualified name.
+        int beginIndex = result.lastIndexOf('.');
         if (beginIndex >= 0) {
-            if (arg.charAt(arg.length() - 1) == ')') {
-                result = arg.substring(beginIndex + 1, arg.length() - 1);
-            } else {
-                result = arg.substring(beginIndex + 1);
-            }
-        } else {
-            result = arg;
+            result = result.substring(beginIndex + 1);
         }
         return result;
     }

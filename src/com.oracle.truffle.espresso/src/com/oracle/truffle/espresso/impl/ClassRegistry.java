@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,17 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
@@ -42,6 +45,67 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
 public abstract class ClassRegistry implements ContextAccess {
+
+    /**
+     * Traces the classes being initialized by this thread. Its only use is to be able to detect
+     * class circularity errors. A class being defined, that needs its superclass also to be defined
+     * will be pushed onto this stack. If the superclass is already present, then there is a
+     * circularity error.
+     */
+    // TODO: Rework this, a thread local is certainly less than optimal.
+    static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
+
+    static final class TypeStack {
+        static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
+            @Override
+            public TypeStack get() {
+                return new TypeStack();
+            }
+        };
+
+        Node head = null;
+
+        static final class Node {
+            Symbol<Type> entry;
+            Node next;
+
+            Node(Symbol<Type> entry, Node next) {
+                this.entry = entry;
+                this.next = next;
+            }
+        }
+
+        boolean isEmpty() {
+            return head == null;
+        }
+
+        boolean contains(Symbol<Type> type) {
+            Node curr = head;
+            while (curr != null) {
+                if (curr.entry == type) {
+                    return true;
+                }
+                curr = curr.next;
+            }
+            return false;
+        }
+
+        Symbol<Type> pop() {
+            if (isEmpty()) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            Symbol<Type> res = head.entry;
+            head = head.next;
+            return res;
+        }
+
+        void push(Symbol<Type> type) {
+            head = new Node(type, head);
+        }
+
+        private TypeStack() {
+        }
+    }
 
     private final EspressoContext context;
 
@@ -62,20 +126,50 @@ public abstract class ClassRegistry implements ContextAccess {
         this.context = context;
     }
 
-    public Klass loadKlass(Symbol<Type> type) {
-        return loadKlass(type, null);
-    }
-
     /**
      * Queries a registry to load a Klass for us.
      * 
      * @param type the symbolic reference to the Klass we want to load
-     * @param instigator Should the loading of a Klass require loading other Klasses (superKlass for
-     *            example), this argument is the symbolic reference to the first Klass we attempted
-     *            to load through the whole loading chain.
      * @return The Klass corresponding to given type
      */
-    protected abstract Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator);
+    protected Klass loadKlass(Symbol<Type> type) {
+        if (Types.isArray(type)) {
+            Klass elemental = loadKlass(getTypes().getElementalType(type));
+            if (elemental == null) {
+                return null;
+            }
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
+        }
+
+        loadKlassCountInc();
+
+        // Double-checked locking on the symbol (globally unique).
+        Klass klass = classes.get(type);
+        if (klass == null) {
+            synchronized (type) {
+                klass = classes.get(type);
+                if (klass == null) {
+                    klass = loadKlassImpl(type);
+                }
+            }
+        } else {
+            // Grabbing a lock to fetch the class is not considered a hit.
+            loadKlassCacheHitsInc();
+        }
+        return klass;
+    }
+
+    protected abstract Klass loadKlassImpl(Symbol<Type> type);
+
+    protected abstract void loadKlassCountInc();
+
+    protected abstract void loadKlassCacheHitsInc();
+
+    public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
+
+    public Klass[] getLoadedKlasses() {
+        return classes.values().toArray(Klass.EMPTY_ARRAY);
+    }
 
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
@@ -89,60 +183,68 @@ public abstract class ClassRegistry implements ContextAccess {
         return classes.get(type);
     }
 
-    public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
-
-    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
-        return defineKlass(type, bytes, null);
-    }
-
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, Symbol<Type> instigator) {
-
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         Meta meta = getMeta();
-        if (typeOrNull != null && classes.containsKey(typeOrNull)) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + typeOrNull + " already defined in the BCL");
-        }
+        String strType = typeOrNull == null ? null : typeOrNull.toString();
+        ParserKlass parserKlass = getParserKlass(bytes, strType);
+        Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
-        String strType = null;
-        if (typeOrNull != null) {
-            strType = typeOrNull.toString();
-        }
-
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
-
-        Symbol<Type> type = typeOrNull;
-        if (type == null) {
-            type = parserKlass.getType();
+        Klass maybeLoaded = findLoadedKlass(type);
+        if (maybeLoaded != null) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
         }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        if (type == superKlassType || (superKlassType != null && instigator == superKlassType)) {
-            throw meta.throwEx(ClassCircularityError.class);
+        return createAndPutKlass(meta, parserKlass, type, superKlassType);
+    }
+
+    private ParserKlass getParserKlass(byte[] bytes, String strType) {
+        // May throw guest ClassFormatError, NoClassDefFoundError.
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+        if (StaticObject.notNull(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
         }
+        return parserKlass;
+    }
 
-        // TODO(peterssen): Superclass must be a class, and non-final.
-        ObjectKlass superKlass = superKlassType != null
-                        // Should only be an ObjectKlass, not primitives nor arrays.
-                        ? (ObjectKlass) loadKlass(superKlassType, (instigator == null) ? type : instigator)
-                        : null;
+    private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
+        TypeStack chain = stack.get();
 
-        assert superKlass == null || !superKlass.isInterface();
+        ObjectKlass superKlass = null;
+        ObjectKlass[] superInterfaces = null;
+        LinkedKlass[] linkedInterfaces = null;
 
-        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+        chain.push(type);
 
-        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
-                        ? LinkedKlass.EMPTY_ARRAY
-                        : new LinkedKlass[superInterfacesTypes.length];
+        try {
+            if (superKlassType != null) {
+                if (chain.contains(superKlassType)) {
+                    throw Meta.throwException(meta.java_lang_ClassCircularityError);
+                }
+                superKlass = loadKlassRecursively(meta, superKlassType, true);
+            }
 
-        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
-                        ? ObjectKlass.EMPTY_ARRAY
-                        : new ObjectKlass[superInterfacesTypes.length];
+            final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
-        // TODO(peterssen): Superinterfaces must be interfaces.
-        for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) loadKlass(superInterfacesTypes[i]);
-            superInterfaces[i] = interf;
-            linkedInterfaces[i] = interf.getLinkedKlass();
+            linkedInterfaces = superInterfacesTypes.length == 0
+                            ? LinkedKlass.EMPTY_ARRAY
+                            : new LinkedKlass[superInterfacesTypes.length];
+
+            superInterfaces = superInterfacesTypes.length == 0
+                            ? ObjectKlass.EMPTY_ARRAY
+                            : new ObjectKlass[superInterfacesTypes.length];
+
+            for (int i = 0; i < superInterfacesTypes.length; ++i) {
+                if (chain.contains(superInterfacesTypes[i])) {
+                    throw Meta.throwException(meta.java_lang_ClassCircularityError);
+                }
+                ObjectKlass interf = loadKlassRecursively(meta, superInterfacesTypes[i], false);
+                superInterfaces[i] = interf;
+                linkedInterfaces[i] = interf.getLinkedKlass();
+            }
+        } finally {
+            chain.pop();
         }
 
         // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
@@ -151,31 +253,38 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
 
         if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
         }
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null && !Klass.checkAccess(interf, klass)) {
-                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superinterface " + interf.getType()));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
             }
         }
 
         Klass previous = classes.putIfAbsent(type, klass);
-        if (previous != null) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
-        }
+        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
+        getRegistries().recordConstraint(type, klass, getClassLoader());
         return klass;
     }
 
-    public ObjectKlass putKlass(Symbol<Type> type, final ObjectKlass klass) {
-        if (classes.containsKey(type)) {
-            throw getMeta().throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
+    private ObjectKlass loadKlassRecursively(Meta meta, Symbol<Type> type, boolean notInterface) {
+        Klass klass;
+        try {
+            klass = loadKlass(type);
+        } catch (EspressoException e) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
+                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                throw Meta.throwException(ncdfe);
+            }
+            throw e;
         }
-        Klass previous = classes.put(type, klass);
-        if (previous != null) {
-            throw getMeta().throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
+        if (notInterface == klass.isInterface()) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
         }
-        return klass;
+        return (ObjectKlass) klass;
     }
 }

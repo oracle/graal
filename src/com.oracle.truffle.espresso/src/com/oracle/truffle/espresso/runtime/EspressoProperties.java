@@ -215,20 +215,18 @@ public interface EspressoProperties {
             builder.classpath(options.get(EspressoOptions.Classpath));
         }
 
-        {
-            // Process boot classpath + append and prepend options.
-            List<Path> bootClasspath_ = new ArrayList<>(builder.bootClasspath());
-            if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
-                bootClasspath_ = options.get(EspressoOptions.BootClasspath);
-            }
-            if (options.hasBeenSet(EspressoOptions.BootClasspathAppend)) {
-                bootClasspath_.addAll(options.get(EspressoOptions.BootClasspathAppend));
-            }
-            if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
-                bootClasspath_.addAll(0, options.get(EspressoOptions.BootClasspathPrepend));
-            }
-            builder.bootClasspath(bootClasspath_);
+        // Process boot classpath + append and prepend options.
+        List<Path> bootClasspath = new ArrayList<>(builder.bootClasspath());
+        if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
+            bootClasspath = options.get(EspressoOptions.BootClasspath);
         }
+        if (options.hasBeenSet(EspressoOptions.BootClasspathAppend)) {
+            bootClasspath.addAll(options.get(EspressoOptions.BootClasspathAppend));
+        }
+        if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
+            bootClasspath.addAll(0, options.get(EspressoOptions.BootClasspathPrepend));
+        }
+        builder.bootClasspath(bootClasspath);
 
         if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {
             builder.bootLibraryPath(options.get(EspressoOptions.BootLibraryPath));

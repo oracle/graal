@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -38,12 +39,14 @@ public final class ClassRegistries {
 
     private final ClassRegistry bootClassRegistry;
     private final ConcurrentHashMap<StaticObject, ClassRegistry> registries;
+    private final LoadingConstraints constraints;
     private final EspressoContext context;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
         this.registries = new ConcurrentHashMap<>();
         this.bootClassRegistry = new BootClassRegistry(context);
+        this.constraints = new LoadingConstraints(context);
     }
 
     @TruffleBoundary
@@ -71,6 +74,44 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
+    public Klass[] getLoadedClassesByLoader(StaticObject classLoader) {
+        if (classLoader == StaticObject.NULL) {
+            return bootClassRegistry.classes.values().toArray(new Klass[0]);
+        }
+        return registries.get(classLoader).getLoadedKlasses();
+    }
+
+    @TruffleBoundary
+    public Klass[] findLoadedClassAny(Symbol<Type> type) {
+        ArrayList<Klass> klasses = new ArrayList<>();
+        // look in boot class registry
+        if (bootClassRegistry.classes.containsKey(type)) {
+            klasses.add(bootClassRegistry.classes.get(type));
+            // if a type loaded by the boot loader, there can't
+            // be any others, so return immediately
+            return klasses.toArray(new Klass[0]);
+        }
+        // continue search in all other registries
+        for (ClassRegistry registry : registries.values()) {
+            if (registry != null && registry.classes != null && registry.classes.containsKey(type)) {
+                klasses.add(registry.classes.get(type));
+            }
+        }
+        return klasses.toArray(new Klass[0]);
+    }
+
+    @TruffleBoundary
+    public Klass[] getAllLoadedClasses() {
+        // add classes from boot registry
+        ArrayList<Klass> list = new ArrayList<>(bootClassRegistry.classes.values());
+        // add classes from all other registries
+        for (ClassRegistry registry : registries.values()) {
+            list.addAll(registry.classes.values());
+        }
+        return list.toArray(Klass.EMPTY_ARRAY);
+    }
+
+    @TruffleBoundary
     public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
         return loadKlass(type, StaticObject.NULL);
     }
@@ -78,8 +119,6 @@ public final class ClassRegistries {
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-
-        // System.err.println("loadKlass: " + type + " " + classLoader);
 
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
@@ -99,7 +138,6 @@ public final class ClassRegistries {
                         });
 
         return registry.loadKlass(type);
-
     }
 
     @TruffleBoundary
@@ -118,23 +156,34 @@ public final class ClassRegistries {
         return registry.defineKlass(type, bytes);
     }
 
-    @TruffleBoundary
-    public Klass putKlass(Symbol<Type> type, ObjectKlass klass, StaticObject classLoader) {
-        assert classLoader != null;
-
-        ClassRegistry registry = StaticObject.isNull(classLoader)
-                        ? bootClassRegistry
-                        : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
-                            @Override
-                            public ClassRegistry apply(StaticObject cl) {
-                                return new GuestClassRegistry(context, cl);
-                            }
-                        });
-
-        return registry.putKlass(type, klass);
+    public BootClassRegistry getBootClassRegistry() {
+        return (BootClassRegistry) bootClassRegistry;
     }
 
-    public final BootClassRegistry getBootClassRegistry() {
-        return (BootClassRegistry) bootClassRegistry;
+    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+        Symbol<Type> toCheck = context.getTypes().getElementalType(type);
+        if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
+            constraints.checkConstraint(toCheck, loader1, loader2);
+        }
+    }
+
+    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+        assert !Types.isArray(type);
+        if (!Types.isPrimitive(type)) {
+            constraints.recordConstraint(type, klass, loader);
+        }
+    }
+
+    public long getLoadedClassesCount() {
+        long result = bootClassRegistry.classes.size();
+        for (ClassRegistry registry : registries.values()) {
+            result += registry.classes.size();
+        }
+        assert result >= 0;
+        return result;
+    }
+
+    public boolean isClassLoader(StaticObject object) {
+        return registries.keySet().contains(object);
     }
 }

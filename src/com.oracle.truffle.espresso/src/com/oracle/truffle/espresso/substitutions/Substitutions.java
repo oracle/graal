@@ -26,9 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -36,6 +38,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -108,6 +111,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 public final class Substitutions implements ContextAccess {
 
+    private static final TruffleLogger SubstitutionsLogger = TruffleLogger.getLogger(EspressoLanguage.ID, Substitutions.class);
+
     public static void init() {
         /* nop */
     }
@@ -153,7 +158,7 @@ public final class Substitutions implements ContextAccess {
         private final Symbol<Signature> signature;
         private final int hash;
 
-        public MethodRef(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
+        MethodRef(Symbol<Type> clazz, Symbol<Name> methodName, Symbol<Signature> signature) {
             this.clazz = clazz;
             this.methodName = methodName;
             this.signature = signature;
@@ -181,7 +186,7 @@ public final class Substitutions implements ContextAccess {
 
         @Override
         public String toString() {
-            return "MethodKey<" + clazz + "." + methodName + " -> " + signature + ">";
+            return Types.binaryName(clazz) + "#" + methodName + signature;
         }
     }
 
@@ -200,7 +205,7 @@ public final class Substitutions implements ContextAccess {
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {
-                return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutorFactory, espressoMethod));
+                return EspressoRootNode.create(null, new IntrinsicSubstitutorRootNode(substitutorFactory, espressoMethod));
             }
         };
         registerStaticSubstitution(classType, methodName, signature, factory, true);
@@ -217,12 +222,19 @@ public final class Substitutions implements ContextAccess {
     public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
 
-        EspressoError.warnIf(STATIC_SUBSTITUTIONS.containsKey(key), String.format("Runtime substitution shadowed by static one %s", key));
+        if (STATIC_SUBSTITUTIONS.containsKey(key)) {
+            SubstitutionsLogger.log(Level.FINE, "Runtime substitution shadowed by static one: {0}", key);
+        }
 
         if (throwIfPresent && runtimeSubstitutions.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);
         }
         runtimeSubstitutions.put(key, factory);
+    }
+
+    public void removeRuntimeSubstitution(Method method) {
+        MethodRef key = getMethodKey(method);
+        runtimeSubstitutions.remove(key);
     }
 
     public EspressoRootNode get(Method method) {

@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.verifier;
 
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Double;
@@ -20,7 +42,7 @@ class StackFrame {
     // For stackMap extraction
     int lastLocal;
 
-    StackFrame(Stack stack, Locals locals) {
+    StackFrame(OperandStack stack, Locals locals) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -28,7 +50,7 @@ class StackFrame {
         this.subroutineModificationStack = locals.subRoutineModifications;
     }
 
-    StackFrame(Stack stack, Operand[] locals) {
+    StackFrame(OperandStack stack, Operand[] locals) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -36,7 +58,7 @@ class StackFrame {
         this.subroutineModificationStack = null;
     }
 
-    StackFrame(Stack stack, Operand[] locals, SubroutineModificationStack sms) {
+    StackFrame(OperandStack stack, Operand[] locals, SubroutineModificationStack sms) {
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -45,7 +67,7 @@ class StackFrame {
     }
 
     StackFrame(MethodVerifier mv) {
-        this(new Stack(mv.getMaxStack()), new Locals(mv));
+        this(new OperandStack(mv.getMaxStack()), new Locals(mv));
         int last = (mv.isStatic() ? -1 : 0);
         for (int i = 0; i < mv.getSig().length - 1; i++) {
             if (isType2(locals[++last])) {
@@ -71,8 +93,8 @@ class StackFrame {
         this.subroutineModificationStack = sms;
     }
 
-    Stack extractStack(int maxStack) {
-        Stack res = new Stack(maxStack);
+    OperandStack extractStack(int maxStack) {
+        OperandStack res = new OperandStack(maxStack);
         System.arraycopy(stack, 0, res.stack, 0, top);
         res.size = stackSize;
         res.top = top;
@@ -92,18 +114,17 @@ class StackFrame {
         if (other == subroutineModificationStack) {
             return;
         }
-        assert subroutineModificationStack.depth() == other.depth();
         subroutineModificationStack.merge(other);
     }
 }
 
-class Stack {
+final class OperandStack {
     final Operand[] stack;
 
     int top;
     int size;
 
-    Stack(int maxStack) {
+    OperandStack(int maxStack) {
         this.stack = new Operand[maxStack];
         this.top = 0;
         this.size = 0;
@@ -389,13 +410,22 @@ class Stack {
     }
 
     int mergeInto(StackFrame stackFrame) {
-        if (top != stackFrame.stack.length) {
+        if (size != stackFrame.stackSize) {
             throw new VerifyError("Inconsistent stack height: " + top + " != " + stackFrame.stack.length);
         }
-        for (int i = 0; i < top; i++) {
-            if (!stack[i].compliesWithInMerge(stackFrame.stack[i])) {
-                return i;
+        int secondIndex = 0;
+        for (int index = 0; index < top; index++) {
+            Operand op1 = stack[index];
+            Operand op2 = stackFrame.stack[secondIndex++];
+            if (!op1.compliesWithInMerge(op2)) {
+                return index;
             }
+            if (isType2(op1) && op2 == Invalid) {
+                if (stackFrame.stack[secondIndex++] != Invalid) {
+                    throw new VerifyError("Inconsistent stack Map: " + op1 + " vs. " + op2 + " and " + stackFrame.stack[secondIndex - 1]);
+                }
+            }
+
         }
         return -1;
     }
@@ -411,7 +441,7 @@ class Stack {
     }
 }
 
-class Locals {
+final class Locals {
     Operand[] registers;
 
     // Created an inherited in the verifier.
@@ -426,7 +456,7 @@ class Locals {
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
-            if (mv.getMethodName() == Name.INIT) {
+            if (Name._init_.equals(mv.getMethodName())) {
                 registers[index++] = new UninitReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
             } else {
                 registers[index++] = new ReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
@@ -526,10 +556,10 @@ class Locals {
     }
 }
 
-class SubroutineModificationStack {
+final class SubroutineModificationStack {
     SubroutineModificationStack next;
     boolean[] subRoutineModifications;
-    int subroutineBCI;
+    int jsrBCI;
     int depth;
 
     SubroutineModificationStack(SubroutineModificationStack next, boolean[] subRoutineModifications, int bci) {
@@ -540,14 +570,14 @@ class SubroutineModificationStack {
             depth = 1 + next.depth();
         }
         this.subRoutineModifications = subRoutineModifications;
-        this.subroutineBCI = bci;
+        this.jsrBCI = bci;
     }
 
     static SubroutineModificationStack copy(SubroutineModificationStack tocopy) {
         if (tocopy == null) {
             return null;
         }
-        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.subroutineBCI);
+        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.jsrBCI);
     }
 
     public void merge(SubroutineModificationStack other) {

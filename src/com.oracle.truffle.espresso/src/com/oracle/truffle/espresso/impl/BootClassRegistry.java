@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -46,49 +44,36 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadKlassCount = DebugCounter.create("BCL loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
 
+    @Override
+    protected void loadKlassCountInc() {
+        loadKlassCount.inc();
+    }
+
+    @Override
+    protected void loadKlassCacheHitsInc() {
+        loadKlassCacheHits.inc();
+    }
+
     private final Map<String, String> packageMap = new ConcurrentHashMap<>();
 
     public BootClassRegistry(EspressoContext context) {
         super(context);
-        // Primitive classes do not have a .class definition, inject them directly in the BCL.
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive()) {
-                classes.put(kind.getType(), new PrimitiveKlass(context, kind));
-            }
-        }
     }
 
     @Override
-    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
-        if (Types.isArray(type)) {
-            Symbol<Type> elemental = getTypes().getElementalType(type);
-            Klass elementalKlass = loadKlass(elemental);
-            if (elementalKlass == null) {
-                return null;
-            }
-            return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
+    public Klass loadKlassImpl(Symbol<Type> type) {
+        if (Types.isPrimitive(type)) {
+            return null;
         }
-
-        loadKlassCount.inc();
-
-        Klass klass = classes.get(type);
-        if (klass != null) {
-            loadKlassCacheHits.inc();
-            return klass;
-        }
-
-        EspressoError.guarantee(!Types.isPrimitive(type), "Primitives must be in the registry");
-
         ClasspathFile classpathFile = getContext().getBootClasspath().readClassFile(type);
         if (classpathFile == null) {
             return null;
         }
-
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        ObjectKlass result = defineKlass(type, classpathFile.contents, instigator);
+        ObjectKlass result = defineKlass(type, classpathFile.contents);
+        getRegistries().recordConstraint(type, result, getClassLoader());
         packageMap.put(result.getRuntimePackage(), classpathFile.classpathEntry.path());
-
         return result;
     }
 
@@ -97,8 +82,8 @@ public final class BootClassRegistry extends ClassRegistry {
         return result;
     }
 
-    public String[] getPackagePaths() {
-        return packageMap.values().toArray(new String[0]);
+    public String[] getPackages() {
+        return packageMap.keySet().toArray(new String[0]);
     }
 
     @Override

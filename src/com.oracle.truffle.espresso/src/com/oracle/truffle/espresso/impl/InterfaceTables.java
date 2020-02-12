@@ -26,9 +26,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * 3 pass interface table constructor helper:
@@ -43,23 +45,23 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
  * - Third pass is performed just after second. Using the now correct vtable and mirandas, perform a
  * simple mapping from the helper table to the final itable.
  */
-class InterfaceTables {
+final class InterfaceTables {
 
-    static private final Comparator<TableData> SORTER = new Comparator<TableData>() {
+    private static final Comparator<TableData> SORTER = new Comparator<TableData>() {
         @Override
         public int compare(TableData o1, TableData o2) {
-            return Integer.compare(o1.klass.getID(), o2.klass.getID());
+            return Integer.compare(o1.klass.getId(), o2.klass.getId());
         }
     };
 
-    static private final Entry[][] EMPTY_ENTRY_DUAL_ARRAY = new Entry[0][];
-    static private final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
+    private static final Entry[][] EMPTY_ENTRY_DUAL_ARRAY = new Entry[0][];
+    private static final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
 
     private final ObjectKlass thisKlass;
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
     private final ArrayList<Entry[]> tmpTables = new ArrayList<>();
-    private final ArrayList<Klass> tmpKlassTable = new ArrayList<>();
+    private final ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
     private final ArrayList<Method> mirandas = new ArrayList<>();
 
     private enum Location {
@@ -70,10 +72,10 @@ class InterfaceTables {
 
     static class CreationResult {
         Entry[][] tables;
-        Klass[] klassTable;
+        ObjectKlass[] klassTable;
         Method[] mirandas;
 
-        public CreationResult(Entry[][] tables, Klass[] klassTable, Method[] mirandas) {
+        CreationResult(Entry[][] tables, ObjectKlass[] klassTable, Method[] mirandas) {
             TableData[] data = new TableData[klassTable.length];
             for (int i = 0; i < data.length; i++) {
                 data[i] = new TableData(klassTable[i], tables[i]);
@@ -89,21 +91,31 @@ class InterfaceTables {
         }
     }
 
+    static class InterfaceCreationResult {
+        ObjectKlass[] klassTable;
+        Method[] methodtable;
+
+        InterfaceCreationResult(ObjectKlass[] klassTable, Method[] methodtable) {
+            this.klassTable = klassTable;
+            this.methodtable = methodtable;
+        }
+    }
+
     static class TableData {
-        Klass klass;
+        ObjectKlass klass;
         Entry[] table;
 
-        public TableData(Klass klass, Entry[] table) {
+        TableData(ObjectKlass klass, Entry[] table) {
             this.klass = klass;
             this.table = table;
         }
     }
 
-    static class Entry {
+    static final class Entry {
         Location loc;
         int index;
 
-        public Entry(Location loc, int index) {
+        Entry(Location loc, int index) {
             this.loc = loc;
             this.index = index;
         }
@@ -123,20 +135,35 @@ class InterfaceTables {
      * @param declared The declared methods of the interface.
      * @return the requested klass array
      */
-    public static Klass[] getiKlassTable(ObjectKlass thisInterfKlass, Method[] declared) {
-        ArrayList<Klass> tmpKlassTable = new ArrayList<>();
-        for (int i = 0; i < declared.length; i++) {
-            declared[i].setITableIndex(i);
+    public static InterfaceCreationResult constructInterfaceItable(ObjectKlass thisInterfKlass, Method[] declared) {
+        assert thisInterfKlass.isInterface();
+        CompilerAsserts.neverPartOfCompilation();
+        ArrayList<Method> tmpMethodTable = new ArrayList<>();
+        for (Method method : declared) {
+            if (!method.isStatic() && !method.isPrivate()) {
+                method.setITableIndex(tmpMethodTable.size());
+                tmpMethodTable.add(method);
+            }
+            if (!method.isAbstract() && !method.isStatic()) {
+                thisInterfKlass.hasDeclaredDefaultMethods = true;
+            }
         }
+        Method[] methods = tmpMethodTable.toArray(Method.EMPTY_ARRAY);
+        ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
         tmpKlassTable.add(thisInterfKlass);
         for (ObjectKlass interf : thisInterfKlass.getSuperInterfaces()) {
-            for (Klass supInterf : interf.getiKlassTable()) {
+            for (ObjectKlass supInterf : interf.getiKlassTable()) {
                 if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
             }
         }
-        return tmpKlassTable.toArray(Klass.EMPTY_ARRAY);
+        ObjectKlass[] sortedInterfaces = tmpKlassTable.toArray(ObjectKlass.EMPTY_ARRAY);
+        // Interfaces must be sorted, superinterfaces first.
+        // The Klass.ID (class loading counter) can be used, since parent classes/interfaces are
+        // always loaded first.
+        Arrays.sort(sortedInterfaces, Klass.KLASS_ID_COMPARATOR);
+        return new InterfaceCreationResult(sortedInterfaces, methods);
     }
 
     // @formatter:off
@@ -167,14 +194,15 @@ class InterfaceTables {
      * @param iklassTable the interfaces directly and indirectly implemented by thisKlass
      * @return the final itable
      */
-    public static Method[][] fixTables(ObjectKlass thisKlass, Entry[][] tables, Klass[] iklassTable) {
+    public static Method[][] fixTables(ObjectKlass thisKlass, Entry[][] tables, ObjectKlass[] iklassTable) {
         ArrayList<Method[]> tmpTables = new ArrayList<>();
         Method[] vtable = thisKlass.getVTable();
         Method[] mirandas = thisKlass.getMirandaMethods();
 
         // Second step
-        for (int i = 0; i < iklassTable.length; i++) {
-            fixVTable(tables[i], vtable, mirandas, thisKlass.getDeclaredMethods(), iklassTable[i].getDeclaredMethods());
+        // Remember here that the interfaces are sorted, most specific at the end.
+        for (int i = iklassTable.length - 1; i >= 0; i--) {
+            fixVTable(tables[i], vtable, mirandas, thisKlass.getDeclaredMethods(), iklassTable[i].getInterfaceMethodsTable());
         }
         // Third step
         for (Entry[] entries : tables) {
@@ -188,23 +216,23 @@ class InterfaceTables {
     private CreationResult create() {
         for (ObjectKlass interf : superInterfaces) {
             fillMirandas(interf);
-            for (Klass supInterf : interf.getiKlassTable()) {
+            for (ObjectKlass supInterf : interf.getiKlassTable()) {
                 fillMirandas(supInterf);
             }
         }
         // At this point, no more mirandas should be created.
         if (superKlass != null) {
-            for (Klass superKlassInterf : superKlass.getiKlassTable()) {
+            for (ObjectKlass superKlassInterf : superKlass.getiKlassTable()) {
                 fillMirandas(superKlassInterf);
             }
         }
 
-        return new CreationResult(tmpTables.toArray(EMPTY_ENTRY_DUAL_ARRAY), tmpKlassTable.toArray(Klass.EMPTY_ARRAY), mirandas.toArray(Method.EMPTY_ARRAY));
+        return new CreationResult(tmpTables.toArray(EMPTY_ENTRY_DUAL_ARRAY), tmpKlassTable.toArray(ObjectKlass.EMPTY_ARRAY), mirandas.toArray(Method.EMPTY_ARRAY));
     }
 
-    private void fillMirandas(Klass interf) {
+    private void fillMirandas(ObjectKlass interf) {
         if (canInsert(interf, tmpKlassTable)) {
-            Method[] interfMethods = interf.getDeclaredMethods();
+            Method[] interfMethods = interf.getInterfaceMethodsTable();
             Entry[] res = new Entry[interfMethods.length];
             for (int i = 0; i < res.length; i++) {
                 Method im = interfMethods[i];
@@ -229,22 +257,32 @@ class InterfaceTables {
                 case MIRANDAS:
                     virtualMethod = mirandas[index];
                     break;
-                default:
+                case DECLARED:
                     virtualMethod = declared[index];
                     break;
+                default:
+                    throw EspressoError.shouldNotReachHere();
+            }
+            if (!virtualMethod.getDeclaringKlass().isInterface()) {
+                // Current method is a class method: no need to resolve maximally-specific.
+                continue;
             }
             Method interfMethod = interfMethods[i];
-            if (!virtualMethod.hasCode() && interfMethod.hasCode()) {
-                // Abstract method vs. default method: take default and shortcut default conflict
-                // checking.
-                updateEntry(vtable, mirandas, entry, index, virtualMethod, interfMethod);
-            } else if (checkDefaultConflict(virtualMethod, interfMethod)) {
-                Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
-                if (result != virtualMethod) {
-                    updateEntry(vtable, mirandas, entry, index, virtualMethod, result);
-                }
+            if (interfMethod.identity() == virtualMethod.identity()) {
+                continue;
+            }
+            Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
+            if (result != virtualMethod) {
+                updateEntry(vtable, mirandas, entry, index, virtualMethod, virtualize(result, virtualMethod.getVTableIndex()));
             }
         }
+    }
+
+    private static Method virtualize(Method m, int index) {
+        if (m.getVTableIndex() != index) {
+            return new Method(m);
+        }
+        return m;
     }
 
     private static void updateEntry(Method[] vtable, Method[] mirandas, Entry entry, int index, Method virtualMethod, Method toPut) {
@@ -264,6 +302,8 @@ class InterfaceTables {
                 mirandas[index] = newMiranda;
                 newMiranda.setVTableIndex(vtableIndex);
                 break;
+            default:
+                throw EspressoError.shouldNotReachHere();
         }
     }
 
@@ -292,13 +332,16 @@ class InterfaceTables {
 
     private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
         Method m = null;
+        int index = -1;
         if (superKlass != null) {
-            m = superKlass.lookupVirtualMethod(mname, sig, thisKlass);
+            index = superKlass.lookupVirtualMethod(mname, sig, thisKlass);
         }
-        if (m != null) {
-            return new Entry(Location.SUPERVTABLE, m.getVTableIndex());
+        if (index != -1) {
+            m = superKlass.vtableLookup(index);
+            assert index == m.getVTableIndex();
+            return new Entry(Location.SUPERVTABLE, index);
         }
-        int index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), mname, sig);
+        index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }
@@ -316,7 +359,7 @@ class InterfaceTables {
     private static int getDeclaredMethodIndex(Method[] declaredMethod, Symbol<Name> mname, Symbol<Signature> sig) {
         for (int i = 0; i < declaredMethod.length; i++) {
             Method m = declaredMethod[i];
-            if (mname == m.getName() && sig == m.getRawSignature()) {
+            if (!m.isStatic() && mname == m.getName() && sig == m.getRawSignature()) {
                 return i;
             }
         }
@@ -326,7 +369,7 @@ class InterfaceTables {
     private int lookupMirandas(Symbol<Name> mname, Symbol<Signature> sig) {
         int pos = 0;
         for (Method m : mirandas) {
-            if (m.getName() == mname && sig == m.getRawSignature()) {
+            if (!m.isStatic() && m.getName() == mname && sig == m.getRawSignature()) {
                 return pos;
             }
             pos++;
@@ -335,10 +378,6 @@ class InterfaceTables {
     }
 
     // helper checks
-
-    private static boolean checkDefaultConflict(Method m1, Method m2) {
-        return m1.getDeclaringKlass() != m2.getDeclaringKlass() && m1.isDefault() && m2.isDefault();
-    }
 
     private static Method resolveMaximallySpecific(Method m1, Method m2) {
         Klass k1 = m1.getDeclaringKlass();
@@ -353,16 +392,28 @@ class InterfaceTables {
             // it). (5.4.3.3.)
             //
             // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
+            boolean b1 = m1.isAbstract();
+            boolean b2 = m2.isAbstract();
+            if (b1 && b2) {
+                return m1;
+            }
+            if (b1) {
+                return m2;
+            }
+            if (b2) {
+                return m1;
+            }
             Method m = new Method(m2);
             m.setPoisonPill();
             return m;
         }
     }
 
-    private static boolean canInsert(Klass interf, ArrayList<Klass> tmpKlassTable) {
+    private static boolean canInsert(ObjectKlass interf, ArrayList<ObjectKlass> tmpKlassTable) {
         for (Klass k : tmpKlassTable) {
-            if (k == interf)
+            if (k == interf) {
                 return false;
+            }
         }
         return true;
     }

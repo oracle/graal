@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,43 +23,71 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
 @EspressoSubstitutions
 public final class Target_java_lang_System {
 
-    public static final DebugCounter arraycopyCount = DebugCounter.create("arraycopyCount");
-    static final DebugCounter identityHashCodeCount = DebugCounter.create("identityHashCodeCount");
+    private static final DebugCounter SYSTEM_ARRAYCOPY_COUNT = DebugCounter.create("System.arraycopy call count");
+    private static final DebugCounter SYSTEM_IDENTITY_HASH_CODE_COUNT = DebugCounter.create("System.identityHashCode call count");
 
     @Substitution
     public static int identityHashCode(@Host(Object.class) StaticObject self) {
-        identityHashCodeCount.inc();
+        SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
     }
 
     @Substitution
     public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length, @InjectMeta Meta meta) {
-        arraycopyCount.inc();
+        // TODO(tg): inject meta
+        SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
-            // Mimics hotspot implementation.
-            if (src.isArray() && dest.isArray()) {
-                // System.arraycopy does the bounds checks
-                if (src == dest) {
-                    // Same array, no need to type check
+            doArrayCopy(src, srcPos, dest, destPos, length);
+        } catch (NullPointerException e) {
+            throw meta.throwNullPointerException();
+        } catch (ArrayStoreException e) {
+            throw Meta.throwException(meta.java_lang_ArrayStoreException);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // System.arraycopy javadoc states it throws IndexOutOfBoundsException, the
+            // actual implementation throws ArrayIndexOutOfBoundsException (IooBE subclass).
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        }
+    }
+
+    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+        final Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
+            throw meta.throwNullPointerException();
+        }
+        // Mimics hotspot implementation.
+        if (src.isArray() && dest.isArray()) {
+
+            // System.arraycopy does the bounds checks
+            if (src == dest) {
+                // Same array, no need to type check
+                boundsCheck(meta, src, srcPos, dest, destPos, length);
+                System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+            } else {
+                ArrayKlass destKlass = (ArrayKlass) dest.getKlass();
+                ArrayKlass srcKlass = (ArrayKlass) src.getKlass();
+                Klass destType = destKlass.getComponentType();
+                Klass srcType = srcKlass.getComponentType();
+                if (destType.isPrimitive() && srcType.isPrimitive()) {
+                    if (srcType != destType) {
+                        throw Meta.throwException(meta.java_lang_ArrayStoreException);
+                    }
+                    boundsCheck(meta, src, srcPos, dest, destPos, length);
                     System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                } else {
-                    Klass destType = dest.getKlass().getComponentType();
-                    Klass srcType = src.getKlass().getComponentType();
-                    if (destType.isPrimitive() || srcType.isPrimitive()) {
-                        // primitives -> System.arrayCopy detects the arrayStoreException for us
-                        System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                    } else if (destType.isAssignableFrom(srcType)) {
+                } else if (!destType.isPrimitive() && !srcType.isPrimitive()) {
+                    if (destType.isAssignableFrom(srcType)) {
                         // We have guarantee we can copy, as all elements in src conform to dest.
+                        boundsCheck(meta, src, srcPos, dest, destPos, length);
                         System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                     } else {
                         // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
@@ -68,10 +96,7 @@ public final class Target_java_lang_System {
                         // Use cases:
                         // - System startup.
                         // - MethodHandle and CallSite linking.
-                        if (length < 0 || length + srcPos > src.length() || length + destPos > dest.length()){
-                            // Other checks are caught during execution without side effects.
-                            throw new ArrayIndexOutOfBoundsException();
-                        }
+                        boundsCheck(meta, src, srcPos, dest, destPos, length);
                         StaticObject[] s = src.unwrap();
                         StaticObject[] d = dest.unwrap();
                         for (int i = 0; i < length; i++) {
@@ -79,24 +104,23 @@ public final class Target_java_lang_System {
                             if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
                                 d[destPos + i] = cpy;
                             } else {
-                                throw new ArrayStoreException();
+                                throw Meta.throwException(meta.java_lang_ArrayStoreException);
                             }
                         }
                     }
+                } else {
+                    throw Meta.throwException(meta.java_lang_ArrayStoreException);
                 }
-            } else {
-                assert src.getClass().isArray();
-                assert dest.getClass().isArray();
-                System.arraycopy(src, srcPos, dest, destPos, length);
             }
-        } catch (NullPointerException | ArrayStoreException | IndexOutOfBoundsException e) {
-            // Should catch NPE if src or dest is null, and ArrayStoreException.
-            throw meta.throwExWithMessage(e.getClass(), e.getMessage());
+        } else {
+            throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
 
-    @Substitution
-    public static void exit(int code) {
-        throw new EspressoExitException(code);
+    private static void boundsCheck(Meta meta, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos > src.length() - length || destPos > dest.length() - length) {
+            // Other checks are caught during execution without side effects.
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        }
     }
 }

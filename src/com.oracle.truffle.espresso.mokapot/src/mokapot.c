@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 #include "mokapot.h"
 
 #include <trufflenfi.h>
@@ -17,14 +39,6 @@ MokapotEnv *mokaEnv = NULL;
 void* getJavaVM(TruffleEnv *truffle_env) {
   return (*mokaEnv)->vm;
 }
-
-#define UNIMPLEMENTED(name) \
-  fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
-
-#define IMPLEMENTED(name) do {} while (0);
-
-// Methods implemented in C (not Java call)
-#define NATIVE(name) do {} while (0);
 
 // macros for restartable system calls
 
@@ -92,6 +106,14 @@ void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
   VM_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
 
+  struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_ *)(*(functions->vm));
+  #define DISPOSE_INVOCATION_API__(name) \
+      (*truffle_env)->releaseClosureRef(truffle_env, java_vm_functions->name); \
+      java_vm_functions->name = NULL;
+
+  JNI_INVOKE_INTERFACE_METHODS(DISPOSE_INVOCATION_API__)
+  #undef DISPOSE_INVOCATION_API__
+
   free((*moka_env)->vm);
   functions->vm = NULL;
   free(functions);
@@ -130,7 +152,7 @@ jobject JVM_Clone(JNIEnv *env, jobject obj) {
 }
 
 jstring JVM_InternString(JNIEnv *env, jstring str) {
-  IMPLEMENTED(JVM_InternString);  
+  IMPLEMENTED(JVM_InternString);
   return (*getEnv())->JVM_InternString(env, str);
 }
 
@@ -140,8 +162,8 @@ jlong JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored) {
 }
 
 jlong JVM_NanoTime(JNIEnv *env, jclass ignored) {
-  IMPLEMENTED(JVM_NanoTime);  
-  return (*getEnv())->JVM_NanoTime(env, ignored);  
+  IMPLEMENTED(JVM_NanoTime);
+  return (*getEnv())->JVM_NanoTime(env, ignored);
 }
 
 void JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
@@ -205,7 +227,7 @@ jlong JVM_MaxMemory(void) {
 }
 
 jint JVM_ActiveProcessorCount(void) {
-  IMPLEMENTED(JVM_ActiveProcessorCount);  
+  IMPLEMENTED(JVM_ActiveProcessorCount);
   return (*getEnv())->JVM_ActiveProcessorCount();
 }
 
@@ -262,12 +284,12 @@ jboolean JVM_IsSilentCompiler(JNIEnv *env, jclass compCls) {
 jboolean JVM_CompileClass(JNIEnv *env, jclass compCls, jclass cls) {
   IMPLEMENTED(JVM_CompileClass);
   // According to hotspot:
-  
+
 	// java.lang.Compiler //
 	/** The initial cuts of the HotSpot VM will not support JITs, and all existing
 	 * JITs would need extensive changes to work with HotSpot.  The JIT-related JVM
 	 * functions are all silently ignored unless JVM warnings are printed.
-	 */ 
+	 */
   return 0;
 }
 
@@ -362,8 +384,8 @@ void JVM_DumpAllStacks(JNIEnv *env, jclass unused) {
 }
 
 jobjectArray JVM_GetAllThreads(JNIEnv *env, jclass dummy) {
-  UNIMPLEMENTED(JVM_GetAllThreads);
-  return NULL;
+  IMPLEMENTED(JVM_GetAllThreads);
+  return (*getEnv())->JVM_GetAllThreads(env, dummy);
 }
 
 void JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jstring name) {
@@ -377,13 +399,13 @@ jobjectArray JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threa
 }
 
 jclass JVM_CurrentLoadedClass(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_CurrentLoadedClass);
-  return NULL;
+  IMPLEMENTED(JVM_CurrentLoadedClass);
+  return (*getEnv())->JVM_CurrentLoadedClass(env);
 }
 
 jobject JVM_CurrentClassLoader(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_CurrentClassLoader);
-  return NULL;
+  IMPLEMENTED(JVM_CurrentClassLoader);
+  return (*getEnv())->JVM_CurrentClassLoader(env);
 }
 
 jobjectArray JVM_GetClassContext(JNIEnv *env) {
@@ -392,13 +414,13 @@ jobjectArray JVM_GetClassContext(JNIEnv *env) {
 }
 
 jint JVM_ClassDepth(JNIEnv *env, jstring name) {
-  UNIMPLEMENTED(JVM_ClassDepth);
-  return 0;
+  IMPLEMENTED(JVM_ClassDepth);
+  return (*getEnv())->JVM_ClassDepth(env, name);
 }
 
 jint JVM_ClassLoaderDepth(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_ClassLoaderDepth);
-  return 0;
+  IMPLEMENTED(JVM_ClassLoaderDepth);
+  return (*getEnv())->JVM_ClassLoaderDepth(env);
 }
 
 jstring JVM_GetSystemPackage(JNIEnv *env, jstring name) {
@@ -432,7 +454,7 @@ jclass JVM_LoadClass0(JNIEnv *env, jobject obj, jclass currClass, jstring currCl
 }
 
 jint JVM_GetArrayLength(JNIEnv *env, jobject arr) {
-  IMPLEMENTED(JVM_GetArrayLength);  
+  IMPLEMENTED(JVM_GetArrayLength);
   return (*getEnv())->JVM_GetArrayLength(env, arr);
 }
 
@@ -565,8 +587,8 @@ jclass JVM_GetComponentType(JNIEnv *env, jclass cls) {
 }
 
 jint JVM_GetClassModifiers(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassModifiers);
-  return 0;
+  IMPLEMENTED(JVM_GetClassModifiers);
+  return (*getEnv())->JVM_GetClassModifiers(env, cls);
 }
 
 jobjectArray JVM_GetDeclaredClasses(JNIEnv *env, jclass ofClass) {
@@ -715,18 +737,18 @@ jobjectArray JVM_GetMethodParameters(JNIEnv *env, jobject method) {
 }
 
 jobject JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
-  UNIMPLEMENTED(JVM_DoPrivileged);
-  return NULL;
+  IMPLEMENTED(JVM_DoPrivileged);
+  return (*getEnv())->JVM_DoPrivileged(env, cls, action, context, wrapException);
 }
 
 jobject JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetInheritedAccessControlContext);
-  return NULL;
+  IMPLEMENTED(JVM_GetInheritedAccessControlContext);
+  return (*getEnv())->JVM_GetInheritedAccessControlContext(env, cls);
 }
 
 jobject JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetStackAccessControlContext);
-  return NULL;
+  IMPLEMENTED(JVM_GetStackAccessControlContext);
+  return (*getEnv())->JVM_GetStackAccessControlContext(env, cls);
 }
 
 void *JVM_RegisterSignal(jint sig, void *handler) {
@@ -942,8 +964,18 @@ jboolean JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jclass class2) {
 }
 
 jint JVM_GetLastErrorString(char *buf, int len) {
-  UNIMPLEMENTED(JVM_GetLastErrorString);
-  return 0;
+  NATIVE(JVM_GetLastErrorString);
+
+  if (errno == 0)  return 0;
+
+  const char *s = strerror(errno);
+  size_t n = strlen(s);
+  if (n >= len) {
+    n = len - 1;
+  }
+  strncpy(buf, s, n);
+  buf[n] = '\0';
+  return n;
 }
 
 char *JVM_NativePath(char *pathname) {
@@ -952,26 +984,86 @@ char *JVM_NativePath(char *pathname) {
   return pathname;
 }
 
-jint JVM_Open(const char *path, jint oflag, jint mode) {
-  NATIVE(JVM_OPEN);
-  FD fd;
-  RESTARTABLE(open(path, oflag, mode), fd);
-  if (fd != -1) {
-    struct stat buf64;
-    int result;
-    RESTARTABLE(fstat(fd, &buf64), result);
-    if (result != -1) {
-      if (S_ISDIR(buf64.st_mode)) {
-        close(fd);
+int __open(const char *path, int oflag, int mode) {
+    if (strlen(path) > MAX_PATH - 1) {
+    errno = ENAMETOOLONG;
+    return -1;
+  }
+  int fd;
+  int o_delete = (oflag & O_DELETE);
+  oflag = oflag & ~O_DELETE;
+
+  fd = open(path, oflag, mode);
+  if (fd == -1) return -1;
+
+  //If the open succeeded, the file might still be a directory
+  {
+    struct stat buf;
+    int ret = fstat(fd, &buf);
+    int st_mode = buf.st_mode;
+
+    if (ret != -1) {
+      if ((st_mode & S_IFMT) == S_IFDIR) {
         errno = EISDIR;
-        fd = -1;
-        }
-      } else {
+        close(fd);
+        return -1;
+      }
+    } else {
       close(fd);
-      fd = -1;
+      return -1;
     }
   }
+
+    /*
+     * All file descriptors that are opened in the JVM and not
+     * specifically destined for a subprocess should have the
+     * close-on-exec flag set.  If we don't set it, then careless 3rd
+     * party native code might fork and exec without closing all
+     * appropriate file descriptors (e.g. as we do in closeDescriptors in
+     * UNIXProcess.c), and this in turn might:
+     *
+     * - cause end-of-file to fail to be detected on some file
+     *   descriptors, resulting in mysterious hangs, or
+     *
+     * - might cause an fopen in the subprocess to fail on a system
+     *   suffering from bug 1085341.
+     *
+     * (Yes, the default setting of the close-on-exec flag is a Unix
+     * design flaw)
+     *
+     * See:
+     * 1085341: 32-bit stdio routines should support file descriptors >255
+     * 4843136: (process) pipe file descriptor from Runtime.exec not being closed
+     * 6339493: (process) Runtime.exec does not close all file descriptors on Solaris 9
+     */
+#ifdef FD_CLOEXEC
+    {
+        int flags = fcntl(fd, F_GETFD);
+        if (flags != -1)
+            fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+#endif
+
+  if (o_delete != 0) {
+    unlink(path);
+  }
+
   return fd;
+}
+
+jint JVM_Open(const char *fname, jint flags, jint mode) {
+  NATIVE(JVM_Open);
+  int result = __open(fname, flags, mode);
+  if (result >= 0) {
+    return result;
+  } else {
+    switch(errno) {
+      case EEXIST:
+        return JVM_EEXIST;
+      default:
+        return -1;
+    }
+  }
 }
 
 jint JVM_Close(jint fd) {
@@ -1012,7 +1104,7 @@ jint JVM_Sync(jint fd) {
 // Networking library support
 
 jint JVM_InitializeSocketLibrary(void) {
-  NATIVE(JVM_InitializeSocketLibrary);  
+  NATIVE(JVM_InitializeSocketLibrary);
   // Mimics HotSpot.
   return 0;
 }
@@ -1183,8 +1275,8 @@ static JNIEnv* getGuestJNI() {
 void *JVM_RawMonitorCreate(void) {
   NATIVE(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
-  JNIEnv* jniEnv = getGuestJNI();  
-  jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java.lang.Object");
+  JNIEnv* jniEnv = getGuestJNI();
+  jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java/lang/Object");
   jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
   jobject lock = (*jniEnv)->NewObject(jniEnv, java_lang_Object, constructor);
   return (void*) (*jniEnv)->NewGlobalRef(jniEnv, lock);
@@ -1210,8 +1302,8 @@ void JVM_RawMonitorExit(void *mon) {
 }
 
 void *JVM_GetManagement(jint version) {
-  UNIMPLEMENTED(JVM_GetManagement);
-  return NULL;
+  IMPLEMENTED(JVM_GetManagement);
+  return (*getEnv())->JVM_GetManagement(version);
 }
 
 jobject JVM_InitAgentProperties(JNIEnv *env, jobject agent_props) {
@@ -1259,7 +1351,7 @@ void JVM_GetVersionInfo(JNIEnv *env, jvm_version_info *info, size_t info_size) {
 }
 
 void JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
-									 jobject dstObj, jlong dstOffset, 
+									 jobject dstObj, jlong dstOffset,
 									 jlong size,     jlong elemSize) {
   UNIMPLEMENTED(JVM_CopySwapMemory);
 }
@@ -1310,6 +1402,15 @@ int JVM_handle_linux_signal(int sig,
   return 0;
 }
 
+// region Invocation API
+
+jint JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {
+    IMPLEMENTED(JNI_GetCreatedJavaVMs);
+    return (*getEnv())->JNI_GetCreatedJavaVMs(vm_buf, buf_len, numVMs);
+}
+
+// endregion Invocation API
+
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
     NATIVE(jio_vsnprintf);
     return vsnprintf(str, count, fmt, args);
@@ -1332,7 +1433,7 @@ int jio_fprintf(FILE *file, const char *fmt, ...) {
   va_start(args, fmt);
   len = jio_vfprintf(file, fmt, args);
   va_end(args);
-  return len; 
+  return len;
 }
 
 int jio_vfprintf(FILE *file, const char *fmt, va_list args) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Utils {
 
-    public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
+    public static NativeSimpleType kindToType(JavaKind kind) {
         switch (kind) {
             case Boolean:
                 return NativeSimpleType.SINT8; // ?
@@ -58,11 +59,7 @@ public final class Utils {
             case Object:
                 // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
                 // NULL instead.
-
-                return javaToNative
-                                ? NativeSimpleType.NULLABLE
-                                : NativeSimpleType.OBJECT;
-
+                return NativeEnv.word();
             default:
                 throw EspressoError.shouldNotReachHere();
         }

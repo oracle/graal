@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ public final class EspressoError extends Error {
         private final Method method;
         private final int bci;
 
-        public Frame(Method method, int bci) {
+        Frame(Method method, int bci) {
 
             this.method = method;
             this.bci = bci;

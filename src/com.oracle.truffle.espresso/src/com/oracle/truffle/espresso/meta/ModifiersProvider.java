@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ public interface ModifiersProvider {
 
     /**
      * Since we do not have direct access to the Varargs flag, we use the transient flag (that has
-     * the same value)
+     * the same value).
      */
     default boolean isVarargs() {
         return Modifier.isTransient(getModifiers());

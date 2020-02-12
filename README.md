@@ -1,81 +1,99 @@
-# :coffee: Espresso²
-A Java bytecode meta-interpreter on top of [Truffle](https://github.com/oracle/graal/tree/master/truffle).
+# Espresso :coffee:
+A meta-circular Java bytecode interpreter for the [GraalVM](https://github.com/oracle/graal).  
+Espresso is a fully meta-circular implementation of [The Java Virtual Machine Specification, Java SE 8 Edition](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html), written in Java, capable of running non-trivial programs at speed.  
+A Java bytecode interpreter at its core, turned Just-In-Time (JIT) compiler by leveraging [Truffle](https://github.com/oracle/graal/tree/master/truffle) and the Graal compiler on the GraalVM.  
+It highlights the sublime potential of the GraalVM as a platform for implementing high-performance languages and runtimes.
 
-Espresso can run way past HelloWorld; it can run a toy web server, terminal Tetris, a ray-tracer written in Scala and much more.  
-**Espresso is written entirely in Java, it can run `javac` and compile itself.**  
-**It can interpret itself, on top of itself... any number of layers deep.**
+## Status
+Espresso is still an early prototype, but it already passes **>99.99%** of the JCK 8b runtime suite.  
+It can run some non-trivial applications:
+  - Eclipse Neon (4.6)
+  - Minecraft 1.2
+  - Scala REPLs (2.11-13 + Dotty)
+  - Nashorn
+  - Groovy REPL
+  - [Mochadoom](https://github.com/AXDOOMER/mochadoom) Doom Java port
+  - [kotNES](https://github.com/suchaHassle/kotNES) NES emulator written in Kotlin
+  - [coffee-gb](https://github.com/trekawek/coffee-gb) GB Color emulator
+  - jEdit 5.5.0
 
+Espresso can compile itself with both `javac` and the Eclipse Java Compiler `ecj`.  
+It features complete meta-circularity: it can run itself any amount of layers deep, preserving all the capabilities (Unsafe, JNI, Reflection...) of the base layer. Running HelloWorld on three nested layers of Espresso takes **~15 minutes**.  
 
-### Features
-  - Meta-interpreter, fully self-hosted, able to compile itself and run on top of itself
-  - PE-friendly bytecode interpreter
-  - Single-pass `.class` file parser
-  - JNI-in-Java implementation (libnespresso)
-  - libjvm-in-Java implementation (libmokapot)
-  - Standalone native-image via SubstrateVM
+Espresso's development (Espresso on HotSpot) is supported only on Linux.  
+**Espresso's native image runs on Linux and MacOS.**
 
-### Not supported (yet)
-  - Modules
-  - Interop
-  - Class/access-checks/error-reporting
-  - Full Java spec compliance (e.g. class loading and initialization, access checks)
-
-## _Espresso_ setup
-Espresso needs some patches to run; checkout the `mokapot` branch on the graal repo (internal branch not available on GitHub):
+## Setup
+Espresso needs some patches (in the graal repo) to run; checkout the `slimbeans` branch on the graal repo (internal branch not available on GitHub):
 ```bash
 cd ../graal
-git checkout mokapot
+git checkout slimbeans
 ```
-Always use `master` for Espresso and the `mokapot` branch on the graal repo. 
+Always use `master` for Espresso and the `slimbeans` branch on the graal repo.
 
-## _Espresso_ interpreter
-Use `mx espresso` which mimics the `java` (8) command.
+### Building _Espresso_
+On the `espresso` repository:
 ```bash
-mx espresso -help
-mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
-# or just
-mx espresso-playground HelloWorld
+mx build
+mx unittest --suite espresso
 ```
 
-## _Espresso_ + compilation enabled
+### Building _Espresso_ native image
+The Espresso native image is built as part of a GraalVM, it reuses all the jars and native libraries bundled with GraalVM. 
 ```bash
-# Executes a prime-sieve
-mx --dy /compiler --jdk jvmci espresso-playground TestMain
-mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
-```
+mx --env native-ce build
+export ESPRESSO=`mx --env native-ce graalvm-home`/bin/espresso
 
-## Terminal tetris
-`mx espresso-playground` is a handy shortcut to run test programs bundled with Espresso.
-```bash
-mx espresso-playground Tetris
+# Run HelloWorld
+mx build
+time $ESPRESSO -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
+Configuration files: `mx.espresso/{jvm,jvm-ce,native-ce}` and `mx.espresso/native-image.properties`
 
-## Dumping IGV graphs
-```bash
-mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
-```
-
-## _Espresso_ unit tests
-Most unit tests are executed in the same context.
+### Running _Espresso_ unit tests
+Espresso runs a sub-set of the Graal compiler tests. For performance reasons, most unit tests are executed in the same context.
 ```bash
 mx unittest --suite espresso
 ```
 
-## _Espresso_ + SubstrateVM
+## Running _Espresso_
+`mx espresso` mimics `java` (8). By default `mx espresso` runs on interpreter-only mode.
 ```bash
-# Build Espresso native image
-mx --env espresso.svm build
-export ESPRESSO_NATIVE=`mx --env espresso.svm graalvm-home`/bin/espresso
-# Run HelloWorld
-time $ESPRESSO_NATIVE -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+mx espresso -help
+mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+# or just
+mx espresso-playground Tetris
 ```
-The Espresso native image assumes it's part of the GraalVM to derive the boot classpath and other essential parameters needed to boot the VM.
 
-## Espressoⁿ Java-ception
-**Self-hosting requires a Linux distro with an up-to-date libc. Works on HotSpot (no SVM support yet)**  
-Use `mx espresso-meta` to run programs on Espresso². Be sure to preprend `LD_DEBUG=unused` to overcome a known libc bug.  
+### _Espresso_ + compilation enabled
+```bash
+mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+mx --dy /compiler --jdk jvmci espresso-playground TestMain
+```
+
+### Terminal tetris
+`mx espresso-playground` is a handy shortcut to run test programs bundled with Espresso (espresso-playground distribution).
+```bash
+mx espresso-playground Tetris
+# Or also
+mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+
+# MacOS does not support Espresso on HotSpot, use the native image instead.
+$ESPRESSO -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
+```
+
+### Dumping IGV graphs
+```bash
+mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+```
+
+
+## _Espressoⁿ_ Java-ception
+**Self-hosting requires a Linux distribution with an up-to-date glibc.**
+Use `mx espresso-meta` to run programs on Espresso². Be sure to prepend `LD_DEBUG=unused` to overcome a known **glibc** bug.  
 To run Tetris on Espresso² execute the following:
 ```bash
+mx build
 LD_DEBUG=unused mx --dy /compiler --jdk jvmci espresso-meta -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
-It will take quite some time, only the bottom layer gets compilation. Once Tetris starts it will be very laggy, it will take ~10 pieces (for compilation to catch-up) to be relatively fluid. Enjoy!
+It takes some time for both (nested) VMs to boot, only the base layer is blessed with JIT compilation. Enjoy!

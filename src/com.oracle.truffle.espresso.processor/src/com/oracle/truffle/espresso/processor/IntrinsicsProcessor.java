@@ -1,4 +1,28 @@
+/*
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.processor;
+
+import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -7,8 +31,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ReferenceType;
-import java.util.List;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
@@ -43,7 +65,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
                 String arg = parameter.asType().toString();
                 String result = extractSimpleType(arg);
                 parameterTypeNames.add(result);
-                referenceTypes.add((parameter.asType() instanceof ReferenceType));
+                referenceTypes.add((!parameter.asType().getKind().isPrimitive()));
             }
         }
     }
@@ -66,14 +88,14 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
                     if (value != null) {
                         sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
                     } else {
-                        sb.append(classToType(param.asType().toString(), false));
+                        sb.append(classToType(param.asType().toString()));
                     }
                 } else {
-                    sb.append(classToType(param.asType().toString(), false));
+                    sb.append(classToType(param.asType().toString()));
                 }
             }
         }
-        sb.append("): ").append(classToType(returnType, true));
+        sb.append("): ").append(classToType(returnType));
         return sb.toString();
     }
 
@@ -81,7 +103,10 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
         if (isNonPrimitive) {
-            return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
+            if (!clazz.equals("StaticObject")) {
+                return decl + genIsNull(obj) + " ? " + "null" + " : " + castTo(obj, clazz) + ";\n";
+            }
+            return decl + "env.getHandles().get(Math.toIntExact((long) " + obj + "))" + ";\n";
         }
         switch (clazz) {
             case "boolean":
@@ -106,7 +131,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             str.append(ARG_NAME).append(i);
         }
         first = appendInvocationMetaInformation(str, guestCalls, hasMetaInjection, first);
-        str.append(");\n");
+        str.append(")"); // ;\n");
         return str.toString();
     }
 }

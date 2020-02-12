@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -77,25 +80,21 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    @SuppressWarnings("unchecked")
     public StaticObject resolvedStringAt(int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(null, index, "string");
         return (StaticObject) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Klass resolvedKlassAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "klass");
         return (Klass) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Field resolvedFieldAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "field");
         return (Field) resolved.value();
     }
 
-    @SuppressWarnings("unchecked")
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
         return (Method) resolved.value();
@@ -120,6 +119,16 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public void setKlassAt(int index, ObjectKlass klass) {
-        constants[index] = new ClassConstant.Resolved(klass);
+        constants[index] = ClassConstant.resolved(klass);
+    }
+
+    @Override
+    public int getMajorVersion() {
+        return pool.getMajorVersion();
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return pool.getMinorVersion();
     }
 }

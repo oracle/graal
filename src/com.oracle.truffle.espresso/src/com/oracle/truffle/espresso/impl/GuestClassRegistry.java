@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,43 +44,39 @@ public final class GuestClassRegistry extends ClassRegistry {
     static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
 
+    @Override
+    protected void loadKlassCountInc() {
+        loadKlassCount.inc();
+    }
+
+    @Override
+    protected void loadKlassCacheHitsInc() {
+        loadKlassCacheHits.inc();
+    }
+
     /**
      * The class loader associated with this registry.
      */
     private final StaticObject classLoader;
 
     // The virtual method can be cached because the receiver (classLoader) is constant.
-    private final Method ClassLoader_loadClass;
-    private final Method ClassLoader_addClass;
+    private final Method loadClass;
+    private final Method addClass;
 
     public GuestClassRegistry(EspressoContext context, @Host(ClassLoader.class) StaticObject classLoader) {
         super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
-        this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
+        this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
+        this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
-    @SuppressWarnings("unused")
     @Override
-    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
-        if (Types.isArray(type)) {
-            Klass elemental = loadKlass(getTypes().getElementalType(type));
-            if (elemental == null) {
-                return null;
-            }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
-        }
-
-        loadKlassCount.inc();
-        Klass klass = classes.get(type);
-        if (klass != null) {
-            loadKlassCacheHits.inc();
-            return klass;
-        }
+    public Klass loadKlassImpl(Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
-        klass = guestClass.getMirrorKlass();
+        StaticObject guestClass = (StaticObject) loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
+        Klass klass = guestClass.getMirrorKlass();
+        getRegistries().recordConstraint(type, klass, getClassLoader());
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
         return klass;
@@ -91,11 +87,12 @@ public final class GuestClassRegistry extends ClassRegistry {
         return classLoader;
     }
 
+    @SuppressWarnings("sync-override")
     @Override
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
         ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
-        ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
+        addClass.invokeDirect(classLoader, klass.mirror());
         return klass;
     }
 }

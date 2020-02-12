@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,46 +25,69 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import sun.misc.Perf;
-
+/**
+ * These (incomplete) substitutions are just a band-aid to run critical internal code (e.g.
+ * ClassLoader). The Perf API is currently unsupported.
+ */
 @EspressoSubstitutions
 public final class Target_sun_misc_Perf {
 
-    static class ByteUtils {
-        private static ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    // the Variability enum must be kept in synchronization with the
+    // the com.sun.hotspot.perfdata.Variability class
+    // enum Variability {
+    public static final int V_Constant = 1;
+    public static final int V_Monotonic = 2;
+    public static final int V_Variable = 3;
+    public static final int V_last = V_Variable;
+    // };
 
-        public static byte[] longToBytes(long x) {
-            buffer.putLong(0, x);
-            return buffer.array();
+    // the Units enum must be kept in synchronization with the
+    // the com.sun.hotspot.perfdata.Units class
+    // enum Units {
+    public static final int U_None = 1;
+    public static final int U_Bytes = 2;
+    public static final int U_Ticks = 3;
+    public static final int U_Events = 4;
+    public static final int U_String = 5;
+    public static final int U_Hertz = 6;
+    public static final int U_Last = U_Hertz;
+    // };
+
+    private static byte[] longToBytes(long x) {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[8]);
+        buffer.putLong(0, x);
+        return buffer.array();
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(ByteBuffer.class) StaticObject createLong(@Host(typeName = "Lsun/misc/Perf;") StaticObject self,
+                    @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value) {
+        // TODO(tg): inject meta
+        Meta meta = self.getKlass().getMeta();
+
+        if (units <= 0 || units > U_Last) {
+            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
-        public static long bytesToLong(byte[] bytes) {
-            buffer.put(bytes, 0, bytes.length);
-            buffer.flip();// need flip
-            return buffer.getLong();
+        // check that the PerfData name doesn't already exist
+        // if (PerfDataManager::exists(name_utf)) {
+        // THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "PerfLong name already
+        // exists");
+        // }
+
+        switch (variability) {
+            case V_Constant:
+            case V_Monotonic:
+            case V_Variable:
+                break;
+            default:
+                throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-    }
 
-    private final static Perf hostPerf = Perf.getPerf();
-
-    @Substitution(hasReceiver = true)
-    public static long highResCounter(@SuppressWarnings("unused") Object self) {
-        return hostPerf.highResCounter();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static long highResFrequency(@SuppressWarnings("unused") Object self) {
-        return hostPerf.highResFrequency();
-    }
-
-    @SuppressWarnings("unused")
-    @Substitution(hasReceiver = true)
-    public static @Host(ByteBuffer.class) StaticObject createLong(Object self, @Host(String.class) StaticObject name, int variability, int units, long value,
-                    @GuestCall DirectCallNode ByteBuffer_wrap) {
-        return (StaticObject) ByteBuffer_wrap.call(StaticObject.wrap(ByteUtils.longToBytes(value)));
+        return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(longToBytes(value)));
     }
 
     @Substitution

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,9 @@ public final class Types {
     public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
         Symbol<Type> type = (Symbol<Type>) descriptor;
         // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
+        if (!isValid(type)) {
+            return null;
+        }
         return type;
     }
 
@@ -240,14 +242,26 @@ public final class Types {
         return dims;
     }
 
-    public static void verify(Symbol<Type> type) throws ClassFormatError {
-        if (!isValid(type)) {
-            throw new ClassFormatError("Invalid type descriptor " + type);
-        }
-    }
-
     private static boolean isValid(Symbol<Type> type) {
-        int endIndex = Types.skipValidTypeDescriptor(type, 0, true);
+        if (type.length() == 0) {
+            return false;
+        }
+        if (type.length() == 1) {
+            return isPrimitive(type);
+        }
+        char first = (char) type.byteAt(0);
+        int beginIndex;
+        if (first == '[') {
+            beginIndex = 0;
+            while (beginIndex < type.length() && type.byteAt(beginIndex) == '[') {
+                ++beginIndex;
+            }
+        } else if (first == 'L') {
+            beginIndex = 0;
+        } else {
+            return false;
+        }
+        int endIndex = skipValidTypeDescriptor(type, beginIndex, true);
         return endIndex == type.length();
     }
 
@@ -278,8 +292,7 @@ public final class Types {
 
     static ByteSequence checkType(ByteSequence sequence) {
         // FIXME(peterssen): Do check.
-        return sequence;
-        // throw EspressoError.unimplemented();
+        return Validation.validTypeDescriptor(sequence, true) ? sequence : null;
     }
 
     public static String checkType(String type) {
@@ -304,12 +317,10 @@ public final class Types {
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
         Symbol<Type> type = (Symbol<Type>) symbol;
-        // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
-        return type;
+        return isValid(type) ? type : null;
     }
 
-    public final Symbol<Type> fromName(Symbol<Name> name) {
+    public Symbol<Type> fromName(Symbol<Name> name) {
         if (name.byteAt(0) == '[') {
             // TODO(peterssen): Verify . or / separators.
             return fromSymbol(name);
@@ -321,15 +332,16 @@ public final class Types {
         return symbols.symbolify(checkType(ByteSequence.wrap(bytes)));
     }
 
-    public final Symbol<Type> lookup(String type) {
+    public Symbol<Type> lookup(String type) {
         return symbols.lookup(checkType(type));
     }
 
     public static String getRuntimePackage(Symbol<Type> symbol) {
         String typeString = symbol.toString();
         int lastSlash = typeString.lastIndexOf('/');
-        if (lastSlash < 0)
+        if (lastSlash < 0) {
             return "";
+        }
         assert typeString.startsWith("L");
         return typeString.substring(1, lastSlash);
     }

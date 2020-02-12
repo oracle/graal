@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.io.IOException;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 /**
@@ -187,13 +188,19 @@ public final class ClassfileStream {
         }
     }
 
+    byte[] getByteRange(int startPosition, int numBytes) {
+        byte[] result = new byte[numBytes];
+        System.arraycopy(bytes, startPosition, result, 0, numBytes);
+        return result;
+    }
+
     public boolean isAtEndOfFile() {
         return bstream.available() == 0;
     }
 
     public void checkEndOfFile() {
         if (!isAtEndOfFile()) {
-            throw new ClassFormatError("Extra bytes in class file");
+            throw classFormatError("Extra bytes", classfile);
         }
     }
 
@@ -212,7 +219,8 @@ public final class ClassfileStream {
     }
 
     public ClassFormatError classFormatError(String format, Object... args) {
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassFormatError.class, String.format(format, args) + " in classfile " + classfile);
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
     }
 
     public ClassFormatError ioError(IOException ioException) {

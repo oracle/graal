@@ -5,6 +5,7 @@
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
  * published by the Free Software Foundation.
+ *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
@@ -22,15 +23,15 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
+
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
     private int tag;
@@ -78,13 +79,13 @@ public abstract class VerificationTypeInfo {
 }
 
 class PrimitiveTypeInfo extends VerificationTypeInfo {
-    public PrimitiveTypeInfo(int tag) {
+    PrimitiveTypeInfo(int tag) {
         super(tag);
     }
 }
 
 class UninitializedThis extends VerificationTypeInfo {
-    public UninitializedThis(int tag) {
+    UninitializedThis(int tag) {
         super(tag);
     }
 
@@ -97,7 +98,7 @@ class UninitializedThis extends VerificationTypeInfo {
 class UninitializedVariable extends VerificationTypeInfo {
     private final int newOffset;
 
-    public UninitializedVariable(int tag, int newOffset) {
+    UninitializedVariable(int tag, int newOffset) {
         super(tag);
         this.newOffset = newOffset;
     }
@@ -116,7 +117,7 @@ class UninitializedVariable extends VerificationTypeInfo {
 class ReferenceVariable extends VerificationTypeInfo {
     private final int constantPoolOffset;
 
-    public ReferenceVariable(int tag, int constantPoolOffset) {
+    ReferenceVariable(int tag, int constantPoolOffset) {
         super(tag);
         this.constantPoolOffset = constantPoolOffset;
     }

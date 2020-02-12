@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         String classpath = null;
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
-        for (int i = 0; i < arguments.size(); i++) {
+        int i = 0;
+        while (i < arguments.size()) {
             String arg = arguments.get(i);
             switch (arg) {
                 case "-cp":
@@ -100,6 +101,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-client":
                 case "-server":
                 case "-d64":
+                case "-Xdebug": // only for backward compatibility
                     // ignore
                     break;
 
@@ -115,6 +117,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-Xverify:")) {
                         String mode = arg.substring("-Xverify:".length());
                         espressoOptions.put("java.Verify", mode);
+                    } else if (arg.startsWith("-Xrunjdwp:")) {
+                        String value = arg.substring("-Xrunjdwp:".length());
+                        espressoOptions.put("java.JDWPOptions", value);
                     } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
@@ -169,6 +174,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 }
                 break;
             }
+            i++;
         }
 
         // classpath provenance order:

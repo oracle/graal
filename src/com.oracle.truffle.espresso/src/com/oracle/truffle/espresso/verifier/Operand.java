@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.verifier;
 
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
@@ -9,9 +31,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 abstract class Operand {
-    static public Operand[] EMPTY_ARRAY = new Operand[0];
+    public static final Operand[] EMPTY_ARRAY = new Operand[0];
 
     protected JavaKind kind;
 
@@ -63,6 +86,10 @@ abstract class Operand {
         return false;
     }
 
+    boolean isUninitThis() {
+        return false;
+    }
+
     boolean isNull() {
         return false;
     }
@@ -103,17 +130,20 @@ class PrimitiveOperand extends Operand {
     }
 }
 
-class ReturnAddressOperand extends PrimitiveOperand {
+final class ReturnAddressOperand extends PrimitiveOperand {
     ArrayList<Integer> targetBCIs = new ArrayList<>();
+    int subroutineBCI;
 
-    ReturnAddressOperand(int target) {
+    ReturnAddressOperand(int target, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
         targetBCIs.add(target);
+        this.subroutineBCI = subroutineBCI;
     }
 
-    private ReturnAddressOperand(ArrayList<Integer> bcis) {
+    private ReturnAddressOperand(ArrayList<Integer> bcis, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
         targetBCIs.addAll(bcis);
+        this.subroutineBCI = subroutineBCI;
     }
 
     @Override
@@ -128,6 +158,9 @@ class ReturnAddressOperand extends PrimitiveOperand {
         }
         if (other.isReturnAddress()) {
             ReturnAddressOperand ra = (ReturnAddressOperand) other;
+            if (ra.subroutineBCI != subroutineBCI) {
+                return false;
+            }
             for (Integer target : targetBCIs) {
                 if (!ra.targetBCIs.contains(target)) {
                     return false;
@@ -143,7 +176,11 @@ class ReturnAddressOperand extends PrimitiveOperand {
         if (!other.isReturnAddress()) {
             return null;
         }
-        ReturnAddressOperand ra = new ReturnAddressOperand(((ReturnAddressOperand) other).targetBCIs);
+        ReturnAddressOperand otherRA = (ReturnAddressOperand) other;
+        if (otherRA.subroutineBCI != subroutineBCI) {
+            return null;
+        }
+        ReturnAddressOperand ra = new ReturnAddressOperand(otherRA.targetBCIs, subroutineBCI);
         for (Integer target : targetBCIs) {
             if (!ra.targetBCIs.contains(target)) {
                 ra.targetBCIs.add(target);
@@ -192,8 +229,12 @@ class ReferenceOperand extends Operand {
                 } else {
                     klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
                 }
-            } catch (Exception e) {
+            } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
+                if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                    throw new NoClassDefFoundError(type.toString());
+                }
+                throw e;
             }
             if (klass == null) {
                 throw new NoClassDefFoundError(type.toString());
@@ -205,15 +246,32 @@ class ReferenceOperand extends Operand {
     @Override
     boolean compliesWith(Operand other) {
         if (other.isReference()) {
-            if (type == null || other.getType() == this.type || other.getType() == Type.Object) {
+            if (type == null || other.getType() == Type.java_lang_Object) {
                 return true;
             }
             if (other.getType() == null) {
                 return false;
             }
+            if (other.getType() == type) {
+                /*
+                 * If the two operand have the same type, we can shortcut a few cases:
+                 * 
+                 * - Both are not loaded -> would load using same CL.
+                 * 
+                 * - Only one of the two is loaded and in same CL as thisKlass.
+                 */
+                Klass otherKlass = ((ReferenceOperand) other).klass;
+                if (otherKlass == null || klass == null) {
+                    Klass k = klass == null ? otherKlass : klass;
+                    if (k == null || k.getDefiningClassLoader() == thisKlass.getDefiningClassLoader()) {
+                        return true;
+                    }
+                }
+
+            }
             Klass otherKlass = other.getKlass();
             if (otherKlass.isInterface()) {
-                /**
+                /*
                  * 4.10.1.2. For assignments, interfaces are treated like Object.
                  */
                 return true;
@@ -221,6 +279,7 @@ class ReferenceOperand extends Operand {
             return otherKlass.isAssignableFrom(getKlass());
         }
         return other == Invalid;
+
     }
 
     @Override
@@ -255,7 +314,7 @@ class ReferenceOperand extends Operand {
     }
 }
 
-class ArrayOperand extends Operand {
+final class ArrayOperand extends Operand {
     private int dimensions;
     private Operand elemental;
     private Operand component = null;
@@ -278,17 +337,17 @@ class ArrayOperand extends Operand {
     boolean compliesWith(Operand other) {
         if (other.isArrayType()) {
             if (other.getDimensions() < getDimensions()) {
-                return other.getElemental().isReference() && (other.getElemental().getType() == Type.Object ||
-                                other.getElemental().getType() == Type.Cloneable ||
-                                other.getElemental().getType() == Type.Serializable);
+                return other.getElemental().isReference() && (other.getElemental().getType() == Type.java_lang_Object ||
+                                other.getElemental().getType() == Type.java_lang_Cloneable ||
+                                other.getElemental().getType() == Type.java_io_Serializable);
             } else if (other.getDimensions() == getDimensions()) {
                 return elemental.compliesWith(other.getElemental());
             }
             return false;
         }
-        return (other == Invalid) || (other.isReference() && (other.getType() == Type.Object ||
-                        other.getType() == Type.Cloneable ||
-                        other.getType() == Type.Serializable));
+        return (other == Invalid) || (other.isReference() && (other.getType() == Type.java_lang_Object ||
+                        other.getType() == Type.java_lang_Cloneable ||
+                        other.getType() == Type.java_io_Serializable));
     }
 
     @Override
@@ -321,7 +380,7 @@ class ArrayOperand extends Operand {
         if (smallestElemental.isPrimitive()) {
             return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
         }
-        if (smallestElemental.getType() == Type.Cloneable || smallestElemental.getType() == Type.Serializable) {
+        if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
             return new ArrayOperand(smallestElemental, Math.min(thisDim, otherDim));
         }
         return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
@@ -368,7 +427,7 @@ class ArrayOperand extends Operand {
     }
 }
 
-class UninitReferenceOperand extends ReferenceOperand {
+final class UninitReferenceOperand extends ReferenceOperand {
     final int newBCI;
 
     UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {
@@ -396,7 +455,7 @@ class UninitReferenceOperand extends ReferenceOperand {
         if (other.isUninit()) {
             return compliesWith(other);
         }
-        return false;
+        return other == Invalid;
     }
 
     @Override
@@ -415,6 +474,7 @@ class UninitReferenceOperand extends ReferenceOperand {
         }
     }
 
+    @Override
     boolean isUninitThis() {
         return newBCI == -1;
     }

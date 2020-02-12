@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -40,14 +39,22 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * representation, so the associated LinkedKlass is null.
  */
 public final class PrimitiveKlass extends Klass {
+    private final JavaKind primitiveKind;
+
     /**
      * Creates Espresso type for a primitive {@link JavaKind}.
      *
-     * @param kind the kind to create the type for
+     * @param primitiveKind the kind to create the type for
      */
-    public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(context, kind.getPrimitiveBinaryName(), kind.getType(), null, ObjectKlass.EMPTY_ARRAY);
-        assert kind.isPrimitive() : kind + " not a primitive kind";
+    public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+                        Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
+        assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
+        this.primitiveKind = primitiveKind;
+    }
+
+    public JavaKind getPrimitiveJavaKind() {
+        return primitiveKind;
     }
 
     @Override
@@ -59,63 +66,18 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Klass getComponentType() {
-        return null;
-    }
-
-    @Override
-    public Method vtableLookup(int vtableIndex) {
-        return null;
-    }
-
-    @Override
-    public Field lookupFieldTable(int slot) {
-        return null;
-    }
-
-    @Override
-    public Field lookupStaticFieldTable(int slot) {
-        return null;
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public Klass getHostClass() {
-        return null;
-    }
-
-    @Override
     public Klass getElementalType() {
         return this;
     }
 
     @Override
-    public void initialize() {
-        /* nop */
-    }
-
-    @Override
-    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return StaticObject.NULL; // BCL
     }
 
     @Override
     public ConstantPool getConstantPool() {
         return null;
-    }
-
-    @Override
-    public StaticObject getStatics() {
-        throw EspressoError.shouldNotReachHere("Primitives do not have static fields");
     }
 
     @Override
@@ -144,7 +106,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         return null;
     }
 
@@ -164,7 +126,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    protected final int getFlags() {
-        return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
+    public int getClassModifiers() {
+        return getModifiers();
     }
 }

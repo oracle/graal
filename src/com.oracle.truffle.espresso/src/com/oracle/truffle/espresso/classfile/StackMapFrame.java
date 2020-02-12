@@ -5,6 +5,7 @@
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
  * published by the Free Software Foundation.
+ *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
@@ -64,9 +65,9 @@ public abstract class StackMapFrame {
     }
 }
 
-class SameFrame extends StackMapFrame {
+final class SameFrame extends StackMapFrame {
 
-    public SameFrame(int frameType) {
+    SameFrame(int frameType) {
         super(frameType);
     }
 
@@ -83,10 +84,10 @@ class SameFrame extends StackMapFrame {
     }
 }
 
-class SameLocals1StackItemFrame extends StackMapFrame {
+final class SameLocals1StackItemFrame extends StackMapFrame {
     private final VerificationTypeInfo stackItem;
 
-    public SameLocals1StackItemFrame(int frameType, VerificationTypeInfo stackItem) {
+    SameLocals1StackItemFrame(int frameType, VerificationTypeInfo stackItem) {
         super(frameType);
         this.stackItem = stackItem;
     }
@@ -110,11 +111,11 @@ class SameLocals1StackItemFrame extends StackMapFrame {
 
 }
 
-class SameLocals1StackItemFrameExtended extends StackMapFrame {
+final class SameLocals1StackItemFrameExtended extends StackMapFrame {
     private final int offsetDelta;
     private final VerificationTypeInfo stackItem;
 
-    public SameLocals1StackItemFrameExtended(int frameType, int offsetDelta, VerificationTypeInfo stackItem) {
+    SameLocals1StackItemFrameExtended(int frameType, int offsetDelta, VerificationTypeInfo stackItem) {
         super(frameType);
         this.offsetDelta = offsetDelta;
         this.stackItem = stackItem;
@@ -138,10 +139,10 @@ class SameLocals1StackItemFrameExtended extends StackMapFrame {
     }
 }
 
-class ChopFrame extends StackMapFrame {
+final class ChopFrame extends StackMapFrame {
     private final int offsetDelta;
 
-    public ChopFrame(int frameType, int offsetDelta) {
+    ChopFrame(int frameType, int offsetDelta) {
         super(frameType);
         this.offsetDelta = offsetDelta;
     }
@@ -164,10 +165,10 @@ class ChopFrame extends StackMapFrame {
     }
 }
 
-class SameFrameExtended extends StackMapFrame {
+final class SameFrameExtended extends StackMapFrame {
     private final int offsetDelta;
 
-    public SameFrameExtended(int frameType, int offsetDelta) {
+    SameFrameExtended(int frameType, int offsetDelta) {
         super(frameType);
         this.offsetDelta = offsetDelta;
     }
@@ -184,11 +185,11 @@ class SameFrameExtended extends StackMapFrame {
     }
 }
 
-class AppendFrame extends StackMapFrame {
+final class AppendFrame extends StackMapFrame {
     private final int offsetDelta;
     private final VerificationTypeInfo[] newLocals;
 
-    public AppendFrame(int frameType, int offsetDelta, VerificationTypeInfo[] newLocals) {
+    AppendFrame(int frameType, int offsetDelta, VerificationTypeInfo[] newLocals) {
         super(frameType);
         this.offsetDelta = offsetDelta;
         this.newLocals = newLocals;
@@ -217,12 +218,12 @@ class AppendFrame extends StackMapFrame {
 
 }
 
-class FullFrame extends StackMapFrame {
+final class FullFrame extends StackMapFrame {
     private final int offsetDelta;
     private final VerificationTypeInfo[] locals;
     private final VerificationTypeInfo[] stack;
 
-    public FullFrame(int frameType, int offsetDelta, VerificationTypeInfo[] locals, VerificationTypeInfo[] stack) {
+    FullFrame(int frameType, int offsetDelta, VerificationTypeInfo[] locals, VerificationTypeInfo[] stack) {
         super(frameType);
         this.offsetDelta = offsetDelta;
         this.locals = locals;

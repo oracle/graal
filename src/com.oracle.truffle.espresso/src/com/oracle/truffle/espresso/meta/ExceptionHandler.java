@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
  * Represents an exception handler within the bytecodes.
  */
 public final class ExceptionHandler {
+
+    public static final ExceptionHandler[] EMPTY_ARRAY = new ExceptionHandler[0];
 
     private final int startBCI;
     private final int endBCI;

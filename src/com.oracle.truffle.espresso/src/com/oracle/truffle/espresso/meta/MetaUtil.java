@@ -229,31 +229,4 @@ public class MetaUtil {
                 throw EspressoError.shouldNotReachHere("Invalid Word field type " + kind);
         }
     }
-
-    public static long defaultLongValue(JavaKind kind) {
-        if (kind == JavaKind.Long) {
-            return 0L;
-        } else {
-            CompilerAsserts.neverPartOfCompilation();
-            throw EspressoError.shouldNotReachHere("Invalid Long field type " + kind);
-        }
-    }
-
-    public static float defaultFloatValue(JavaKind kind) {
-        if (kind == JavaKind.Float) {
-            return 0.0f;
-        } else {
-            CompilerAsserts.neverPartOfCompilation();
-            throw EspressoError.shouldNotReachHere("Invalid Float field type " + kind);
-        }
-    }
-
-    public static double defaultDoubleValue(JavaKind kind) {
-        if (kind == JavaKind.Double) {
-            return 0.0d;
-        } else {
-            CompilerAsserts.neverPartOfCompilation();
-            throw EspressoError.shouldNotReachHere("Invalid Double field type " + kind);
-        }
-    }
 }

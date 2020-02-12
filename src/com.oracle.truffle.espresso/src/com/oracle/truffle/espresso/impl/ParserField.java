@@ -38,7 +38,6 @@ public final class ParserField {
     private final int flags;
     private final Symbol<Name> name;
     private final Symbol<Type> type;
-    private final int typeIndex;
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
@@ -58,16 +57,10 @@ public final class ParserField {
         return attributes;
     }
 
-    public ParserField(int flags, Symbol<Name> name, Symbol<Type> type, int typeIndex, final Attribute[] attributes) {
+    public ParserField(int flags, Symbol<Name> name, Symbol<Type> type, final Attribute[] attributes) {
         this.flags = flags;
         this.name = name;
         this.type = type;
-        // Used to resolve the field on the holder constant pool.
-        this.typeIndex = typeIndex;
         this.attributes = attributes;
-    }
-
-    public int getTypeIndex() {
-        return typeIndex;
     }
 }

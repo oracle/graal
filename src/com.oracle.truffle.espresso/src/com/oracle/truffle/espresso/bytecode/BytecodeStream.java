@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,10 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.MethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -274,18 +274,18 @@ public final class BytecodeStream {
                     str.append(readBranchDest(bci));
                 } else if (opcode == Bytecodes.NEW) {
                     // {bci}: new {class name}
-                    int CPI = readCPI(bci);
-                    ClassConstant cc = (ClassConstant) pool.at(CPI);
+                    int cpi = readCPI(bci);
+                    ClassConstant cc = (ClassConstant) pool.at(cpi);
                     str.append(cc.getName(pool));
                 } else if (opcode == Bytecodes.INVOKEDYNAMIC) {
                     // {bci}: #{bootstrap method index} -> {name}:{signature}
-                    int CPI = readCPI(bci);
-                    InvokeDynamicConstant idc = (InvokeDynamicConstant) pool.at(CPI);
+                    int cpi = readCPI(bci);
+                    InvokeDynamicConstant idc = (InvokeDynamicConstant) pool.at(cpi);
                     str.append("#").append(idc.getBootstrapMethodAttrIndex()).append(" -> ").append(idc.getName(pool)).append(":").append(idc.getSignature(pool));
                 } else if (Bytecodes.isInvoke(opcode)) {
                     // {bci}: invoke{} {class}.{method name}:{method signature}
-                    int CPI = readCPI(bci);
-                    MethodRefConstant mrc = (MethodRefConstant) pool.at(CPI);
+                    int cpi = readCPI(bci);
+                    MethodRefConstant mrc = (MethodRefConstant) pool.at(cpi);
                     str.append(mrc.getHolderKlassName(pool)).append(".").append(mrc.getName(pool)).append(":").append(mrc.getDescriptor(pool));
                 } else if (opcode == Bytecodes.TABLESWITCH) {
                     // @formatter:off

@@ -28,13 +28,13 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Stable;
-import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences. Implements
- * a "view" over a byte array.
+ * a slice "view" over a byte array.
  */
 // TODO(peterssen): Should not be public.
 public abstract class ByteSequence {
@@ -65,25 +65,25 @@ public abstract class ByteSequence {
     }
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
-        if (offset >= underlyingBytes.length || offset + length > underlyingBytes.length || length < 0 || offset < 0) {
+        if ((length > 0 && offset >= underlyingBytes.length) || offset + (long) length > underlyingBytes.length || length < 0 || offset < 0) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
             @Override
-            public final int length() {
+            public int length() {
                 return length;
             }
 
             @Override
-            public final int offset() {
+            public int offset() {
                 return offset;
             }
         };
     }
 
     public static ByteSequence create(String str) {
-        final byte[] bytes = Utf8.fromJavaString(str);
+        final byte[] bytes = ModifiedUtf8.fromJavaString(str);
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
@@ -129,10 +129,22 @@ public abstract class ByteSequence {
         return wrap(getUnderlyingBytes(), offset() + offset, length);
     }
 
+    public final boolean contentEquals(ByteSequence other) {
+        if (length() != other.length()) {
+            return false;
+        }
+        for (int i = 0; i < length(); ++i) {
+            if (byteAt(i) != other.byteAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
         try {
-            return Utf8.toJavaString(getUnderlyingBytes(), offset(), length());
+            return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }

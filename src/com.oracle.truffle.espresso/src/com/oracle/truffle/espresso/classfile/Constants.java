@@ -1,5 +1,5 @@
-/*******************************************************************************
- * Copyright (c) 2016 Oracle and/or its affiliates. All rights reserved.
+/*
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,8 +19,7 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *******************************************************************************/
-
+ */
 package com.oracle.truffle.espresso.classfile;
 
 public final class Constants {
@@ -49,15 +48,28 @@ public final class Constants {
     public static final int ACC_MANDATED = 0x00008000;
     public static final int ACC_MODULE = 0x00008000;
 
+    // Not part of the spec, used internally by the VM.
+    public static final int ACC_FINALIZER = 0x00010000;
+    public static final int ACC_INNER_CLASS = 0x00020000;
+    public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
+    public static final int ACC_CALLER_SENSITIVE = 0x00080000;
+
+    public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
+
+    // Table 4.1-A. Class access and property modifiers.
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
-                    // ACC_SUPER | // Only very old compilers.
+                    ACC_SUPER | // Only very old compilers.
                     ACC_INTERFACE |
                     ACC_ABSTRACT |
                     ACC_ANNOTATION |
                     ACC_ENUM |
                     ACC_SYNTHETIC;
 
+    // Inner classes can be static, private or protected (classic VM does this)
+    public static final int RECOGNIZED_INNER_CLASS_MODIFIERS = (JVM_RECOGNIZED_CLASS_MODIFIERS | ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
+
+    // Table 4.5-A. Field access and property flags.
     public static final int JVM_RECOGNIZED_FIELD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |
                     ACC_PROTECTED |
@@ -68,6 +80,7 @@ public final class Constants {
                     ACC_ENUM |
                     ACC_SYNTHETIC;
 
+    // Table 4.6-A. Method access and property flags.
     public static final int JVM_RECOGNIZED_METHOD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |
                     ACC_PROTECTED |
@@ -101,23 +114,24 @@ public final class Constants {
     public static final int APPEND_FRAME_BOUND = 255;
     public static final int FULL_FRAME = 255;
 
+    public static final int MAX_ARRAY_DIMENSIONS = 255;
+
     //@formatter:off
 
     /**
      * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.
      */
-    public static final byte
-            REF_NONE = 0,  // null value
-            REF_getField = 1,
-            REF_getStatic = 2,
-            REF_putField = 3,
-            REF_putStatic = 4,
-            REF_invokeVirtual = 5,
-            REF_invokeStatic = 6,
-            REF_invokeSpecial = 7,
-            REF_newInvokeSpecial = 8,
-            REF_invokeInterface = 9,
-            REF_LIMIT = 10;
+    public static final byte REF_NONE = 0; // null value
+    public static final byte REF_getField = 1;
+    public static final byte REF_getStatic = 2;
+    public static final byte REF_putField = 3;
+    public static final byte REF_putStatic = 4;
+    public static final byte REF_invokeVirtual = 5;
+    public static final byte REF_invokeStatic = 6;
+    public static final byte REF_invokeSpecial = 7;
+    public static final byte REF_newInvokeSpecial = 8;
+    public static final byte REF_invokeInterface = 9;
+    public static final byte REF_LIMIT = 10;
 
 
     public static final String[] mnemonics = new String[]{

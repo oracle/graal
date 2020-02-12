@@ -30,8 +30,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.firstStaticSigPoly;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.lastSigPoly;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.FIRST_STATIC_SIG_POLY;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.LAST_SIG_POLY;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
@@ -65,7 +65,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {
     /**
-     * plants an already resolved target into a memberName
+     * Plants an already resolved target into a memberName.
      * 
      * @param self the memberName
      * @param ref the target. Can be either a mathod or a field.
@@ -74,30 +74,31 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     public static void init(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self, @Host(Object.class) StaticObject ref) {
         Klass mnKlass = self.getKlass();
         EspressoContext context = mnKlass.getContext();
+        // TODO(tg): inject meta
         Meta meta = context.getMeta();
 
         Klass targetKlass = ref.getKlass();
 
-        if (targetKlass.getType() == Type.Method) {
+        if (targetKlass.getType() == Type.java_lang_reflect_Method) {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref);
             int refKind = target.getRefKind();
-            plantResolvedMethod(self, target, refKind, meta.MNflags, meta);
+            plantResolvedMethod(self, target, refKind, meta.java_lang_invoke_MemberName_flags, meta);
             // Finish the job
-            self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
-        } else if (targetKlass.getType() == Type.Field) {
+            self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
+        } else if (targetKlass.getType() == Type.java_lang_reflect_Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref);
-            int refkind = getRefKind(self.getIntField(meta.MNflags));
-            plantResolvedField(self, field, refkind, meta.MNflags, meta);
+            int refkind = getRefKind(self.getIntField(meta.java_lang_invoke_MemberName_flags));
+            plantResolvedField(self, field, refkind, meta.java_lang_invoke_MemberName_flags, meta);
             // Finish the job
-            Klass fieldKlass = ref.getField(meta.Field_class).getMirrorKlass();
-            self.setField(meta.MNclazz, fieldKlass.mirror());
-        } else if (targetKlass.getType() == Type.Constructor) {
+            Klass fieldKlass = ref.getField(meta.java_lang_reflect_Field_class).getMirrorKlass();
+            self.setField(meta.java_lang_invoke_MemberName_clazz, fieldKlass.mirror());
+        } else if (targetKlass.getType() == Type.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref);
             int refKind = target.getRefKind();
-            plantResolvedMethod(self, target, refKind, meta.MNflags, meta);
-            self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
+            plantResolvedMethod(self, target, refKind, meta.java_lang_invoke_MemberName_flags, meta);
+            self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
         } else {
             throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: " + ref.getKlass());
         }
@@ -111,12 +112,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void setCallSiteTargetNormal(@Host(CallSite.class) StaticObject site, @Host(MethodHandle.class) StaticObject target) {
-        site.setField(site.getKlass().getMeta().CStarget, target);
+        // TODO(tg): inject meta
+        site.setField(site.getKlass().getMeta().java_lang_invoke_CallSite_target, target);
     }
 
     @Substitution
     public static void setCallSiteTargetVolatile(@Host(CallSite.class) StaticObject site, @Host(MethodHandle.class) StaticObject target) {
-        site.setFieldVolatile(site.getKlass().getMeta().CStarget, target);
+        // TODO(tg): inject meta
+        site.setFieldVolatile(site.getKlass().getMeta().java_lang_invoke_CallSite_target, target);
     }
 
     // TODO(garcia) verifyConstants
@@ -127,29 +130,32 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @Host(String.class) StaticObject matchName,
                     @Host(String.class) StaticObject matchSig,
                     int matchFlags,
-                    @Host(Class.class) StaticObject _caller,
+                    @Host(Class.class) StaticObject originalCaller,
                     int skip,
-                    @Host(typeName = "[Ljava/lang/invoke/MemberName;") StaticObject _results) {
-        if (StaticObject.isNull(defc) || StaticObject.isNull(_results)) {
+                    @Host(typeName = "[Ljava/lang/invoke/MemberName;") StaticObject resultsArr) {
+        if (StaticObject.isNull(defc) || StaticObject.isNull(resultsArr)) {
             return -1;
         }
         EspressoContext context = defc.getKlass().getContext();
-        StaticObject[] results = _results.unwrap();
+        StaticObject[] results = resultsArr.unwrap();
         Symbol<Name> name = null;
-        if (matchName != StaticObject.NULL) {
+        if (!StaticObject.isNull(matchName)) {
             name = context.getNames().lookup(Meta.toHostString(matchName));
-            if (name == null)
+            if (name == null) {
                 return 0;
+            }
         }
         String sig = Meta.toHostString(matchSig);
-        if (sig == null)
+        if (sig == null) {
             return 0;
+        }
 
         Klass caller = null;
-        if (_caller != StaticObject.NULL) {
-            caller = _caller.getMirrorKlass();
-            if (caller == null)
+        if (!StaticObject.isNull(originalCaller)) {
+            caller = originalCaller.getMirrorKlass();
+            if (caller == null) {
                 return -1;
+            }
         }
 
         return findMemberNames(defc.getMirrorKlass(), name, sig, matchFlags, caller, skip, results);
@@ -178,21 +184,25 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static long objectFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         return (long) self.getHiddenField(self.getKlass().getMeta().HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static long staticFieldOffset(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         return (long) self.getHiddenField(self.getKlass().getMeta().HIDDEN_VMINDEX);
     }
 
     @Substitution
     public static @Host(Object.class) StaticObject staticFieldBase(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
-        return self.getField(self.getKlass().getMeta().MNclazz).getMirrorKlass().getStatics();
+        // TODO(tg): inject meta
+        return self.getField(self.getKlass().getMeta().java_lang_invoke_MemberName_clazz).getMirrorKlass().getStatics();
     }
 
     @Substitution
     public static @Host(Object.class) StaticObject getMemberVMInfo(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
+        // TODO(tg): inject meta
         Meta meta = self.getKlass().getMeta();
 
         Object vmtarget = self.getHiddenField(meta.HIDDEN_VMTARGET);
@@ -213,7 +223,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             result[1] = self;
         }
 
-        return StaticObject.createArray(meta.Object_array, result);
+        return StaticObject.createArray(meta.java_lang_Object_array, result);
     }
 
     /**
@@ -222,7 +232,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * 
      * @param self The memberName to resolve
      * @param caller the class that commands the resolution
-     * @return The resolved memberName. Note that it should be the same reference as @self
+     * @return The resolved memberName. Note that it should be the same reference as self
      */
     @Substitution
     public static @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject resolve(
@@ -231,27 +241,28 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @GuestCall DirectCallNode getSignature) {
         // TODO(Garcia) Perhaps perform access checks ?
         Klass mnKlass = self.getKlass();
+        // TODO(tg): inject meta
         Meta meta = mnKlass.getContext().getMeta();
         StaticObject memberName = self;
         if (memberName.getHiddenField(meta.HIDDEN_VMTARGET) != null) {
             return self; // Already planted
         }
-        StaticObject clazz = memberName.getField(meta.MNclazz);
+        StaticObject clazz = memberName.getField(meta.java_lang_invoke_MemberName_clazz);
         Klass defKlass = clazz.getMirrorKlass();
 
-        Field flagField = meta.MNflags;
+        Field flagField = meta.java_lang_invoke_MemberName_flags;
         int flags = memberName.getIntField(flagField);
         int refKind = getRefKind(flags);
 
-        StaticObject name = memberName.getField(meta.MNname);
+        StaticObject name = memberName.getField(meta.java_lang_invoke_MemberName_name);
         Symbol<Name> methodName;
         try {
             methodName = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
         } catch (EspressoError e) {
             if ((flags & ALL_KINDS) == MN_IS_FIELD) {
-                throw meta.throwEx(NoSuchFieldException.class);
+                throw Meta.throwException(meta.java_lang_NoSuchFieldException);
             } else {
-                throw meta.throwEx(NoSuchMethodException.class);
+                throw Meta.throwException(meta.java_lang_NoSuchMethodException);
             }
         }
         StaticObject type = (StaticObject) getSignature.call(self);
@@ -260,11 +271,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return StaticObject.NULL;
         }
         MethodHandleIntrinsics.PolySigIntrinsics mhMethodId = None;
-        if (((flags & ALL_KINDS) == MN_IS_METHOD) && (defKlass.getType() == Type.MethodHandle)) {
+        if (((flags & ALL_KINDS) == MN_IS_METHOD) && (defKlass.getType() == Type.java_lang_invoke_MethodHandle)) {
             if (refKind == REF_invokeVirtual ||
                             refKind == REF_invokeSpecial ||
                             refKind == REF_invokeStatic) {
-                MethodHandleIntrinsics.PolySigIntrinsics iid = MHid(methodName);
+                MethodHandleIntrinsics.PolySigIntrinsics iid = methodHandleId(methodName);
                 if (iid != None &&
                                 ((refKind == REF_invokeStatic) == isStaticSigPoly(iid.value))) {
                     mhMethodId = iid;
@@ -272,7 +283,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
         }
 
-        Klass callerKlass = StaticObject.isNull(caller) ? meta.Object : caller.getMirrorKlass();
+        Klass callerKlass = StaticObject.isNull(caller) ? meta.java_lang_Object : caller.getMirrorKlass();
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:
@@ -305,7 +316,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 plantFieldMemberName(memberName, t, defKlass, methodName, flagField, refKind, meta);
                 break;
             default:
-                throw meta.throwExWithMessage(LinkageError.class, "Member name resolution failed");
+                throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Member name resolution failed");
         }
 
         return memberName;
@@ -319,7 +330,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      * @param signatures known signatures for the context.
      * @return A basic signature corresponding to @sig
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({"unchecked"})
     public static Symbol<Signature> toBasic(Symbol<Type>[] sig, boolean keepLastArg, Signatures signatures) {
         int pcount = Signatures.parameterCount(sig, false);
         int params = max(pcount - (keepLastArg ? 0 : 1), 0);
@@ -334,12 +345,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
 
         Symbol<Type> rtype = toBasic(Signatures.returnType(sig));
-        return signatures.makeRaw(rtype, buf.toArray(new Symbol[params]));
+        return signatures.makeRaw(rtype, buf.toArray(Symbol.EMPTY_ARRAY));
     }
 
     private static Symbol<Type> toBasic(Symbol<Type> t) {
-        if (t == Type.Object || t.toString().charAt(0) == '[') {
-            return Type.Object;
+        if (t == Type.java_lang_Object || t.toString().charAt(0) == '[') {
+            return Type.java_lang_Object;
         } else if (t == Type._int || t == Type._short || t == Type._boolean || t == Type._char) {
             return Type._int;
         } else {
@@ -347,7 +358,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    // MemberName planting
+    // region MemberName planting
 
     private static void plantInvokeBasic(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         assert (name == Name.invokeBasic);
@@ -360,7 +371,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
-            throw defKlass.getContext().getMeta().throwEx(NoSuchMethodError.class);
+            throw Meta.throwException(meta.java_lang_NoSuchMethodError);
         }
         plantResolvedMethod(memberName, target, refKind, flagField, meta);
     }
@@ -374,7 +385,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
-            throw defKlass.getContext().getMeta().throwEx(NoSuchFieldError.class);
+            throw Meta.throwException(meta.java_lang_NoSuchFieldError);
         }
         plantResolvedField(memberName, field, refKind, flagField, meta);
     }
@@ -386,7 +397,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static int getMethodFlags(Method target, int refKind) {
-        int res = target.getModifiers();
+        int res = target.getMethodModifiers();
         if (refKind == REF_invokeInterface) {
             res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
         } else if (refKind == REF_invokeVirtual) {
@@ -407,34 +418,43 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         int res = fd.getModifiers();
         boolean isSetter = (refKind <= REF_putStatic) && !(refKind <= REF_getStatic);
         res |= MN_IS_FIELD | ((fd.isStatic() ? REF_getStatic : REF_getField) << MN_REFERENCE_KIND_SHIFT);
-        if (isSetter)
+        if (isSetter) {
             res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
+        }
         return res;
     }
 
-    // End MemberName planting
-    // Helping methods
+    // endregion MemberName planting
 
-    public static MethodHandleIntrinsics.PolySigIntrinsics MHid(Symbol<Name> name) {
-        if (name == Name.invoke)
+    // region Helper methods
+
+    public static MethodHandleIntrinsics.PolySigIntrinsics methodHandleId(Symbol<Name> name) {
+        if (name == Name.invoke) {
             return InvokeGeneric;
-        if (name == Name.invokeExact)
+        }
+        if (name == Name.invokeExact) {
             return InvokeGeneric;
-        if (name == Name.invokeBasic)
+        }
+        if (name == Name.invokeBasic) {
             return InvokeBasic;
-        if (name == Name.linkToVirtual)
+        }
+        if (name == Name.linkToVirtual) {
             return LinkToVirtual;
-        if (name == Name.linkToStatic)
+        }
+        if (name == Name.linkToStatic) {
             return LinkToStatic;
-        if (name == Name.linkToInterface)
+        }
+        if (name == Name.linkToInterface) {
             return LinkToInterface;
-        if (name == Name.linkToSpecial)
+        }
+        if (name == Name.linkToSpecial) {
             return LinkToSpecial;
+        }
         return None;
     }
 
     private static boolean isStaticSigPoly(int id) {
-        return (id >= firstStaticSigPoly) && (id <= lastSigPoly);
+        return (id >= FIRST_STATIC_SIG_POLY) && (id <= LAST_SIG_POLY);
     }
 
     private static boolean isIntrinsicPolySig(MethodHandleIntrinsics.PolySigIntrinsics id) {
@@ -445,13 +465,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
     }
 
-    // End helping methods
-
-    // Useful thingies... ?
-
-    static final int // for getConstant
-    GC_COUNT_GWT = 4,
-                    GC_LAMBDA_SUPPORT = 5;
+    // endregion Helper methods
 
     // MemberName
     // The JVM uses values of -2 and above for vtable indexes.
@@ -459,17 +473,17 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     // Ref: src/share/vm/oops/methodOop.hpp
     // This value is negative enough to avoid such numbers,
     // but not too negative.
-    static final int MN_IS_METHOD = 0x00010000, // method (not constructor)
-                    MN_IS_CONSTRUCTOR = 0x00020000, // constructor
-                    MN_IS_FIELD = 0x00040000, // field
-                    MN_IS_TYPE = 0x00080000, // nested type
-                    MN_CALLER_SENSITIVE = 0x00100000, // @CallerSensitive annotation detected
-                    MN_REFERENCE_KIND_SHIFT = 24, // refKind
-                    MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT,
-                    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of
-                    // MHN.getMembers:
-                    MN_SEARCH_SUPERCLASSES = 0x00100000,
-                    MN_SEARCH_INTERFACES = 0x00200000,
-                    ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
+    static final int MN_IS_METHOD = 0x00010000; // method (not constructor)
+    static final int MN_IS_CONSTRUCTOR = 0x00020000; // constructor
+    static final int MN_IS_FIELD = 0x00040000; // field
+    static final int MN_IS_TYPE = 0x00080000; // nested type
+    static final int MN_CALLER_SENSITIVE = 0x00100000; // @CallerSensitive annotation detected
+    static final int MN_REFERENCE_KIND_SHIFT = 24; // refKind
+    static final int MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT;
+    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of
+    // MHN.getMembers:
+    static final int MN_SEARCH_SUPERCLASSES = 0x00100000;
+    static final int MN_SEARCH_INTERFACES = 0x00200000;
+    static final int ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
 
 }

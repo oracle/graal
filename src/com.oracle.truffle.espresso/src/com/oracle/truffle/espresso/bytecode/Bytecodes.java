@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -593,7 +593,7 @@ public final class Bytecodes {
         // Quickening patches the BCI, replacing it by a QUICK(nodeIndex) bytecode and spawning a child node.
         // Unlike standard bytecodes, stack effects are determined completely by the node, even if the semantics
         // of patched bytecode is partially or completely known.
-        def(QUICK               , "quick"           , "bjj"  ,  0, QUICKENED);
+        def(QUICK               , "quick"           , "bjj"  ,  0, TRAP | QUICKENED);
     }
     // @formatter:on
     // Checkstyle: resume
@@ -767,6 +767,14 @@ public final class Bytecodes {
      */
     public static boolean isBranch(int opcode) {
         return (flagsArray[opcode & 0xff] & BRANCH) != 0;
+    }
+
+    public static boolean isReturn(byte opcode) {
+        return opcode >= (byte) IRETURN && opcode <= (byte) RETURN;
+    }
+
+    public static boolean isLoad1(byte opcode) {
+        return opcode == (byte) ALOAD_1 || opcode == (byte) ILOAD_1 || opcode == (byte) LLOAD_1 || opcode == (byte) FLOAD_1 || opcode == (byte) DLOAD_1;
     }
 
     /**

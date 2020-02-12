@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.truffle.espresso.nodes;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.function.IntFunction;
 
@@ -53,17 +55,22 @@ public class MainLauncherRootNode extends RootNode {
             // getCallTarget initializes for us.
             return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
         } catch (EspressoException e) {
-            StaticObject guestException = e.getException();
-            guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
+            printStackTrace(e);
             return StaticObject.NULL;
         } finally {
-            main.getMeta().Shutdown_shutdown.invokeDirect(null);
+            main.getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
         }
+    }
+
+    @TruffleBoundary
+    private static void printStackTrace(EspressoException e) {
+        StaticObject guestException = e.getExceptionObject();
+        guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
     }
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
         Meta meta = context.getMeta();
-        return meta.String.allocateArray(args.length, new IntFunction<StaticObject>() {
+        return meta.java_lang_String.allocateArray(args.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return meta.toGuestString(args[i]);

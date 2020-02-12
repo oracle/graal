@@ -22,15 +22,16 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.meta.Meta;
+
 /**
- * Helper for creating virtual tables in ObjectKlass
+ * Helper for creating virtual tables in ObjectKlass.
  */
-public class VirtualTable {
+public final class VirtualTable {
 
     private VirtualTable() {
 
@@ -46,8 +47,8 @@ public class VirtualTable {
             tmp = new ArrayList<>();
         }
         for (Method m : declaredMethods) {
-            if (m.getName() != Symbol.Name.CLINIT && m.getName() != Symbol.Name.INIT) {
-                // Do not bloat the vtable with these two methods that cannot be called through
+            if (!m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
+                // Do not bloat the vtable with methods that cannot be called through
                 // virtual invocation.
                 checkOverride(superKlass, m, tmp, thisKlass, overrides);
             }
@@ -72,8 +73,10 @@ public class VirtualTable {
             int count = 1;
             for (Method override : overrides) {
                 if (override.isFinalFlagSet()) {
-                    throw new VerifyError("Overriding final method: " + override);
+                    Meta meta = m.getDeclaringKlass().getMeta();
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, "Overriding final method: " + override);
                 }
+                override.invalidateLeaf();
                 int pos = override.getVTableIndex();
                 if (count > 1) {
                     toSet = new Method(m);

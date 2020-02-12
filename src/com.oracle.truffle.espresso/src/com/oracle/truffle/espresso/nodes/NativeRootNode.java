@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -31,77 +32,87 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public final class NativeRootNode extends EspressoBaseNode {
+public final class NativeRootNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
     private final boolean isJni;
+    @Child InteropLibrary executeNative;
+    private final int prependParams;
 
-    public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
+    private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
     public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
         super(method);
         this.boundNative = boundNative;
+        this.executeNative = InteropLibrary.getFactory().create(boundNative);
         this.isJni = isJni;
+        this.prependParams = (isJni ? 1 : 0); // JNIEnv* env
     }
 
-    protected final Object[] preprocessArgs(Object[] args) {
+    private static Object javaToNative(JniEnv env, Object arg, Symbol<Type> espressoType) {
+        if (Type._boolean.equals(espressoType)) {
+            assert arg instanceof Boolean;
+            return ((boolean) arg) ? (byte) 1 : (byte) 0;
+        } else if (Type._char.equals(espressoType)) {
+            assert arg instanceof Character;
+            return (short) (char) arg;
+        } else {
+            if (!Types.isPrimitive(espressoType)) {
+                assert arg instanceof StaticObject;
+                return (/* @Word */ long) env.getHandles().createLocal((StaticObject) arg);
+            }
+            return arg;
+        }
+    }
+
+    @ExplodeLoop
+    private Object[] preprocessArgs(JniEnv env, Object[] args) {
         int paramCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
-        // Meta.Klass[] params = getOriginalMethod().getParameterTypes();
-        // TODO(peterssen): Static method does not get the clazz in the arguments,
-        int argIndex = getMethod().isStatic() ? 0 : 1;
-        for (int i = 0; i < paramCount; ++i) {
-            if (args[argIndex] == null) {
-                args[argIndex] = StaticObject.NULL;
-            }
-            if (args[argIndex] instanceof Boolean) {
-                if (Signatures.parameterKind(getMethod().getParsedSignature(), i) == JavaKind.Boolean) {
-                    args[argIndex] = (boolean) args[argIndex] ? (byte) 1 : (byte) 0;
-                }
-            }
-            if (args[argIndex] instanceof Character) {
-                if (Signatures.parameterKind(getMethod().getParsedSignature(), i) == JavaKind.Char) {
-                    args[argIndex] = (short) (char) args[argIndex];
-                }
-            }
-            ++argIndex;
-        }
-
-        Object[] argsWithEnv = getMethod().isStatic()
-                        ? prepend1(getMethod().getDeclaringKlass().mirror(), args)
-                        : args;
-
+        Object[] unpacked = new Object[prependParams + paramCount + 1 /* class or receiver */];
+        int argIndex = 0;
         if (isJni) {
-            JniEnv jniEnv = getContext().getJNI();
-            argsWithEnv = prepend1(jniEnv.getNativePointer(), argsWithEnv);
+            unpacked[argIndex++] = javaToNative(env, env.getNativePointer(), Type._long);
         }
-
-        return argsWithEnv;
+        if (getMethod().isStatic()) {
+            unpacked[argIndex++] = javaToNative(env, getMethod().getDeclaringKlass().mirror(), Type.java_lang_Class); // class
+        } else {
+            unpacked[argIndex++] = javaToNative(env, args[0], Type.java_lang_Object); // receiver
+        }
+        int skipReceiver = getMethod().isStatic() ? 0 : 1;
+        for (int i = 0; i < paramCount; ++i) {
+            Symbol<Type> paramType = Signatures.parameterType(getMethod().getParsedSignature(), i);
+            unpacked[argIndex++] = javaToNative(env, args[i + skipReceiver], paramType);
+        }
+        return unpacked;
     }
 
     @Override
-    public final Object invokeNaked(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
+        final JniEnv env = getContext().getJNI();
+
+        int nativeFrame = env.getHandles().pushFrame();
         try {
-            nativeCalls.inc();
-            // TODO(peterssen): Inject JNIEnv properly, without copying.
-            // The frame.getArguments().length must match the arity of the native method, which is
-            // constant.
-            // Having a constant length would help PEA to skip the copying.
-            Object[] argsWithEnv = preprocessArgs(frame.getArguments());
-            // logIn(argsWithEnv);
-            Object result = callNative(argsWithEnv);
-            // logOut(argsWithEnv, result);
-            return processResult(result);
+            NATIVE_METHOD_CALLS.inc();
+            Object[] unpackedArgs = preprocessArgs(env, frame.getArguments());
+            Object result = executeNative.execute(boundNative, unpackedArgs);
+            return processResult(env, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
+        } finally {
+            env.getHandles().popFramesIncluding(nativeFrame);
         }
     }
 
@@ -115,35 +126,30 @@ public final class NativeRootNode extends EspressoBaseNode {
         System.err.println("Calling native " + getMethod() + Arrays.toString(argsWithEnv));
     }
 
-    private final Object callNative(Object[] argsWithEnv) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        return InteropLibrary.getFactory().getUncached().execute(boundNative, argsWithEnv);
-    }
-
     @TruffleBoundary
     private static void maybeThrowAndClearPendingException(JniEnv jniEnv) {
         StaticObject ex = jniEnv.getPendingException();
         if (ex != null) {
             jniEnv.clearPendingException();
-            throw new EspressoException(ex);
+            throw Meta.throwException(ex);
         }
     }
 
-    protected final Object processResult(Object result) {
-        JniEnv jniEnv = getMethod().getContext().getJNI();
-        assert jniEnv.getNativePointer() != 0;
+    protected Object processResult(JniEnv env, Object result) {
+        assert env.getNativePointer() != 0;
 
         // JNI exception handling.
-        maybeThrowAndClearPendingException(jniEnv);
-
+        maybeThrowAndClearPendingException(env);
+        Symbol<Type> returnType = Signatures.returnType(getMethod().getParsedSignature());
+        if (!Types.isPrimitive(returnType)) {
+            // Reference
+            return env.getHandles().get(Math.toIntExact((long) result));
+        }
         switch (getMethod().getReturnKind()) {
             case Boolean:
                 return ((byte) result != 0);
-            case Byte:
-                return result;
             case Char:
                 return (char) (short) result;
-            case Short:
-                return result;
             case Object:
                 if (result instanceof TruffleObject) {
                     if (InteropLibrary.getFactory().getUncached().isNull(result)) {
@@ -151,28 +157,9 @@ public final class NativeRootNode extends EspressoBaseNode {
                     }
                 }
                 return result;
+            case Void:
+                return StaticObject.NULL;
         }
-
-        // System.err.println("Return native " + originalMethod.getName() + " -> " + result);
         return result;
-    }
-
-    protected static Object[] prepend1(Object first, Object... args) {
-        Object[] newArgs = new Object[args.length + 1];
-        System.arraycopy(args, 0, newArgs, 1, args.length);
-        newArgs[0] = first;
-        return newArgs;
-    }
-
-    protected static Object[] prepend2(Object first, Object second, Object... args) {
-        Object[] newArgs = new Object[args.length + 2];
-        System.arraycopy(args, 0, newArgs, 2, args.length);
-        newArgs[0] = first;
-        newArgs[1] = second;
-        return newArgs;
-    }
-
-    public TruffleObject getBoundNative() {
-        return boundNative;
     }
 }

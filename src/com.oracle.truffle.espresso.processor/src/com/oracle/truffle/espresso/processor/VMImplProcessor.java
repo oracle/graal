@@ -145,7 +145,7 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         StringBuilder str = new StringBuilder();
         VMHelper h = (VMHelper) helper;
         str.append(IMPORT_VM);
-        if (h.referenceTypes.contains(true)) {
+        if (parameterTypeName.contains("String")) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("void")) {
@@ -185,18 +185,21 @@ public class VMImplProcessor extends IntrinsicsProcessor {
         }
         switch (h.returnType) {
             case "char":
-                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection));
+                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
                 break;
             case "boolean":
-                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection));
+                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
                 str.append(TAB_2).append("return b ? (byte) 1 : (byte) 0;\n");
                 break;
             case "void":
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection));
+                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
+            case "StaticObject":
+                str.append(TAB_2).append("return ").append("(long) env.getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic) + ")").append(";\n");
+                break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection));
+                str.append(TAB_2).append("return " + extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls, hasMetaInjection)).append(";\n");
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

@@ -94,6 +94,19 @@
 #define JVM_SIGINT     SIGINT
 #define JVM_SIGTERM    SIGTERM
 
+/* Misc */
+
+// This code originates from JDK's sysOpen and open64_w
+// from src/solaris/hpi/src/system_md.c
+
+#ifndef O_DELETE
+#define O_DELETE 0x10000
+#endif
+
+const size_t K = 1024;
+
+#define MAX_PATH    (2 * K)
+
 
 #endif /* !_JAVASOFT_JVM_MD_H_ */
  

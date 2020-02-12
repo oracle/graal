@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -51,119 +50,119 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     public static Object checkAndWiden(Meta meta, StaticObject arg, Klass targetKlass) {
         if (targetKlass.isPrimitive()) {
             if (StaticObject.isNull(arg)) {
-                throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("argument type mismatch"));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "argument type mismatch");
             }
             Klass argKlass = arg.getKlass();
             switch (targetKlass.getJavaKind()) {
                 case Boolean:
-                    if (argKlass == meta.Boolean) {
+                    if (argKlass == meta.java_lang_Boolean) {
                         return meta.unboxBoolean(arg);
                     }
                     break; // fail
 
                 case Byte:
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return meta.unboxByte(arg);
                     }
                     break; // fail
 
                 case Char:
-                    if (argKlass == meta.Character) {
+                    if (argKlass == meta.java_lang_Character) {
                         return meta.unboxCharacter(arg);
                     }
                     break; // fail
 
                 case Short:
-                    if (argKlass == meta.Short) {
+                    if (argKlass == meta.java_lang_Short) {
                         return meta.unboxShort(arg);
                     }
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return (short) meta.unboxByte(arg);
                     }
                     break; // fail
 
                 case Int:
-                    if (argKlass == meta.Integer) {
+                    if (argKlass == meta.java_lang_Integer) {
                         return meta.unboxInteger(arg);
                     }
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return (int) meta.unboxByte(arg);
                     }
-                    if (argKlass == meta.Character) {
+                    if (argKlass == meta.java_lang_Character) {
                         return (int) meta.unboxCharacter(arg);
                     }
-                    if (argKlass == meta.Short) {
+                    if (argKlass == meta.java_lang_Short) {
                         return (int) meta.unboxShort(arg);
                     }
                     break; // fail
 
                 case Float:
-                    if (argKlass == meta.Float) {
+                    if (argKlass == meta.java_lang_Float) {
                         return meta.unboxFloat(arg);
                     }
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return (float) meta.unboxByte(arg);
                     }
-                    if (argKlass == meta.Character) {
+                    if (argKlass == meta.java_lang_Character) {
                         return (float) meta.unboxCharacter(arg);
                     }
-                    if (argKlass == meta.Short) {
+                    if (argKlass == meta.java_lang_Short) {
                         return (float) meta.unboxShort(arg);
                     }
-                    if (argKlass == meta.Integer) {
+                    if (argKlass == meta.java_lang_Integer) {
                         return (float) meta.unboxInteger(arg);
                     }
-                    if (argKlass == meta.Long) {
+                    if (argKlass == meta.java_lang_Long) {
                         return (float) meta.unboxLong(arg);
                     }
                     break; // fail
 
                 case Long:
-                    if (argKlass == meta.Long) {
+                    if (argKlass == meta.java_lang_Long) {
                         return meta.unboxLong(arg);
                     }
-                    if (argKlass == meta.Integer) {
+                    if (argKlass == meta.java_lang_Integer) {
                         return (long) meta.unboxInteger(arg);
                     }
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return (long) meta.unboxByte(arg);
                     }
-                    if (argKlass == meta.Character) {
+                    if (argKlass == meta.java_lang_Character) {
                         return (long) meta.unboxCharacter(arg);
                     }
-                    if (argKlass == meta.Short) {
+                    if (argKlass == meta.java_lang_Short) {
                         return (long) meta.unboxShort(arg);
                     }
                     break; // fail
 
                 case Double:
-                    if (argKlass == meta.Double) {
+                    if (argKlass == meta.java_lang_Double) {
                         return meta.unboxDouble(arg);
                     }
-                    if (argKlass == meta.Float) {
+                    if (argKlass == meta.java_lang_Float) {
                         return (double) meta.unboxFloat(arg);
                     }
-                    if (argKlass == meta.Integer) {
+                    if (argKlass == meta.java_lang_Integer) {
                         return (double) meta.unboxInteger(arg);
                     }
-                    if (argKlass == meta.Byte) {
+                    if (argKlass == meta.java_lang_Byte) {
                         return (double) meta.unboxByte(arg);
                     }
-                    if (argKlass == meta.Character) {
+                    if (argKlass == meta.java_lang_Character) {
                         return (double) meta.unboxCharacter(arg);
                     }
-                    if (argKlass == meta.Short) {
+                    if (argKlass == meta.java_lang_Short) {
                         return (double) meta.unboxShort(arg);
                     }
-                    if (argKlass == meta.Long) {
+                    if (argKlass == meta.java_lang_Long) {
                         return (double) meta.unboxLong(arg);
                     }
                     break; // fail
             }
-            throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("argument type mismatch"));
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "argument type mismatch");
         } else {
             if (StaticObject.notNull(arg) && !targetKlass.isAssignableFrom(arg.getKlass())) {
-                throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("argument type mismatch"));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "argument type mismatch");
             }
             return arg;
         }
@@ -230,17 +229,19 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         while (reflectedMethod == null) {
             reflectedMethod = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (reflectedMethod == null) {
-                curMethod = (StaticObject) meta.Method_root.get(curMethod);
+                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
             }
         }
 
-        Klass klass = ((StaticObject) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
+        Klass klass = ((StaticObject) meta.java_lang_reflect_Method_clazz.get(guestMethod)).getMirrorKlass();
 
-        if (klass == meta.MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
-            throw meta.throwExWithCause(InvocationTargetException.class, meta.initExWithMessage(UnsupportedOperationException.class, "Cannot reflecively invoke MethodHandle.{invoke,invokeExact}"));
+        if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
+            StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
+            StaticObject invocationTargetException = Meta.initExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, cause);
+            throw Meta.throwException(invocationTargetException);
         }
 
-        StaticObject parameterTypes = (StaticObject) meta.Method_parameterTypes.get(guestMethod);
+        StaticObject parameterTypes = (StaticObject) meta.java_lang_reflect_Method_parameterTypes.get(guestMethod);
         // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
         // reflectedMethod.getName());
         StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
@@ -251,10 +252,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
     public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
                     Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
+        // Klass should be initialized if method is static, and could be delayed until method
+        // invocation, according to specs. However, JCK tests that it is indeed always initialized
+        // before doing anything, even if the method to be invoked is from another class.
         klass.safeInitialize();
 
         Method method;      // actual method to invoke
-        Klass targetKlass; // target klass, receiver's klass for non-static
+        Klass targetKlass;  // target klass, receiver's klass for non-static
 
         if (reflectedMethod.isStatic()) {
             // Ignore receiver argument;.
@@ -262,18 +266,18 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             targetKlass = klass;
         } else {
             if (StaticObject.isNull(receiver)) {
-                throw meta.throwEx(meta.NullPointerException);
+                throw meta.throwNullPointerException();
             }
 
             // Check class of receiver against class declaring method.
             if (!klass.isAssignableFrom(receiver.getKlass())) {
-                throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("object is not an instance of declaring class"));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "object is not an instance of declaring class");
             }
 
             // target klass is receiver's klass
             targetKlass = receiver.getKlass();
             // no need to resolve if method is private or <init>
-            if (reflectedMethod.isPrivate() || Name.INIT.equals(reflectedMethod.getName())) {
+            if (reflectedMethod.isPrivate() || Name._init_.equals(reflectedMethod.getName())) {
                 method = reflectedMethod;
             } else {
                 // resolve based on the receiver
@@ -288,7 +292,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         // Check for abstract methods as well
                         if (!method.hasCode()) {
                             // new default: 65315
-                            throw meta.throwExWithCause(meta.InvocationTargetException, Meta.initEx(meta.AbstractMethodError));
+                            throw Meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, Meta.initException(meta.java_lang_AbstractMethodError));
                         }
                     }
                 } else {
@@ -300,7 +304,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         // Check for abstract methods as well
                         if (method.isAbstract()) {
                             // new default: 65315
-                            throw meta.throwExWithCause(meta.InvocationTargetException, Meta.initEx(meta.AbstractMethodError));
+                            throw Meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, Meta.initException(meta.java_lang_AbstractMethodError));
                         }
                     }
                 }
@@ -311,7 +315,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         // I believe this is a ShouldNotGetHere case which requires
         // an internal vtable bug. If you ever get this please let Karen know.
         if (method == null) {
-            throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString("please let Karen know"));
+            throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "please let Karen know");
         }
 
         int argsLen = StaticObject.isNull(args) ? 0 : args.length();
@@ -319,7 +323,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         // Check number of arguments.
         if (Signatures.parameterCount(signature, false) != argsLen) {
-            throw meta.throwExWithMessage(meta.IllegalArgumentException, meta.toGuestString("wrong number of arguments !"));
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 
         Object[] adjustedArgs = new Object[argsLen];
@@ -335,10 +339,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         try {
             result = method.invokeDirect(receiver, adjustedArgs);
         } catch (EspressoException e) {
-            if (e.getException() == null) {
-                throw EspressoError.shouldNotReachHere("no wrapped exception???");
-            }
-            throw meta.throwExWithCause(meta.InvocationTargetException, e.getException());
+            throw Meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getExceptionObject());
         }
 
         if (reflectedMethod.getReturnKind() == JavaKind.Void) {

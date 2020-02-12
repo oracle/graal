@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.EspressoOptions.VerifyMode;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,18 +35,20 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
-import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -56,8 +63,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class ObjectKlass extends Klass {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
-
-    public static final JavaKind FIELD_REPRESENTATION = JavaKind.Byte;
 
     private final EnclosingMethodAttribute enclosingMethod;
 
@@ -93,22 +98,30 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
+    private String genericSignature;
+
+    // Stores the VTable for classes, holds public non-static methods for interfaces.
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
 
     // TODO(garcia) Sort itables (according to an arbitrary key) for dichotomic search?
     @CompilationFinal(dimensions = 2) private final Method[][] itable;
-    @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
+    @CompilationFinal(dimensions = 1) private final ObjectKlass[] iKlassTable;
     @CompilationFinal private final int itableLength;
 
     @CompilationFinal private volatile int initState = LOADED;
 
-    private static final int LOADED = 0;
-    private static final int LINKED = 1;
-    private static final int PREPARED = 2;
-    private static final int INITIALIZED = 3;
-    private static final int ERRONEOUS = 99;
+    @CompilationFinal //
+    boolean hasDeclaredDefaultMethods = false;
 
-    public final Attribute getAttribute(Symbol<Name> name) {
+    @CompilationFinal private int computedModifiers = -1;
+
+    public static final int LOADED = 0;
+    public static final int LINKED = 1;
+    public static final int PREPARED = 2;
+    public static final int INITIALIZED = 3;
+    public static final int ERRONEOUS = 99;
+
+    public Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
     }
 
@@ -117,7 +130,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
-        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces);
+        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
 
         this.linkedKlass = linkedKlass;
         this.hostKlass = hostKlass;
@@ -154,8 +167,9 @@ public final class ObjectKlass extends Klass {
         this.declaredMethods = methods;
         if (this.isInterface()) {
             this.itable = null;
-            this.vtable = null;
-            this.iKlassTable = InterfaceTables.getiKlassTable(this, declaredMethods);
+            InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, declaredMethods);
+            this.vtable = icr.methodtable;
+            this.iKlassTable = icr.klassTable;
         } else {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces);
             this.iKlassTable = methodCR.klassTable;
@@ -165,10 +179,36 @@ public final class ObjectKlass extends Klass {
         }
         this.itableLength = iKlassTable.length;
         this.initState = LINKED;
+        assert verifyTables();
     }
 
-    @Override
-    public StaticObject getStatics() {
+    private boolean verifyTables() {
+        if (vtable != null) {
+            for (int i = 0; i < vtable.length; i++) {
+                if (isInterface()) {
+                    if (vtable[i].getITableIndex() != i) {
+                        return false;
+                    }
+                } else {
+                    if (vtable[i].getVTableIndex() != i) {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (itable != null) {
+            for (Method[] table : itable) {
+                for (int i = 0; i < table.length; i++) {
+                    if (table[i].getITableIndex() != i) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    StaticObject getStaticsImpl() {
         if (statics == null) {
             obtainStatics();
         }
@@ -182,23 +222,16 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    @Override
-    public boolean isInstanceClass() {
-        return /* !isArray() && */ !isInterface();
-    }
-
-    @Override
-    public int getFlags() {
-        return linkedKlass.getFlags();
-    }
-
-    @Override
-    public boolean isInitialized() {
+    boolean isInitializedImpl() {
         return initState == INITIALIZED;
     }
 
     private boolean isPrepared() {
         return initState == PREPARED;
+    }
+
+    public int getState() {
+        return initState;
     }
 
     private boolean isInitializedOrPrepared() {
@@ -210,22 +243,31 @@ public final class ObjectKlass extends Klass {
         synchronized (this) {
             if (!(isInitializedOrPrepared())) { // Check under lock
                 if (initState == ERRONEOUS) {
-                    throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
                 }
                 try {
-                    /**
-                     * Spec fragment: Then, initialize each final static field of C with the
-                     * constant value in its ConstantValue attribute (§4.7.2), in the order the
-                     * fields appear in the ClassFile structure.
-                     *
-                     * ...
-                     *
-                     * Next, execute the class or interface initialization method of C.
-                     */
+                    // Spec fragment: Then, initialize each final static field of C with the
+                    // constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
+                    // fields appear in the ClassFile structure.
+                    //
+                    // ...
+                    //
+                    // Next, execute the class or interface initialization method of C.
                     prepare();
                     initState = PREPARED;
+                    if (getContext().isMainThreadCreated()) {
+                        if (getContext().getJDWPListener() != null) {
+                            prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                            getContext().getJDWPListener().classPrepared(this, prepareThread, false);
+                        }
+                    }
                     if (getSuperKlass() != null) {
                         getSuperKlass().initialize();
+                    }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        // Initialize all super interfaces, direct and indirect, with default
+                        // methods.
+                        interf.recursiveInitialize();
                     }
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
@@ -233,19 +275,20 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (EspressoException e) {
                     setErroneous();
-                    StaticObject cause = e.getException();
-                    if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
-                        throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
+                    StaticObject cause = e.getExceptionObject();
+                    Meta meta = getMeta();
+                    if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
+                        throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
                     } else {
                         throw e;
                     }
                 } catch (Throwable e) {
-                    System.err.println("Host exception happened during class initialization");
+                    EspressoLanguage.EspressoLogger.severe("Host exception during class initialization: " + this);
                     setErroneous();
                     throw e;
                 }
                 if (initState == ERRONEOUS) {
-                    throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
+                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
                 }
                 initState = INITIALIZED;
                 assert isInitialized();
@@ -254,6 +297,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void prepare() {
+        checkLoadingConstraints();
         for (Field f : declaredFields) {
             if (f.isStatic()) {
                 ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
@@ -262,47 +306,47 @@ public final class ObjectKlass extends Klass {
                 }
                 switch (f.getKind()) {
                     case Boolean: {
-                        boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
+                        boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
                         f.set(getStatics(), c);
                         break;
                     }
                     case Byte: {
-                        byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
+                        byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Short: {
-                        short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
+                        short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Char: {
-                        char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
+                        char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Int: {
-                        int c = getConstantPool().intAt(a.getConstantvalueIndex());
+                        int c = getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Float: {
-                        float c = getConstantPool().floatAt(a.getConstantvalueIndex());
+                        float c = getConstantPool().floatAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Long: {
-                        long c = getConstantPool().longAt(a.getConstantvalueIndex());
+                        long c = getConstantPool().longAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Double: {
-                        double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
+                        double c = getConstantPool().doubleAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Object: {
-                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
+                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
@@ -314,12 +358,26 @@ public final class ObjectKlass extends Klass {
     }
 
     // Need to carefully synchronize, as the work of other threads can erase our own work.
-    @Override
-    public void initialize() {
+
+    void initializeImpl() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            verifyKlass();
+            verify();
             actualInit();
+        }
+    }
+
+    private void recursiveInitialize() {
+        if (!isInitialized()) { // Skip synchronization and locks if already init.
+            if (hasDeclaredDefaultMethods()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                verify();
+                actualInit();
+            } else {
+                for (ObjectKlass interf : getSuperInterfaces()) {
+                    interf.recursiveInitialize();
+                }
+            }
         }
     }
 
@@ -357,7 +415,7 @@ public final class ObjectKlass extends Klass {
     public Method[] getDeclaredConstructors() {
         List<Method> constructors = new ArrayList<>();
         for (Method m : getDeclaredMethods()) {
-            if (Name.INIT.equals(m.getName())) {
+            if (Name._init_.equals(m.getName())) {
                 constructors.add(m);
             }
         }
@@ -378,11 +436,6 @@ public final class ObjectKlass extends Klass {
         return declaredFields;
     }
 
-    @Override
-    public Klass getComponentType() {
-        return null;
-    }
-
     public EnclosingMethodAttribute getEnclosingMethod() {
         return enclosingMethod;
     }
@@ -391,7 +444,7 @@ public final class ObjectKlass extends Klass {
         return innerClasses;
     }
 
-    public final LinkedKlass getLinkedKlass() {
+    public LinkedKlass getLinkedKlass() {
         return linkedKlass;
     }
 
@@ -423,24 +476,21 @@ public final class ObjectKlass extends Klass {
         return primitiveStaticFieldTotalByteCount;
     }
 
-    @Override
-    public Klass getHostClass() {
+    Klass getHostClassImpl() {
         return hostKlass;
     }
 
-    @Override
-    public final Field lookupFieldTable(int slot) {
+    Field lookupFieldTableImpl(int slot) {
         assert (slot >= 0 && slot < getInstanceFieldSlots());
         return fieldTable[slot];
     }
 
-    @Override
-    public final Field lookupStaticFieldTable(int slot) {
+    Field lookupStaticFieldTableImpl(int slot) {
         assert (slot >= 0 && slot < getStaticFieldSlots());
         return staticFieldTable[slot];
     }
 
-    public final Field lookupHiddenField(Symbol<Name> name) {
+    public Field lookupHiddenField(Symbol<Name> name) {
         // Hidden fields are (usually) located at the end of the field table.
         for (int i = fieldTable.length - 1; i > 0; i--) {
             Field f = fieldTable[i];
@@ -452,21 +502,26 @@ public final class ObjectKlass extends Klass {
     }
 
     Method[] getVTable() {
+        assert !isInterface();
         return vtable;
     }
 
-    @Override
-    public final Method vtableLookup(int index) {
-        assert (index >= 0) : "Undeclared virtual method";
-        return vtable[index];
+    Method[] getInterfaceMethodsTable() {
+        assert isInterface();
+        return vtable;
     }
 
-    public final Method itableLookup(Klass interfKlass, int index) {
+    Method vtableLookupImpl(int vtableIndex) {
+        assert (vtableIndex >= 0) : "Undeclared virtual method";
+        return vtable[vtableIndex];
+    }
+
+    public Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
         try {
             return itable[findITableIndex(interfKlass)][index];
         } catch (IndexOutOfBoundsException e) {
-            throw getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Class " + getName() + " does not implement interface " + interfKlass.getName());
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
         }
     }
 
@@ -479,37 +534,38 @@ public final class ObjectKlass extends Klass {
             }
             return -1;
         } else {
-            return Arrays.binarySearch(iKlassTable, interfKlass, COMPARATOR);
+            return Arrays.binarySearch(iKlassTable, interfKlass, KLASS_ID_COMPARATOR);
         }
     }
 
-    final Method[][] getItable() {
+    Method[][] getItable() {
         return itable;
     }
 
-    final Klass[] getiKlassTable() {
+    ObjectKlass[] getiKlassTable() {
         return iKlassTable;
     }
 
-    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
-        for (Method m : vtable) {
+    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
+        for (int i = 0; i < vtable.length; i++) {
+            Method m = vtable[i];
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
-                    return m;
+                    return i;
                 } else if (sameRuntimePackage(subClass)) {
-                    return m;
+                    return i;
                 }
             }
         }
-        return null;
+        return -1;
     }
 
-    final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
+    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : vtable) {
-            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+            if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (this.sameRuntimePackage(subKlass)) {
+                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
@@ -517,33 +573,85 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
-        for (Klass k : iKlassTable) {
-            for (Method m : k.getDeclaredMethods()) {
-                if (name == m.getName() && signature == m.getRawSignature()) {
-                    return m;
-                }
+        /*
+         * 2. Otherwise, if C declares a method with the name and descriptor specified by the
+         * interface method reference, method lookup succeeds.
+         */
+        for (Method m : getDeclaredMethods()) {
+            if (name == m.getName() && signature == m.getRawSignature()) {
+                return m;
             }
         }
-        assert getSuperKlass().getType() == Type.Object;
+        /*
+         * 3. Otherwise, if the class Object declares a method with the name and descriptor
+         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
+         * not have its ACC_STATIC flag set, method lookup succeeds.
+         */
+        assert getSuperKlass().getType() == Type.java_lang_Object;
         Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
             return m;
         }
-        return null;
+
+        Method resolved = null;
+        /*
+         * Interfaces are sorted, superinterfaces first; traverse in reverse order to get
+         * maximally-specific first.
+         */
+        for (int i = iKlassTable.length - 1; i >= 0; i--) {
+            ObjectKlass superInterf = iKlassTable[i];
+            for (Method superM : superInterf.getInterfaceMethodsTable()) {
+                /*
+                 * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
+                 * methods declared in superInterf.
+                 */
+                if (name == superM.getName() && signature == superM.getRawSignature()) {
+                    if (!superM.isAbstract() && (resolved == null || !superInterf.isAssignableFrom(resolved.getDeclaringKlass()))) {
+                        /*
+                         * 4. Otherwise, if the maximally-specific superinterface methods
+                         * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
+                         * reference include exactly one method that does not have its ACC_ABSTRACT
+                         * flag set, then this method is chosen and method lookup succeeds.
+                         * 
+                         * Note: If there is more than one such method, we still select it, for it
+                         * still complies with point 5.
+                         */
+                        return superM;
+                    }
+                    /*
+                     * 5. Otherwise, if any superinterface of C declares a method with the name and
+                     * descriptor specified by the method reference that has neither its ACC_PRIVATE
+                     * flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
+                     * method lookup succeeds.
+                     */
+                    if (resolved == null) {
+                        /*
+                         * Since interfaces are sorted superinterfaces first, and we traverse in
+                         * reverse order, we have the guarantee that the first such method we
+                         * encounter will be a maximally-specific method. Thus, the only way
+                         * returning this method is incorrect is if there is another
+                         * maximally-specific non-abstract method
+                         */
+                        resolved = superM;
+                    }
+                }
+            }
+        }
+        return resolved;
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
-        methodLookupCount.inc();
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+        KLASS_LOOKUP_METHOD_COUNT.inc();
         Method method = lookupDeclaredMethod(methodName, signature);
         if (method == null) {
             // Implicit interface methods.
             method = lookupMirandas(methodName, signature);
         }
-        if (method == null && getType() == Type.MethodHandle) {
-            method = lookupPolysigMethod(methodName, signature, accessingKlass);
+        if (method == null && getType() == Type.java_lang_invoke_MethodHandle) {
+            method = lookupPolysigMethod(methodName, signature);
         }
         if (method == null && getSuperKlass() != null) {
             method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
@@ -551,11 +659,11 @@ public final class ObjectKlass extends Klass {
         return method;
     }
 
-    public final Field[] getFieldTable() {
+    public Field[] getFieldTable() {
         return fieldTable;
     }
 
-    public final Field[] getStaticFieldTable() {
+    public Field[] getStaticFieldTable() {
         return staticFieldTable;
     }
 
@@ -571,7 +679,8 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    private void verifyKlass() {
+    @Override
+    public void verify() {
         if (!isVerified()) {
             synchronized (this) {
                 if (!isVerifyingOrVerified()) {
@@ -598,40 +707,70 @@ public final class ObjectKlass extends Klass {
 
     private void verifyImpl() {
         CompilerAsserts.neverPartOfCompilation();
-        EspressoOptions.VerifyMode mode = getContext().getEnv().getOptions().get(EspressoOptions.Verify);
-        if (mode != EspressoOptions.VerifyMode.NONE) {
+        VerifyMode mode = getContext().Verify;
+        if (mode != VerifyMode.NONE) {
             // Do not verify BootClassLoader classes, they are trusted.
-            if (mode == EspressoOptions.VerifyMode.ALL || !StaticObject.isNull(getDefiningClassLoader())) {
+            if (mode == VerifyMode.ALL || !StaticObject.isNull(getDefiningClassLoader())) {
+                Meta meta = getMeta();
                 if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
-                    throw getMeta().throwEx(VerifyError.class);
+                    throw Meta.throwException(meta.java_lang_VerifyError);
                 }
-
                 if (getSuperKlass() != null) {
-                    getSuperKlass().verifyKlass();
+                    getSuperKlass().verify();
                 }
                 for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.verifyKlass();
+                    interf.verify();
                 }
-
+                if (meta.sun_reflect_MagicAccessorImpl.isAssignableFrom(this)) {
+                    // Hotspot comment:
+                    // As of the fix for 4486457 we disable verification for all of the
+                    // dynamically-generated bytecodes associated with the 1.4
+                    // reflection implementation, not just those associated with
+                    // sun/reflect/SerializationConstructorAccessor.
+                    // NOTE: this is called too early in the bootstrapping process to be
+                    // guarded by Universe::is_gte_jdk14x_version()/UseNewReflection.
+                    // Also for lambda generated code, gte jdk8
+                    return;
+                }
                 for (Method m : getDeclaredMethods()) {
                     try {
                         MethodVerifier.verify(m);
-                    } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-                        // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
-                        throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
-                    } catch (EspressoException e) {
-                        throw e;
-                    } catch (Throwable e) {
-                        System.err.println("Unexpected host exception happened during bytecode verification: " + e);
-                        throw EspressoError.shouldNotReachHere(e.toString());
+                        // The verifier convention use host exceptions and they must be
+                        // explicitly converted.
+                        // This is acceptable since these particular set of host exceptions are not
+                        // expected at all e.g. we don't expect any host
+                        // VerifyError/ClassFormatError to be thrown by the host itself (at this
+                        // point, or even ever at all).
+                    } catch (VerifyError e) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                    } catch (ClassFormatError e) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                    } catch (IncompatibleClassChangeError e) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
+                    } catch (NoClassDefFoundError e) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
                     }
                 }
             }
         }
     }
 
+    void printClass() {
+        System.err.println(getType());
+        for (Method m : declaredMethods) {
+            System.err.println(m);
+            m.printBytecodes();
+            System.err.println();
+        }
+    }
+
+    public boolean hasFinalizer() {
+        return (getModifiers() & ACC_FINALIZER) != 0;
+    }
+
     // Verification data
 
+    // Verification data
     @CompilationFinal //
     private volatile int verificationStatus = UNVERIFIED;
 
@@ -639,6 +778,7 @@ public final class ObjectKlass extends Klass {
     private EspressoException verificationError = null;
 
     private static final int UNVERIFIED = 0;
+
     private static final int VERIFYING = 1;
     private static final int VERIFIED = 2;
 
@@ -660,5 +800,113 @@ public final class ObjectKlass extends Klass {
 
     public int[][] getLeftoverHoles() {
         return leftoverHoles;
+    }
+
+    private void checkLoadingConstraints() {
+        if (getSuperKlass() != null) {
+            if (!isInterface()) {
+                Method[] thisVTable = getVTable();
+                if (thisVTable != null) {
+                    Method[] superVTable = getSuperKlass().getVTable();
+                    Klass k1;
+                    Klass k2;
+                    for (int i = 0; i < superVTable.length; i++) {
+                        k1 = thisVTable[i].getDeclaringKlass();
+                        k2 = superVTable[i].getDeclaringKlass();
+                        if (k1 == this) {
+                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+            if (getItable() != null) {
+                Method[][] itables = getItable();
+                Klass[] klassTable = getiKlassTable();
+                for (int i = 0; i < getItable().length; i++) {
+                    Klass interfKlass = klassTable[i];
+                    Method[] table = itables[i];
+                    for (Method m : table) {
+                        if (m.getDeclaringKlass() == this) {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
+                        } else {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @TruffleBoundary
+    public List<Symbol<Name>> getNestedTypeNames() {
+        ArrayList<Symbol<Name>> result = new ArrayList<>();
+        if (innerClasses != null) {
+            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                if (entry.innerClassIndex != 0) {
+                    result.add(pool.classAt(entry.innerClassIndex).getName(pool));
+
+                }
+            }
+        }
+        return result;
+    }
+
+    @TruffleBoundary
+    private int computeModifiers() {
+        int modifiers = getModifiers();
+        if (innerClasses != null) {
+            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                if (entry.innerClassIndex != 0) {
+                    Symbol<Name> innerClassName = pool.classAt(entry.innerClassIndex).getName(pool);
+                    if (innerClassName.equals(this.getName())) {
+                        modifiers = entry.innerClassAccessFlags;
+                        break;
+                    }
+                }
+            }
+        }
+        return modifiers;
+    }
+
+    @Override
+    public int getClassModifiers() {
+        int modifiers = computedModifiers;
+        if (modifiers == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computedModifiers = modifiers = computeModifiers();
+        }
+        // Remember to strip ACC_SUPER bit
+        return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
+    }
+
+    /**
+     * Returns true if the interface has declared (not inherited) default methods, false otherwise.
+     */
+    private boolean hasDeclaredDefaultMethods() {
+        assert !hasDeclaredDefaultMethods || isInterface();
+        return hasDeclaredDefaultMethods;
+    }
+
+    @Override
+    public String getGenericTypeAsString() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedKlass.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = ""; // if no generics, the generic signature is empty
+            } else {
+                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
+    }
+
+    @Override
+    public int getMajorVersion() {
+        return linkedKlass.getMajorVersion();
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return linkedKlass.getMinorVersion();
     }
 }

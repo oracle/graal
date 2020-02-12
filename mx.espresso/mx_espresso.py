@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
 from argparse import ArgumentParser
 
 import mx
-import mx_sdk
+import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
@@ -34,22 +34,26 @@ _suite = mx.suite('espresso')
 
 class EspressoDefaultTags:
     unittest = 'unittest'
+    unittest_with_compilation = 'unittest_with_compilation'
     jackpot = 'jackpot'
     meta = 'meta'
 
-def _run_espresso(args):
 
-    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + args)
+def _espresso_command(args):
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    return (
+        vm_args
+        + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+        + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
+    )
+
+
+def _run_espresso(args, cwd=None):
+    mx.run_java(_espresso_command(args), cwd=cwd)
+
 
 def _run_espresso_meta(args):
-
-    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + args)
+    mx.run_java(['-Xss5m'] + _espresso_command(_espresso_command(args)))
 
 
 def _run_espresso_playground(args):
@@ -64,9 +68,19 @@ def _run_espresso_playground(args):
 
 
 def _espresso_gate_runner(args, tasks):
+    with Task('UnitTestsWithCompilation', tasks, tags=[EspressoDefaultTags.unittest_with_compilation]) as t:
+        if t:
+            unittest(['--enable-timing', '--very-verbose', '--suite', 'espresso',
+                      '--', # pass VM options
+                      '-Dgraal.TruffleCompileImmediately=true',
+                      '-Dgraal.TruffleBackgroundCompilation=false',
+                      '-Dgraal.TruffleCompileOnly=espresso',
+                      # '-Dgraal.TraceTruffleCompilation=true', # Too verbose
+                      ])
+
     with Task('UnitTests', tasks, tags=[EspressoDefaultTags.unittest]) as t:
         if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
+            unittest(['--enable-timing', '--very-verbose', '--suite', 'espresso'])
 
     # Jackpot configuration is inherited from Truffle.
     with Task('Jackpot', tasks, tags=[EspressoDefaultTags.jackpot]) as t:
@@ -78,25 +92,26 @@ def _espresso_gate_runner(args, tasks):
             _run_espresso_meta(args=['-cp', mx.classpath('ESPRESSO_PLAYGROUND'), 'com.oracle.truffle.espresso.playground.HelloWorld'])
 
 
+def verify_ci(args):
+    """Verify CI configuration"""
+    mx.verify_ci(args, mx.suite('truffle'), _suite, 'common.json')
+
 
 # REGISTER MX GATE RUNNER
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Espresso',
     short_name='java',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=[
-        'espresso:ESPRESSO',
-    ],
-    support_distributions=[
-        'espresso:ESPRESSO_SUPPORT',
-    ],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['espresso:ESPRESSO'],
+    support_distributions=['espresso:ESPRESSO_SUPPORT'],
     launcher_configs=[
-        mx_sdk.LanguageLauncherConfig(
+        mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:espresso>',
             jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
             main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
@@ -106,9 +121,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
 ))
 
+
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
     'espresso': [_run_espresso, ''],
     'espresso-meta': [_run_espresso_meta, ''],
     'espresso-playground': [_run_espresso_playground, ''],
+    'verify-ci' : [verify_ci, '[options]'],
 })
+
+# Build configs
+# pylint: disable=bad-whitespace
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'nfi', 'sdk', 'tfl'                                        ], _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'nfi', 'sdk', 'tfl', 'cmp'                                 ], _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')

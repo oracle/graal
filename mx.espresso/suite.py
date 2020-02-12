@@ -1,5 +1,27 @@
+#
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
 suite = {
-    "mxversion": "5.229.1",
+    "mxversion": "5.251.0",
     "name": "espresso",
 
     # ------------- licenses
@@ -7,7 +29,7 @@ suite = {
     "licenses": {
         "GPLv2": {
             "name": "GNU General Public License, version 2",
-            "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
+            "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
         },
     },
     "defaultLicense": "GPLv2",
@@ -20,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "9fd41c64e100be9d3af0722d9c6418236269151e",
+                "version": "2d490de5f447a16b96a4e07a3c50dbe4f40cc6d6",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -50,10 +72,13 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "com.oracle.truffle.espresso.jdwp"
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
+            "checkstyleVersion": "8.8",
+            "checkPackagePrefix": False, # java.lang.ref.PublicFinalReference
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -73,7 +98,19 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.launcher",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.jdwp": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_NFI",
+            ],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.jdwp",
         },
 
         "com.oracle.truffle.espresso.playground": {
@@ -110,15 +147,27 @@ suite = {
 
         "com.oracle.truffle.espresso.test": {
             "subDir": "src",
-            "jniHeaders": True,
             "sourceDirs": ["src"],
+            "testProject": True,
+            "jniHeaders": True,
             "dependencies": [
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.test",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.test.jdk8": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "testProject": True,
+            "dependencies": [
+                "com.oracle.truffle.espresso.test"
+            ],
+            "overlayTarget" : "com.oracle.truffle.espresso.test",
+            "javaCompliance": "8",
         },
 
         # Native library for tests

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -229,54 +229,80 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.FloatConstant;
-import com.oracle.truffle.espresso.classfile.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.LongConstant;
-import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.PoolConstant;
+import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -290,22 +316,14 @@ import com.oracle.truffle.object.DebugCounter;
  * <p>
  * The operand stack is implemented in a PE-friendly way, with the {@code top} of the stack index
  * being a local variable. With ad-hoc implementation there's no explicit pop operation. Each
- * bytecode is first processed/executed without growing or shinking the stack and only then the
+ * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoMethodNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_GENERAL = false;
-    public static final boolean DEBUG_THROWN = false;
-    public static final boolean DEBUG_CATCH = false;
-
-    public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
-
-    static final DebugCounter injectAndCallCount = DebugCounter.create("injectAndCallCount");
-
-    public static final DebugCounter resolveFieldCount = DebugCounter.create("resolveFieldCount");
-    public static final DebugCounter resolveKlassCount = DebugCounter.create("resolveKlassCount");
-    public static final DebugCounter resolveMethodCount = DebugCounter.create("resolveMethodCount");
+    private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
+    private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
+    private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
@@ -315,25 +333,51 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] stackSlots;
 
+    private final FrameSlot monitorSlot;
+    private final FrameSlot bciSlot;
+
     @CompilationFinal(dimensions = 1) //
-    private final int[] SOEinfo;
+    private final int[] stackOverflowErrorInfo;
+
+    @CompilationFinal(dimensions = 2) //
+    private int[][] jsrBci = null;
 
     private final BytecodeStream bs;
 
+    @Child private volatile InstrumentationSupport instrumentation;
+
+    private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
+
     @TruffleBoundary
-    public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
+    public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+
         this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
         this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
-        this.SOEinfo = getMethod().getSOEHandlerInfo();
+        this.monitorSlot = monitorSlot;
+        this.bciSlot = bciSlot;
+        this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
     }
 
     public BytecodeNode(BytecodeNode copy) {
-        this(copy.getMethod(), copy.getRootNode().getFrameDescriptor());
+        this(copy.getMethod(), copy.getRootNode().getFrameDescriptor(), copy.monitorSlot, copy.bciSlot);
         System.err.println("Copying node for " + getMethod());
+    }
+
+    public SourceSection getSourceSectionAtBCI(int bci) {
+        Source s = getSource();
+        if (s == null) {
+            return null;
+        }
+        LineNumberTableAttribute table = getMethod().getLineNumberTable();
+        if (table == LineNumberTableAttribute.EMPTY) {
+            return null;
+        }
+        int line = table.getLineNumber(bci);
+        return s.createSection(line);
     }
 
     @ExplodeLoop
@@ -356,14 +400,13 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
         int n = 0;
         if (hasReceiver) {
-            assert frameArguments[0] != StaticObject.NULL : "null receiver in init arguments !";
+            assert !StaticObject.isEspressoNull(frameArguments[0]) : "null receiver in init arguments !";
             setLocalObject(frame, n, (StaticObject) frameArguments[0]);
             n += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {
             JavaKind expectedkind = Signatures.parameterKind(getMethod().getParsedSignature(), i);
             // @formatter:off
-            // Checkstyle: stop
             switch (expectedkind) {
                 case Boolean : setLocalInt(frame, n, ((boolean) arguments[i]) ? 1 : 0); break;
                 case Byte    : setLocalInt(frame, n, ((byte) arguments[i]));            break;
@@ -374,44 +417,68 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 case Long    : setLocalLong(frame, n, (long) arguments[i]);             break;
                 case Double  : setLocalDouble(frame, n, (double) arguments[i]);         break;
                 case Object  : setLocalObject(frame, n, (StaticObject) arguments[i]);   break;
-                default      : throw EspressoError.shouldNotReachHere("unexpected kind");
+                default      :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere("unexpected kind");
             }
             // @formatter:on
-            // Checkstyle: resume
             n += expectedkind.getSlotCount();
+        }
+        setBCI(frame, 0);
+        if (monitorSlot != null) {
+            frame.setObject(monitorSlot, new MonitorStack());
         }
     }
 
-    private int peekInt(VirtualFrame frame, int slot) {
+    private void setBCI(VirtualFrame frame, int bci) {
+        frame.setInt(bciSlot, bci);
+    }
+
+    public int peekInt(VirtualFrame frame, int slot) {
         return (int) FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
     // Exposed to InstanceOfNode.
-    StaticObject peekObject(VirtualFrame frame, int slot) {
+    public StaticObject peekObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         assert result instanceof StaticObject;
         return (StaticObject) result;
     }
 
+    /**
+     * Read and clear the operand stack slot.
+     */
+    public StaticObject peekAndReleaseObject(VirtualFrame frame, int slot) {
+        Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
+        // nulls-out the slot, use peekObject to read only
+        putObject(frame, slot, null);
+        assert result instanceof StaticObject;
+        return (StaticObject) result;
+    }
+
     // Boxed value.
-    private Object peekValue(VirtualFrame frame, int slot) {
+    public Object peekValue(VirtualFrame frame, int slot) {
         return frame.getValue(stackSlots[slot]);
     }
 
-    private float peekFloat(VirtualFrame frame, int slot) {
+    public float peekFloat(VirtualFrame frame, int slot) {
         return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
-    private long peekLong(VirtualFrame frame, int slot) {
+    public long peekLong(VirtualFrame frame, int slot) {
         return FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
-    private double peekDouble(VirtualFrame frame, int slot) {
+    public double peekDouble(VirtualFrame frame, int slot) {
         return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
-    private Object peekReturnAddressOrObject(VirtualFrame frame, int slot) {
+    /**
+     * Read and clear the operand stack slot.
+     */
+    private Object peekAndReleaseReturnAddressOrObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
+        putObjectOrReturnAddress(frame, slot, null);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
         return result;
     }
@@ -420,7 +487,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         frame.setObject(stackSlots[slot], ReturnAddress.create(targetBCI));
     }
 
-    private void putObject(VirtualFrame frame, int slot, StaticObject value) {
+    public void putObject(VirtualFrame frame, int slot, StaticObject value) {
         frame.setObject(stackSlots[slot], value);
     }
 
@@ -429,21 +496,19 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         frame.setObject(stackSlots[slot], value);
     }
 
-    private void putInt(VirtualFrame frame, int slot, int value) {
+    public void putInt(VirtualFrame frame, int slot, int value) {
         frame.setLong(stackSlots[slot], value);
     }
 
-    private void putFloat(VirtualFrame frame, int slot, float value) {
+    public void putFloat(VirtualFrame frame, int slot, float value) {
         frame.setLong(stackSlots[slot], Float.floatToRawIntBits(value));
     }
 
-    private void putLong(VirtualFrame frame, int slot, long value) {
-        // frame.setObject(stackSlots[slot], StaticObject.NULL);
+    public void putLong(VirtualFrame frame, int slot, long value) {
         frame.setLong(stackSlots[slot + 1], value);
     }
 
-    private void putDouble(VirtualFrame frame, int slot, double value) {
-        // frame.setObject(stackSlots[slot], StaticObject.NULL);
+    public void putDouble(VirtualFrame frame, int slot, double value) {
         frame.setLong(stackSlots[slot + 1], Double.doubleToRawLongBits(value));
     }
 
@@ -503,429 +568,473 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     // region Local accessors
 
-    @CompilationFinal private boolean zeroStackBackEdges = false;
-
     @Override
-    @SuppressWarnings("unchecked")
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object invokeNaked(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
 
         int curBCI = 0;
         int top = 0;
-
         initArguments(frame);
+        InstrumentationSupport instrument = this.instrumentation;
+        int statementIndex = -1;
+        int nextStatementIndex = 0;
+
+        if (instrument != null) {
+            instrument.notifyEntry(frame);
+        }
 
         loop: while (true) {
             int curOpcode;
-            bcCount.inc();
+            EXECUTED_BYTECODES_COUNT.inc();
             try {
                 curOpcode = bs.currentBC(curBCI);
                 CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 CompilerAsserts.partialEvaluationConstant(curOpcode);
 
-                // @formatter:off
-                // Checkstyle: stop
-                try {
-                    switch (curOpcode) {
-                        case NOP: break;
-                        case ACONST_NULL: putObject(frame, top, StaticObject.NULL); break;
+                CompilerAsserts.partialEvaluationConstant(statementIndex);
+                CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                        case ICONST_M1: // fall through
-                        case ICONST_0: // fall through
-                        case ICONST_1: // fall through
-                        case ICONST_2: // fall through
-                        case ICONST_3: // fall through
-                        case ICONST_4: // fall through
-                        case ICONST_5: putInt(frame, top, curOpcode - ICONST_0); break;
-
-                        case LCONST_0: // fall through
-                        case LCONST_1: putLong(frame, top, curOpcode - LCONST_0); break;
-
-                        case FCONST_0: // fall through
-                        case FCONST_1: // fall through
-                        case FCONST_2: putFloat(frame, top, curOpcode - FCONST_0); break;
-
-                        case DCONST_0: // fall through
-                        case DCONST_1: putDouble(frame, top, curOpcode - DCONST_0); break;
-
-                        case BIPUSH: putInt(frame, top, bs.readByte(curBCI)); break;
-                        case SIPUSH: putInt(frame, top, bs.readShort(curBCI)); break;
-                        case LDC: // fall through
-                        case LDC_W: // fall through
-                        case LDC2_W: putPoolConstant(frame, top, bs.readCPI(curBCI), curOpcode); break;
-
-                        case ILOAD: putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI))); break;
-                        case LLOAD: putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI))); break;
-                        case FLOAD: putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI))); break;
-                        case DLOAD: putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI))); break;
-                        case ALOAD: putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI))); break;
-
-                        case ILOAD_0: // fall through
-                        case ILOAD_1: // fall through
-                        case ILOAD_2: // fall through
-                        case ILOAD_3: putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0)); break;
-                        case LLOAD_0: // fall through
-                        case LLOAD_1: // fall through
-                        case LLOAD_2: // fall through
-                        case LLOAD_3: putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0)); break;
-                        case FLOAD_0: // fall through
-                        case FLOAD_1: // fall through
-                        case FLOAD_2: // fall through
-                        case FLOAD_3: putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0)); break;
-                        case DLOAD_0: // fall through
-                        case DLOAD_1: // fall through
-                        case DLOAD_2: // fall through
-                        case DLOAD_3: putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0)); break;
-                        case ALOAD_0: // fall through
-                        case ALOAD_1: // fall through
-                        case ALOAD_2: // fall through
-                        case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
-
-                        case IALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-                        case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekObject(frame, top - 2)))); break;
-
-                        case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), peekInt(frame, top - 1)); break;
-                        case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
-                        case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1)); break;
-                        case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1)); break;
-                        case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekReturnAddressOrObject(frame, top - 1)); break;
-
-                        case ISTORE_0: // fall through
-                        case ISTORE_1: // fall through
-                        case ISTORE_2: // fall through
-                        case ISTORE_3: setLocalInt(frame, curOpcode - ISTORE_0, peekInt(frame, top - 1)); break;
-                        case LSTORE_0: // fall through
-                        case LSTORE_1: // fall through
-                        case LSTORE_2: // fall through
-                        case LSTORE_3: setLocalLong(frame, curOpcode - LSTORE_0, peekLong(frame, top - 1)); break;
-                        case FSTORE_0: // fall through
-                        case FSTORE_1: // fall through
-                        case FSTORE_2: // fall through
-                        case FSTORE_3: setLocalFloat(frame, curOpcode - FSTORE_0, peekFloat(frame, top - 1)); break;
-                        case DSTORE_0: // fall through
-                        case DSTORE_1: // fall through
-                        case DSTORE_2: // fall through
-                        case DSTORE_3: setLocalDouble(frame, curOpcode - DSTORE_0, peekDouble(frame, top - 1)); break;
-                        case ASTORE_0: // fall through
-                        case ASTORE_1: // fall through
-                        case ASTORE_2: // fall through
-                        case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekReturnAddressOrObject(frame, top - 1)); break;
-
-                        case IASTORE: getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                        case LASTORE: getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4))); break;
-                        case FASTORE: getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                        case DASTORE: getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4))); break;
-                        case AASTORE: getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                        case BASTORE: getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                        case CASTORE: getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-                        case SASTORE: getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3))); break;
-
-                        case POP: // fall through
-                        case POP2: break;
-
-                        // TODO(peterssen): Stack shuffling is expensive.
-                        case DUP: dup1(frame, top); break;
-                        case DUP_X1: dupx1(frame, top); break;
-                        case DUP_X2: dupx2(frame, top); break;
-                        case DUP2: dup2(frame, top); break;
-                        case DUP2_X1: dup2x1(frame, top); break;
-                        case DUP2_X2: dup2x2(frame, top); break;
-                        case SWAP: swapSingle(frame, top); break;
-
-                        case IADD: putInt(frame, top - 2, peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
-                        case LADD: putLong(frame, top - 4, peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
-                        case FADD: putFloat(frame, top - 2, peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
-                        case DADD: putDouble(frame, top - 4, peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
-
-                        case ISUB: putInt(frame, top - 2, -peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
-                        case LSUB: putLong(frame, top - 4, -peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
-                        case FSUB: putFloat(frame, top - 2, -peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
-                        case DSUB: putDouble(frame, top - 4, -peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
-
-                        case IMUL: putInt(frame, top - 2, peekInt(frame, top - 1) * peekInt(frame, top - 2)); break;
-                        case LMUL: putLong(frame, top - 4, peekLong(frame, top - 1) * peekLong(frame, top - 3)); break;
-                        case FMUL: putFloat(frame, top - 2, peekFloat(frame, top - 1) * peekFloat(frame, top - 2)); break;
-                        case DMUL: putDouble(frame, top - 4, peekDouble(frame, top - 1) * peekDouble(frame, top - 3)); break;
-
-                        case IDIV: putInt(frame, top - 2, divInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
-                        case LDIV: putLong(frame, top - 4, divLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
-                        case FDIV: putFloat(frame, top - 2, divFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                        case DDIV: putDouble(frame, top - 4, divDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
-
-                        case IREM: putInt(frame, top - 2, remInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
-                        case LREM: putLong(frame, top - 4, remLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
-                        case FREM: putFloat(frame, top - 2, remFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                        case DREM: putDouble(frame, top - 4, remDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
-
-                        case INEG: putInt(frame, top - 1, -peekInt(frame, top - 1)); break;
-                        case LNEG: putLong(frame, top - 2, -peekLong(frame, top - 1)); break;
-                        case FNEG: putFloat(frame, top - 1, -peekFloat(frame, top - 1)); break;
-                        case DNEG: putDouble(frame, top - 2, -peekDouble(frame, top - 1)); break;
-
-                        case ISHL: putInt(frame, top - 2, shiftLeftInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                        case LSHL: putLong(frame, top - 3, shiftLeftLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
-                        case ISHR: putInt(frame, top - 2, shiftRightSignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                        case LSHR: putLong(frame, top - 3, shiftRightSignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
-                        case IUSHR: putInt(frame, top - 2, shiftRightUnsignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
-                        case LUSHR: putLong(frame, top - 3, shiftRightUnsignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
-
-                        case IAND: putInt(frame, top - 2, peekInt(frame, top - 1) & peekInt(frame, top - 2)); break;
-                        case LAND: putLong(frame, top - 4, peekLong(frame, top - 1) & peekLong(frame, top - 3)); break;
-
-                        case IOR: putInt(frame, top - 2, peekInt(frame, top - 1) | peekInt(frame, top - 2)); break;
-                        case LOR: putLong(frame, top - 4, peekLong(frame, top - 1) | peekLong(frame, top - 3)); break;
-
-                        case IXOR: putInt(frame, top - 2, peekInt(frame, top - 1) ^ peekInt(frame, top - 2)); break;
-                        case LXOR: putLong(frame, top - 4, peekLong(frame, top - 1) ^ peekLong(frame, top - 3)); break;
-
-                        case IINC: setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
-
-                        case I2L: putLong(frame, top - 1, peekInt(frame, top - 1)); break;
-                        case I2F: putFloat(frame, top - 1, peekInt(frame, top - 1)); break;
-                        case I2D: putDouble(frame, top - 1, peekInt(frame, top - 1)); break;
-
-                        case L2I: putInt(frame, top - 2, (int) peekLong(frame, top - 1)); break;
-                        case L2F: putFloat(frame, top - 2, peekLong(frame, top - 1)); break;
-                        case L2D: putDouble(frame, top - 2, peekLong(frame, top - 1)); break;
-
-                        case F2I: putInt(frame, top - 1, (int) peekFloat(frame, top - 1)); break;
-                        case F2L: putLong(frame, top - 1, (long) peekFloat(frame, top - 1)); break;
-                        case F2D: putDouble(frame, top - 1, peekFloat(frame, top - 1)); break;
-
-                        case D2I: putInt(frame, top - 2, (int) peekDouble(frame, top - 1)); break;
-                        case D2L: putLong(frame, top - 2, (long) peekDouble(frame, top - 1)); break;
-                        case D2F: putFloat(frame, top - 2, (float) peekDouble(frame, top - 1)); break;
-
-                        case I2B: putInt(frame, top - 1, (byte) peekInt(frame, top - 1)); break;
-                        case I2C: putInt(frame, top - 1, (char) peekInt(frame, top - 1)); break;
-                        case I2S: putInt(frame, top - 1, (short) peekInt(frame, top - 1)); break;
-
-                        case LCMP: putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3))); break;
-                        case FCMPL: putInt(frame, top - 2, compareFloatLess(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                        case FCMPG: putInt(frame, top - 2, compareFloatGreater(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
-                        case DCMPL: putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
-                        case DCMPG: putInt(frame, top - 4, compareDoubleGreater(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
-
-                        case IFEQ: // fall through
-                        case IFNE: // fall through
-                        case IFLT: // fall through
-                        case IFGE: // fall through
-                        case IFGT: // fall through
-                        case IFLE: // fall through
-                        case IF_ICMPEQ: // fall through
-                        case IF_ICMPNE: // fall through
-                        case IF_ICMPLT: // fall through
-                        case IF_ICMPGE: // fall through
-                        case IF_ICMPGT: // fall through
-                        case IF_ICMPLE: // fall through
-                        case IF_ACMPEQ: // fall through
-                        case IF_ACMPNE: // fall through
-
-                            // TODO(peterssen): Order shuffled.
-                        case GOTO: // fall through
-                        case GOTO_W: // fall through
-                        case IFNULL: // fall through
-                        case IFNONNULL:
-                            if (takeBranch(frame, top, curOpcode)) {
-                                int targetBCI = bs.readBranchDest(curBCI);
-                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                                curBCI = targetBCI;
-                                continue loop;
-                            }
-                            break;
-
-                        case JSR: // fall through
-                        case JSR_W: {
-                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
-                            putReturnAddress(frame, top, bs.nextBCI(curBCI));
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        case RET: {
-                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
-                            int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-
-                        // @formatter:on
-                        // Checkstyle: resume
-                        case TABLESWITCH: {
-                            int index = peekInt(frame, top - 1);
-                            BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
-                            int low = switchHelper.lowKey(curBCI);
-                            int high = switchHelper.highKey(curBCI);
-                            assert low <= high;
-
-                            // Interpreter uses direct lookup.
-                            if (CompilerDirectives.inInterpreter()) {
-                                int targetBCI;
-                                if (low <= index && index <= high) {
-                                    targetBCI = switchHelper.targetAt(curBCI, index - low);
-                                } else {
-                                    targetBCI = switchHelper.defaultTarget(curBCI);
-                                }
-                                CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                                curBCI = targetBCI;
-                                continue loop;
-                            }
-
-                            // i could overflow if high == Integer.MAX_VALUE. This loops take that
-                            // into account
-                            for (int i = low; i != high + 1; ++i) {
-                                if (i == index) {
-                                    // Key found.
-                                    int targetBCI = switchHelper.targetAt(curBCI, i - low);
-                                    CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                                    curBCI = targetBCI;
-                                    continue loop;
-                                }
-                            }
-
-                            // Key not found.
-                            int targetBCI = switchHelper.defaultTarget(curBCI);
-                            CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        case LOOKUPSWITCH: {
-                            int key = peekInt(frame, top - 1);
-                            BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
-                            int low = 0;
-                            int high = switchHelper.numberOfCases(curBCI) - 1;
-                            while (low <= high) {
-                                int mid = (low + high) >>> 1;
-                                int midVal = switchHelper.keyAt(curBCI, mid);
-                                if (midVal < key) {
-                                    low = mid + 1;
-                                } else if (midVal > key) {
-                                    high = mid - 1;
-                                } else {
-                                    // Key found.
-                                    int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
-                                    CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                                    curBCI = targetBCI;
-                                    continue loop;
-                                }
-                            }
-
-                            // Key not found.
-                            int targetBCI = switchHelper.defaultTarget(curBCI);
-                            CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        // @formatter:off
-                        // Checkstyle: stop
-                        case IRETURN: return exitMethodAndReturn(peekInt(frame, top - 1));
-                        case LRETURN: return exitMethodAndReturnObject(peekLong(frame, top - 1));
-                        case FRETURN: return exitMethodAndReturnObject(peekFloat(frame, top - 1));
-                        case DRETURN: return exitMethodAndReturnObject(peekDouble(frame, top - 1));
-                        case ARETURN: return exitMethodAndReturnObject(peekObject(frame, top - 1));
-                        case RETURN: return exitMethodAndReturn();
-
-                        // TODO(peterssen): Order shuffled.
-                        case GETSTATIC: // fall through
-                        case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-                        case PUTSTATIC: // fall through
-                        case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-
-                        case INVOKEVIRTUAL: // fall through
-                        case INVOKESPECIAL: // fall through
-                        case INVOKESTATIC: // fall through
-                        case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode); break;
-
-                        case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
-                        case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
-                        case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
-                        case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekObject(frame, top - 1)))); break;
-
-                        case ATHROW:
-                            if (DEBUG_THROWN) {
-                                reportThrow(curBCI, getMethod(), nullCheck(peekObject(frame, top - 1)));
-                            }
-                            throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
-
-                        case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
-                        case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
-
-                        case MONITORENTER: InterpreterToVM.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
-                        case MONITOREXIT: InterpreterToVM.monitorExit(nullCheck(peekObject(frame, top - 1))); break;
-
-                        case WIDE:
-                            CompilerAsserts.neverPartOfCompilation();
-                            throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
-                        case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
-
-                        case BREAKPOINT:
-                            CompilerAsserts.neverPartOfCompilation();
-                            throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
-
-                        case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-
-                        case QUICK: top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
-
-                        default:
-                            CompilerAsserts.neverPartOfCompilation();
-                            throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
-                    }
-                    // @formatter:on
-                    // Checkstyle: resume
-                } catch (EspressoException | EspressoExitException e) {
-                    throw e;
-                } catch (OutOfMemoryError e) {
-                    CompilerDirectives.transferToInterpreter();
-                    // Free lots of memory (the host stack trace is ~5x bigger than the espresso
-                    // one)
-                    e.setStackTrace(EspressoContext.EMPTY_STACK);
-                    for (int i = 0; i < getMethod().getMaxStackSize(); i++) {
-                        // Free the current stack
-                        putObject(frame, i, null);
-                    }
-                    EspressoException outOfMemory = getContext().getOutOfMemory();
-                    outOfMemory.resetFrames(getMeta());
-                    throw outOfMemory;
-                } catch (StackOverflowError e) {
-                    // Free some memory
-                    CompilerDirectives.transferToInterpreter();
-                    EspressoException stackOverflow = getContext().getStackOverflow();
-                    stackOverflow.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
-                    throw stackOverflow;
-                } catch (ThreadDeath e) {
-                    throw getMeta().throwEx(e.getClass());
-                } catch (RuntimeException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    if (DEBUG_GENERAL) {
-                        reportRuntimeException(e, curBCI, this);
-                    }
-                    throw e;
-                } catch (Exception e) {
-                    // TODO(garcia) Do not lose the cause.
-                    // There should be no need to wrap exceptions in host language, as they
-                    // should be handled one way or another by espresso itself.
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    e.printStackTrace();
-                    throw EspressoError.shouldNotReachHere("Shouldn't see host exceptions here" + e);
+                if (Bytecodes.canTrap(curOpcode)) {
+                    setBCI(frame, curBCI);
                 }
-            } catch (EspressoException e) {
-                // CompilerDirectives.transferToInterpreter();
+
+                if (instrument != null) {
+                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    statementIndex = nextStatementIndex;
+                }
+
+                // @formatter:off
+                switchLabel:
+                switch (curOpcode) {
+                    case NOP: break;
+                    case ACONST_NULL: putObject(frame, top, StaticObject.NULL); break;
+
+                    case ICONST_M1: // fall through
+                    case ICONST_0: // fall through
+                    case ICONST_1: // fall through
+                    case ICONST_2: // fall through
+                    case ICONST_3: // fall through
+                    case ICONST_4: // fall through
+                    case ICONST_5: putInt(frame, top, curOpcode - ICONST_0); break;
+
+                    case LCONST_0: // fall through
+                    case LCONST_1: putLong(frame, top, curOpcode - LCONST_0); break;
+
+                    case FCONST_0: // fall through
+                    case FCONST_1: // fall through
+                    case FCONST_2: putFloat(frame, top, curOpcode - FCONST_0); break;
+
+                    case DCONST_0: // fall through
+                    case DCONST_1: putDouble(frame, top, curOpcode - DCONST_0); break;
+
+                    case BIPUSH: putInt(frame, top, bs.readByte(curBCI)); break;
+                    case SIPUSH: putInt(frame, top, bs.readShort(curBCI)); break;
+                    case LDC: // fall through
+                    case LDC_W: // fall through
+                    case LDC2_W: putPoolConstant(frame, top, bs.readCPI(curBCI), curOpcode); break;
+
+                    case ILOAD: putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI))); break;
+                    case LLOAD: putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI))); break;
+                    case FLOAD: putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI))); break;
+                    case DLOAD: putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI))); break;
+                    case ALOAD: putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI))); break;
+
+                    case ILOAD_0: // fall through
+                    case ILOAD_1: // fall through
+                    case ILOAD_2: // fall through
+                    case ILOAD_3: putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0)); break;
+                    case LLOAD_0: // fall through
+                    case LLOAD_1: // fall through
+                    case LLOAD_2: // fall through
+                    case LLOAD_3: putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0)); break;
+                    case FLOAD_0: // fall through
+                    case FLOAD_1: // fall through
+                    case FLOAD_2: // fall through
+                    case FLOAD_3: putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0)); break;
+                    case DLOAD_0: // fall through
+                    case DLOAD_1: // fall through
+                    case DLOAD_2: // fall through
+                    case DLOAD_3: putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0)); break;
+                    case ALOAD_0: // fall through
+                    case ALOAD_1: // fall through
+                    case ALOAD_2: // fall through
+                    case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
+
+                    case IALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+
+                    case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), peekInt(frame, top - 1)); break;
+                    case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
+                    case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1)); break;
+                    case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1)); break;
+                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
+
+                    case ISTORE_0: // fall through
+                    case ISTORE_1: // fall through
+                    case ISTORE_2: // fall through
+                    case ISTORE_3: setLocalInt(frame, curOpcode - ISTORE_0, peekInt(frame, top - 1)); break;
+                    case LSTORE_0: // fall through
+                    case LSTORE_1: // fall through
+                    case LSTORE_2: // fall through
+                    case LSTORE_3: setLocalLong(frame, curOpcode - LSTORE_0, peekLong(frame, top - 1)); break;
+                    case FSTORE_0: // fall through
+                    case FSTORE_1: // fall through
+                    case FSTORE_2: // fall through
+                    case FSTORE_3: setLocalFloat(frame, curOpcode - FSTORE_0, peekFloat(frame, top - 1)); break;
+                    case DSTORE_0: // fall through
+                    case DSTORE_1: // fall through
+                    case DSTORE_2: // fall through
+                    case DSTORE_3: setLocalDouble(frame, curOpcode - DSTORE_0, peekDouble(frame, top - 1)); break;
+                    case ASTORE_0: // fall through
+                    case ASTORE_1: // fall through
+                    case ASTORE_2: // fall through
+                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
+
+                    case IASTORE: getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+                    case LASTORE: getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4))); break;
+                    case FASTORE: getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+                    case DASTORE: getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4))); break;
+                    case AASTORE: getInterpreterToVM().setArrayObject(peekAndReleaseObject(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+                    case BASTORE: getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+                    case CASTORE: getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+                    case SASTORE: getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
+
+                    case POP2:
+                        putObject(frame, top - 1, null);
+                        putObject(frame, top - 2, null);
+                        break;
+                    case POP:
+                        putObject(frame, top - 1, null);
+                        break;
+
+                    // TODO(peterssen): Stack shuffling is expensive.
+                    case DUP: dup1(frame, top); break;
+                    case DUP_X1: dupx1(frame, top); break;
+                    case DUP_X2: dupx2(frame, top); break;
+                    case DUP2: dup2(frame, top); break;
+                    case DUP2_X1: dup2x1(frame, top); break;
+                    case DUP2_X2: dup2x2(frame, top); break;
+                    case SWAP: swapSingle(frame, top); break;
+
+                    case IADD: putInt(frame, top - 2, peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
+                    case LADD: putLong(frame, top - 4, peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
+                    case FADD: putFloat(frame, top - 2, peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
+                    case DADD: putDouble(frame, top - 4, peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
+
+                    case ISUB: putInt(frame, top - 2, -peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
+                    case LSUB: putLong(frame, top - 4, -peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
+                    case FSUB: putFloat(frame, top - 2, -peekFloat(frame, top - 1) + peekFloat(frame, top - 2)); break;
+                    case DSUB: putDouble(frame, top - 4, -peekDouble(frame, top - 1) + peekDouble(frame, top - 3)); break;
+
+                    case IMUL: putInt(frame, top - 2, peekInt(frame, top - 1) * peekInt(frame, top - 2)); break;
+                    case LMUL: putLong(frame, top - 4, peekLong(frame, top - 1) * peekLong(frame, top - 3)); break;
+                    case FMUL: putFloat(frame, top - 2, peekFloat(frame, top - 1) * peekFloat(frame, top - 2)); break;
+                    case DMUL: putDouble(frame, top - 4, peekDouble(frame, top - 1) * peekDouble(frame, top - 3)); break;
+
+                    case IDIV: putInt(frame, top - 2, divInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
+                    case LDIV: putLong(frame, top - 4, divLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
+                    case FDIV: putFloat(frame, top - 2, divFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
+                    case DDIV: putDouble(frame, top - 4, divDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+
+                    case IREM: putInt(frame, top - 2, remInt(checkNonZero(peekInt(frame, top - 1)), peekInt(frame, top - 2))); break;
+                    case LREM: putLong(frame, top - 4, remLong(checkNonZero(peekLong(frame, top - 1)), peekLong(frame, top - 3))); break;
+                    case FREM: putFloat(frame, top - 2, remFloat(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
+                    case DREM: putDouble(frame, top - 4, remDouble(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+
+                    case INEG: putInt(frame, top - 1, -peekInt(frame, top - 1)); break;
+                    case LNEG: putLong(frame, top - 2, -peekLong(frame, top - 1)); break;
+                    case FNEG: putFloat(frame, top - 1, -peekFloat(frame, top - 1)); break;
+                    case DNEG: putDouble(frame, top - 2, -peekDouble(frame, top - 1)); break;
+
+                    case ISHL: putInt(frame, top - 2, shiftLeftInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
+                    case LSHL: putLong(frame, top - 3, shiftLeftLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
+                    case ISHR: putInt(frame, top - 2, shiftRightSignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
+                    case LSHR: putLong(frame, top - 3, shiftRightSignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
+                    case IUSHR: putInt(frame, top - 2, shiftRightUnsignedInt(peekInt(frame, top - 1), peekInt(frame, top - 2))); break;
+                    case LUSHR: putLong(frame, top - 3, shiftRightUnsignedLong(peekInt(frame, top - 1), peekLong(frame, top - 2))); break;
+
+                    case IAND: putInt(frame, top - 2, peekInt(frame, top - 1) & peekInt(frame, top - 2)); break;
+                    case LAND: putLong(frame, top - 4, peekLong(frame, top - 1) & peekLong(frame, top - 3)); break;
+
+                    case IOR: putInt(frame, top - 2, peekInt(frame, top - 1) | peekInt(frame, top - 2)); break;
+                    case LOR: putLong(frame, top - 4, peekLong(frame, top - 1) | peekLong(frame, top - 3)); break;
+
+                    case IXOR: putInt(frame, top - 2, peekInt(frame, top - 1) ^ peekInt(frame, top - 2)); break;
+                    case LXOR: putLong(frame, top - 4, peekLong(frame, top - 1) ^ peekLong(frame, top - 3)); break;
+
+                    case IINC: setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+
+                    case I2L: putLong(frame, top - 1, peekInt(frame, top - 1)); break;
+                    case I2F: putFloat(frame, top - 1, peekInt(frame, top - 1)); break;
+                    case I2D: putDouble(frame, top - 1, peekInt(frame, top - 1)); break;
+
+                    case L2I: putInt(frame, top - 2, (int) peekLong(frame, top - 1)); break;
+                    case L2F: putFloat(frame, top - 2, peekLong(frame, top - 1)); break;
+                    case L2D: putDouble(frame, top - 2, peekLong(frame, top - 1)); break;
+
+                    case F2I: putInt(frame, top - 1, (int) peekFloat(frame, top - 1)); break;
+                    case F2L: putLong(frame, top - 1, (long) peekFloat(frame, top - 1)); break;
+                    case F2D: putDouble(frame, top - 1, peekFloat(frame, top - 1)); break;
+
+                    case D2I: putInt(frame, top - 2, (int) peekDouble(frame, top - 1)); break;
+                    case D2L: putLong(frame, top - 2, (long) peekDouble(frame, top - 1)); break;
+                    case D2F: putFloat(frame, top - 2, (float) peekDouble(frame, top - 1)); break;
+
+                    case I2B: putInt(frame, top - 1, (byte) peekInt(frame, top - 1)); break;
+                    case I2C: putInt(frame, top - 1, (char) peekInt(frame, top - 1)); break;
+                    case I2S: putInt(frame, top - 1, (short) peekInt(frame, top - 1)); break;
+
+                    case LCMP: putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3))); break;
+                    case FCMPL: putInt(frame, top - 2, compareFloatLess(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
+                    case FCMPG: putInt(frame, top - 2, compareFloatGreater(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
+                    case DCMPL: putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+                    case DCMPG: putInt(frame, top - 4, compareDoubleGreater(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
+
+                    case IFEQ: // fall through
+                    case IFNE: // fall through
+                    case IFLT: // fall through
+                    case IFGE: // fall through
+                    case IFGT: // fall through
+                    case IFLE: // fall through
+                    case IF_ICMPEQ: // fall through
+                    case IF_ICMPNE: // fall through
+                    case IF_ICMPLT: // fall through
+                    case IF_ICMPGE: // fall through
+                    case IF_ICMPGT: // fall through
+                    case IF_ICMPLE: // fall through
+                    case IF_ACMPEQ: // fall through
+                    case IF_ACMPNE: // fall through
+
+                    // TODO(peterssen): Order shuffled.
+                    case GOTO: // fall through
+                    case GOTO_W: // fall through
+                    case IFNULL: // fall through
+
+                    // @formatter:on
+                    case IFNONNULL:
+
+                        if (takeBranch(frame, top, curOpcode)) {
+                            int targetBCI = bs.readBranchDest(curBCI);
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                            checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break switchLabel;
+
+                    case JSR: // fall through
+                    case JSR_W: {
+                        putReturnAddress(frame, top, bs.nextBCI(curBCI));
+                        int targetBCI = bs.readBranchDest(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
+                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        if (instrument != null) {
+                            nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                        }
+                        top += Bytecodes.stackEffectOf(curOpcode);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+                    case RET: {
+                        int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
+                        if (jsrBci == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            jsrBci = new int[bs.endBCI()][];
+                        }
+                        if (jsrBci[curBCI] == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            jsrBci[curBCI] = new int[]{targetBCI};
+                        }
+                        for (int jsr : jsrBci[curBCI]) {
+                            if (jsr == targetBCI) {
+                                CompilerAsserts.partialEvaluationConstant(jsr);
+                                targetBCI = jsr;
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                top += Bytecodes.stackEffectOf(curOpcode);
+                                curBCI = targetBCI;
+                                continue loop;
+                            }
+                        }
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
+                        jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
+                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        if (instrument != null) {
+                            nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                        }
+                        top += Bytecodes.stackEffectOf(curOpcode);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+
+                    case TABLESWITCH: {
+                        int index = peekInt(frame, top - 1);
+                        BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
+                        int low = switchHelper.lowKey(curBCI);
+                        int high = switchHelper.highKey(curBCI);
+                        assert low <= high;
+
+                        // Interpreter uses direct lookup.
+                        if (CompilerDirectives.inInterpreter()) {
+                            int targetBCI;
+                            if (low <= index && index <= high) {
+                                targetBCI = switchHelper.targetAt(curBCI, index - low);
+                            } else {
+                                targetBCI = switchHelper.defaultTarget(curBCI);
+                            }
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                            checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+
+                        // i could overflow if high == Integer.MAX_VALUE.
+                        // This loops take that into account.
+                        for (int i = low; i != high + 1; ++i) {
+                            if (i == index) {
+                                // Key found.
+                                int targetBCI = switchHelper.targetAt(curBCI, i - low);
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                top += Bytecodes.stackEffectOf(curOpcode);
+                                curBCI = targetBCI;
+                                continue loop;
+                            }
+                        }
+
+                        // Key not found.
+                        int targetBCI = switchHelper.defaultTarget(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
+                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        if (instrument != null) {
+                            nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                        }
+                        top += Bytecodes.stackEffectOf(curOpcode);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+                    case LOOKUPSWITCH: {
+                        int key = peekInt(frame, top - 1);
+                        BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
+                        int low = 0;
+                        int high = switchHelper.numberOfCases(curBCI) - 1;
+                        while (low <= high) {
+                            int mid = (low + high) >>> 1;
+                            int midVal = switchHelper.keyAt(curBCI, mid);
+                            if (midVal < key) {
+                                low = mid + 1;
+                            } else if (midVal > key) {
+                                high = mid - 1;
+                            } else {
+                                // Key found.
+                                int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                top += Bytecodes.stackEffectOf(curOpcode);
+                                curBCI = targetBCI;
+                                continue loop;
+                            }
+                        }
+
+                        // Key not found.
+                        int targetBCI = switchHelper.defaultTarget(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
+                        checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                        if (instrument != null) {
+                            nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                        }
+                        top += Bytecodes.stackEffectOf(curOpcode);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+                    // @formatter:off
+                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(peekInt(frame, top - 1)));
+                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekLong(frame, top - 1)));
+                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
+                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
+                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekObject(frame, top - 1)));
+                    case RETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn());
+
+                    // TODO(peterssen): Order shuffled.
+                    case GETSTATIC: // fall through
+                    case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode, statementIndex); break;
+                    case PUTSTATIC: // fall through
+                    case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode, statementIndex); break;
+
+                    case INVOKEVIRTUAL: // fall through
+                    case INVOKESPECIAL: // fall through
+                    case INVOKESTATIC: // fall through
+
+                    case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode); break;
+
+                    case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
+                    case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
+                    case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
+                    case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
+
+                    case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
+
+                    case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
+                    case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
+
+                    case MONITORENTER: monitorEnter(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                    case MONITOREXIT:  monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+
+                    case WIDE:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
+                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
+
+                    case BREAKPOINT:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
+
+                    case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
+                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
+
+                    default:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
+                }
+                // @formatter:on
+            } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
-                if (e == getContext().getStackOverflow()) {
+                // Handle both guest and host StackOverflowError.
+                if (e == getContext().getStackOverflow() || e instanceof StackOverflowError) {
+                    // Always deopt on SOE.
+                    CompilerDirectives.transferToInterpreter();
+                    EspressoException wrappedStackOverflowError = null;
+                    if (e == getContext().getStackOverflow()) {
+                        wrappedStackOverflowError = (EspressoException) e;
+                    } else {
+                        wrappedStackOverflowError = getContext().getStackOverflow();
+                    }
                     /*
                      * Stack Overflow management. All calls to stack manipulation are manually
                      * inlined to prevent another SOE.
@@ -933,115 +1042,194 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                      * Note: no need to check for the stacktrace being null, as we reset the frames
                      * at each apparition of a host SOE.
                      */
-                    if (SOEinfo != null) {
-                        for (int i = 0; i < SOEinfo.length; i += 3) {
-                            if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
+                    if (stackOverflowErrorInfo != null) {
+                        for (int i = 0; i < stackOverflowErrorInfo.length; i += 3) {
+                            if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
                                 top = 0;
-                                try {
-                                    // isUnwinding()
-                                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
-                                        // addStackFrame()
-                                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
-                                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
-                                    }
-                                } catch (StackOverflowError soe) {
-                                    // resetFrames()
-                                    e.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
-                                }
-                                putObject(frame, 0, e.getException());
+                                putObject(frame, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
-                                curBCI = SOEinfo[i + 2];
-                                continue loop;
+                                int targetBCI = stackOverflowErrorInfo[i + 2];
+                                checkBackEdge(curBCI, targetBCI, top, NOP);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                curBCI = targetBCI;
+                                continue loop; // skip bs.next()
                             }
                         }
                     }
-                    // isUnwinding()
-                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
-                        // addStackFrame()
-                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
+
+                    throw wrappedStackOverflowError;
+
+                } else /* EspressoException or OutOfMemoryError */ {
+
+                    EspressoException wrappedException;
+                    if (e instanceof EspressoException) {
+                        wrappedException = (EspressoException) e;
+                    } else {
+                        assert e instanceof OutOfMemoryError;
+                        CompilerDirectives.transferToInterpreter();
+                        wrappedException = getContext().getOutOfMemory();
                     }
-                    throw e;
-                }
-                ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
-                ExceptionHandler handler = null;
-                for (ExceptionHandler toCheck : handlers) {
-                    if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
-                        Klass catchType = null;
-                        if (!toCheck.isCatchAll()) {
-                            // exception handlers are similar to instanceof bytecodes, so we pass
-                            // instanceof
-                            catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
-                        }
-                        if (catchType == null || InterpreterToVM.instanceOf(e.getException(), catchType)) {
-                            // the first found exception handler is our exception handler
-                            handler = toCheck;
-                            break;
-                        }
-                    }
-                }
-                if (handler != null) {
-                    top = 0;
-                    if (e.isUnwinding(getMeta())) {
-                        e.addStackFrame(getMethod(), curBCI, getMeta());
-                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
-                    }
-                    putObject(frame, 0, e.getException());
-                    top++;
-                    curBCI = handler.getHandlerBCI();
-                    if (DEBUG_CATCH) {
-                        reportCatch(e, curBCI, this);
-                    }
-                    continue loop; // skip bs.next()
-                } else {
-                    if (e.isUnwinding(getMeta())) {
-                        e.addStackFrame(getMethod(), curBCI, getMeta());
-                    }
-                    throw e;
-                }
-            } catch (VirtualMachineError e) {
-                // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
-                Meta meta = getMeta();
-                StaticObject ex = meta.initEx(e.getClass());
-                CompilerAsserts.partialEvaluationConstant(curBCI);
-                ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
-                ExceptionHandler handler = null;
-                for (ExceptionHandler toCheck : handlers) {
-                    if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
-                        Klass catchType = null;
-                        if (!toCheck.isCatchAll()) {
-                            // exception handlers are similar to instanceof bytecodes, so we pass
-                            // instanceof
-                            catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
-                        }
-                        if (catchType == null || InterpreterToVM.instanceOf(ex, catchType)) {
-                            // the first found exception handler is our exception handler
-                            handler = toCheck;
-                            break;
+
+                    ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
+                    ExceptionHandler handler = null;
+                    for (ExceptionHandler toCheck : handlers) {
+                        if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
+                            Klass catchType = null;
+                            if (!toCheck.isCatchAll()) {
+                                // exception handlers are similar to instanceof bytecodes, so we
+                                // pass instanceof
+                                catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
+                            }
+                            if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getExceptionObject(), catchType)) {
+                                // the first found exception handler is our exception handler
+                                handler = toCheck;
+                                break;
+                            }
                         }
                     }
+                    if (handler != null) {
+                        top = 0;
+                        putObject(frame, 0, wrappedException.getExceptionObject());
+                        top++;
+                        int targetBCI = handler.getHandlerBCI();
+                        checkBackEdge(curBCI, targetBCI, top, NOP);
+                        if (instrument != null) {
+                            nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                        }
+                        curBCI = targetBCI;
+                        continue loop; // skip bs.next()
+                    } else {
+                        throw wrappedException;
+                    }
                 }
-                if (handler != null) {
-                    top = 0;
-                    putObject(frame, 0, ex);
-                    top++;
-                    curBCI = handler.getHandlerBCI();
-                    continue loop; // skip bs.next()
-                } else {
-                    reportVMError(e, curBCI, this);
-                    throw new EspressoException(ex);
+            } catch (EspressoExitException e) {
+                if (monitorSlot != null) {
+                    getMonitorStack(frame).abort();
                 }
+                throw e;
             }
             top += Bytecodes.stackEffectOf(curOpcode);
-            curBCI = bs.nextBCI(curBCI);
+            int targetBCI = bs.nextBCI(curBCI);
+            if (instrument != null) {
+                nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
+            }
+            curBCI = targetBCI;
         }
-
     }
 
-    private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
-        assert Bytecodes.isBranch(opCode);
+    int readBCI(FrameInstance frameInstance) {
+        try {
+            assert bciSlot != null;
+            return frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(bciSlot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private void monitorExit(VirtualFrame frame, StaticObject monitor) {
+        unregisterMonitor(frame, monitor);
+        InterpreterToVM.monitorExit(monitor);
+    }
+
+    private void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).exit(monitor, this);
+    }
+
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+        registerMonitor(frame, monitor);
+        InterpreterToVM.monitorEnter(monitor);
+    }
+
+    private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).enter(monitor);
+    }
+
+    private MonitorStack getMonitorStack(VirtualFrame frame) {
+        Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
+        assert frameResult instanceof MonitorStack;
+        return (MonitorStack) frameResult;
+    }
+
+    private static final class MonitorStack {
+        private static final int DEFAULT_CAPACITY = 4;
+
+        private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
+        private int top = 0;
+        private int capacity = DEFAULT_CAPACITY;
+
+        private void enter(StaticObject monitor) {
+            if (top >= capacity) {
+                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+            }
+            monitors[top++] = monitor;
+        }
+
+        private void exit(StaticObject monitor, BytecodeNode node) {
+            if (top > 0 && monitor == monitors[top - 1]) {
+                // Balanced locking: simply pop.
+                monitors[--top] = null;
+            } else {
+                node.unbalancedMonitorProfile.enter();
+                // Unbalanced locking: do the linear search.
+                int i = top - 1;
+                for (; i >= 0; i--) {
+                    if (monitors[i] == monitor) {
+                        System.arraycopy(monitors, i + 1, monitors, i, top - 1 - i);
+                        monitors[--top] = null;
+                        return;
+                    }
+                }
+                // monitor not found. Not against the specs.
+            }
+        }
+
+        private void abort() {
+            for (int i = 0; i < top; i++) {
+                StaticObject monitor = monitors[i];
+                try {
+                    InterpreterToVM.monitorExit(monitor);
+                } catch (Throwable e) {
+                    /* ignore */
+                }
+            }
+        }
+    }
+
+    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
+        if (instrumentation != null) {
+            instrumentation.notifyReturn(frame, statementIndex, toReturn);
+        }
+        return toReturn;
+    }
+
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        InstrumentationSupport info = this.instrumentation;
+        if (info == null && materializedTags.contains(StatementTag.class)) {
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                info = this.instrumentation;
+                // double checked locking
+                if (info == null) {
+                    this.instrumentation = info = insert(new InstrumentationSupport(getMethod()));
+                    // the debug info contains instrumentable nodes so we need to notify for
+                    // instrumentation updates.
+                    notifyInserted(info);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        return this;
+    }
+
+    private boolean takeBranch(VirtualFrame frame, int top, int opcode) {
+        assert Bytecodes.isBranch(opcode);
         // @formatter:off
-        // Checkstyle: stop
-        switch (opCode) {
+        switch (opcode) {
             case IFEQ      : return peekInt(frame, top - 1) == 0;
             case IFNE      : return peekInt(frame, top - 1) != 0;
             case IFLT      : return peekInt(frame, top - 1)  < 0;
@@ -1054,73 +1242,36 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             case IF_ICMPGE : return peekInt(frame, top - 1) <= peekInt(frame, top - 2);
             case IF_ICMPGT : return peekInt(frame, top - 1)  < peekInt(frame, top - 2);
             case IF_ICMPLE : return peekInt(frame, top - 1) >= peekInt(frame, top - 2);
-            case IF_ACMPEQ : return peekObject(frame, top - 1) == peekObject(frame, top - 2);
-            case IF_ACMPNE : return peekObject(frame, top - 1) != peekObject(frame, top - 2);
+            case IF_ACMPEQ : return peekAndReleaseObject(frame, top - 1) == peekAndReleaseObject(frame, top - 2);
+            case IF_ACMPNE : return peekAndReleaseObject(frame, top - 1) != peekAndReleaseObject(frame, top - 2);
             case GOTO      : // fall though
             case GOTO_W    : return true; // unconditional
-            case IFNULL    : return StaticObject.isNull(peekObject(frame, top - 1));
-            case IFNONNULL : return StaticObject.notNull(peekObject(frame, top - 1));
+            case IFNULL    : return StaticObject.isNull(peekAndReleaseObject(frame, top - 1));
+            case IFNONNULL : return StaticObject.notNull(peekAndReleaseObject(frame, top - 1));
             default        :
+                CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("non-branching bytecode");
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
-    private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
-        int newTop = top + Bytecodes.stackEffectOf(opCode);
-        if (targetBCI < curBCI) {
+    private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {
+        int newTop = top + Bytecodes.stackEffectOf(opcode);
+        if (targetBCI <= curBCI) {
+            checkStopping(curBCI, targetBCI);
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
-            }
-            if (!zeroStackBackEdges) {
-                if (newTop != 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    zeroStackBackEdges = true;
-                } else {
-                    return 0;
-                }
             }
         }
         return newTop;
     }
 
-    @TruffleBoundary
-    static private void reportThrow(int curBCI, Method method, StaticObject e) {
-        if (method.getName().toString().contains("refill") ||
-                        method.getName().toString().contains("loadClass") ||
-                        method.getName().toString().contains("findClass")) {
-            return;
+    private void checkStopping(int curBCI, int targetBCI) {
+        if (getContext().shouldCheckDeprecationStatus()) {
+            if (targetBCI <= curBCI) {
+                Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
+            }
         }
-        System.err.println(e.getKlass().getType() + ": " + EspressoException.getMessage(e) + "\n\t" + method.report(curBCI));
-    }
-
-    @TruffleBoundary
-    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodeNode thisNode) {
-        Method m = thisNode.getMethod();
-        System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
-        if (e.getCause() != null) {
-            e.getCause().printStackTrace();
-        }
-        e.printStackTrace();
-    }
-
-    @TruffleBoundary
-    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodeNode thisNode) {
-        Method m = thisNode.getMethod();
-        System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
-        e.printStackTrace();
-    }
-
-    @TruffleBoundary
-    static private void reportCatch(EspressoException e, int curBCI, BytecodeNode thisNode) {
-        if (thisNode.getMethod().getName().toString().contains("refill") ||
-                        thisNode.getMethod().getName().toString().contains("loadClass") ||
-                        thisNode.getMethod().getName().toString().contains("findClass")) {
-            return;
-        }
-        System.err.println("Caught: " + e.getException().getKlass().getType() + ": " + e.getMessage() +
-                        "\n\t In: " + thisNode + " at line: " + thisNode.getMethod().BCItoLineNumber(curBCI));
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
@@ -1130,6 +1281,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         if (frame.isLong(stackSlots[slot])) {
             return JavaKind.Long;
         }
+        CompilerDirectives.transferToInterpreter();
         throw EspressoError.shouldNotReachHere();
     }
 
@@ -1258,7 +1410,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     private void putPoolConstant(final VirtualFrame frame, int top, char cpi, int opcode) {
         assert opcode == LDC || opcode == LDC_W || opcode == LDC2_W;
-        ConstantPool pool = getConstantPool();
+        RuntimeConstantPool pool = getConstantPool();
         PoolConstant constant = pool.at(cpi);
         if (constant instanceof IntegerConstant) {
             assert opcode == LDC || opcode == LDC_W;
@@ -1274,22 +1426,22 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             putFloat(frame, top, ((FloatConstant) constant).value());
         } else if (constant instanceof StringConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            StaticObject internedString = getConstantPool().resolvedStringAt(cpi);
+            StaticObject internedString = pool.resolvedStringAt(cpi);
             putObject(frame, top, internedString);
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            Klass klass = getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
+            Klass klass = pool.resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
             putObject(frame, top, klass.mirror());
         } else if (constant instanceof MethodHandleConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodHandle = getConstantPool().resolvedMethodHandleAt(getMethod().getDeclaringKlass(), cpi);
+            StaticObject methodHandle = pool.resolvedMethodHandleAt(getMethod().getDeclaringKlass(), cpi);
             putObject(frame, top, methodHandle);
         } else if (constant instanceof MethodTypeConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodType = getConstantPool().resolvedMethodTypeAt(getMethod().getDeclaringKlass(), cpi);
+            StaticObject methodType = pool.resolvedMethodTypeAt(getMethod().getDeclaringKlass(), cpi);
             putObject(frame, top, methodType);
         } else {
-            CompilerAsserts.neverPartOfCompilation();
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.unimplemented(constant.toString());
         }
     }
@@ -1300,7 +1452,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     @TruffleBoundary
     private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
+        return (BootstrapMethodsAttribute) (getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
@@ -1332,103 +1484,204 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private QuickNode injectQuick(int curBCI, QuickNode quick) {
-        injectAndCallCount.inc();
+        QUICKENED_BYTECODES.inc();
         CompilerAsserts.neverPartOfCompilation();
         int nodeIndex = addQuickNode(quick);
         patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
         return quick;
     }
 
-    private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, int opCode) {
+    private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert opCode == CHECKCAST;
+        assert opcode == CHECKCAST;
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck));
+                typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
+                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opCode) {
+    private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert opCode == INSTANCEOF;
+        assert opcode == INSTANCEOF;
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck));
+                typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
+                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    @SuppressWarnings("unused")
-    private static boolean isReturn(int opCode) {
-        return opCode >= IRETURN && opCode <= RETURN;
-    }
-
-    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode) {
+    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert Bytecodes.isInvoke(opCode);
+        assert Bytecodes.isInvoke(opcode);
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
-
-                QuickNode invoke = null;
-
-                if (resolutionSeed.isMethodHandleIntrinsic()) {
-                    invoke = new MethodHandleInvokeNode(resolutionSeed);
-                } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
-                    // Can happen in old classfiles that calls j.l.Object on interfaces.
-                    invoke = InvokeVirtualNodeGen.create(resolutionSeed);
-                } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
-                    invoke = new InvokeSpecialNode(resolutionSeed);
-                } else {
-                    // @formatter:off
-                    // Checkstyle: stop
-                    switch (opCode) {
-                        case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
-                        case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
-                        case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
-                        case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
-                        default              :
-                            throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
-                    }
-                    // @formatter:on
-                    // Checkstyle: resume
-                }
+                // During resolution of the symbolic reference to the method, any of the exceptions
+                // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
+                Method resolutionSeed = resolveMethod(opcode, bs.readCPI(curBCI));
+                QuickNode invoke = dispatchQuickened(top, curBCI, opcode, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
             }
         }
         // Perform the call outside of the lock.
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {
+    /**
+     * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
+     * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
+     */
+    public int reQuickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode, Method resolutionSeed) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert (Bytecodes.INVOKEDYNAMIC == opCode);
-        RuntimeConstantPool pool;
-        InvokeDynamicConstant inDy;
+        assert Bytecodes.isInvoke(opcode);
+        QuickNode invoke = null;
+        synchronized (this) {
+            assert bs.currentBC(curBCI) == QUICK;
+            invoke = dispatchQuickened(top, curBCI, opcode, resolutionSeed, false);
+            char cpi = bs.readCPI(curBCI);
+            nodes[cpi] = nodes[cpi].replace(invoke);
+        }
+        // Perform the call outside of the lock.
+        return invoke.execute(frame);
+    }
+
+    private QuickNode dispatchQuickened(int top, int curBCI, int opcode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+        assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
+        QuickNode invoke;
+        Method resolved = resolutionSeed;
+        switch (opcode) {
+            case INVOKESTATIC:
+                // Otherwise, if the resolved method is an instance method, the invokestatic
+                // instruction throws an IncompatibleClassChangeError.
+                if (!resolved.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                break;
+            case INVOKEINTERFACE:
+                // Otherwise, if the resolved method is static or private, the invokeinterface
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolved.isStatic() || resolved.isPrivate()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                break;
+            case INVOKEVIRTUAL:
+                // Otherwise, if the resolved method is a class (static) method, the invokevirtual
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolved.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                break;
+            case INVOKESPECIAL:
+                // Otherwise, if the resolved method is an instance initialization method, and the
+                // class in which it is declared is not the class symbolically referenced by the
+                // instruction, a NoSuchMethodError is thrown.
+                if (resolved.isConstructor()) {
+                    if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(bs.readCPI(curBCI)).getHolderKlassName(getConstantPool())) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw Meta.throwException(getMeta().java_lang_NoSuchMethodError);
+                    }
+                }
+                // Otherwise, if the resolved method is a class (static) method, the invokespecial
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolved.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                // If all of the following are true, let C be the direct superclass of the current
+                // class:
+                //
+                // * The resolved method is not an instance initialization method (&sect;2.9).
+                //
+                // * If the symbolic reference names a class (not an interface), then that class is
+                // a superclass of the current class.
+                //
+                // * The ACC_SUPER flag is set for the class file (&sect;4.1). In Java SE 8 and
+                // above, the Java Virtual Machine considers the ACC_SUPER flag to be set in every
+                // class file, regardless of the actual value of the flag in the class file and the
+                // version of the class file.
+                if (!resolved.isConstructor()) {
+                    Klass declaringKlass = getMethod().getDeclaringKlass();
+                    Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(bs.readCPI(curBCI))).getResolvedHolderKlass(declaringKlass, getConstantPool());
+                    if (!symbolicRef.isInterface() && symbolicRef != declaringKlass && declaringKlass.getSuperKlass() != null && symbolicRef != declaringKlass.getSuperKlass() &&
+                                    symbolicRef.isAssignableFrom(declaringKlass)) {
+                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), declaringKlass);
+                    }
+                }
+                break;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
+        }
+
+        if (allowFieldAccessInlining && resolved.isInlinableGetter()) {
+            invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI);
+        } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
+            invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI);
+        } else if (resolved.isMethodHandleIntrinsic()) {
+            invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
+        } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
+            // Can happen in old classfiles that calls j.l.Object on interfaces.
+            invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+        } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
+            invoke = new InvokeSpecialNode(resolved, top, curBCI);
+        } else {
+            // @formatter:off
+            switch (opcode) {
+                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolved, top, curBCI);          break;
+                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolved, top, curBCI); break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolved, top, curBCI);         break;
+                default              :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
+            }
+            // @formatter:on
+        }
+        return invoke;
+    }
+
+    private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert (Bytecodes.INVOKEDYNAMIC == opcode);
+        RuntimeConstantPool pool = null;
+        InvokeDynamicConstant inDy = null;
+        QuickNode quick = null;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+                // Check if someone did the job for us. Defer the call until we are out of the lock.
+                quick = nodes[bs.readCPI(curBCI)];
+            } else {
+                pool = getConstantPool();
+                // fetch indy under lock.
+                inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
             }
-            pool = getConstantPool();
-            // fetch indy under lock.
-            inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
         }
+        if (quick != null) {
+            // Do invocation outside of the lock.
+            return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        }
+
+        assert pool != null && inDy != null;
+
         // Do the long stuff outside the lock.
         Meta meta = getMeta();
 
@@ -1441,60 +1694,60 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         // Bootstrap method resolution
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
 
-        Klass declaringKlass = getMethod().getDeclaringKlass();
-        StaticObject bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
+        Klass accessingKlass = getMethod().getDeclaringKlass();
+        StaticObject bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(accessingKlass, bsEntry.getBootstrapMethodRef());
 
         StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
         // @formatter:off
-        // Checkstyle: stop
         for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
             PoolConstant pc = pool.at(bsEntry.argAt(i));
             switch (pc.tag()) {
-                case METHODHANDLE : args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));    break;
-                case METHODTYPE   : args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));      break;
-                case CLASS        : args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();  break;
+                case METHODHANDLE : args[i] = pool.resolvedMethodHandleAt(accessingKlass, bsEntry.argAt(i));    break;
+                case METHODTYPE   : args[i] = pool.resolvedMethodTypeAt(accessingKlass, bsEntry.argAt(i));      break;
+                case CLASS        : args[i] = pool.resolvedKlassAt(accessingKlass, bsEntry.argAt(i)).mirror();  break;
                 case STRING       : args[i] = pool.resolvedStringAt(bsEntry.argAt(i));                          break;
                 case INTEGER      : args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));                    break;
                 case LONG         : args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));                      break;
                 case DOUBLE       : args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));                  break;
                 case FLOAT        : args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));                    break;
-                default           : throw EspressoError.shouldNotReachHere();
+                default           :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
             }
         }
         // @formatter:on
-        // Checkstyle: resume
 
         // Preparing Bootstrap call.
         StaticObject name = meta.toGuestString(specifier.getName(pool));
-        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+        Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
-        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
+        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
+        StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
 
-        StaticObject memberName = (StaticObject) meta.linkCallSite.invokeDirect(
+        StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                         null,
-                        declaringKlass.mirror(),
+                        accessingKlass.mirror(),
                         bootstrapmethodMethodHandle,
                         name, methodType,
-                        StaticObject.createArray(meta.Object_array, args),
+                        StaticObject.createArray(meta.java_lang_Object_array, args),
                         appendix);
 
         StaticObject unboxedAppendix = appendix.get(0);
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
-        QuickNode quick;
+
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta));
+                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top, curBCI));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass accessingKlass, Meta meta) {
         Symbol<Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature, false);
 
@@ -1502,37 +1755,37 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbol(paramType, accessingKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
-            throw meta.throwEx(NoClassDefFoundError.class);
+            throw Meta.throwException(meta.java_lang_NoClassDefFoundError);
         }
         StaticObject rtype;
         try {
-            rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbol(rt, accessingKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
-            throw meta.throwEx(BootstrapMethodError.class);
+            throw Meta.throwException(meta.java_lang_BootstrapMethodError);
         }
-        return (StaticObject) meta.findMethodHandleType.invokeDirect(
+        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
-                        rtype, StaticObject.createArray(meta.Class_Array, ptypes));
+                        rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
     }
     // endregion Bytecode quickening
 
     // region Class/Method/Field resolution
 
-    private Klass resolveType(@SuppressWarnings("unused") int opcode, char cpi) {
-        // TODO(peterssen): Check opcode.
+    private Klass resolveType(int opcode, char cpi) {
+        assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY;
         return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
     }
 
-    private Method resolveMethod(@SuppressWarnings("unused") int opcode, char cpi) {
-        // TODO(peterssen): Check opcode.
+    private Method resolveMethod(int opcode, char cpi) {
+        assert Bytecodes.isInvoke(opcode);
         return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi);
     }
 
-    private Field resolveField(@SuppressWarnings("unused") int opcode, char cpi) {
-        // TODO(peterssen): Check opcode.
+    private Field resolveField(int opcode, char cpi) {
+        assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         return getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
     }
 
@@ -1540,7 +1793,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     // region Instance/array allocation
 
-    @TruffleBoundary
     private static StaticObject allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
         return InterpreterToVM.newArray(componentType, length);
@@ -1555,7 +1807,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         for (int i = 0; i < allocatedDimensions; ++i) {
             dimensions[i] = peekInt(frame, top - allocatedDimensions + i);
         }
-        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(klass.getComponentType(), dimensions));
+        putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(((ArrayKlass) klass).getComponentType(), dimensions));
         return -allocatedDimensions; // Does not include the created (pushed) array.
     }
 
@@ -1565,17 +1817,17 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     private Object exitMethodAndReturn(int result) {
         // @formatter:off
-        // Checkstyle: stop
         switch (Signatures.returnKind(getMethod().getParsedSignature())) {
             case Boolean : return result != 0;
             case Byte    : return (byte) result;
             case Short   : return (short) result;
             case Char    : return (char) result;
             case Int     : return result;
-            default      : throw EspressoError.shouldNotReachHere("unexpected kind");
+            default      :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     private static Object exitMethodAndReturnObject(Object result) {
@@ -1583,7 +1835,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private static Object exitMethodAndReturn() {
-        return exitMethodAndReturnObject(StaticObject.VOID);
+        return exitMethodAndReturnObject(StaticObject.NULL);
     }
 
     // endregion Method return
@@ -1676,11 +1928,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
             // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = getMethod().getContext().getMeta();
-            if (DEBUG_GENERAL) {
-                System.err.println("null appeared in: " + this);
-            }
-            throw meta.throwEx(meta.NullPointerException);
+            throw getMeta().throwNullPointerException();
         }
         return value;
     }
@@ -1689,14 +1937,14 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         if (value != 0) {
             return value;
         }
-        throw getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
+        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
         if (value != 0L) {
             return value;
         }
-        throw getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
+        throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -1714,28 +1962,121 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int putField(final VirtualFrame frame, int top, Field field, int opcode) {
+    private int putField(final VirtualFrame frame, int top, Field field, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
+
+        if (opcode == PUTFIELD) {
+            // Otherwise, if the resolved field is a static field, putfield throws an
+            // IncompatibleClassChangeError.
+            if (field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+            }
+            // Otherwise, if the field is final, it must be declared in the current class, and
+            // the instruction must occur in an instance initialization method (<init>) of the
+            // current class. Otherwise, an IllegalAccessError is thrown.
+            if (field.isFinalFlagSet()) {
+                // && getMethod().isConstructor()
+                // Enforced in class files >= v53 (9).
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
+                }
+            }
+        } else if (opcode == PUTSTATIC) {
+            // Otherwise, if the resolved field is not a static (class) field or an interface
+            // field, putstatic throws an IncompatibleClassChange
+            if (!field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+            }
+            // Otherwise, if the field is final, it must be declared in the current class, and the
+            // instruction must occur in the <clinit> method of the current class. Otherwise, an
+            // IllegalAccessError is thrown.
+            if (field.isFinalFlagSet()) {
+                // && getMethod().isClassInitializer()
+                // Enforced in class files >= v53 (9).
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
+                }
+            }
+        }
+
         assert field.isStatic() == (opcode == PUTSTATIC);
+
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
-        // @formatter:off
-        // Checkstyle: stop
+                        : nullCheck(peekAndReleaseObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
+
         switch (field.getKind()) {
-            case Boolean : InterpreterToVM.setFieldBoolean(peekInt(frame, top - 1) == 1, receiver, field);  break;
-            case Byte    : InterpreterToVM.setFieldByte((byte) peekInt(frame, top - 1), receiver, field);   break;
-            case Char    : InterpreterToVM.setFieldChar((char) peekInt(frame, top - 1), receiver, field);   break;
-            case Short   : InterpreterToVM.setFieldShort((short) peekInt(frame, top - 1), receiver, field); break;
-            case Int     : InterpreterToVM.setFieldInt(peekInt(frame, top - 1), receiver, field);           break;
-            case Double  : InterpreterToVM.setFieldDouble(peekDouble(frame, top - 1), receiver, field);     break;
-            case Float   : InterpreterToVM.setFieldFloat(peekFloat(frame, top - 1), receiver, field);       break;
-            case Long    : InterpreterToVM.setFieldLong(peekLong(frame, top - 1), receiver, field);         break;
-            case Object  : InterpreterToVM.setFieldObject(peekObject(frame, top - 1), receiver, field);     break;
-            default      : throw EspressoError.shouldNotReachHere("unexpected kind");
+            case Boolean:
+                boolean booleanValue = peekInt(frame, top - 1) == 1;
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
+                }
+                InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
+                break;
+            case Byte:
+                byte byteValue = (byte) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
+                }
+                InterpreterToVM.setFieldByte(byteValue, receiver, field);
+                break;
+            case Char:
+                char charValue = (char) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
+                }
+                InterpreterToVM.setFieldChar(charValue, receiver, field);
+                break;
+            case Short:
+                short shortValue = (short) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
+                }
+                InterpreterToVM.setFieldShort(shortValue, receiver, field);
+                break;
+            case Int:
+                int intValue = peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
+                }
+                InterpreterToVM.setFieldInt(intValue, receiver, field);
+                break;
+            case Double:
+                double doubleValue = peekDouble(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
+                }
+                InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
+                break;
+            case Float:
+                float floatValue = peekFloat(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
+                }
+                InterpreterToVM.setFieldFloat(floatValue, receiver, field);
+                break;
+            case Long:
+                long longValue = peekLong(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
+                }
+                InterpreterToVM.setFieldLong(longValue, receiver, field);
+                break;
+            case Object:
+                StaticObject value = peekAndReleaseObject(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
+                }
+                InterpreterToVM.setFieldObject(value, receiver, field);
+                break;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("unexpected kind");
         }
-        // @formatter:on
-        // Checkstyle: resume
         return -field.getKind().getSlotCount();
     }
 
@@ -1750,18 +2091,38 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int getField(final VirtualFrame frame, int top, Field field, int opcode) {
+    private int getField(final VirtualFrame frame, int top, Field field, int opcode, int statementIndex) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
-        assert field.isStatic() == (opcode == GETSTATIC);
         CompilerAsserts.partialEvaluationConstant(field);
+
+        if (opcode == GETFIELD) {
+            // Otherwise, if the resolved field is a static field, getfield throws an
+            // IncompatibleClassChangeError.
+            if (field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+            }
+        } else if (opcode == GETSTATIC) {
+            // Otherwise, if the resolved field is not a static (class) field or an interface
+            // field, getstatic throws an IncompatibleClassChangeError.
+            if (!field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+            }
+        }
+
+        assert field.isStatic() == (opcode == GETSTATIC);
 
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(peekObject(frame, top - 1));
+                        : nullCheck(peekAndReleaseObject(frame, top - 1));
+
+        if (instrumentation != null) {
+            instrumentation.notifyFieldAccess(frame, statementIndex, field, receiver);
+        }
 
         int resultAt = field.isStatic() ? top : (top - 1);
         // @formatter:off
-        // Checkstyle: stop
         switch (field.getKind()) {
             case Boolean : putInt(frame, resultAt, InterpreterToVM.getFieldBoolean(receiver, field) ? 1 : 0); break;
             case Byte    : putInt(frame, resultAt, InterpreterToVM.getFieldByte(receiver, field));      break;
@@ -1772,10 +2133,11 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
             case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
             case Object  : putObject(frame, resultAt, InterpreterToVM.getFieldObject(receiver, field)); break;
-            default      : throw EspressoError.shouldNotReachHere("unexpected kind");
+            default      :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
-        // Checkstyle: resume
         return field.getKind().getSlotCount();
     }
 
@@ -1787,7 +2149,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     @ExplodeLoop
-    public Object[] peekArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
+    public Object[] peekAndReleaseArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
         int argCount = Signatures.parameterCount(signature, false);
 
         int extraParam = hasReceiver ? 1 : 0;
@@ -1801,7 +2163,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         for (int i = argCount - 1; i >= 0; --i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
-            // Checkstyle: stop
             switch (kind) {
                 case Boolean : args[i + extraParam] = (peekInt(frame, argAt) != 0);  break;
                 case Byte    : args[i + extraParam] = (byte) peekInt(frame, argAt);  break;
@@ -1811,22 +2172,23 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 case Float   : args[i + extraParam] = peekFloat(frame, argAt);       break;
                 case Long    : args[i + extraParam] = peekLong(frame, argAt);        break;
                 case Double  : args[i + extraParam] = peekDouble(frame, argAt);      break;
-                case Object  : args[i + extraParam] = peekObject(frame, argAt);      break;
-                default      : throw EspressoError.shouldNotReachHere();
+                case Object  : args[i + extraParam] = peekAndReleaseObject(frame, argAt); break;
+                default      :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
-            // Checkstyle: resume
             argAt -= kind.getSlotCount();
         }
         if (hasReceiver) {
-            args[0] = peekObject(frame, argAt);
+            args[0] = peekAndReleaseObject(frame, argAt);
         }
         return args;
     }
 
-    // Effort to prevent double copies.
+    // Effort to prevent double copies. Erases sub-word primitive types.
     @ExplodeLoop
-    public Object[] peekBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
+    public Object[] peekAndReleaseBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
         // Use basic types
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(signature);
@@ -1835,21 +2197,21 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         for (int i = argCount - 1; i >= 0; --i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
-            // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i + start] = peekInt(frame, argAt);    break;
-                case Byte    : args[i + start] = peekInt(frame, argAt);    break;
-                case Short   : args[i + start] = peekInt(frame, argAt);    break;
-                case Char    : args[i + start] = peekInt(frame, argAt);    break;
+                case Boolean : // Fall through
+                case Byte    : // Fall through
+                case Short   : // Fall through
+                case Char    : // Fall through
                 case Int     : args[i + start] = peekInt(frame, argAt);    break;
                 case Float   : args[i + start] = peekFloat(frame, argAt);  break;
                 case Long    : args[i + start] = peekLong(frame, argAt);   break;
                 case Double  : args[i + start] = peekDouble(frame, argAt); break;
-                case Object  : args[i + start] = peekObject(frame, argAt); break;
-                default      : throw EspressoError.shouldNotReachHere();
+                case Object  : args[i + start] = peekAndReleaseObject(frame, argAt); break;
+                default      :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
-            // Checkstyle: resume
             argAt -= kind.getSlotCount();
         }
         return args;
@@ -1866,7 +2228,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      */
     public int putKind(VirtualFrame frame, int top, Object value, JavaKind kind) {
         // @formatter:off
-        // Checkstyle: stop
         switch (kind) {
             case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
             case Byte    : putInt(frame, top, (byte) value);              break;
@@ -1876,32 +2237,35 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;
-            case Object  : putObject(frame, top, (StaticObject)value);    break;
+            case Object  : putObject(frame, top, (StaticObject) value);   break;
             case Void    : /* ignore */                                   break;
-            default      : throw EspressoError.shouldNotReachHere();
+            default      :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
         return kind.getSlotCount();
     }
 
     // internal
     private void putKindUnsafe1(VirtualFrame frame, int slot, Object value, JavaKind kind) {
         // @formatter:off
-        // Checkstyle: stop
         switch (kind) {
             case Long    : frame.setLong(stackSlots[slot], (long) value); break;
             case Object  : putObjectOrReturnAddress(frame, slot, value);  break;
-            default      : throw EspressoError.shouldNotReachHere();
+            default      :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
-        // Checkstyle: resume
     }
 
     public StaticObject peekReceiver(final VirtualFrame frame, int top, Method m) {
         assert !m.isStatic();
         int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
-        return peekObject(frame, top - skipSlots - 1);
+        StaticObject result = peekObject(frame, top - skipSlots - 1);
+        assert result != null;
+        return result;
     }
 
     @Override
@@ -1909,4 +2273,154 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         int codeSize = getMethod().getCodeSize();
         return 2 * codeSize + 1;
     }
+
+    static final class InstrumentationSupport extends Node {
+
+        @Children private final EspressoInstrumentableNode[] statementNodes;
+        @Child private MapperBCI hookBCIToNodeIndex;
+
+        private final EspressoContext context;
+        private final Method method;
+
+        InstrumentationSupport(Method method) {
+            this.context = method.getContext();
+            LineNumberTableAttribute table = method.getLineNumberTable();
+            this.method = method;
+
+            if (table != LineNumberTableAttribute.EMPTY) {
+                LineNumberTableAttribute.Entry[] entries = table.getEntries();
+                this.statementNodes = new EspressoInstrumentableNode[entries.length];
+                this.hookBCIToNodeIndex = new MapperBCI(table);
+
+                for (int i = 0; i < entries.length; i++) {
+                    LineNumberTableAttribute.Entry entry = entries[i];
+                    statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), entry.getLineNumber());
+                }
+            } else {
+                this.statementNodes = null;
+                this.hookBCIToNodeIndex = null;
+            }
+        }
+
+        /**
+         * If transitioning between two statements, exits the current one, and enter the new one.
+         */
+        void notifyStatement(VirtualFrame frame, int statementIndex, int nextStatementIndex) {
+            CompilerAsserts.partialEvaluationConstant(statementIndex);
+            CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
+            if (statementIndex == nextStatementIndex) {
+                return;
+            }
+            exitAt(frame, statementIndex);
+            enterAt(frame, nextStatementIndex);
+        }
+
+        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame) {
+            // TODO(Gregersen) - method entry breakpoints are currently implemented by submitting
+            // first line breakpoints within each method. This works insofar the method has a valid
+            // line table. For classes compiled without debug information we could use this hook
+            // instead.
+        }
+
+        public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
+            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
+                enterAt(frame, statementIndex);
+            }
+        }
+
+        void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(statementIndex);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
+            if (context.getJDWPListener().hasFieldModificationBreakpoint(field, receiver, value)) {
+                enterAt(frame, index);
+            }
+        }
+
+        public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
+            if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
+                enterAt(frame, index);
+            }
+        }
+
+        private void enterAt(VirtualFrame frame, int index) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            try {
+                probeNode.onEnter(frame);
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    // TODO maybe support this by returning a new bci?
+                    CompilerDirectives.transferToInterpreter();
+                    throw new UnsupportedOperationException();
+                } else if (result != null) {
+                    // ignore result values;
+                    // we are instrumentation statements only.
+                    return;
+                }
+                throw t;
+            }
+        }
+
+        private void exitAt(VirtualFrame frame, int index) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            try {
+                probeNode.onReturnValue(frame, StaticObject.NULL);
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, true);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    // TODO maybe support this by returning a new bci?
+                    CompilerDirectives.transferToInterpreter();
+                    throw new UnsupportedOperationException();
+                } else if (result != null) {
+                    // ignore result values;
+                    // we are instrumentation statements only.
+                    return;
+                }
+                throw t;
+            }
+        }
+
+        int getStatementIndexAfterJump(int statementIndex, int curBCI, int targetBCI) {
+            if (hookBCIToNodeIndex == null) {
+                return 0;
+            }
+            return hookBCIToNodeIndex.lookup(statementIndex, curBCI, targetBCI);
+        }
+
+        int getNextStatementIndex(int statementIndex, int nextBCI) {
+            if (hookBCIToNodeIndex == null) {
+                return 0;
+            }
+            return hookBCIToNodeIndex.checkNext(statementIndex, nextBCI);
+        }
+
+        private EspressoInstrumentableNodeWrapper getWrapperAt(int index) {
+            if (statementNodes == null || index < 0) {
+                return null;
+            }
+            EspressoInstrumentableNode node = statementNodes[index];
+            if (!(node instanceof EspressoInstrumentableNodeWrapper)) {
+                return null;
+            }
+            CompilerAsserts.partialEvaluationConstant(node);
+            return ((EspressoInstrumentableNodeWrapper) node);
+        }
+
+    }
+
 }

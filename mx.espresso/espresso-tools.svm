@@ -1,6 +1,0 @@
-# mx --dy /vm,/substratevm,/tools --disable-polyglot --disable-libpolyglot --force-bash-launchers=native-image graalvm-show
-
-DYNAMIC_IMPORTS=/vm,/substratevm,/tools
-DISABLE_POLYGLOT=true
-DISABLE_LIBPOLYGLOT=true
-FORCE_BASH_LAUNCHERS=native-image

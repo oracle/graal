@@ -1,0 +1,6 @@
+# mx --dy /vm,/substratevm --disable-polyglot --disable-libpolyglot --force-bash-launchers=native-image graalvm-show
+
+DYNAMIC_IMPORTS=/vm,/substratevm
+COMPONENTS=Espresso,SubstrateVM
+NATIVE_IMAGES=espresso
+DISABLE_POLYGLOT=true

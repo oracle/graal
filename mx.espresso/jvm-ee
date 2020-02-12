@@ -1,0 +1,5 @@
+# mx --dy /vm-enteprise,/graal-enterprise --disable-polyglot graalvm-show
+
+DYNAMIC_IMPORTS=/vm-enterprise,/graal-enterprise
+COMPONENTS=Espresso,GraalVM enterprise compiler
+DISABLE_POLYGLOT=true

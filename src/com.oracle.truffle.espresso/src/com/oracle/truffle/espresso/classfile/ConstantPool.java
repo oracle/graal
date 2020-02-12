@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,11 +42,34 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvalidConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -54,7 +77,7 @@ import com.oracle.truffle.object.DebugCounter;
  */
 public abstract class ConstantPool {
 
-    static final DebugCounter utf8EntryCount = DebugCounter.create("utf8EntryCount");
+    private static final DebugCounter UTF8_ENTRY_COUNT = DebugCounter.create("UTF8 Constant Pool entries");
 
     public enum Tag {
         INVALID(0),
@@ -112,8 +135,13 @@ public abstract class ConstantPool {
             // @formatter:on
         }
 
-        public final static List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
     }
+
+    public abstract int getMajorVersion();
+
+    public abstract int getMinorVersion();
 
     public abstract int length();
 
@@ -123,24 +151,36 @@ public abstract class ConstantPool {
         return at(index, null);
     }
 
-    static ClassFormatError unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
+    public byte[] getRawBytes() {
+        return new byte[0];
+    }
+
+    static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw classFormatError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
     }
 
-    public final ClassFormatError unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
+    final @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw unexpectedEntry(index, tagAt(index), description, expected);
     }
 
-    static VerifyError verifyError(String message) {
+    static @Host(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
-        throw new VerifyError(message);
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
-    static ClassFormatError classFormatError(String message) {
+    public static @Host(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
-        throw new ClassFormatError(message);
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
+    }
+
+    static @Host(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 
     /**
@@ -204,12 +244,12 @@ public abstract class ConstantPool {
         }
     }
 
-    public final <T> Symbol<T> utf8At(int index) {
-        return utf8At(index, null);
+    public final <T> Symbol<T> symbolAt(int index) {
+        return symbolAt(index, null);
     }
 
     @SuppressWarnings("unchecked")
-    public final <T> Symbol<T> utf8At(int index, String description) {
+    public final <T> Symbol<T> symbolAt(int index, String description) {
         try {
             final Utf8Constant constant = (Utf8Constant) at(index);
             return (Symbol<T>) constant.value();
@@ -218,11 +258,23 @@ public abstract class ConstantPool {
         }
     }
 
-    public final Symbol<Constant> stringAt(int index) {
+    public final Utf8Constant utf8At(int index) {
+        return utf8At(index, null);
+    }
+
+    public final Utf8Constant utf8At(int index, String description) {
+        try {
+            return (Utf8Constant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, UTF8);
+        }
+    }
+
+    public final Symbol<ModifiedUTF8> stringAt(int index) {
         return stringAt(index, null);
     }
 
-    public final Symbol<Constant> stringAt(int index, String description) {
+    public final Symbol<ModifiedUTF8> stringAt(int index, String description) {
         try {
             final StringConstant constant = (StringConstant) at(index);
             return constant.getSymbol(this);
@@ -332,19 +384,19 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser) {
-        return parse(language, stream, parser, null, null);
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
+        return parse(language, stream, parser, null, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context) {
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
         }
-
+        int rawPoolStartPosition = stream.getPosition();
         final PoolConstant[] entries = new PoolConstant[length];
         entries[0] = InvalidConstant.VALUE;
 
@@ -353,130 +405,134 @@ public abstract class ConstantPool {
             final int tagByte = stream.readU1();
             final Tag tag = Tag.fromValue(tagByte);
             if (tag == null) {
-                throw new ClassFormatError("Invalid constant pool entry type at index " + i);
+                throw classFormatError("Invalid constant pool entry type at index " + i);
             }
             switch (tag) {
                 case CLASS: {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
-                        if (classSpecifier.getKlass().getType() == Symbol.Type.Class) {
-                            entries[i] = new ClassConstant.PreResolved(classSpecifier.getMirrorKlass());
+                        if (classSpecifier.getKlass().getType() == Type.java_lang_Class) {
+                            entries[i] = ClassConstant.preResolved(classSpecifier.getMirrorKlass());
                         } else {
-                            entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
+                            entries[i] = ClassConstant.withString(context.getNames().lookup(Meta.toHostString(patches[i])));
                         }
+
                         stream.readU2();
                         break;
                     }
                     int classNameIndex = stream.readU2();
-                    entries[i] = new ClassConstant.Index(classNameIndex);
+                    entries[i] = ClassConstant.create(classNameIndex);
                     break;
                 }
                 case STRING: {
+                    int index = stream.readU2();
+                    if (index == 0 || index >= length) {
+                        throw classFormatError("Invalid String constant index " + (i - 1));
+                    }
                     if (existsAt(patches, i)) {
-                        entries[i] = new StringConstant.PreResolved(patches[i]);
-                        stream.readU2();
+                        entries[i] = StringConstant.preResolved(patches[i]);
                     } else {
-                        entries[i] = new StringConstant.Index(stream.readU2());
+                        entries[i] = StringConstant.create(index);
                     }
                     break;
                 }
                 case FIELD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = new FieldRefConstant.Indexes(classIndex, nameAndTypeIndex);
+                    entries[i] = FieldRefConstant.create(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case METHOD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = new ClassMethodRefConstant.Indexes(classIndex, nameAndTypeIndex);
+                    entries[i] = ClassMethodRefConstant.create(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case INTERFACE_METHOD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = new InterfaceMethodRefConstant.Indexes(classIndex, nameAndTypeIndex);
+                    entries[i] = InterfaceMethodRefConstant.create(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case NAME_AND_TYPE: {
                     int nameIndex = stream.readU2();
                     int typeIndex = stream.readU2();
-                    entries[i] = new NameAndTypeConstant.Indexes(nameIndex, typeIndex);
+                    entries[i] = NameAndTypeConstant.create(nameIndex, typeIndex);
                     break;
                 }
                 case INTEGER: {
                     if (existsAt(patches, i)) {
-                        entries[i] = new IntegerConstant(context.getMeta().unboxInteger(patches[i]));
+                        entries[i] = IntegerConstant.create(context.getMeta().unboxInteger(patches[i]));
                         stream.readS4();
                         break;
                     }
-                    entries[i] = new IntegerConstant(stream.readS4());
+                    entries[i] = IntegerConstant.create(stream.readS4());
                     break;
                 }
                 case FLOAT: {
                     if (existsAt(patches, i)) {
-                        entries[i] = new FloatConstant(context.getMeta().unboxFloat(patches[i]));
+                        entries[i] = FloatConstant.create(context.getMeta().unboxFloat(patches[i]));
                         stream.readFloat();
                         break;
                     }
-                    entries[i] = new FloatConstant(stream.readFloat());
+                    entries[i] = FloatConstant.create(stream.readFloat());
                     break;
                 }
                 case LONG: {
                     if (existsAt(patches, i)) {
-                        entries[i] = new LongConstant(context.getMeta().unboxLong(patches[i]));
+                        entries[i] = LongConstant.create(context.getMeta().unboxLong(patches[i]));
                         stream.readS8();
                     } else {
-                        entries[i] = new LongConstant(stream.readS8());
+                        entries[i] = LongConstant.create(stream.readS8());
                     }
                     ++i;
                     try {
                         entries[i] = InvalidConstant.VALUE;
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        throw new ClassFormatError("Invalid long constant index " + (i - 1));
+                        throw classFormatError("Invalid long constant index " + (i - 1));
                     }
                     break;
                 }
                 case DOUBLE: {
                     if (existsAt(patches, i)) {
-                        entries[i] = new DoubleConstant(context.getMeta().unboxDouble(patches[i]));
+                        entries[i] = DoubleConstant.create(context.getMeta().unboxDouble(patches[i]));
                         stream.readDouble();
                     } else {
-                        entries[i] = new DoubleConstant(stream.readDouble());
+                        entries[i] = DoubleConstant.create(stream.readDouble());
                     }
                     ++i;
                     try {
                         entries[i] = InvalidConstant.VALUE;
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        throw new ClassFormatError("Invalid double constant index " + (i - 1));
+                        throw classFormatError("Invalid double constant index " + (i - 1));
                     }
                     break;
                 }
                 case UTF8: {
                     // Copy-less UTF8 constant.
                     // A new symbol is spawned (copy) only if doesn't already exists.
-                    utf8EntryCount.inc();
-                    entries[i] = language.getUtf8ConstantTable().getOrCreate(stream.readByteSequenceUTF());
+                    UTF8_ENTRY_COUNT.inc();
+                    ByteSequence bytes = stream.readByteSequenceUTF();
+                    entries[i] = language.getUtf8ConstantTable().getOrCreate(bytes);
                     break;
                 }
                 case METHODHANDLE: {
                     parser.checkInvokeDynamicSupport(tag);
                     int refKind = stream.readU1();
                     int refIndex = stream.readU2();
-                    entries[i] = new MethodHandleConstant.Index(refKind, refIndex);
+                    entries[i] = MethodHandleConstant.create(refKind, refIndex);
                     break;
                 }
                 case METHODTYPE: {
                     parser.checkInvokeDynamicSupport(tag);
-                    int descriptorIndex = stream.readU2();
-                    entries[i] = new MethodTypeConstant.Index(descriptorIndex);
+                    entries[i] = MethodTypeConstant.create(stream.readU2());
                     break;
                 }
                 case DYNAMIC: {
                     parser.checkDynamicConstantSupport(tag);
                     int bootstrapMethodAttrIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = new DynamicConstant.Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
+                    entries[i] = DynamicConstant.create(bootstrapMethodAttrIndex, nameAndTypeIndex);
                     parser.updateMaxBootstrapMethodAttrIndex(bootstrapMethodAttrIndex);
                     break;
                 }
@@ -484,7 +540,7 @@ public abstract class ConstantPool {
                     parser.checkInvokeDynamicSupport(tag);
                     int bootstrapMethodAttrIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = new InvokeDynamicConstant.Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
+                    entries[i] = InvokeDynamicConstant.create(bootstrapMethodAttrIndex, nameAndTypeIndex);
                     parser.updateMaxBootstrapMethodAttrIndex(bootstrapMethodAttrIndex);
                     break;
                 }
@@ -495,11 +551,19 @@ public abstract class ConstantPool {
             }
             i++;
         }
+        int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        return new ConstantPoolImpl(entries);
+        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, stream.getByteRange(rawPoolStartPosition, rawPoolLength));
+
+        // Validation
+        for (int j = 1; j < constantPool.length(); ++j) {
+            entries[j].validate(constantPool);
+        }
+
+        return constantPool;
     }
 
     private static boolean existsAt(Object[] patches, int index) {
-        return patches != null && index <= patches.length && patches[index] != StaticObject.NULL;
+        return patches != null && index <= patches.length && !StaticObject.isEspressoNull(patches[index]);
     }
 }

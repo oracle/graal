@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -31,6 +35,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
@@ -44,46 +49,20 @@ public final class ArrayKlass extends Klass {
         super(componentType.getContext(),
                         null, // TODO(peterssen): Internal, , or / name?
                         componentType.getTypes().arrayOf(componentType.getType()),
-                        componentType.getMeta().Object,
-                        componentType.getMeta().ARRAY_SUPERINTERFACES);
+                        componentType.getMeta().java_lang_Object,
+                        componentType.getMeta().ARRAY_SUPERINTERFACES,
+                        // Arrays (of static inner class) may have protected access.
+                        (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
+        EspressoError.guarantee(componentType.getJavaKind() != JavaKind.Void, "Invalid void[] class.");
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
     }
 
     @Override
-    public StaticObject getStatics() {
-        throw EspressoError.shouldNotReachHere("Arrays do not have static fields");
-    }
-
-    @Override
-    public final int getFlags() {
-        return (getElementalType().getFlags() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
-    }
-
-    @Override
-    public boolean isInterface() {
-        return false;
-    }
-
-    @Override
-    public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return getElementalType().isInitialized();
-    }
-
-    @Override
-    public void initialize() {
-        getElementalType().initialize();
-    }
-
-    @Override
-    public Klass getHostClass() {
-        return null;
+    public int getClassModifiers() {
+        // Arrays (of static inner class) may have protected access.
+        return (getElementalType().getClassModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
     }
 
     @Override
@@ -91,14 +70,8 @@ public final class ArrayKlass extends Klass {
         return elementalType;
     }
 
-    @Override
     public Klass getComponentType() {
         return componentType;
-    }
-
-    @Override
-    public final Method vtableLookup(int vtableIndex) {
-        return getSuperKlass().vtableLookup(vtableIndex);
     }
 
     @Override
@@ -132,23 +105,13 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
-        methodLookupCount.inc();
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+        KLASS_LOOKUP_METHOD_COUNT.inc();
         return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
     }
 
     @Override
-    public final Field lookupFieldTable(int slot) {
-        return getSuperKlass().lookupFieldTable(slot);
-    }
-
-    @Override
-    public final Field lookupStaticFieldTable(int slot) {
-        return getSuperKlass().lookupStaticFieldTable(slot);
-    }
-
-    @Override
-    public final @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return elementalType.getDefiningClassLoader();
     }
 
@@ -167,7 +130,7 @@ public final class ArrayKlass extends Klass {
         int otherDim = other.getDimension();
         if (otherDim > thisDim) {
             Klass thisElemental = this.getElementalType();
-            return thisElemental == getMeta().Object || thisElemental == getMeta().Serializable || thisElemental == getMeta().Cloneable;
+            return thisElemental == getMeta().java_lang_Object || thisElemental == getMeta().java_io_Serializable || thisElemental == getMeta().java_lang_Cloneable;
         } else if (thisDim == otherDim) {
             Klass klass = getElementalType();
             Klass other1 = other.getElementalType();
@@ -188,5 +151,10 @@ public final class ArrayKlass extends Klass {
             assert thisDim > otherDim;
             return false;
         }
+    }
+
+    @Override
+    public String getNameAsString() {
+        return "[" + componentType.getNameAsString();
     }
 }

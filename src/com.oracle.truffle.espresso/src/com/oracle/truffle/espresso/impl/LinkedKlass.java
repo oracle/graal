@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.truffle.espresso.impl;
+
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 import java.lang.reflect.Modifier;
 
@@ -50,6 +52,7 @@ public final class LinkedKlass {
 
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] fields; // Field slots already computed.
+    private final boolean hasFinalizer;
 
     protected LinkedMethod[] getLinkedMethods() {
         return methods;
@@ -94,6 +97,11 @@ public final class LinkedKlass {
             linkedMethods[i] = new LinkedMethod(parserMethod, this);
         }
 
+        // Super interfaces are not checked for finalizers; a default .finalize method will be
+        // resolved to Object.finalize, making the finalizer not observable.
+        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
+        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
+
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;
         this.interfaces = interfaces;
@@ -104,7 +112,11 @@ public final class LinkedKlass {
     }
 
     int getFlags() {
-        return parserKlass.getFlags();
+        int flags = parserKlass.getFlags();
+        if (hasFinalizer) {
+            flags |= ACC_FINALIZER;
+        }
+        return flags;
     }
 
     ConstantPool getConstantPool() {
@@ -129,5 +141,13 @@ public final class LinkedKlass {
 
     public LinkedKlass[] getInterfaces() {
         return interfaces;
+    }
+
+    public int getMajorVersion() {
+        return getConstantPool().getMajorVersion();
+    }
+
+    public int getMinorVersion() {
+        return getConstantPool().getMinorVersion();
     }
 }

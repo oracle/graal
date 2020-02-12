@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,24 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.util.Collections;
+import java.util.logging.Level;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -45,19 +53,23 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
-@ProvidedTags(StandardTags.RootTag.class)
-@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
+@ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
+@Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
+
+    public static final TruffleLogger EspressoLogger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     public static final String ID = "java";
     public static final String NAME = "Java";
     public static final String VERSION = "1.8";
-    public static final String MIME_TYPE = "application/x-java";
 
     // Espresso VM info
     public static final String VM_SPECIFICATION_VERSION = "1.8";
@@ -71,8 +83,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
+    private static final String SCOPE_NAME = "block";
 
-    private final Symbols symbols;
     private final Utf8ConstantTable utf8Constants;
     private final Names names;
     private final Types types;
@@ -81,15 +93,19 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private long startupClock = 0;
 
     public EspressoLanguage() {
+        // Initialize statically defined symbols and substitutions.
         Name.init();
         Type.init();
         Signature.init();
         Substitutions.init();
-        this.symbols = new Symbols(StaticSymbols.freeze());
-        this.utf8Constants = new Utf8ConstantTable(this.symbols);
-        this.names = new Names(this.symbols);
-        this.types = new Types(this.symbols);
-        this.signatures = new Signatures(this.symbols, types);
+
+        // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
+        // Signatures instead.
+        Symbols symbols = new Symbols(StaticSymbols.freeze());
+        this.utf8Constants = new Utf8ConstantTable(symbols);
+        this.names = new Names(symbols);
+        this.types = new Types(symbols);
+        this.signatures = new Signatures(symbols, types);
     }
 
     @Override
@@ -110,8 +126,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         OptionValues options = env.getOptions();
         // TODO(peterssen): Redirect in/out to env.in()/out()
-        // InputStream in = env.in();
-        // OutputStream out = env.out();
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
 
@@ -121,8 +135,53 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (sourceFile != null) {
             context.setMainSourceFile((Source) sourceFile);
         }
-
         return context;
+    }
+
+    @Override
+    protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
+        int currentBci;
+
+        Node espressoNode = findKnownEspressoNode(node);
+
+        Method method;
+        Node scopeNode;
+        if (espressoNode instanceof QuickNode) {
+            QuickNode quick = (QuickNode) espressoNode;
+            currentBci = quick.getBCI();
+            method = quick.getBytecodesNode().getMethod();
+            scopeNode = quick.getBytecodesNode();
+        } else if (espressoNode instanceof EspressoStatementNode) {
+            EspressoStatementNode statementNode = (EspressoStatementNode) espressoNode;
+            currentBci = statementNode.getBci();
+            method = statementNode.getBytecodesNode().getMethod();
+            scopeNode = statementNode.getBytecodesNode();
+        } else if (espressoNode instanceof BytecodeNode) {
+            BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
+            currentBci = 0;
+            method = bytecodeNode.getMethod();
+            scopeNode = bytecodeNode;
+        } else {
+            return super.findLocalScopes(context, espressoNode, frame);
+        }
+        // construct the current scope with valid local variables information
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
+
+        Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
+        return Collections.singletonList(scope);
+    }
+
+    private static Node findKnownEspressoNode(Node input) {
+        Node currentNode = input;
+        boolean known = false;
+        while (currentNode != null && !known) {
+            if (currentNode instanceof QuickNode || currentNode instanceof BytecodeNode || currentNode instanceof EspressoStatementNode) {
+                known = true;
+            } else {
+                currentNode = currentNode.getParent();
+            }
+        }
+        return currentNode;
     }
 
     @Override
@@ -134,14 +193,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void finalizeContext(EspressoContext context) {
         long totalTime = System.currentTimeMillis() - startupClock;
-        if (totalTime > 5000) {
-            System.out.println("Time spent in Espresso: " + (totalTime / 1000) + "s");
+        if (totalTime > 10000) {
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
         } else {
-            System.out.println("Time spent in Espresso: " + (totalTime) + "ms");
+            EspressoLogger.log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
         }
-        context.interruptActiveThreads();
+
+        context.prepareDispose();
+
         // Shutdown.shutdown creates a Cleaner thread. At this point, Polyglot doesn't allow new
         // threads. We must perform shutdown before then, after main has finished.
+        context.interruptActiveThreads();
     }
 
     @Override
@@ -155,6 +217,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         final EspressoContext context = getCurrentContext();
 
         assert context.isInitialized();
+        context.begin();
 
         String className = source.getName();
 
@@ -186,23 +249,23 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(final Object object) {
+    protected boolean isObjectOfLanguage(Object object) {
         return object instanceof StaticObject;
     }
 
-    public final Utf8ConstantTable getUtf8ConstantTable() {
+    public Utf8ConstantTable getUtf8ConstantTable() {
         return utf8Constants;
     }
 
-    public final Names getNames() {
+    public Names getNames() {
         return names;
     }
 
-    public final Types getTypes() {
+    public Types getTypes() {
         return types;
     }
 
-    public final Signatures getSignatures() {
+    public Signatures getSignatures() {
         return signatures;
     }
 
@@ -229,12 +292,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeThread(EspressoContext context, Thread thread) {
-        // perform initialization actions for threads
+        context.createThread(thread);
     }
 
     @Override
     protected void disposeThread(EspressoContext context, Thread thread) {
-        // perform disposal actions for threads
+        context.disposeThread(thread);
     }
 
 }
