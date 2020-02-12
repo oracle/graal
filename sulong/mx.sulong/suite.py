@@ -585,6 +585,37 @@ suite = {
       ],
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
+      "subDir" : "projects",
+      "vpath" : True,
+      "sourceDir" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxx",
+      "class" : "CMakeProject",
+      "makeTarget" : "install",
+      "results" : ["native"],
+      "cmakeConfig" : {
+        "LLVM_PATH" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/llvm",
+        "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+        "LIBCXX_INCLUDE_TESTS": "NO",
+        "LIBCXX_CXX_ABI" : "libcxxabi",
+        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi>/native/lib",
+        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>/libcxxabi/include",
+        "LIBCXX_ENABLE_STATIC" : "NO",
+        "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+        "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
+        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
+        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
+        "CMAKE_INSTALL_PREFIX" : "native",
+      },
+      "buildDependencies" : [
+        "sdk:LLVM_TOOLCHAIN",
+      ],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
+      ],
+      "buildEnv" : {
+      },
+    },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
       "subDir" : "tests",
@@ -1117,18 +1148,13 @@ suite = {
       "layout" : {
         "./": [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxxabi/*",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
         ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
-          {
-            "source_type": "extracted-dependency",
-            "dependency": "sdk:LLVM_ORG",
-            "path": "./lib/libc++.*",
-            "dereference" : "never",
-          },
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
@@ -1139,6 +1165,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
         "com.oracle.truffle.llvm.libraries.bitcode.libcxxabi",
+        "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
       ],
       "license" : "BSD-new",
     },
