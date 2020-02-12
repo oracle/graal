@@ -65,6 +65,7 @@ public final class Target_sun_misc_Perf {
     @Substitution(hasReceiver = true)
     public static @Host(ByteBuffer.class) StaticObject createLong(@Host(typeName = "Lsun/misc/Perf;") StaticObject self,
                     @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value) {
+        // TODO(tg): inject meta
         Meta meta = self.getKlass().getMeta();
 
         if (units <= 0 || units > U_Last) {
