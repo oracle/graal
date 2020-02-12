@@ -277,25 +277,24 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
+        NodeFactory nodeFactory = runtime.getNodeFactory();
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMStatementNode> formalParamInits = new ArrayList<>();
-        LLVMExpressionNode stackPointerNode = runtime.getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
-        formalParamInits.add(runtime.getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
+        LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, PrimitiveType.I64);
+        formalParamInits.add(nodeFactory.createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
 
         int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
             argIndex++;
         }
         for (FunctionParameter parameter : parameters) {
-            LLVMExpressionNode parameterNode = runtime.getNodeFactory().createFunctionArgNode(argIndex++, parameter.getType());
+            LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
             FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
             if (isStructByValue(parameter)) {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
-                formalParamInits.add(
-                                runtime.getNodeFactory().createFrameWrite(parameter.getType(),
-                                                runtime.getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
+                formalParamInits.add(nodeFactory.createFrameWrite(parameter.getType(), nodeFactory.createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
             } else {
-                formalParamInits.add(runtime.getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot));
+                formalParamInits.add(nodeFactory.createFrameWrite(parameter.getType(), parameterNode, slot));
             }
         }
         return formalParamInits;
