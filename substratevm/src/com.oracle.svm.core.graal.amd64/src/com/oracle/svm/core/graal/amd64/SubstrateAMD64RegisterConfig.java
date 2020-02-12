@@ -101,6 +101,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         if (OS.getCurrent() == OS.WINDOWS) {
             // This is the Windows 64-bit ABI for parameters.
+            // Note that float parameters also "consume" a general register and vice versa.
             nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
             javaGeneralParameterRegs = new RegisterArray(rdx, r8, r9, rdi, rsi, rcx);
             xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3);
@@ -269,6 +270,11 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
+            if (type.nativeABI && OS.getCurrent() == OS.WINDOWS) {
+                // Strictly positional: float parameters consume a general register and vice versa
+                currentGeneral = i;
+                currentXMM = i;
+            }
             switch (kind) {
                 case Byte:
                 case Boolean:
