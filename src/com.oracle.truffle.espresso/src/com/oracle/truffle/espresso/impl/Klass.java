@@ -40,7 +40,6 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.interop.ArityException;
@@ -51,6 +50,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -82,6 +82,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private static final String STATIC_TO_CLASS = "class";
     private static final String ARRAY = "array";
     private static final String COMPONENT = "component";
+    private static final String SUPER = "super";
 
     @ExportMessage
     boolean isMemberReadable(String member) {
@@ -92,6 +93,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return true;
         }
         if (isArray() && COMPONENT.equals(member)) {
+            return true;
+        }
+        if (getSuperKlass() != null && SUPER.equals(member)) {
             return true;
         }
         return false;
@@ -107,6 +111,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         if (isArray() && COMPONENT.equals(member)) {
             return ((ArrayKlass) this).getComponentType();
+        }
+        if (getSuperKlass() != null && SUPER.equals(member)) {
+            return getSuperKlass();
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -128,8 +135,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
-        assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
         if (method != null) {
+            assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
             return invoke.execute(method, null, arguments);
         }
         throw UnknownIdentifierException.create(member);
@@ -148,6 +155,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (m.isStatic() && m.isPublic()) {
                 members.add(m.getName().toString());
             }
+        }
+        if (getMeta()._void != this) {
+            members.add(ARRAY);
+        }
+        if (isArray()) {
+            members.add(COMPONENT);
+        }
+        if (getSuperKlass() != null) {
+            members.add(SUPER);
         }
         return new KeysArray(members.toArray(new String[members.size()]));
     }
