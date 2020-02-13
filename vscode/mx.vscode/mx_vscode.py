@@ -41,7 +41,6 @@
 import mx
 import os
 from os.path import join, isfile, exists
-from shutil import rmtree
 
 _suite = mx.suite('vscode')
 

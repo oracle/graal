@@ -200,9 +200,6 @@ add_java_vm(NativeWasmBenchmarkVm(), suite=_suite, priority=1)
 
 
 class WasmJMHJsonRule(mx_benchmark.JMHJsonRule):
-    def __init__(self, filename, suiteName):
-        super(WasmJMHJsonRule, self).__init__(filename, suiteName)
-
     def getBenchmarkNameFromResult(self, result):
         name_flag = "-Dwasmbench.benchmarkName="
         name_arg = next(arg for arg in result["jvmArgs"] if arg.startswith(name_flag))

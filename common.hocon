@@ -36,13 +36,15 @@ labsjdk-ee-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
 
 common : ${mx} {
   timelimit : "30:00"
+  environment : {
+    MX_PYTHON: "python3"
+  }
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
   packages : {
     "pip:logilab-common ": "==1.4.4"
-    "pip:astroid" : "==1.1.0"
-    "pip:pylint" : "==1.1.0"
+    "pip:pylint" : "==1.9.3"
     "pip:ninja_syntax" : "==1.7.2"
   }
 }
@@ -64,6 +66,11 @@ solaris : ${common} {
 }
 
 darwin : ${common} {
+  environment : {
+    # Required to keep pylint happy on Darwin
+    # https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python
+    LC_ALL : "en_US.UTF-8"
+  }
 }
 
 windows : ${common} {

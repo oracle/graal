@@ -1339,7 +1339,7 @@ def build(args, vm=None):
                 print('Write file ' + flags_path)
                 f.write(flags_contents)
 
-    update_if_needed("versions", GRAAL_COMPILER_FLAGS_MAP.keys())
+    update_if_needed("versions", sorted(GRAAL_COMPILER_FLAGS_MAP.keys()))
     for version_tag in GRAAL_COMPILER_FLAGS_MAP:
         update_if_needed(version_tag, GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[version_tag])
 
