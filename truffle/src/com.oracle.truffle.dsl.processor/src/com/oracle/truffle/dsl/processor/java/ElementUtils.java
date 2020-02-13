@@ -472,11 +472,11 @@ public class ElementUtils {
             return false;
         }
 
-        if (from instanceof ArrayType && to instanceof ArrayType) {
+        if (from.getKind() == TypeKind.ARRAY && to.getKind() == TypeKind.ARRAY) {
             return isAssignable(((ArrayType) from).getComponentType(), ((ArrayType) to).getComponentType());
         }
 
-        if (from instanceof ArrayType || to instanceof ArrayType) {
+        if (from.getKind() == TypeKind.ARRAY || to.getKind() == TypeKind.ARRAY) {
             return false;
         }
 
@@ -815,7 +815,7 @@ public class ElementUtils {
     }
 
     public static boolean isDeprecated(TypeMirror baseType) {
-        if (baseType instanceof DeclaredType) {
+        if (baseType != null && baseType.getKind() == TypeKind.DECLARED) {
             return isDeprecated((TypeElement) ((DeclaredType) baseType).asElement());
         }
         return false;
