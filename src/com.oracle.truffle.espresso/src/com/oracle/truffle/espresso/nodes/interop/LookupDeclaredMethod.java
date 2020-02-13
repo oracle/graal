@@ -32,12 +32,16 @@ import com.oracle.truffle.espresso.impl.Method;
 @GenerateUncached
 public abstract class LookupDeclaredMethod extends Node {
 
-    public static final int LIMIT = 2;
+    static final int LIMIT = 2;
 
     public abstract Method execute(Klass klass, String methodName, boolean publicOnly, boolean isStatic, int arity);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"klass.equals(cachedKlass)", "methodName.equals(cachedMethodName)", "publicOnly == cachedPublicOnly", "isStatic == cachedIsStatic",
+    @Specialization(guards = {
+                    "klass.equals(cachedKlass)",
+                    "methodName.equals(cachedMethodName)",
+                    "publicOnly == cachedPublicOnly",
+                    "isStatic == cachedIsStatic",
                     "arity == cachedArity"}, limit = "LIMIT")
     Method doCached(Klass klass,
                     String methodName,

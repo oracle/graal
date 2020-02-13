@@ -43,8 +43,8 @@ public abstract class InvokeEspressoNode extends Node {
 
     public abstract Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
 
-    static ToEspressoNode[] createToEspresso(long argsLength, boolean uncached) {
-        ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
+    static ToEspressoNode[] createToEspresso(int argsLength, boolean uncached) {
+        ToEspressoNode[] toEspresso = new ToEspressoNode[argsLength];
         for (int i = 0; i < argsLength; i++) {
             toEspresso[i] = uncached
                             ? ToEspressoNodeGen.getUncached()
