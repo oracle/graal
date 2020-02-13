@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.options;
 
-import java.util.function.Function;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -35,9 +33,12 @@ import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.CallTarget;
+
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -96,6 +97,53 @@ public final class PolyglotCompilerOptions {
             return kind;
         }
     }
+
+    /**
+     * Actions to take upon an exception being raised during Truffle compilation. The actions are
+     * with respect to what the user sees on the console.
+     *
+     * The actions are in ascending order of verbosity.
+     */
+    public enum ExceptionAction {
+        /**
+         * Print nothing to the console.
+         */
+        Silent,
+
+        /**
+         * Print a stack trace to the console.
+         */
+        Print,
+
+        /**
+         * Throw the exception to {@link CallTarget} caller.
+         */
+        Throw,
+
+        /**
+         * Exit the VM process.
+         */
+        ExitVM;
+
+        private static final String HELP = "Specifies the action to take when Truffle compilation fails.%n" +
+                        "The accepted values are:%n" +
+                        "    Silent - Print nothing to the console.%n" +
+                        "     Print - Print the exception to the console.%n" +
+                        "     Throw - Throw the exception to caller.%n" +
+                        "    ExitVM - Exit the VM process.";
+    }
+
+    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction",
+                    new Function<String, ExceptionAction>() {
+                        @Override
+                        public ExceptionAction apply(String s) {
+                            try {
+                                return ExceptionAction.valueOf(s);
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException(ExceptionAction.HELP);
+                            }
+                        }
+                    });
 
     static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
                     new Function<String, Set<PerformanceWarningKind>>() {
@@ -200,6 +248,9 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
     public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
+    @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)
+    public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
 
     // Tracing
 

@@ -51,7 +51,7 @@ public final class TruffleDebugOptions {
     }
 
     public static boolean verboseBailouts() {
-        return getValue(CompilationBailoutAsFailure) && getValue(CompilationFailureAction).ordinal() >= ExceptionAction.Print.ordinal();
+        return getValue(CompilationBailoutAsFailure);
     }
 
     static <T> T getValue(final OptionKey<T> key) {
@@ -76,24 +76,6 @@ public final class TruffleDebugOptions {
 
         static OptionType<PrintGraphTarget> getOptionType() {
             return new OptionType<>(PrintGraphTarget.class.getSimpleName(), PrintGraphTarget::valueOf);
-        }
-    }
-
-    /**
-     * Shadows {@code org.graalvm.compiler.core.ompilationWrapper.ExceptionAction}.
-     */
-    enum ExceptionAction {
-        Silent,
-        Print,
-        Diagnose,
-        ExitVM;
-
-        static ExceptionAction translate(Object value) {
-            return valueOf(String.valueOf(value));
-        }
-
-        static OptionType<ExceptionAction> getOptionType() {
-            return new OptionType<>(ExceptionAction.class.getSimpleName(), ExceptionAction::valueOf);
         }
     }
 
@@ -126,7 +108,4 @@ public final class TruffleDebugOptions {
     // Initialized by the options of the same name in org.graalvm.compiler.core.GraalCompilerOptions
     @Option(help = "", category = OptionCategory.USER) //
     static final OptionKey<Boolean> CompilationBailoutAsFailure = new OptionKey<>(false);
-    // Initialized by the options of the same name in org.graalvm.compiler.core.GraalCompilerOptions
-    @Option(help = "", category = OptionCategory.USER) //
-    static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, ExceptionAction.getOptionType());
 }
