@@ -170,8 +170,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
-            FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-            objectFile.write(channel);
+            try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+                objectFile.write(channel);
+            }
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }

@@ -10,6 +10,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
+import { TextEncoder } from 'util';
 
 const INSTALL_GRAALVM_R_COMPONENT: string = 'Install GraalVM R Component';
 const INSTALL_R_LANGUAGE_SERVER: string = 'Install R Language Server';
@@ -134,7 +135,31 @@ function startRLanguageServer(): Thenable<string> {
 					const server = net.createServer(socket => {
 						server.close();
 						socket.pipe(rSocket);
-						rSocket.pipe(socket);
+						const utf8Encode = new TextEncoder();
+						rSocket.on('data', function(serverData) {
+							let lines = serverData.toString().split(/\r?\n/);
+							let msgIdx = -1;
+							let clIdx = -1;
+							lines.forEach((line, idx) => {
+								if (line.length === 0) {
+									msgIdx = idx + 1;
+								}
+								if (line.startsWith('Content-Length:')) {
+									clIdx = idx;
+								}
+							});
+							if (msgIdx >= 0 && clIdx >= 0) {
+								let msg = utf8Encode.encode(lines.slice(msgIdx).join('\r\n'));
+								lines[clIdx] = `Content-Length: ${msg.length}`;
+								let headers = utf8Encode.encode(`${lines.slice(0, msgIdx).join('\r\n')}\r\n`);
+								let buff = new Uint8Array(headers.length + msg.length);
+								buff.set(headers);
+								buff.set(msg, headers.length);
+								socket.write(buff);
+							} else {
+								socket.write(serverData);
+							}
+						});
 					});
 					server.listen(0, '127.0.0.1', () => {
 						resolve(`R@${(server.address() as net.AddressInfo).port}`);
