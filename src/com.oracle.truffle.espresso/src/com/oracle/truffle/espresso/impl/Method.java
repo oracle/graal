@@ -118,12 +118,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private final CodeAttribute codeAttribute;
 
     @CompilationFinal private int refKind;
-
     @CompilationFinal //
-    private EspressoRootNode rootNode;
-
-    @CompilationFinal //
-    private CallTarget callTarget;
+    private volatile CallTarget callTarget;
 
     @CompilationFinal(dimensions = 1) //
     private ObjectKlass[] checkedExceptions;
@@ -363,30 +359,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return NativeLibrary.bind(symbol, signature);
     }
 
-    public CallTarget getCallTarget() {
-        if (callTarget == null) {
-            synchronized (this) {
-                if (callTarget == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    callTarget = Truffle.getRuntime().createCallTarget(getRootNode());
-                }
-            }
-        }
-        return callTarget;
-    }
-
     /**
      * Ensure any callTarget is called immediately before a BCI is advanced, or it could violate the
      * specs on class init.
      */
-    @TruffleBoundary
-    private EspressoRootNode getRootNode() {
-        if (rootNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = getMeta();
+    public CallTarget getCallTarget() {
+        if (callTarget == null) {
             if (poisonPill) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
             // Initializing a class costs a lock, do it outside of this method's lock to avoid
             // congestion.
             // Note that requesting a call target is immediately followed by a call to the method,
@@ -397,16 +380,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             declaringKlass.safeInitialize();
 
             synchronized (this) {
-                if (rootNode != null) {
-                    return rootNode;
+                if (callTarget != null) {
+                    return callTarget;
                 }
                 if (proxy != null) {
-                    this.rootNode = proxy.getRootNode();
-                    return rootNode;
+                    this.callTarget = proxy.getCallTarget();
+                    return callTarget;
                 }
                 EspressoRootNode redirectedMethod = getSubstitutions().get(this);
                 if (redirectedMethod != null) {
-                    rootNode = redirectedMethod;
+                    callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
                 } else {
                     if (this.isNative()) {
                         // Bind native method.
@@ -419,27 +402,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
                                 try {
                                     TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                    rootNode = EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true));
-                                    return rootNode;
+                                    callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true)));
+                                    return callTarget;
                                 } catch (UnknownIdentifierException e) {
                                     // native method not found in libjava, safe to ignore
                                 }
                             }
                         }
 
+                        Meta meta = getMeta();
                         Method findNative = meta.java_lang_ClassLoader_findNative;
 
                         // Lookup the short name first, otherwise lookup the long name (with
                         // signature).
-                        rootNode = lookupJniRootNode(findNative, false);
-                        if (rootNode == null) {
-                            rootNode = lookupJniRootNode(findNative, true);
+                        callTarget = lookupJniRootNode(findNative, false);
+                        if (callTarget == null) {
+                            callTarget = lookupJniRootNode(findNative, true);
                         }
 
                         // TODO(peterssen): Search JNI methods with OS prefix/suffix
                         // (print_jni_name_suffix_on ...)
 
-                        if (rootNode == null) {
+                        if (callTarget == null) {
                             if (getDeclaringKlass() == meta.java_lang_invoke_MethodHandle && (Name.invokeExact.equals(getName()) || Name.invoke.equals(getName()))) {
                                 /*
                                  * Happens only when trying to obtain call target of
@@ -450,9 +434,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                  * the declared method). Delegate it to a polysignature method
                                  * lookup.
                                  *
-                                 * Redundant rootNode assignment. Better sure than sorry.
+                                 * Redundant callTarget assignment. Better sure than sorry.
                                  */
-                                this.rootNode = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getRootNode();
+                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
                                 throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
@@ -460,7 +444,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         }
                     } else {
                         if (codeAttribute == null) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
+                            throw Meta.throwExceptionWithMessage(getMeta().java_lang_AbstractMethodError,
                                             "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
 
@@ -472,14 +456,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         // BCI slot is always the latest.
                         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
                         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, monitorSlot, bciSlot));
-
-                        rootNode = root;
+                        callTarget = Truffle.getRuntime().createCallTarget(root);
                     }
                 }
             }
         }
 
-        return rootNode;
+        return callTarget;
     }
 
     private boolean usesMonitors() {
@@ -510,7 +493,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return descriptor;
     }
 
-    private EspressoRootNode lookupJniRootNode(Method findNative, boolean fullSignature) {
+    private CallTarget lookupJniRootNode(Method findNative, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
         long handle = (long) findNative.invokeWithConversions(null, getDeclaringKlass().getDefiningClassLoader(), mangledName);
         if (handle == 0) { // not found
@@ -518,7 +501,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true));
+        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true)));
     }
 
     public boolean isConstructor() {
