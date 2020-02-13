@@ -24,9 +24,10 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-public class SubstitutionProfiler {
+public class SubstitutionProfiler extends Node {
 
     @CompilerDirectives.CompilationFinal //
     private char profiles = 0;
@@ -41,6 +42,10 @@ public class SubstitutionProfiler {
 
     public boolean shouldSplit() {
         return false;
+    }
+
+    public boolean uninitialized() {
+        return profiles == 0;
     }
 
     /**

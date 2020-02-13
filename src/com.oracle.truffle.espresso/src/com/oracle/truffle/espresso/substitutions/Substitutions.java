@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -205,7 +205,7 @@ public final class Substitutions implements ContextAccess {
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {
-                return EspressoRootNode.create(null, new IntrinsicSubstitutorRootNode(substitutorFactory, espressoMethod));
+                return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, espressoMethod));
             }
         };
         registerStaticSubstitution(classType, methodName, signature, factory, true);

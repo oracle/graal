@@ -23,27 +23,50 @@
 
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
+import com.oracle.truffle.object.DebugCounter;
 
-public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
-    private final Substitutor substitution;
+public class IntrinsicSubstitutorNode extends EspressoMethodNode {
+    @Child private Substitutor substitution;
 
-    public IntrinsicSubstitutorRootNode(Substitutor.Factory factory, Method method) {
+    @CompilerDirectives.CompilationFinal //
+    int callCount = 0;
+
+    // Truffle does not want to report split on first call. Delay until the second.
+    private final DebugCounter nbSplits;
+
+    public IntrinsicSubstitutorNode(Substitutor.Factory factory, Method method) {
         super(method);
         this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
+        if (substitution.shouldSplit()) {
+            this.nbSplits = DebugCounter.create("Splits for: " + factory.getMethodName());
+        } else {
+            this.nbSplits = null;
+        }
     }
 
-    private IntrinsicSubstitutorRootNode(IntrinsicSubstitutorRootNode toSplit) {
+    private IntrinsicSubstitutorNode(IntrinsicSubstitutorNode toSplit) {
         super(toSplit.getMethod());
         assert toSplit.substitution.shouldSplit();
         this.substitution = toSplit.substitution.split();
+        this.nbSplits = toSplit.nbSplits;
+        this.callCount = 3;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        if (CompilerDirectives.inInterpreter() && callCount <= 1) {
+            callCount++;
+        }
+        if (CompilerDirectives.inInterpreter() && callCount == 2 && !substitution.uninitialized()) {
+            reportPolymorphicSpecialize();
+            callCount = 3;
+        }
         return substitution.invoke(frame.getArguments());
     }
 
@@ -53,8 +76,13 @@ public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
     }
 
     @Override
-    public IntrinsicSubstitutorRootNode split() {
-        return new IntrinsicSubstitutorRootNode(this);
+    public IntrinsicSubstitutorNode split() {
+        nbSplits.inc();
+        return new IntrinsicSubstitutorNode(this);
     }
 
+    @Override
+    public Node copy() {
+        return split();
+    }
 }

@@ -711,6 +711,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, @Word long bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd, @InjectProfile SubstitutionProfiler profiler) {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
@@ -1406,6 +1407,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
         if (name == null) {
             return StaticObject.NULL;

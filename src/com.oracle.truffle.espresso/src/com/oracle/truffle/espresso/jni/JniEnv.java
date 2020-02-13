@@ -2536,9 +2536,19 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             throw Meta.throwException(getMeta().java_lang_InstantiationException);
         }
         klass.initialize();
-        StaticObject instance = klass.allocateInstance();
+        StaticObject instance;
+        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
+            instance = klass.allocateInstance();
+        } else {
+            instance = allocateBoundary(klass);
+        }
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
+    }
+
+    @TruffleBoundary
+    public static StaticObject allocateBoundary(Klass klass) {
+        return klass.allocateInstance();
     }
 
     /**

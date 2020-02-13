@@ -235,7 +235,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     // Checkstyle: stop
                     @GuestCall DirectCallNode java_lang_invoke_MemberName_getSignature,
                     // Checkstyle: resume
-                    @InjectMeta Meta meta) {
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
         // TODO(Garcia) Perhaps perform access checks ?
         StaticObject memberName = self;
         if (memberName.getHiddenField(meta.HIDDEN_VMTARGET) != null) {
@@ -253,6 +254,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         try {
             methodName = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
         } catch (EspressoError e) {
+            profiler.profile(0);
             if ((flags & ALL_KINDS) == MN_IS_FIELD) {
                 throw Meta.throwException(meta.java_lang_NoSuchFieldException);
             } else {
@@ -281,24 +283,29 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:
+                profiler.profile(1);
                 Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
                 plantMethodMemberName(memberName, constructorSignature, defKlass, callerKlass, methodName, flagField, refKind, meta);
                 memberName.setHiddenField(meta.HIDDEN_VMINDEX, -3_000_000L);
                 break;
             case MN_IS_METHOD:
+                profiler.profile(2);
                 Signatures signatures = meta.getEspressoLanguage().getSignatures();
                 Symbol<Signature> sig = signatures.lookupValidSignature(desc);
                 if (refKind == REF_invokeStatic || refKind == REF_invokeInterface) {
+                    profiler.profile(4);
                     plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
 
                 } else if (mhMethodId != None) {
                     assert (!isStaticSigPoly(mhMethodId.value));
                     if (isIntrinsicPolySig(mhMethodId)) {
+                        profiler.profile(5);
                         plantInvokeBasic(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
                     } else {
                         throw EspressoError.shouldNotReachHere("Should never need to resolve invokeGeneric MemberName");
                     }
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
+                    profiler.profile(6);
                     plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
                 }
                 flags = memberName.getIntField(flagField);
@@ -306,6 +313,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 memberName.setHiddenField(meta.HIDDEN_VMINDEX, (refKind == REF_invokeInterface || refKind == REF_invokeVirtual) ? 1_000_000L : -1_000_000L);
                 break;
             case MN_IS_FIELD:
+                profiler.profile(3);
                 Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
                 plantFieldMemberName(memberName, t, defKlass, methodName, flagField, refKind, meta);
                 break;
