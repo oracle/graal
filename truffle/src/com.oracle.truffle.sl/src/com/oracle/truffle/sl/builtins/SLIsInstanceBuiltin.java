@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,35 +40,30 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLLanguageView;
 
 /**
- * Builtin function to write a value to the {@link SLContext#getOutput() standard output}. The
- * different specialization leverage the typed {@code println} methods available in Java, i.e.,
- * primitive values are printed without converting them to a {@link String} first.
- * <p>
- * Printing involves a lot of Java code, so we need to tell the optimizing system that it should not
- * unconditionally inline everything reachable from the println() method. This is done via the
- * {@link TruffleBoundary} annotations.
+ * Built-in function that returns true if the given operand is of a given meta-object. Meta-objects
+ * may be values of the current or a foreign value.
  */
-@NodeInfo(shortName = "println")
-public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
+@NodeInfo(shortName = "isInstance")
+@SuppressWarnings("unused")
+public abstract class SLIsInstanceBuiltin extends SLBuiltinNode {
 
-    @Specialization
-    @TruffleBoundary
-    public Object println(Object value,
-                    @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @CachedContext(SLLanguage.class) SLContext context) {
-        context.getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
-        return value;
+    @Specialization(limit = "3", guards = "metaLib.isMetaObject(metaObject)")
+    public Object doDefault(Object metaObject, Object value,
+                    @CachedLibrary("metaObject") InteropLibrary metaLib) {
+        try {
+            return metaLib.isMetaInstance(metaObject, value);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
+        }
     }
 
 }

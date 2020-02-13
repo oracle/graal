@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public final class SLObjectType extends ObjectType {
@@ -73,6 +75,37 @@ public final class SLObjectType extends ObjectType {
     @Override
     public Class<?> dispatch() {
         return SLObjectType.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasLanguage(DynamicObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Class<? extends TruffleLanguage<?>> getLanguage(DynamicObject receiver) {
+        return SLLanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasMetaObject(DynamicObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Object getMetaObject(DynamicObject receiver) {
+        return SLType.OBJECT;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    static Object toDisplayString(DynamicObject receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        return "object";
     }
 
     @ExportMessage

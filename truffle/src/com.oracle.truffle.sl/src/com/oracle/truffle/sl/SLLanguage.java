@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -60,13 +59,10 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
@@ -107,6 +103,7 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
+import com.oracle.truffle.sl.runtime.SLLanguageView;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
@@ -256,6 +253,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return Truffle.getRuntime().createCallTarget(evalMain);
     }
 
+    @Override
+    protected Object getLanguageView(SLContext context, Object value) {
+        return SLLanguageView.create(value);
+    }
+
     /*
      * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
      * should not override this.
@@ -269,92 +271,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected boolean isVisible(SLContext context, Object value) {
         return !InteropLibrary.getFactory().getUncached(value).isNull(value);
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (!(object instanceof TruffleObject)) {
-            return false;
-        } else if (object instanceof SLBigNumber || object instanceof SLFunction || object instanceof SLNull) {
-            return true;
-        } else if (SLContext.isSLObject(object)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    protected String toString(SLContext context, Object value) {
-        return toString(value);
-    }
-
-    public static String toString(Object value) {
-        try {
-            if (value == null) {
-                return "ANY";
-            }
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-            if (interop.fitsInLong(value)) {
-                return Long.toString(interop.asLong(value));
-            } else if (interop.isBoolean(value)) {
-                return Boolean.toString(interop.asBoolean(value));
-            } else if (interop.isString(value)) {
-                return interop.asString(value);
-            } else if (interop.isNull(value)) {
-                return "NULL";
-            } else if (interop.isExecutable(value)) {
-                if (value instanceof SLFunction) {
-                    return ((SLFunction) value).getName();
-                } else {
-                    return "Function";
-                }
-            } else if (interop.hasMembers(value)) {
-                return "Object";
-            } else if (value instanceof SLBigNumber) {
-                return value.toString();
-            } else {
-                return "Unsupported";
-            }
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
-        }
-    }
-
-    @Override
-    protected Object findMetaObject(SLContext context, Object value) {
-        return getMetaObject(value);
-    }
-
-    public static String getMetaObject(Object value) {
-        if (value == null) {
-            return "ANY";
-        }
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-        if (interop.isNumber(value) || value instanceof SLBigNumber) {
-            return "Number";
-        } else if (interop.isBoolean(value)) {
-            return "Boolean";
-        } else if (interop.isString(value)) {
-            return "String";
-        } else if (interop.isNull(value)) {
-            return "NULL";
-        } else if (interop.isExecutable(value)) {
-            return "Function";
-        } else if (interop.hasMembers(value)) {
-            return "Object";
-        } else {
-            return "Unsupported";
-        }
-    }
-
-    @Override
-    protected SourceSection findSourceLocation(SLContext context, Object value) {
-        if (value instanceof SLFunction) {
-            return ((SLFunction) value).getDeclaredLocation();
-        }
-        return null;
     }
 
     @Override

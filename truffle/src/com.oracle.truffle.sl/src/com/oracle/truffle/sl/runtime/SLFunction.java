@@ -46,6 +46,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -78,6 +79,7 @@ import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
  * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class SLFunction implements TruffleObject {
 
     public static final int INLINE_CACHE_SIZE = 2;
@@ -134,12 +136,14 @@ public final class SLFunction implements TruffleObject {
         return name;
     }
 
-    /**
-     * {@link SLFunction} instances are always visible as executable to other languages.
-     */
-    @SuppressWarnings("static-method")
-    public SourceSection getDeclaredLocation() {
-        return getCallTarget().getRootNode().getSourceSection();
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return SLLanguage.class;
     }
 
     /**
@@ -147,8 +151,37 @@ public final class SLFunction implements TruffleObject {
      */
     @SuppressWarnings("static-method")
     @ExportMessage
+    SourceSection getSourceLocation() {
+        return getCallTarget().getRootNode().getSourceSection();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return true;
+    }
+
+    /**
+     * {@link SLFunction} instances are always visible as executable to other languages.
+     */
+    @ExportMessage
     boolean isExecutable() {
         return true;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return SLType.FUNCTION;
+    }
+
+    @ExportMessage
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return name;
     }
 
     /**
