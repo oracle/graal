@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -40,6 +42,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNodeFactory.LLVMInvokeNodeImplNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -53,17 +56,18 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public static LLVMInvokeNode create(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                     int normalSuccessor, int unwindSuccessor,
                     LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
-        return new LLVMInvokeNodeImpl(type, resultLocation, functionNode, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode);
+        LLVMLookupDispatchTargetNode dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
+        return LLVMInvokeNodeImplNodeGen.create(type, resultLocation, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, dispatchTargetNode);
     }
 
-    private static class LLVMInvokeNodeImpl extends LLVMInvokeNode {
+    @NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
+    abstract static class LLVMInvokeNodeImpl extends LLVMInvokeNode {
 
         @Child protected LLVMStatementNode normalPhiNode;
         @Child protected LLVMStatementNode unwindPhiNode;
         @Child protected LLVMValueProfilingNode returnValueProfile;
 
         @Children private final LLVMExpressionNode[] argumentNodes;
-        @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
         @Child private LLVMDispatchNode dispatchNode;
 
         protected final FunctionType type;
@@ -72,7 +76,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         private final int unwindSuccessor;
         private final FrameSlot resultLocation;
 
-        LLVMInvokeNodeImpl(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
+        LLVMInvokeNodeImpl(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
                         LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
             this.normalSuccessor = normalSuccessor;
@@ -84,7 +88,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             this.returnValueProfile = (LLVMValueProfilingNode) LLVMValueProfilingNode.create(null, type.getReturnType());
 
             this.argumentNodes = argumentNodes;
-            this.dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
             this.dispatchNode = LLVMDispatchNodeGen.create(type);
         }
 
@@ -103,9 +106,8 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             return unwindSuccessor;
         }
 
-        @Override
-        public void execute(VirtualFrame frame) {
-            Object function = dispatchTargetNode.executeGeneric(frame);
+        @Specialization
+        public void doInvoke(VirtualFrame frame, Object function) {
             Object[] argValues = prepareArguments(frame);
             writeResult(frame, dispatchNode.executeDispatch(function, argValues));
         }

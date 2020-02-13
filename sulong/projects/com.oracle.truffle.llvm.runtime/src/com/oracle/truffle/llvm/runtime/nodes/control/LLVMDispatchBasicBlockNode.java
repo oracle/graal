@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -116,7 +116,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 Object condition = switchNode.executeCondition(frame);
                 int[] successors = switchNode.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
-                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.executeIsCase(frame, i, condition))) {
+                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.checkCase(frame, i, condition))) {
                         if (CompilerDirectives.inInterpreter()) {
                             bb.increaseBranchProbability(i);
                             if (successors[i] <= basicBlockIndex) {

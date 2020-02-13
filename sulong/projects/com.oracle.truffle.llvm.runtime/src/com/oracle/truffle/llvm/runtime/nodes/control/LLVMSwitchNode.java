@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -37,11 +39,16 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNodeFactory.LLVMSwitchNodeImplNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMCompareNode.LLVMEqNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMCompareNodeFactory.LLVMEqNodeGen;
 
 @GenerateWrapper
 public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
+
+    public static LLVMSwitchNode create(int[] successors, LLVMStatementNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases) {
+        return LLVMSwitchNodeImplNodeGen.create(successors, phiNodes, cases, cond);
+    }
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
@@ -52,22 +59,21 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     public abstract int[] getSuccessors();
 
-    public abstract boolean executeIsCase(VirtualFrame frame, int i, Object value);
+    public abstract boolean checkCase(VirtualFrame frame, int i, Object value);
 
-    public static class LLVMSwitchNodeImpl extends LLVMSwitchNode {
+    @NodeChild(value = "cond", type = LLVMExpressionNode.class)
+    public abstract static class LLVMSwitchNodeImpl extends LLVMSwitchNode {
         @Children private final LLVMStatementNode[] phiNodes;
-        @Child protected LLVMExpressionNode cond;
         @Children protected final LLVMExpressionNode[] cases;
         @Children protected final LLVMEqNode[] caseEquals;
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
         private final ValueProfile conditionValueClass = ValueProfile.createClassProfile();
 
-        public LLVMSwitchNodeImpl(int[] successors, LLVMStatementNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases) {
+        public LLVMSwitchNodeImpl(int[] successors, LLVMStatementNode[] phiNodes, LLVMExpressionNode[] cases) {
             assert successors.length == cases.length + 1 : "the last entry of the successors array must be the default case";
             this.successors = successors;
             this.phiNodes = phiNodes;
-            this.cond = cond;
             this.cases = cases;
             this.caseEquals = new LLVMEqNode[cases.length];
             for (int i = 0; i < caseEquals.length; i++) {
@@ -75,9 +81,9 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
             }
         }
 
-        @Override
-        public Object executeCondition(VirtualFrame frame) {
-            return conditionValueClass.profile(cond.executeGeneric(frame));
+        @Specialization
+        public Object doCondition(Object cond) {
+            return conditionValueClass.profile(cond);
         }
 
         @Override
@@ -96,7 +102,7 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         }
 
         @Override
-        public boolean executeIsCase(VirtualFrame frame, int i, Object value) {
+        public boolean checkCase(VirtualFrame frame, int i, Object value) {
             return caseEquals[i].executeWithTarget(cases[i].executeGeneric(frame), value);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -40,21 +42,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
-public class LLVMResumeNode extends LLVMControlFlowNode {
+@NodeField(name = "exceptionSlot", type = FrameSlot.class)
+public abstract class LLVMResumeNode extends LLVMControlFlowNode {
 
-    private final FrameSlot exceptionSlot;
+    public abstract void execute(VirtualFrame frame);
 
-    public LLVMResumeNode(FrameSlot exceptionSlot) {
-        this.exceptionSlot = exceptionSlot;
-    }
-
-    public LLVMResumeNode(LLVMResumeNode delegate) {
-        this.exceptionSlot = delegate.exceptionSlot;
-    }
+    abstract FrameSlot getExceptionSlot();
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
-        return new LLVMResumeNodeWrapper(this, this, probe);
+        return new LLVMResumeNodeWrapper(this, probe);
     }
 
     @Override
@@ -67,9 +64,10 @@ public class LLVMResumeNode extends LLVMControlFlowNode {
         return null;
     }
 
-    public void execute(VirtualFrame frame) {
+    @Specialization
+    void doRethrow(VirtualFrame frame) {
         try {
-            LLVMUserException thrownException = (LLVMUserException) frame.getObject(exceptionSlot);
+            LLVMUserException thrownException = (LLVMUserException) frame.getObject(getExceptionSlot());
             throw thrownException;
         } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreter();
