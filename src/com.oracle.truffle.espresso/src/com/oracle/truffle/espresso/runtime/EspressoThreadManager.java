@@ -86,6 +86,7 @@ class EspressoThreadManager implements ContextAccess {
     @CompilationFinal private long referenceHandlerThreadId = -1;
     @CompilationFinal private StaticObject guestReferenceHandlerThread = null;
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject[] activeThreads() {
         return activeThreads.toArray(StaticObject.EMPTY_ARRAY);
     }

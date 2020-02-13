@@ -28,6 +28,8 @@ import java.util.LinkedList;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
  * Manages a collection of weak references associated to handles.
  */
@@ -65,6 +67,7 @@ public class WeakHandles<T> {
      * 
      * @return new or existing handle, provided handles are guanteed to be > 0
      */
+    @TruffleBoundary
     public synchronized int handlify(T object) {
         Objects.requireNonNull(object);
         Integer handle = map.get(object);
@@ -96,6 +99,7 @@ public class WeakHandles<T> {
      * @return The handle associated with the given object or -1 if the object doesn't have a handle
      *         or the object was collected. A valid handle is guaranteed to be != 0.
      */
+    @TruffleBoundary
     public synchronized long getIndex(T object) {
         Integer index = map.get(Objects.requireNonNull(object));
         return index != null
@@ -103,6 +107,7 @@ public class WeakHandles<T> {
                         : -1;
     }
 
+    @TruffleBoundary
     private int getFreeSlot() {
         if (!freeList.isEmpty()) {
             return freeList.removeFirst();
@@ -118,6 +123,7 @@ public class WeakHandles<T> {
                         : freeList.removeFirst();
     }
 
+    @TruffleBoundary
     private synchronized int addHandle(T object) {
         Objects.requireNonNull(object);
         int index = getFreeSlot();

@@ -942,6 +942,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
      */
+    @TruffleBoundary
     private static FrameInstance getCallerFrame(int depth, boolean securityStackWalk, Meta meta) {
         if (depth == JVM_CALLER_DEPTH) {
             return getCallerFrame(1, securityStackWalk, meta);
@@ -982,6 +983,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere(String.format("Caller frame not found at depth %d", depth));
     }
 
+    @TruffleBoundary
     private static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
         if (frameInstance.getCallTarget() instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
@@ -993,6 +995,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return null;
     }
 
+    @TruffleBoundary
     private static Method getMethodFromFrame(FrameInstance frameInstance) {
         EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
         if (root != null) {
@@ -1283,7 +1286,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         // Prepare the privileged stack
-        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        PrivilegedStack stack = getPrivilegedStack();
         stack.push(callerFrame, acc, caller);
 
         // Execute the action.
@@ -1312,7 +1315,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetStackAccessControlContext(@Host(Class.class) StaticObject cls) {
         ArrayList<StaticObject> domains = new ArrayList<>();
-        final PrivilegedStack stack = privilegedStackThreadLocal.get();
+        final PrivilegedStack stack = getPrivilegedStack();
         final boolean[] isPrivileged = new boolean[]{false};
 
         StaticObject context = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
@@ -1699,7 +1702,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(Class.class) StaticObject JVM_CurrentLoadedClass() {
-        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        PrivilegedStack stack = getPrivilegedStack();
         StaticObject mirrorKlass = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 Method m = getMethodFromFrame(frameInstance);
@@ -1721,6 +1724,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         return mirrorKlass == null ? StaticObject.NULL : mirrorKlass;
     }
 
+    @TruffleBoundary
+    public PrivilegedStack getPrivilegedStack() {
+        return privilegedStackThreadLocal.get();
+    }
+
     @JniImpl
     @VmImpl
     public @Host(Class.class) StaticObject JVM_CurrentClassLoader() {
@@ -1732,7 +1740,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public int JVM_ClassLoaderDepth() {
-        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        PrivilegedStack stack = getPrivilegedStack();
         Integer res = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Integer>() {
             int depth = 0;
 
@@ -2150,6 +2158,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
+    @TruffleBoundary
     public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
