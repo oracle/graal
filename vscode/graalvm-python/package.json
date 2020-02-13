@@ -2,7 +2,7 @@
 	"name": "graalvm-python",
 	"displayName": "GraalVM Python",
 	"description": "Support for GraalVM Python",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
