@@ -832,6 +832,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "results": [
+        "dynLink",
         "linker",
         "rpath",
         "reload",
