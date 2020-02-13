@@ -81,7 +81,7 @@ public final class PointerType extends AggregateType {
     @Override
     public long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException {
         // For a pointer, the index can be negative
-        return getPointeeType().getSize(targetDataLayout) * index;
+        return multiplySignedExact(getPointeeType().getSize(targetDataLayout), index);
     }
 
     @Override

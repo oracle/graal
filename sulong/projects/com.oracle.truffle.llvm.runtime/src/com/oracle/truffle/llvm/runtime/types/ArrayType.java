@@ -98,7 +98,8 @@ public final class ArrayType extends AggregateType {
 
     @Override
     public long getOffsetOf(long index, DataLayout targetDataLayout) throws TypeOverflowException {
-        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), index);
+        // a pointer can be cast to an array type and for pointers, the index can be negative
+        return multiplySignedExact(getElementType().getSize(targetDataLayout), index);
     }
 
     @Override
