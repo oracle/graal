@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,6 +76,10 @@ void __sulong_init_libc(char **envp, char *pn) {
   // nothing to do
 }
 
+/**
+ * Initialize native bits of the LLVM context.
+ * WARNING: this is called before constructors are executed!
+ */
 void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays, void **random_java_byte_array) {
   int argc = polyglot_get_array_size(argv_java_byte_arrays);
   int envc = polyglot_get_array_size(envp_java_byte_arrays);

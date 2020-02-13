@@ -195,6 +195,7 @@ final class Runner {
         @Child LLVMStatementNode initContext;
 
         @Children final InitializeSymbolsNode[] initSymbols;
+        @Children final InitializeGlobalNode[] initGlobals;
         @Children final InitializeModuleNode[] initModules;
 
         private LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
@@ -207,14 +208,15 @@ final class Runner {
 
             int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
             this.initSymbols = new InitializeSymbolsNode[libCount];
+            this.initGlobals = new InitializeGlobalNode[libCount];
             this.initModules = new InitializeModuleNode[libCount];
         }
 
         static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules);
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initGlobals, node.initModules);
+                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initGlobals, node.initModules);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -222,11 +224,12 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules) throws TypeOverflowException {
+                        InitializeGlobalNode[] initGlobals, InitializeModuleNode[] initModules) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
                 initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory());
-                initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
+                initGlobals[offset + i] = new InitializeGlobalNode(rootFrame, res);
+                initModules[offset + i] = new InitializeModuleNode(runner, res);
             }
         }
 
@@ -245,9 +248,11 @@ final class Runner {
                 LLVMPointer[] roSections = new LLVMPointer[initSymbols.length];
                 doInitSymbols(ctx, shouldInit, roSections);
 
-                doInitModules(frame, ctx, shouldInit, roSections, 0, initContextBefore);
+                doInitGlobals(frame, shouldInit, roSections, 0, initContextBefore);
+                doInitGlobals(frame, shouldInit, roSections, initContextBefore, initGlobals.length);
                 initContext.execute(frame);
-                doInitModules(frame, ctx, shouldInit, roSections, initContextBefore, initModules.length);
+                doInitModules(frame, ctx, shouldInit, 0, initContextBefore);
+                doInitModules(frame, ctx, shouldInit, initContextBefore, initModules.length);
                 return sulongLibrary;
             }
         }
@@ -268,10 +273,19 @@ final class Runner {
         }
 
         @ExplodeLoop
-        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections, int from, int to) {
+        private void doInitGlobals(VirtualFrame frame, BitSet shouldInit, LLVMPointer[] roSections, int from, int to) {
             for (int i = from; i < to; i++) {
                 if (shouldInit.get(i)) {
-                    initModules[i].execute(frame, ctx, roSections[i]);
+                    initGlobals[i].execute(frame, roSections[i]);
+                }
+            }
+        }
+
+        @ExplodeLoop
+        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit, int from, int to) {
+            for (int i = from; i < to; i++) {
+                if (shouldInit.get(i)) {
+                    initModules[i].execute(frame, ctx);
                 }
             }
         }
@@ -375,6 +389,9 @@ final class Runner {
         }
     }
 
+    /**
+     * TODO JavaDoc.
+     */
     private static final class InitializeSymbolsNode extends LLVMNode {
 
         @Child LLVMAllocateNode allocRoSection;
@@ -931,33 +948,57 @@ final class Runner {
         }
     }
 
-    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
+    /**
+     * TODO JavaDoc.
+     */
+    private static final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatalayoutNode {
 
-        private final RootCallTarget destructor;
         private final DataLayout dataLayout;
 
         @Child StaticInitsNode globalVarInit;
         @Child LLVMMemoryOpNode protectRoData;
 
-        @Child StaticInitsNode constructor;
-
-        InitializeModuleNode(Runner runner, FrameDescriptor rootFrame, LLVMParserResult parserResult) {
-            this.destructor = runner.createDestructor(parserResult);
+        InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
             this.dataLayout = parserResult.getDataLayout();
 
             this.globalVarInit = Runner.createGlobalVariableInitializer(rootFrame, parserResult);
             this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
-            this.constructor = Runner.createConstructor(parserResult);
         }
 
-        void execute(VirtualFrame frame, LLVMContext ctx, LLVMPointer roDataBase) {
-            if (destructor != null) {
-                ctx.registerDestructorFunctions(destructor);
-            }
+        void execute(VirtualFrame frame, LLVMPointer roDataBase) {
             globalVarInit.execute(frame);
             if (roDataBase != null) {
                 // TODO could be a compile-time check
                 protectRoData.execute(roDataBase);
+            }
+        }
+
+        @Override
+        public DataLayout getDatalayout() {
+            return dataLayout;
+        }
+    }
+
+    /**
+     * TODO JavaDoc.
+     */
+    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
+
+        private final RootCallTarget destructor;
+        private final DataLayout dataLayout;
+
+        @Child StaticInitsNode constructor;
+
+        InitializeModuleNode(Runner runner, LLVMParserResult parserResult) {
+            this.destructor = runner.createDestructor(parserResult);
+            this.dataLayout = parserResult.getDataLayout();
+
+            this.constructor = Runner.createConstructor(parserResult);
+        }
+
+        void execute(VirtualFrame frame, LLVMContext ctx) {
+            if (destructor != null) {
+                ctx.registerDestructorFunctions(destructor);
             }
             constructor.execute(frame);
         }
