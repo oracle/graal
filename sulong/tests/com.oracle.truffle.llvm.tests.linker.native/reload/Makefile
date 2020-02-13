@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -49,7 +49,7 @@ reload/libD$(SO_EXT): reload/libA$(SO_EXT) reload/Makefile
 
 reload/ref.out: reload/main.c reload/Makefile reload/libA$(SO_EXT) reload/libB$(SO_EXT) reload/libD$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lA -lB -lD -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lB -lD -lA -o $@ $<
 
 %.bc: %.out
 	$(QUIETLY) cp $< $@
