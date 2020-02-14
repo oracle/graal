@@ -22,10 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -38,6 +40,8 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -49,9 +53,6 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,8 +67,6 @@ public final class DebuggerController implements ContextsListener {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
-    public static final String DEBUG_STACK_FRAME_FIND_CURRENT_ROOT = "findCurrentRoot";
-
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
@@ -75,8 +74,6 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
     private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
-    private final Map<Object, MonitorEvent> monitorContendedExpected = new HashMap<>();
-    private final Map<Object, MonitorEvent> monitorContendedEnteredExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
 
     private JDWPOptions options;
@@ -273,9 +270,9 @@ public final class DebuggerController implements ContextsListener {
         // on the same line, enabling step into next method on line, and 2)
         // step over the callee line when there are no bytecode instructions
         // on the line. Ask the guest language which one to use
-        boolean hasMoreMethodCallsOnLine = context.moreMethodCallsOnLine(susp.getCallerRootNode(), susp.getCallerFrameInstance());
+        boolean hasMoreMethodCallsOnLine = context.moreMethodCallsOnLine(susp.getCallerRootNode(), susp.getCallerFrame());
         if (hasMoreMethodCallsOnLine) {
-            long stepOutBCI = context.readBCIFromFrame(susp.getCallerRootNode(), susp.getCallerFrameInstance());
+            long stepOutBCI = context.readBCIFromFrame(susp.getCallerRootNode(), susp.getCallerFrame());
             SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
             if (steppingInfo != null) {
                 // record the bci that we'll land on after the step out completes
@@ -372,7 +369,11 @@ public final class DebuggerController implements ContextsListener {
             // still need
             // to suspend it, thus we manage this with a hard suspend mechanism
             threadSuspension.addHardSuspendedThread(guestThread);
-            suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
+            if (suspendedInfos.get(guestThread) == null) {
+                // if already set, we have captured a blocking suspendedInfo already
+                // so don't overwrite that information
+                suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
+            }
         } catch (Exception e) {
             JDWPLogger.log("not able to suspend guestThread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(guestThread));
         }
@@ -452,14 +453,6 @@ public final class DebuggerController implements ContextsListener {
 
     public void prepareMethodBreakpoint(MethodBreakpointEvent event) {
         methodBreakpointExpected.put(Thread.currentThread(), event);
-    }
-
-    public void prepareMonitorContendedEvent(MonitorEvent event) {
-        monitorContendedExpected.put(Thread.currentThread(), event);
-    }
-
-    public void prepareMonitorContendedEnteredEvent(MonitorEvent event) {
-        monitorContendedEnteredExpected.put(Thread.currentThread(), event);
     }
 
     public VirtualMachine getVirtualMachine() {
@@ -637,10 +630,64 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    private class SuspendedCallbackImpl implements SuspendedCallback {
+    public CallFrame[] captureCallFramesBeforeBlocking(Object guestThread) {
+        List<CallFrame> callFrames = new ArrayList<>();
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            @Override
+            public Object visitFrame(FrameInstance frameInstance) {
+                RootNode root = getRootNode(frameInstance);
+                if (root == null) {
+                    return null;
+                }
+                MethodRef method = getContext().getMethodFromRootNode(root);
+                if (method == null) {
+                    return null;
+                }
 
-        public static final String DEBUG_VALUE_GET = "get";
-        public static final String DEBUG_EXCEPTION_GET_RAW_EXCEPTION = "getRawException";
+                KlassRef klass = method.getDeclaringKlass();
+                long klassId = ids.getIdAsLong(klass);
+                long methodId = ids.getIdAsLong(method);
+                byte typeTag = TypeTag.getKind(klass);
+
+                // for bytecode-based languages (Espresso) we can read the precise bci from the
+                // frame instance
+                long codeIndex = context.readBCIFromFrame(root, frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize());
+
+                if (codeIndex == -1) {
+                    // fall back to start of the method then
+                    codeIndex = 0;
+                }
+                MaterializedFrame materializedFrame = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize();
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, materializedFrame, root, null, null));
+                return null;
+            }
+        });
+        CallFrame[] result = callFrames.toArray(new CallFrame[callFrames.size()]);
+        suspendedInfos.put(guestThread, new SuspendedInfo(result, guestThread));
+        return result;
+    }
+
+    private RootNode getRootNode(FrameInstance frameInstance) {
+        CallTarget callTarget = frameInstance.getCallTarget();
+        if (callTarget == null) {
+            return null;
+        }
+        if (callTarget instanceof RootCallTarget) {
+            RootCallTarget rootCallTarget = (RootCallTarget) callTarget;
+            RootNode rootNode = rootCallTarget.getRootNode();
+            // check if we can read the current bci to validate
+            try {
+                context.readBCIFromFrame(rootNode, frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize());
+            } catch (Throwable t) {
+                // cannot use this root node for reading bci
+                return null;
+            }
+            return rootNode;
+        }
+        return null;
+    }
+
+    private class SuspendedCallbackImpl implements SuspendedCallback {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
@@ -665,7 +712,7 @@ public final class DebuggerController implements ContextsListener {
             int i = 0;
             for (DebugStackFrame stackFrame : event.getStackFrames()) {
                 if (i == 1) {
-                    callerRootNode = findCurrentRoot(stackFrame);
+                    callerRootNode = stackFrame.getRawNode(context.getLanguageClass()).getRootNode();
                 }
                 i++;
             }
@@ -699,7 +746,7 @@ public final class DebuggerController implements ContextsListener {
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
                     KlassRef klass = info.getKlass(); // null means no filtering
-                    Throwable exception = getRawException(event.getException());
+                    Throwable exception = event.getException().getRawException(context.getLanguageClass());
                     if (exception == null) {
                         JDWPLogger.log("Unable to retrieve raw exception for %s", JDWPLogger.LogLevel.ALL, event.getException());
                         // failed to get the raw exception, so don't suspend here.
@@ -785,29 +832,6 @@ public final class DebuggerController implements ContextsListener {
                 });
             }
 
-            // check if suspended for a monitor contended enter event
-            MonitorEvent monitorEnterEvent = monitorContendedExpected.remove(Thread.currentThread());
-            if (monitorEnterEvent != null) {
-                jobs.add(new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        eventListener.sendMonitorContendedEnterEvent(monitorEnterEvent, currentThread, callFrames[0]);
-                        return null;
-                    }
-                });
-            }
-            // check if suspended for a monitor contended entered event
-            MonitorEvent monitorEnteredEvent = monitorContendedEnteredExpected.remove(Thread.currentThread());
-            if (monitorEnteredEvent != null) {
-                jobs.add(new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        eventListener.sendMonitorContendedEnteredEvent(monitorEnteredEvent, currentThread, callFrames[0]);
-                        return null;
-                    }
-                });
-            }
-
             // now, suspend the current thread until resumed by e.g. a debugger command
             suspend(callFrames[0], currentThread, suspendPolicy, jobs, steppingInfo, hit);
         }
@@ -887,8 +911,8 @@ public final class DebuggerController implements ContextsListener {
                 byte typeTag;
                 long codeIndex;
 
-                FrameInstance frameInstance = getFrameInstance(frame);
-                RootNode root = findCurrentRoot(frame);
+                MaterializedFrame materializedFrame = frame.getRawFrame(context.getLanguageClass());
+                RootNode root = frame.getRawNode(context.getLanguageClass()).getRootNode();
                 if (root == null) {
                     // since we can't lookup the root node, we have to
                     // construct a jdwp-like location from the frame
@@ -904,7 +928,7 @@ public final class DebuggerController implements ContextsListener {
 
                     // for bytecode-based languages (Espresso) we can read the precise bci from the
                     // frame instance
-                    codeIndex = context.readBCIFromFrame(root, frameInstance);
+                    codeIndex = context.readBCIFromFrame(root, materializedFrame);
 
                     if (codeIndex == -1) {
                         // fall back to line precision through the source section
@@ -932,76 +956,21 @@ public final class DebuggerController implements ContextsListener {
                         DebugValue var = variables.next();
                         if ("this".equals(var.getName())) {
                             // get the real object reference and register it with Id
-                            thisValue = getRealValue(var);
+                            thisValue = var.getRawValue(context.getLanguageClass());
                         } else {
                             // add to variables list
-                            Object realValue = getRealValue(var);
+                            Object realValue = var.getRawValue(context.getLanguageClass());
                             realVariables.add(realValue);
                         }
                     }
                 }
-                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, frameInstance, thisValue, realVariables.toArray(new Object[realVariables.size()])));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, materializedFrame, root, thisValue, realVariables.toArray(new Object[realVariables.size()])));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);
                 }
             }
             return list.toArray(new CallFrame[list.size()]);
-        }
-
-        private FrameInstance getFrameInstance(DebugStackFrame frame) {
-            try {
-                Field field = DebugStackFrame.class.getDeclaredField("currentFrame");
-                field.setAccessible(true);
-                return (FrameInstance) field.get(frame);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                return null;
-            }
-        }
-
-        private Object getRealValue(DebugValue value) {
-            // TODO(Gregersen) - hacked in with reflection currently
-            // tracked by /browse/GR-19813
-            // awaiting a proper API for this
-            try {
-                java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod(DEBUG_VALUE_GET);
-                getMethod.setAccessible(true);
-                return getMethod.invoke(value);
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                JDWPLogger.log("Failed to reflectively get real value for %s", JDWPLogger.LogLevel.ALL, value);
-                // use a static object to signal that the value could not be retrieved
-                // callers will send appropriate jdwp error codes when discovered
-                return JDWP.INVALID_VALUE;
-            }
-        }
-
-        private Throwable getRawException(DebugException exception) {
-            // TODO(Gregersen) - hacked in with reflection currently
-            // tracked by /browse/GR-19815
-            try {
-                Method method = DebugException.class.getDeclaredMethod(DEBUG_EXCEPTION_GET_RAW_EXCEPTION);
-                method.setAccessible(true);
-                return (Throwable) method.invoke(exception);
-            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                JDWPLogger.log("Failed to reflectively get raw exception for %s", JDWPLogger.LogLevel.ALL, exception);
-                // null signals that we're unable to retrieve the raw exception instance
-                return null;
-            }
-        }
-    }
-
-    private static RootNode findCurrentRoot(DebugStackFrame frame) {
-        // TODO(Gregersen) - hacked in with reflection currently
-        // tracked by /browse/GR-19814
-        // for now just use reflection to get the current root
-        try {
-            java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
-            getRoot.setAccessible(true);
-            return (RootNode) getRoot.invoke(frame);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            JDWPLogger.log("Failed to reflectively find current root for %s", JDWPLogger.LogLevel.ALL, frame);
-            // null signals that we're unable to retrieve the current root instance
-            return null;
         }
     }
 

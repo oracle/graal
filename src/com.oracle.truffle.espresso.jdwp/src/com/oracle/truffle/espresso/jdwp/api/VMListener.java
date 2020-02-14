@@ -82,26 +82,6 @@ public interface VMListener {
     boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
 
     /**
-     * This method prepares for a monitor contended enter event, but only if there was a request for
-     * such event on the current thread.
-     *
-     * @param monitor the monitor object
-     * @return {@code true} if an event for a monitor contended was prepared, {@code false}
-     *         otherwise.
-     */
-    boolean prepareMonitorContended(Object monitor);
-
-    /**
-     * This method prepares for a monitor contended entered event, but only if there was a request
-     * for such event on the current thread.
-     *
-     * @param monitor the monitor object
-     * @return {@code true} if an event for a monitor contended entered was prepared, {@code false}
-     *         otherwise.
-     */
-    boolean prepareMonitorContendedEntered(Object monitor);
-
-    /**
      * This method should be called when when the monitor wait(timeout) method is invoked in the
      * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
      * current thread.
@@ -122,35 +102,18 @@ public interface VMListener {
     void monitorWaited(Object monitor, boolean timedOut);
 
     /**
-     * Adds the monitor object to the list of currently owned monitors for the thread having called
-     * this method.
-     *
-     * @param monitor the monitor object
-     */
-    void addOwnedMonitor(Object monitor);
-
-    /**
-     * Removes the monitor object from the list of owned monitors for the thread having called this
-     * method.
-     *
-     * @param monitor the monitor object
-     */
-    void removeOwnedMonitor(Object monitor);
-
-    /**
-     * Returns the current owned monitors for the input guest thread.
-     *
-     * @param thread the guest thread
-     * @return all currently held monitors for the thread
-     */
-    Object[] getOwnedMonitors(Object thread);
-
-    /**
      * Marks a monitor object as a current contending object on the current thread.
      *
      * @param monitor the monitor object
      */
-    void addCurrentContendedMonitor(Object monitor);
+    void onContendedMonitorEnter(Object monitor);
+
+    /**
+     * Removes a monitor object as a current contending object on the current thread.
+     *
+     * @param monitor the monitor object
+     */
+    void onContendedMonitorEntered(Object monitor);
 
     /**
      * Returns the current contended monitor object, or <code>null</code> if the thread is not in
@@ -166,6 +129,14 @@ public interface VMListener {
      *
      * @return the return value for a force early return
      */
+    Object getEarlyReturnValue();
+
+    /**
+     * Returns the value of a force early return value or <code>null</code> if not set. This method
+     * also removes the early return value.
+     *
+     * @return the return value for a force early return
+     */
     Object getAndRemoveEarlyReturnValue();
 
     /**
@@ -174,4 +145,18 @@ public interface VMListener {
      * @param returnValue the value
      */
     void forceEarlyReturn(Object returnValue);
+
+    /**
+     * Callback method when a monitor has been taken.
+     *
+     * @param monitor the monitor
+     */
+    void onMonitorEnter(Object monitor);
+
+    /**
+     * Callback method when a monitor is released.
+     *
+     * @param monitor the monitor object
+     */
+    void onMonitorExit(Object monitor);
 }

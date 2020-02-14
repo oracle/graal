@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public final class CallFrame {
 
@@ -31,17 +32,19 @@ public final class CallFrame {
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
-    private final FrameInstance frameInstance;
+    private final MaterializedFrame materializedFrame;
+    private final RootNode rootNode;
     private final Object thisValue;
     private final Object[] variables;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Object thisValue, Object[] variables) {
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, MaterializedFrame materializedFrame, RootNode rootNode, Object thisValue, Object[] variables) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
         this.codeIndex = codeIndex;
-        this.frameInstance = frameInstance;
+        this.materializedFrame = materializedFrame;
+        this.rootNode = rootNode;
         this.thisValue = thisValue;
         this.variables = variables;
     }
@@ -66,8 +69,12 @@ public final class CallFrame {
         return threadId;
     }
 
-    public FrameInstance getFrameInstance() {
-        return frameInstance;
+    public MaterializedFrame getMaterializedFrame() {
+        return materializedFrame;
+    }
+
+    public RootNode getRootNode() {
+        return rootNode;
     }
 
     public Object getThisValue() {

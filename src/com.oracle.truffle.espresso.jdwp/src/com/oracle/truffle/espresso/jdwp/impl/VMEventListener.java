@@ -83,13 +83,9 @@ public interface VMEventListener extends VMListener {
 
     void removeMonitorContendedEnterRequest(int requestId);
 
-    void sendMonitorContendedEnterEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame callFrame);
-
     void addMonitorContendedEnteredRequest(int requestId, RequestFilter filter);
 
     void removeMonitorContendedEnteredRequest(int requestId);
-
-    void sendMonitorContendedEnteredEvent(MonitorEvent monitorEvent, Object currentThread, CallFrame callFrame);
 
     void addMonitorWaitRequest(int requestId, RequestFilter filter);
 
@@ -102,4 +98,6 @@ public interface VMEventListener extends VMListener {
     void holdEvents();
 
     void releaseEvents();
+
+    MonitorInfo getMonitorInfo(Object guestThread, Object monitor);
 }

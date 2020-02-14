@@ -241,6 +241,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -425,7 +426,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             n += expectedkind.getSlotCount();
         }
         setBCI(frame, 0);
-        if (monitorSlot != null) {
+        // the monitor slot is alread initialized for synchronized methods
+        if (monitorSlot != null && !getMethod().isSynchronized()) {
             frame.setObject(monitorSlot, new MonitorStack());
         }
     }
@@ -604,7 +606,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     statementIndex = nextStatementIndex;
 
                     // check for early return
-                    Object earlyReturnValue = getContext().getJDWPListener().getAndRemoveEarlyReturnValue();
+                    Object earlyReturnValue = getContext().getJDWPListener().getEarlyReturnValue();
                     if (earlyReturnValue != null) {
                         return notifyReturn(frame, statementIndex, exitMethodEarlyAndReturn(earlyReturnValue));
                     }
@@ -1009,27 +1011,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                     case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
-                    case MONITORENTER:
-                        final StaticObject monitor = nullCheck(peekAndReleaseObject(frame, top - 1));
-                        if (instrument != null) {
-                            final int index = statementIndex;
-
-                            monitorEnter(frame, monitor, new Runnable() {
-                                @Override
-                                public void run() {
-                                    instrument.notifyMonitorContended(frame, index, monitor);
-                                }
-                            }, new Runnable() {
-                                @Override
-                                public void run() {
-                                    instrument.notifyMonitorContendedEntered(frame, index, monitor);
-                                }
-                            });
-                        } else {
-                            monitorEnter(frame, monitor);
-                        }
-                        break;
-                    case MONITOREXIT:  monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                    case MONITORENTER: monitorEnter(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                    case MONITOREXIT: monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
 
                     case WIDE:
                         CompilerDirectives.transferToInterpreter();
@@ -1130,7 +1113,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     }
                 }
             } catch (EspressoExitException e) {
-                if (monitorSlot != null) {
+                if (usesMonitors()) {
                     getMonitorStack(frame).abort();
                 }
                 throw e;
@@ -1154,51 +1137,51 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
     }
 
-    private void monitorExit(VirtualFrame frame, StaticObject monitor) {
-        unregisterMonitor(frame, monitor);
+    int readBCI(MaterializedFrame frame) {
+        try {
+            assert bciSlot != null;
+            return frame.getInt(bciSlot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    void monitorExit(VirtualFrame frame, StaticObject monitor) {
         InterpreterToVM.monitorExit(monitor);
+        unregisterMonitor(frame, monitor);
     }
 
     private void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
         getMonitorStack(frame).exit(monitor, this);
     }
 
-    void synchronizedMethodMonitorEnter(VirtualFrame frame, StaticObject monitor) {
-        Runnable monitorContendedEnterCallback = instrumentation == null ? null : new Runnable() {
-            @Override
-            public void run() {
-                instrumentation.notifyMonitorContended(frame, 0, monitor);
-            }
-        };
-        Runnable monitorContendedEnteredCallback = instrumentation == null ? null : new Runnable() {
-            @Override
-            public void run() {
-                instrumentation.notifyMonitorContendedEntered(frame, 0, monitor);
-            }
-        };
-        InterpreterToVM.monitorEnter(monitor, monitorContendedEnterCallback, monitorContendedEnteredCallback);
-    }
-
-    private void monitorEnter(VirtualFrame frame, StaticObject monitor, Runnable monitorContendedEnterCallback, Runnable monitorContendedEnteredCallback) {
-        registerMonitor(frame, monitor);
-        InterpreterToVM.monitorEnter(monitor, monitorContendedEnterCallback, monitorContendedEnteredCallback);
-    }
-
     private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
-        monitorEnter(frame, monitor, null, null);
+        InterpreterToVM.monitorEnter(monitor);
+        registerMonitor(frame, monitor);
+    }
+
+    void methodMonitorEnter(VirtualFrame frame, StaticObject monitor) {
+        frame.setObject(monitorSlot, new MonitorStack());
+        InterpreterToVM.monitorEnter(monitor);
+        registerMonitor(frame, monitor);
     }
 
     private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
         getMonitorStack(frame).enter(monitor);
     }
 
-    private MonitorStack getMonitorStack(VirtualFrame frame) {
+    public boolean usesMonitors() {
+        return monitorSlot != null;
+    }
+
+    public MonitorStack getMonitorStack(VirtualFrame frame) {
         Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
     }
 
-    private static final class MonitorStack {
+    public static final class MonitorStack {
         private static final int DEFAULT_CAPACITY = 4;
 
         private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
@@ -1240,6 +1223,10 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     /* ignore */
                 }
             }
+        }
+
+        public StaticObject[] getMonitors() {
+            return monitors;
         }
     }
 
@@ -2398,18 +2385,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
             if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
-                enterAt(frame, index);
-            }
-        }
-
-        public void notifyMonitorContended(VirtualFrame frame, int index, Object monitor) {
-            if (context.getJDWPListener().prepareMonitorContended(monitor)) {
-                enterAt(frame, index);
-            }
-        }
-
-        public void notifyMonitorContendedEntered(VirtualFrame frame, int index, Object monitor) {
-            if (context.getJDWPListener().prepareMonitorContendedEntered(monitor)) {
                 enterAt(frame, index);
             }
         }

@@ -497,7 +497,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.FRAME_COUNT.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.OWNED_MONITORS.ID:
-                                    result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, context);
+                                    result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.ID:
                                     result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, context);
@@ -512,7 +512,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.ID:
-                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet);
+                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
                                     result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);

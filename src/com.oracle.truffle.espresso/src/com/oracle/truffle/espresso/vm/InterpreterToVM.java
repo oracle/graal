@@ -214,8 +214,8 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj, Runnable monitorContendedEnterCallback, Runnable monitorContendedEnteredCallback) {
         final EspressoLock lock = obj.getLock();
+        EspressoContext context = obj.getKlass().getContext();
         if (!lock.tryLock()) {
-            EspressoContext context = obj.getKlass().getContext();
             Meta meta = context.getMeta();
             StaticObject thread = context.getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
@@ -228,9 +228,9 @@ public final class InterpreterToVM implements ContextAccess {
             if (monitorContendedEnterCallback != null) {
                 monitorContendedEnterCallback.run();
             }
-            context.getJDWPListener().addCurrentContendedMonitor(obj);
+            context.getJDWPListener().onContendedMonitorEnter(obj);
             lock.lock();
-            context.getJDWPListener().addOwnedMonitor(obj);
+            context.getJDWPListener().onContendedMonitorEntered(obj);
             if (monitorContendedEnteredCallback != null) {
                 monitorContendedEnteredCallback.run();
             }
@@ -238,10 +238,8 @@ public final class InterpreterToVM implements ContextAccess {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
-        } else {
-            // obtained non-contended monitor
-            obj.getKlass().getContext().getJDWPListener().addOwnedMonitor(obj);
         }
+        context.getJDWPListener().onMonitorEnter(obj);
     }
 
     @TruffleBoundary
@@ -254,7 +252,7 @@ public final class InterpreterToVM implements ContextAccess {
             throw Meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
         lock.unlock();
-        obj.getKlass().getContext().getJDWPListener().removeOwnedMonitor(obj);
+        obj.getKlass().getContext().getJDWPListener().onMonitorExit(obj);
     }
 
     // endregion

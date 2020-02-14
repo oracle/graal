@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -116,6 +117,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return ((BytecodeNode) getMethodNode()).readBCI(frameInstance);
     }
 
+    public int readBCI(MaterializedFrame frame) {
+        return ((BytecodeNode) getMethodNode()).readBCI(frame);
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
@@ -134,7 +139,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             //
             // synchronized (monitor) {
             if (isBytecodeNode()) {
-                ((BytecodeNode) getMethodNode()).synchronizedMethodMonitorEnter(frame, monitor);
+                BytecodeNode bytecodeNode = getBytecodeNode();
+                bytecodeNode.methodMonitorEnter(frame, monitor);
             } else {
                 InterpreterToVM.monitorEnter(monitor);
             }
@@ -142,18 +148,17 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             try {
                 result = methodNode.execute(frame);
             } finally {
-                InterpreterToVM.monitorExit(monitor);
+                if (isBytecodeNode()) {
+                    // force early return has already released the monitor on the frame, so don't
+                    // do an unbalanced monitor exit here
+                    if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
+                        getBytecodeNode().monitorExit(frame, monitor);
+                    }
+                } else {
+                    InterpreterToVM.monitorExit(monitor);
+                }
             }
             return result;
-        }
-
-        private EspressoMethodNode getMethodNode() {
-            Node child = methodNode;
-            if (child instanceof WrapperNode) {
-                child = ((WrapperNode) child).getDelegateNode();
-            }
-            assert !(child instanceof WrapperNode);
-            return (EspressoMethodNode) child;
         }
     }
 
