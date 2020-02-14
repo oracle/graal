@@ -1043,4 +1043,25 @@ public final class LLVMContext {
         return lifetimeAnalysisStream;
     }
 
+    @CompilationFinal private TargetStream llDebugVerboseStream;
+    @CompilationFinal private boolean llDebugVerboseStreamInitialized = false;
+
+    public TargetStream llDebugVerboseStream() {
+        if (!llDebugVerboseStreamInitialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            final String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
+            if (SulongEngineOption.optionEnabled(opt)) {
+                if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                    throw new IllegalStateException("\'--llvm.llDebug.verbose\' requires \'--llvm.llDebug=true\'");
+                }
+                llDebugVerboseStream = new TargetStream(env, opt);
+            }
+
+            llDebugVerboseStreamInitialized = true;
+        }
+
+        return llDebugVerboseStream;
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -136,6 +136,12 @@ public final class SulongEngineOption {
             category = OptionCategory.EXPERT,
             help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
+
+    @Option(name = "llvm.llDebug.verbose",
+            category = OptionCategory.EXPERT,
+            help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
+    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("");
 
     @Option(name = "llvm.llDebug.sources",
             category = OptionCategory.EXPERT,
