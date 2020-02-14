@@ -56,8 +56,9 @@ public class OldGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     OldGeneration(String name) {
         super(name);
-        this.fromSpace = new Space("fromSpace", false);
-        this.toSpace = new Space("toSpace", false);
+        int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
+        this.fromSpace = new Space("fromSpace", true, age);
+        this.toSpace = new Space("toSpace", false, age);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
     }
 
@@ -107,31 +108,23 @@ public class OldGeneration extends Generation {
     void releaseSpaces() {
         /* Release any spaces associated with this generation after a collection. */
         getFromSpace().release();
-        /* Clean the spaces that have been scanned for grey objects. */
-        getToSpace().cleanRememberedSet();
+        /* Just clean remember set in complete collection */
+        if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
+            /* Clean the spaces that have been scanned for grey objects. */
+            getToSpace().cleanRememberedSet();
+        }
     }
 
-    private boolean shouldPromoteFrom(Space originalSpace) {
+    private static boolean shouldPromoteFrom(Space originalSpace) {
         final Log trace = Log.noopLog();
         trace.string("[OldGeneration.shouldPromoteFrom:").string("  originalSpace: ").string(originalSpace.getName());
-        final boolean result;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        if (heap.isYoungGeneration(originalSpace)) {
-            /* The most likely case: the original Space is young space. */
-            result = true;
-        } else if (originalSpace == getFromSpace()) {
-            /* The next most likely case: the original Space is from space. */
-            result = true;
-        } else {
-            /* Otherwise, do not promote to old toSpace. */
-            result = false;
-        }
+        final boolean result = originalSpace.isFrom();
         trace.string("  returns: ").bool(result);
         trace.string("]").newline();
         return result;
     }
 
-    private Object promoteAlignedObject(Object original) {
+    Object promoteAlignedObject(Object original) {
         final Log trace = Log.noopLog().string("[OldGeneration.promoteAlignedObject:").string("  original: ").object(original);
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original);
         final AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
@@ -159,7 +152,7 @@ public class OldGeneration extends Generation {
         return result;
     }
 
-    private Object promoteUnalignedObjectChunk(Object original) {
+    Object promoteUnalignedObjectChunk(Object original) {
         final Log trace = Log.noopLog().string("[OldGeneration.promoteUnalignedObjectChunk:").string("  original: ").object(original);
         assert ObjectHeaderImpl.getObjectHeaderImpl().isUnalignedObject(original);
         final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
@@ -199,11 +192,17 @@ public class OldGeneration extends Generation {
         getToGreyObjectsWalker().setScanStart(getToSpace());
     }
 
-    protected void scanGreyObjects() {
+    protected boolean scanGreyObjects() {
         final Log trace = Log.noopLog().string("[OldGeneration.scanGreyObjects:");
         final GCImpl gc = HeapImpl.getHeapImpl().getGCImpl();
+
+        if (!getToGreyObjectsWalker().haveGreyObjects()) {
+            return false;
+        }
+
         getToGreyObjectsWalker().walkGreyObjects(gc.getGreyToBlackObjectVisitor());
         trace.string("]").newline();
+        return true;
     }
 
     @Override
@@ -256,6 +255,14 @@ public class OldGeneration extends Generation {
             }
         }
         return result;
+    }
+
+    protected void verifyDirtyCards(boolean isTo) {
+        if (isTo) {
+            getToSpace().verifyDirtyCards();
+        } else {
+            getFromSpace().verifyDirtyCards();
+        }
     }
 
     boolean slowlyFindPointer(Pointer p) {

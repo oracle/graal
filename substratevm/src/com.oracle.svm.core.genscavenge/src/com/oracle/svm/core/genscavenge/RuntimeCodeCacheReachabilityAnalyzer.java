@@ -71,7 +71,7 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
         }
 
         Space space = getSpace(ptrToObj, header);
-        if (space == HeapImpl.getHeapImpl().getOldGeneration().getToSpace()) {
+        if (!space.isFrom()) {
             return true;
         }
 

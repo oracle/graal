@@ -44,7 +44,7 @@ public class ThreadLocalMTWalker {
         VMThreadLocalMTSupport threadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(threadLocals.vmThreadReferenceMapEncoding),
-                            threadLocals.vmThreadReferenceMapIndex, referenceVisitor)) {
+                            threadLocals.vmThreadReferenceMapIndex, referenceVisitor, null)) {
                 return false;
             }
         }

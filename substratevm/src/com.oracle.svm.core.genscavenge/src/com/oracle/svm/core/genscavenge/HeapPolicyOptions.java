@@ -74,4 +74,7 @@ public class HeapPolicyOptions {
 
     @Option(help = "Defines the upper bound for the number of remaining bytes in the young generation that cause a collection when `System.gc` is called.") //
     public static final RuntimeOptionKey<Long> UserRequestedGCThreshold = new RuntimeOptionKey<>(16L * 1024L * 1024L);
+
+    @Option(help = "Maximum value for survivor space") //
+    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(4);
 }
