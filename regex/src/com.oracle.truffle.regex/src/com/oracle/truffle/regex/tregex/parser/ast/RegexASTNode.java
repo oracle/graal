@@ -71,8 +71,8 @@ public abstract class RegexASTNode implements JsonConvertible {
     private short id = -1;
     private RegexASTNode parent;
     private int flags;
-    private short minPath = 0;
-    private short maxPath = 0;
+    private int minPath = 0;
+    private int maxPath = 0;
 
     protected RegexASTNode() {
     }
@@ -347,7 +347,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void setMinPath(int n) {
-        minPath = (short) n;
+        minPath = n;
     }
 
     public void incMinPath() {
@@ -363,7 +363,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void setMaxPath(int n) {
-        maxPath = (short) n;
+        maxPath = n;
     }
 
     public void incMaxPath() {

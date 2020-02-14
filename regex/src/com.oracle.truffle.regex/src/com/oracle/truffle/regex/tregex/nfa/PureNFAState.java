@@ -83,6 +83,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     private final short astNodeId;
     private final short extraId;
     private final byte kind;
+    private final boolean lookAroundNegated;
     private final CodePointSet charSet;
     private Set<PureNFA> lookBehindEntries;
 
@@ -92,6 +93,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         this.kind = getKind(t);
         this.extraId = t instanceof LookAroundAssertion ? ((LookAroundAssertion) t).getSubTreeId() : isBackReference() ? (short) ((BackReference) t).getGroupNr() : -1;
         this.charSet = t instanceof CharacterClass ? ((CharacterClass) t).getCharSet() : null;
+        this.lookAroundNegated = isLookAround() && ((LookAroundAssertion) t).isNegated();
     }
 
     public short getAstNodeId() {
@@ -130,6 +132,10 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
 
     public CodePointSet getCharSet() {
         return charSet;
+    }
+
+    public boolean isLookAroundNegated() {
+        return lookAroundNegated;
     }
 
     public boolean isLookAhead(RegexAST ast) {

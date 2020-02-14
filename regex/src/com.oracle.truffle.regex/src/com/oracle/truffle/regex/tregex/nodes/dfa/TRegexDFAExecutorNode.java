@@ -124,10 +124,6 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return states.length;
     }
 
-    public int getNumberOfCaptureGroups() {
-        return props.getNumberOfCaptureGroups();
-    }
-
     public boolean recordExecution() {
         return debugRecorder != null;
     }
@@ -143,7 +139,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private DFACaptureGroupTrackingData createCGData() {
         if (isGenericCG() || isSimpleCG()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props);
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props);
         } else {
             return null;
         }
@@ -305,7 +301,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private void initResultOrder(TRegexDFAExecutorLocals locals) {
         DFACaptureGroupTrackingData cgData = locals.getCGData();
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
-            cgData.currentResultOrder[i] = i * props.getNumberOfCaptureGroups() * 2;
+            cgData.currentResultOrder[i] = i * getNumberOfCaptureGroups() * 2;
         }
     }
 

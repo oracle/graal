@@ -151,7 +151,6 @@ public final class TRegexCompilationRequest {
         }
         debugAST();
         RegexProperties properties = ast.getProperties();
-        checkFeatureSupport(properties);
         if (ast.getRoot().isDead()) {
             return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
         }
@@ -159,17 +158,21 @@ public final class TRegexCompilationRequest {
         if (literal != null) {
             return literal;
         }
+        if (properties.hasBackReferences() && !ast.getRoot().hasQuantifiers()) {
+            return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(), ast.getNumberOfCaptureGroups(),
+                            compileBacktrackingExecutor());
+        }
+        checkFeatureSupport(properties);
         createNFA();
         if (nfa.isDead()) {
             return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
         }
-        return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(),
-                        new TRegexNFAExecutorNode(nfa, ast.getNumberOfCaptureGroups()));
+        return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(), ast.getNumberOfCaptureGroups(),
+                        new TRegexNFAExecutorNode(nfa));
     }
 
     public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor() {
         assert ast != null;
-        assert nfa != null;
         pureNFA = PureNFAGenerator.mapToNFA(ast);
         debugPureNFA();
         TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
@@ -299,7 +302,7 @@ public final class TRegexCompilationRequest {
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
+                        tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {

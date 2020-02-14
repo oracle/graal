@@ -556,6 +556,7 @@ public final class RegexParser {
     private static final class UnrollQuantifiersVisitor extends DepthFirstTraversalRegexASTVisitor {
 
         private final RegexParser parser;
+        private final ShouldUnrollQuantifierVisitor shouldUnrollVisitor = new ShouldUnrollQuantifierVisitor();
 
         private UnrollQuantifiersVisitor(RegexParser parser) {
             this.parser = parser;
@@ -566,18 +567,43 @@ public final class RegexParser {
         }
 
         @Override
+        protected void visit(BackReference backReference) {
+            if (backReference.hasNotUnrolledQuantifier() && backReference.getQuantifier().getMin() == 0) {
+                parser.expandQuantifier(backReference);
+            }
+        }
+
+        @Override
         protected void visit(CharacterClass characterClass) {
-            expand(characterClass);
+            if (characterClass.hasNotUnrolledQuantifier()) {
+                parser.expandQuantifier(characterClass);
+            }
         }
 
         @Override
         protected void leave(Group group) {
-            expand(group);
+            if (group.hasNotUnrolledQuantifier() && shouldUnrollVisitor.shouldUnroll(group)) {
+                parser.expandQuantifier(group);
+            }
         }
 
-        private void expand(QuantifiableTerm t) {
-            if (t.hasNotUnrolledQuantifier()) {
-                parser.expandQuantifier(t);
+        private static final class ShouldUnrollQuantifierVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+            private boolean result;
+
+            boolean shouldUnroll(Group group) {
+                assert group.hasQuantifier();
+                if (group.getQuantifier().getMin() == 0 && (group.getQuantifier().getMax() == 1 || group.getQuantifier().isInfiniteLoop())) {
+                    return true;
+                }
+                result = true;
+                run(group);
+                return result;
+            }
+
+            @Override
+            protected void visit(BackReference backReference) {
+                result = false;
             }
         }
     }

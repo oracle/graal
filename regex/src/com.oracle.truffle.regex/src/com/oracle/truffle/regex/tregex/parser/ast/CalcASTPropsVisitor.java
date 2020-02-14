@@ -132,7 +132,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     RegexASTNode.FLAG_HAS_LOOK_AHEADS |
                     RegexASTNode.FLAG_HAS_LOOK_BEHINDS |
                     RegexASTNode.FLAG_HAS_BACK_REFERENCES;
-    private static final int CHANGED_FLAGS = (short) (AND_FLAGS | OR_FLAGS);
+    private static final int CHANGED_FLAGS = AND_FLAGS | OR_FLAGS;
 
     private final RegexAST ast;
 
@@ -182,7 +182,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (group.isDead()) {
             return;
         }
-        int minPath = Short.MAX_VALUE;
+        int minPath = Integer.MAX_VALUE;
         int maxPath = 0;
         int flags = (group.isLoop() ? RegexASTNode.FLAG_HAS_LOOPS : 0) | AND_FLAGS;
         for (Sequence s : group.getAlternatives()) {
@@ -236,7 +236,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (group.isCapturing()) {
             flags |= RegexASTNode.FLAG_HAS_CAPTURE_GROUPS;
         }
-        group.setFlags((short) flags, CHANGED_FLAGS);
+        group.setFlags(flags, CHANGED_FLAGS);
         group.setMinPath(minPath);
         group.setMaxPath(maxPath);
         if (group.getParent() instanceof Sequence) {
@@ -244,7 +244,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             group.getParent().setMaxPath(maxPath);
         }
         if (group.getParent() != null) {
-            group.getParent().setFlags((short) (group.getParent().getFlags(CHANGED_FLAGS) | flags), CHANGED_FLAGS);
+            group.getParent().setFlags(group.getParent().getFlags(CHANGED_FLAGS) | flags, CHANGED_FLAGS);
         }
     }
 
@@ -312,7 +312,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !assertion.isDead()) {
             ast.getLookArounds().add(assertion);
         }
-        assertion.getParent().setFlags((short) (assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS)), CHANGED_FLAGS);
+        assertion.getParent().setFlags(assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
     }
 
     @Override

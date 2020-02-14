@@ -59,13 +59,11 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 public class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private final NFA nfa;
-    private final int numberOfCaptureGroups;
     private final boolean searching;
 
-    public TRegexNFAExecutorNode(NFA nfa, int numberOfCaptureGroups) {
+    public TRegexNFAExecutorNode(NFA nfa) {
         this.nfa = nfa;
         nfa.setInitialLoopBack(false);
-        this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
         for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
             if (nfa.getTransitions()[i] != null) {
@@ -78,13 +76,9 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         return nfa;
     }
 
-    public int getNumberOfCaptureGroups() {
-        return numberOfCaptureGroups;
-    }
-
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, numberOfCaptureGroups, nfa.getNumberOfStates());
+        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates());
     }
 
     @Override

@@ -80,7 +80,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int lastResultSp = -1;
 
     public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
-        this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers)]), 0);
+        this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers) * 4]), 0);
         setIndex(fromIndex);
         Arrays.fill(stack(), sp + 2, stackFrameSize, -1);
     }
@@ -171,12 +171,16 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return stack()[sp + 1] = pc;
     }
 
+    public int getCaptureGroupBoundary(int index) {
+        return stack()[sp + 2 + index];
+    }
+
     public int getCaptureGroupStart(int backRefNumber) {
-        return stack()[sp + 2 + backRefNumber * 2];
+        return getCaptureGroupBoundary(backRefNumber * 2);
     }
 
     public int getCaptureGroupEnd(int backRefNumber) {
-        return stack()[sp + 2 + backRefNumber * 2 + 1];
+        return getCaptureGroupBoundary(backRefNumber * 2 + 1);
     }
 
     public void overwriteCaptureGroups(int[] captureGroups) {

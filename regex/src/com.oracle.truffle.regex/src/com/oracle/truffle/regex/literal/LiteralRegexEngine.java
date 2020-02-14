@@ -71,7 +71,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
-        if (ast.isLiteralString()) {
+        if (ast.isLiteralString() && ast.getRoot().getMinPath() <= Short.MAX_VALUE) {
             return createLiteralNode(language, ast);
         } else {
             return null;
