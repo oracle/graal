@@ -781,7 +781,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
+    public BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
         HotSpotResolvedJavaField loadField = (HotSpotResolvedJavaField) f;
         if (loadField.getJavaKind() == JavaKind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
                         loadField.getName().equals("referent")) {
