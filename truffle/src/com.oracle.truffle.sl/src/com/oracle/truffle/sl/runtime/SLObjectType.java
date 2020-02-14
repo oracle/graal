@@ -105,7 +105,7 @@ public final class SLObjectType extends ObjectType {
     @TruffleBoundary
     @SuppressWarnings("unused")
     static Object toDisplayString(DynamicObject receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
-        return "object";
+        return "Object";
     }
 
     @ExportMessage
