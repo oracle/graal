@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,63 +40,65 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 
-@ExportLibrary(value = InteropLibrary.class, receiverType = Character.class)
-@SuppressWarnings("unused")
-final class DefaultCharacterExports {
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+@ExportLibrary(value = ReflectionLibrary.class, delegateTo = "delegate")
+@SuppressWarnings("static-method")
+final class LegacyMetaObjectWrapper implements TruffleObject {
+
+    final Object original;
+    final Object delegate;
+
+    LegacyMetaObjectWrapper(Object original, Object delegate) {
+        this.original = original;
+        this.delegate = delegate;
+    }
 
     @ExportMessage
-    static boolean isString(Character receiver) {
+    boolean isMetaObject() {
         return true;
     }
 
     @ExportMessage
-    static String asString(Character receiver) {
-        return receiver.toString();
-    }
-
-    /*
-     * We export these messages explicitly because the legacy default is very costly. Remove with
-     * the complicated legacy implementation in InteropLibrary.
-     */
-    @ExportMessage
-    static boolean hasLanguage(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static Class<? extends TruffleLanguage<?>> getLanguage(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasSourceLocation(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static SourceSection getSourceLocation(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasMetaObject(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static Object getMetaObject(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    @TruffleBoundary
+    boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary library) {
+        return library.hasMetaObject(delegate);
     }
 
     @ExportMessage
     @TruffleBoundary
-    static Object toDisplayString(Character receiver, boolean allowSideEffects) {
-        return receiver.toString();
+    Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary library) throws UnsupportedMessageException {
+        Object metaObject = library.getMetaObject(delegate);
+        if (metaObject instanceof LegacyMetaObjectWrapper) {
+            return metaObject;
+        } else {
+            return new LegacyMetaObjectWrapper(this.delegate, metaObject);
+        }
     }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMetaInstance(Object instance) {
+        Object unboxedInstance = instance;
+        Object unboxedOriginal = original;
+        if (unboxedInstance instanceof LegacyMetaObjectWrapper) {
+            unboxedInstance = ((LegacyMetaObjectWrapper) unboxedInstance).delegate;
+        }
+        if (unboxedOriginal instanceof LegacyMetaObjectWrapper) {
+            unboxedOriginal = ((LegacyMetaObjectWrapper) unboxedOriginal).delegate;
+        }
+        return unboxedInstance == original;
+    }
+
+    @ExportMessage(name = "getMetaSimpleName")
+    @ExportMessage(name = "getMetaQualifiedName")
+    Object getLegacyMetaName(@CachedLibrary("this.delegate") InteropLibrary delegateInterop) {
+        return delegateInterop.toDisplayString(this.delegate);
+    }
+
 }

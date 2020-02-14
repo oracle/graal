@@ -117,9 +117,4 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
 }

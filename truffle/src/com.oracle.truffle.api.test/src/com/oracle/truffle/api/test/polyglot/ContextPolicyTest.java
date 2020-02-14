@@ -889,11 +889,6 @@ public class ContextPolicyTest {
             contextDispose.add(this);
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         @TruffleBoundary
         public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
             return TruffleLanguage.getCurrentLanguage(languageClass);

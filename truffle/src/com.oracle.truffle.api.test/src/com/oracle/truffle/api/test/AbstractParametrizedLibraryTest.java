@@ -38,65 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.interop;
+package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.SourceSection;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 
-@ExportLibrary(value = InteropLibrary.class, receiverType = Character.class)
-@SuppressWarnings("unused")
-final class DefaultCharacterExports {
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 
-    @ExportMessage
-    static boolean isString(Character receiver) {
-        return true;
+@RunWith(Parameterized.class)
+public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTest {
+
+    public enum TestRun {
+        CACHED,
+        UNCACHED,
+        DISPATCHED_CACHED,
+        DISPATCHED_UNCACHED;
+
+        public boolean isDispatched() {
+            return this == DISPATCHED_CACHED || this == DISPATCHED_UNCACHED;
+        }
+
+        public boolean isCached() {
+            return this == CACHED || this == TestRun.DISPATCHED_CACHED;
+        }
     }
 
-    @ExportMessage
-    static String asString(Character receiver) {
-        return receiver.toString();
+    @Parameter // first data value (0) is default
+    public /* NOT private */ TestRun run;
+
+    protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
+        LibraryFactory<T> lib = LibraryFactory.resolve(library);
+        switch (run) {
+            case CACHED:
+                return adoptNode(lib.create(receiver)).get();
+            case UNCACHED:
+                return lib.getUncached(receiver);
+            case DISPATCHED_CACHED:
+                return adoptNode(lib.createDispatched(2)).get();
+            case DISPATCHED_UNCACHED:
+                return lib.getUncached();
+        }
+
+        throw new AssertionError();
     }
 
-    /*
-     * We export these messages explicitly because the legacy default is very costly. Remove with
-     * the complicated legacy implementation in InteropLibrary.
-     */
-    @ExportMessage
-    static boolean hasLanguage(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static Class<? extends TruffleLanguage<?>> getLanguage(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasSourceLocation(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static SourceSection getSourceLocation(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasMetaObject(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static Object getMetaObject(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    static Object toDisplayString(Character receiver, boolean allowSideEffects) {
-        return receiver.toString();
-    }
 }

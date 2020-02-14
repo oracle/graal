@@ -151,7 +151,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     ClassLoader contextClassLoader;     // effectively final
     boolean boundEngine;    // effectively final
-    Handler logHandler;     // effectively final
+    Handler logHandler;     // effectxxxively final
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
     private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
@@ -896,9 +896,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @TruffleBoundary
     <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
         PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
-        if (foundLanguage == null && fail) {
-            Set<String> languageNames = classToLanguage.keySet();
-            throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
+        if (foundLanguage == null) {
+            if (languageClass == HostLanguage.class) {
+                return hostLanguage;
+            }
+            if (fail) {
+                Set<String> languageNames = classToLanguage.keySet();
+                throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
+            }
         }
         return foundLanguage;
     }

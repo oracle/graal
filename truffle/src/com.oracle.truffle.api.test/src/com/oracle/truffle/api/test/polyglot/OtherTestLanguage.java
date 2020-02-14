@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.library.test;
+package com.oracle.truffle.api.test.polyglot;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+@Registration(id = OtherTestLanguage.ID, name = OtherTestLanguage.ID)
+public class OtherTestLanguage extends TruffleLanguage<Env> {
 
-public abstract class AbstractLibraryTest {
+    static final String ID = "LanguageViewOtherLanguageTest";
 
-    protected static final <T extends Library> T createCached(Class<T> library, Object receiver) {
-        return adopt(LibraryFactory.resolve(library).create(receiver));
+    @Override
+    protected Env createContext(Env env) {
+        return env;
     }
 
-    protected static final <T extends Library> T createCachedDispatch(Class<T> library, int limit) {
-        return adopt(LibraryFactory.resolve(library).createDispatched(limit));
-    }
-
-    protected static final <T extends Library> T getUncached(Class<T> library, Object receiver) {
-        return LibraryFactory.resolve(library).getUncached(receiver);
-    }
-
-    protected static final <T extends Library> T getUncachedDispatch(Class<T> library) {
-        return LibraryFactory.resolve(library).getUncached();
-    }
-
-    static <T extends Node> T adopt(T node) {
-        RootNode root = new RootNode(null) {
-            {
-                insert(node);
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        };
-        root.adoptChildren();
-        return node;
-    }
-
-    static void assertAssertionError(Runnable r) {
-        assertAssertionError(r, null);
-    }
-
-    static void assertAssertionError(Runnable r, String message) {
-        try {
-            r.run();
-        } catch (AssertionError e) {
-            if (message != null) {
-                assertEquals(message, e.getMessage());
-            }
-            return;
-        }
-        fail();
+    public static OtherTestLanguage getInstance() {
+        return getCurrentLanguage(OtherTestLanguage.class);
     }
 
 }

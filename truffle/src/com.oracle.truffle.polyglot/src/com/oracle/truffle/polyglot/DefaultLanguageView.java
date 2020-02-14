@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,80 +42,85 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
-@ExportLibrary(InteropLibrary.class)
-final class HostFunction implements TruffleObject {
+/**
+ * Default implementation for the instrumentation view in {@link TruffleLanguage}. Should be removed
+ * with deprecated methods in {@link TruffleLanguage}.
+ */
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+@SuppressWarnings("static-method")
+final class DefaultLanguageView<C> implements TruffleObject {
 
-    final HostMethodDesc method;
-    final Object obj;
-    final PolyglotLanguageContext languageContext;
+    private final TruffleLanguage<C> language;
+    private final C context;
+    protected final Object delegate;
+    protected final Object unwrapped;
 
-    HostFunction(HostMethodDesc method, Object obj, PolyglotLanguageContext languageContext) {
-        this.method = method;
-        this.obj = obj;
-        this.languageContext = languageContext;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostFunction;
-    }
-
-    public static boolean isInstance(Object obj) {
-        return obj instanceof HostFunction;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
+    DefaultLanguageView(TruffleLanguage<C> language, C context, Object delegate) {
+        this.language = language;
+        this.context = context;
+        this.delegate = delegate;
+        this.unwrapped = EngineAccessor.INTEROP.unwrapLegacyMetaObjectWrapper(delegate);
     }
 
     @ExportMessage
-    Object execute(Object[] args, @Cached HostExecuteNode execute) throws UnsupportedTypeException, ArityException {
-        return execute.execute(method, obj, args, languageContext);
+    @TruffleBoundary
+    boolean hasSourceLocation(@CachedLibrary("this.delegate") InteropLibrary delegateLib) {
+        return EngineAccessor.LANGUAGE.legacyFindSourceLocation(language, context, unwrapped) != null || delegateLib.hasSourceLocation(this.delegate);
     }
 
-    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    SourceSection getSourceLocation(@CachedLibrary("this.delegate") InteropLibrary delegateLib) throws UnsupportedMessageException {
+        SourceSection location = EngineAccessor.LANGUAGE.legacyFindSourceLocation(language, context,
+                        unwrapped);
+        if (location != null) {
+            return location;
+        } else {
+            return delegateLib.getSourceLocation(this.delegate);
+        }
+    }
+
     @ExportMessage
     boolean hasLanguage() {
         return true;
     }
 
-    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+        String result = EngineAccessor.LANGUAGE.legacyToString(language, context, unwrapped);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
     @ExportMessage
     Class<? extends TruffleLanguage<?>> getLanguage() {
-        return HostLanguage.class;
+        return (Class<? extends TruffleLanguage<?>>) language.getClass();
     }
 
     @ExportMessage
     @TruffleBoundary
-    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        if (obj == null) {
-            return "null";
-        }
-        String typeName = obj.getClass().getTypeName();
-        return typeName + "." + method.getName();
+    boolean hasMetaObject() {
+        return EngineAccessor.LANGUAGE.legacyFindMetaObject(language, context, unwrapped) != null;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof HostFunction) {
-            HostFunction other = (HostFunction) o;
-            return this.method == other.method && this.obj == other.obj && this.languageContext == other.languageContext;
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaObject() throws UnsupportedMessageException {
+        Object result = EngineAccessor.LANGUAGE.legacyFindMetaObject(language, context, unwrapped);
+        if (result != null) {
+            return EngineAccessor.INTEROP.createLegacyMetaObjectWrapper(this, result);
+        } else {
+            throw UnsupportedMessageException.create();
         }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return method.hashCode();
     }
 
 }

@@ -38,49 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.library.test;
+package com.oracle.truffle.api.test;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@RunWith(Parameterized.class)
-public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTest {
+public abstract class AbstractLibraryTest extends AbstractPolyglotTest {
 
-    public enum TestRun {
-        CACHED,
-        UNCACHED,
-        DISPATCHED_CACHED,
-        DISPATCHED_UNCACHED;
-        public boolean isDispatched() {
-            return this == DISPATCHED_CACHED || this == DISPATCHED_UNCACHED;
-        }
-
-        public boolean isCached() {
-            return this == CACHED || this == TestRun.DISPATCHED_CACHED;
-        }
+    protected static final <T extends Library> T createCached(Class<T> library, Object receiver) {
+        return adopt(LibraryFactory.resolve(library).create(receiver));
     }
 
-    @Parameter // first data value (0) is default
-    public /* NOT private */ TestRun run;
+    protected static final <T extends Library> T createCachedDispatch(Class<T> library, int limit) {
+        return adopt(LibraryFactory.resolve(library).createDispatched(limit));
+    }
 
-    protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
-        LibraryFactory<T> lib = LibraryFactory.resolve(library);
-        switch (run) {
-            case CACHED:
-                return adopt(lib.create(receiver));
-            case UNCACHED:
-                return lib.getUncached(receiver);
-            case DISPATCHED_CACHED:
-                return adopt(lib.createDispatched(2));
-            case DISPATCHED_UNCACHED:
-                return lib.getUncached();
+    protected static final <T extends Library> T getUncached(Class<T> library, Object receiver) {
+        return LibraryFactory.resolve(library).getUncached(receiver);
+    }
+
+    protected static final <T extends Library> T getUncachedDispatch(Class<T> library) {
+        return LibraryFactory.resolve(library).getUncached();
+    }
+
+    protected static <T extends Node> T adopt(T node) {
+        RootNode root = new RootNode(null) {
+            {
+                insert(node);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        root.adoptChildren();
+        return node;
+    }
+
+    protected static void assertAssertionError(Runnable r) {
+        assertAssertionError(r, null);
+    }
+
+    protected static void assertAssertionError(Runnable r, String message) {
+        try {
+            r.run();
+        } catch (AssertionError e) {
+            if (message != null) {
+                assertEquals(message, e.getMessage());
+            }
+            return;
         }
-
-        throw new AssertionError();
+        fail();
     }
 
 }

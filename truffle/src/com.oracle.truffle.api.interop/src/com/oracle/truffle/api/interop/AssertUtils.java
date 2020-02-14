@@ -133,6 +133,19 @@ final class AssertUtils {
         return true;
     }
 
+    static boolean validNonInteropArgument(Object receiver, Object arg) {
+        if (arg == null) {
+            throw new NullPointerException(violationNonInteropArgument(receiver, arg));
+        }
+        return true;
+    }
+
+    private static String violationNonInteropArgument(Object receiver, Object arg) {
+        return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
+                        "Argument must not be null.",
+                        formatValue(receiver), formatValue(arg));
+    }
+
     static boolean isInteropValue(Object o) {
         return o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer || o instanceof Long || o instanceof Float ||
                         o instanceof Double || o instanceof Character || o instanceof String;
@@ -147,7 +160,9 @@ final class AssertUtils {
     }
 
     static boolean preCondition(Object receiver) {
-        assert receiver != null : violationPre(receiver);
+        if (receiver == null) {
+            throw new NullPointerException(violationPre(receiver));
+        }
         assert validArgument(receiver, receiver);
         return true;
     }

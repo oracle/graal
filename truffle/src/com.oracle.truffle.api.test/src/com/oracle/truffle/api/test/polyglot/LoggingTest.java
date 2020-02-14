@@ -77,7 +77,10 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
 
@@ -1172,11 +1175,28 @@ public class LoggingTest {
         }
     }
 
-    private static final class LoggingLanguageObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class LoggingLanguageObject implements TruffleObject {
         final String stringValue;
 
         LoggingLanguageObject(final String stringValue) {
             this.stringValue = stringValue;
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return stringValue;
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return LoggingLanguageFirst.class;
         }
 
     }
@@ -1198,16 +1218,6 @@ public class LoggingTest {
         @Override
         protected LoggingContext createContext(Env env) {
             return new LoggingContext(env);
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return object instanceof LoggingLanguageObject;
-        }
-
-        @Override
-        protected String toString(LoggingContext context, Object value) {
-            return ((LoggingLanguageObject) value).stringValue;
         }
 
         @Override

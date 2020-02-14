@@ -2041,11 +2041,6 @@ public class FileSystemsTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {

@@ -94,8 +94,4 @@ public class NFITestBackend extends TruffleLanguage<Env> {
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
 }

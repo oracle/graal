@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -63,9 +61,9 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.impl.Accessor.CallProfiled;
@@ -78,6 +76,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
@@ -94,12 +93,16 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetArraySizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMemberKeysNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMetaQualifiedNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.GetMetaSimpleNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsMetaInstanceNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNullNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsTimeNodeGen;
@@ -405,15 +408,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
-    public Value getMetaObject(Object receiver) {
+    public final Value getMetaObject(Object receiver) {
         Object prev = enter(languageContext);
         try {
-            Object metaObject = findMetaObject(receiver);
-            if (metaObject != null) {
-                return languageContext.asValue(metaObject);
-            } else {
-                return null;
-            }
+            return getMetaObjectImpl(receiver);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
@@ -421,21 +419,24 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private Object findMetaObject(Object target) {
-        if (languageContext == null) {
-            return null;
-        } else if (target instanceof PolyglotLanguageBindings) {
-            return languageContext.language.getName() + " Bindings";
-        } else if (target instanceof PolyglotBindings) {
-            return "Polyglot Bindings";
-        } else {
-            final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, target);
-            if (resolvedLanguage == null) {
-                return null;
+    protected Value getMetaObjectImpl(Object receiver) {
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+        if (lib.hasMetaObject(receiver)) {
+            try {
+                return asValue(lib.getMetaObject(receiver));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("Unexpected unsupported message.", e);
             }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
-            assert resolvedLanguageContext != null;
-            return LANGUAGE.findMetaObject(resolvedLanguageContext.env, target);
+        }
+        return null;
+    }
+
+    private Value asValue(Object value) {
+        if (languageContext == null) {
+            return PolyglotImpl.getInstance().asValue(PolyglotContextImpl.currentNotEntered(), value);
+        } else {
+            return languageContext.asValue(value);
         }
     }
 
@@ -471,6 +472,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final int CHARACTER_LIMIT = 140;
 
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     @TruffleBoundary
     static String getValueInfo(PolyglotLanguageContext languageContext, Object receiver) {
         if (languageContext == null) {
@@ -479,57 +482,50 @@ abstract class PolyglotValue extends AbstractValueImpl {
             assert false : "receiver should never be null";
             return "null";
         }
-
-        PolyglotLanguage displayLanguage = languageContext.language;
-        PolyglotLanguageContext displayContext = languageContext;
-        if (!(receiver instanceof Number || receiver instanceof String || receiver instanceof Character || receiver instanceof Boolean)) {
-            try {
-                PolyglotLanguage resolvedDisplayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
-                if (resolvedDisplayLanguage != null) {
-                    displayLanguage = resolvedDisplayLanguage;
-                }
-                displayContext = languageContext.context.getContext(displayLanguage);
-            } catch (Throwable e) {
-                // don't fail without assertions for stability.
-                assert rethrow(e);
-            }
-        }
-
-        TruffleLanguage.Env displayEnv = displayContext.env;
-        String metaObjectToString = "Unknown";
-        if (displayEnv != null) {
-            try {
-                Object metaObject = LANGUAGE.findMetaObject(displayEnv, receiver);
-                if (metaObject != null) {
-                    metaObjectToString = truncateString(LANGUAGE.toStringIfVisible(displayEnv, metaObject, false), CHARACTER_LIMIT);
-                }
-            } catch (Throwable e) {
-                assert rethrow(e);
-            }
-        }
-
-        String valueToString = "Unknown";
+        Object prev = enter(languageContext);
         try {
-            valueToString = truncateString(LANGUAGE.toStringIfVisible(displayEnv, receiver, false), CHARACTER_LIMIT);
-        } catch (Throwable e) {
-            assert rethrow(e);
-        }
-        String languageName;
-        boolean hideType = false;
-        if (displayLanguage.isHost()) {
-            languageName = "Java"; // java is our host language for now
-
-            // hide meta objects of null
-            if (metaObjectToString.equals("java.lang.Void")) {
-                hideType = true;
+            PolyglotContextImpl context = languageContext.context;
+            PolyglotLanguage displayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context.engine, receiver);
+            Object view;
+            if (displayLanguage == null) {
+                displayLanguage = context.engine.hostLanguage;
+                view = context.getHostContext().getLanguageView(receiver);
+            } else {
+                view = receiver;
             }
-        } else {
-            languageName = displayLanguage.getName();
-        }
-        if (hideType) {
-            return String.format("'%s'(language: %s)", valueToString, languageName);
-        } else {
-            return String.format("'%s'(language: %s, type: %s)", valueToString, languageName, metaObjectToString);
+
+            String valueToString;
+            String metaObjectToString = "Unknown";
+            try {
+                InteropLibrary uncached = InteropLibrary.getFactory().getUncached(view);
+                if (uncached.hasMetaObject(view)) {
+                    Object qualifiedName = INTEROP.getMetaQualifiedName(uncached.getMetaObject(view));
+                    metaObjectToString = truncateString(INTEROP.asString(qualifiedName), CHARACTER_LIMIT);
+                }
+                valueToString = truncateString(INTEROP.asString(uncached.toDisplayString(view)), CHARACTER_LIMIT);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+            String languageName = null;
+            boolean hideType = false;
+            if (displayLanguage.isHost()) {
+                languageName = "Java"; // java is our host language for now
+
+                // hide meta objects of null
+                if (metaObjectToString.equals("java.lang.Void")) {
+                    hideType = true;
+                }
+            } else {
+                languageName = displayLanguage.getName();
+            }
+            if (hideType) {
+                return String.format("'%s'(language: %s)", valueToString, languageName);
+            } else {
+                return String.format("'%s'(language: %s, type: %s)", valueToString, languageName, metaObjectToString);
+            }
+        } finally {
+            leave(languageContext, prev);
         }
 
     }
@@ -540,11 +536,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } else {
             return s;
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends RuntimeException> boolean rethrow(Throwable e) throws T {
-        throw (T) e;
     }
 
     @TruffleBoundary
@@ -670,23 +661,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
-    public String toString(Object receiver) {
+    public final String toString(Object receiver) {
         Object prev = enter(languageContext);
         try {
-            if (languageContext == null) {
-                return receiver.toString();
-            } else if (receiver instanceof PolyglotLanguageBindings) {
-                return languageContext.language.getName() + " Bindings";
-            } else if (receiver instanceof PolyglotBindings) {
-                return "Polyglot Bindings";
-            } else {
-                PolyglotLanguageContext displayLanguageContext = languageContext;
-                final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
-                if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
-                }
-                return LANGUAGE.toStringIfVisible(displayLanguageContext.env, receiver, false);
-            }
+            return toStringImpl(receiver);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
@@ -694,25 +672,58 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
+    protected String toStringImpl(Object receiver) throws AssertionError {
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+        Object result = lib.toDisplayString(receiver);
+        InteropLibrary resultLib = InteropLibrary.getFactory().getUncached(result);
+        try {
+            return resultLib.asString(result);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError("toDisplayString must be coercible to java.lang.String, but is not.");
+        }
+    }
+
     @Override
     public SourceSection getSourceLocation(Object receiver) {
         Object prev = enter(languageContext);
         try {
-            if (languageContext == null) {
+            InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+            com.oracle.truffle.api.source.SourceSection result = null;
+            if (lib.hasSourceLocation(receiver)) {
+                try {
+                    result = lib.getSourceLocation(receiver);
+                } catch (UnsupportedMessageException e) {
+                }
+            }
+            if (result == null) {
                 return null;
             }
-            final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
-            if (resolvedLanguage == null) {
-                return null;
-            }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
-            com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
-            return result != null ? EngineAccessor.EngineImpl.createSourceSectionStatic(resolvedLanguageContext, null, result) : null;
+            return EngineImpl.createSourceSectionStatic(EngineAccessor.SOURCE.getPolyglotSource(result.getSource()), result);
         } catch (final Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
             leave(languageContext, prev);
         }
+    }
+
+    @Override
+    public boolean isMetaObject(Object receiver) {
+        return false;
+    }
+
+    @Override
+    public boolean isMetaInstance(Object receiver, Object instance) {
+        throw unsupported(languageContext, receiver, "isMetaInstance(Object)", "isMetaObject()");
+    }
+
+    @Override
+    public String getMetaQualifiedName(Object receiver) {
+        throw unsupported(languageContext, receiver, "getMetaQualifiedName()", "isMetaObject()");
+    }
+
+    @Override
+    public String getMetaSimpleName(Object receiver) {
+        throw unsupported(languageContext, receiver, "getMetaSimpleName()", "isMetaObject()");
     }
 
     static CallTarget createTarget(InteropNode root) {
@@ -792,6 +803,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget asDuration;
         final CallTarget isException;
         final CallTarget throwException;
+        final CallTarget isMetaObject;
+        final CallTarget isMetaInstance;
+        final CallTarget getMetaQualifiedName;
+        final CallTarget getMetaSimpleName;
 
         final boolean isProxy;
         final boolean isHost;
@@ -844,6 +859,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.asDuration = createTarget(AsDurationNodeGen.create(this));
             this.isException = createTarget(IsExceptionNodeGen.create(this));
             this.throwException = createTarget(ThrowExceptionNodeGen.create(this));
+            this.isMetaObject = createTarget(IsMetaObjectNodeGen.create(this));
+            this.isMetaInstance = createTarget(IsMetaInstanceNodeGen.create(this));
+            this.getMetaQualifiedName = createTarget(GetMetaQualifiedNameNodeGen.create(this));
+            this.getMetaSimpleName = createTarget(GetMetaSimpleNameNodeGen.create(this));
         }
 
         abstract static class IsDateNode extends InteropNode {
@@ -1841,10 +1860,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     return toHostValue.execute(context, instantiables.instantiate(receiver, instantiateArguments));
                 } catch (UnsupportedTypeException e) {
                     invalidArgument.enter();
-                    throw invalidInstantiateArgumentType(context, receiver, args);
+                    throw invalidInstantiateArgumentType(context, receiver, instantiateArguments);
                 } catch (ArityException e) {
                     arity.enter();
-                    throw invalidInstantiateArity(context, receiver, args, e.getExpectedArity(), e.getActualArity());
+                    throw invalidInstantiateArity(context, receiver, instantiateArguments, e.getExpectedArity(), e.getActualArity());
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     return newInstanceUnsupported(context, receiver);
@@ -1988,6 +2007,119 @@ abstract class PolyglotValue extends AbstractValueImpl {
                             @Cached BranchProfile unsupported) {
                 try {
                     throw objects.throwException(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "throwException()", "isException()");
+                }
+            }
+        }
+
+        abstract static class IsMetaObjectNode extends InteropNode {
+
+            protected IsMetaObjectNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMetaObject";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isMetaObject(receiver);
+            }
+        }
+
+        abstract static class GetMetaQualifiedNameNode extends InteropNode {
+
+            protected GetMetaQualifiedNameNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMetaQualifiedName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @CachedLibrary(limit = "1") InteropLibrary toString,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toString.asString(objects.getMetaQualifiedName(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "throwException()", "isException()");
+                }
+            }
+        }
+
+        abstract static class GetMetaSimpleNameNode extends InteropNode {
+
+            protected GetMetaSimpleNameNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMetaSimpleName";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @CachedLibrary(limit = "1") InteropLibrary toString,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toString.asString(objects.getMetaSimpleName(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "throwException()", "isException()");
+                }
+            }
+        }
+
+        abstract static class IsMetaInstanceNode extends InteropNode {
+
+            protected IsMetaInstanceNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isMetaInstance";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToGuestValueNode toGuest,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.isMetaInstance(receiver, toGuest.execute(context, args[ARGUMENT_OFFSET]));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw unsupported(context, receiver, "throwException()", "isException()");
@@ -2141,6 +2273,23 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public <T> T as(Object receiver, TypeLiteral<T> targetType) {
             return as(receiver, targetType.getRawType());
+        }
+
+        @Override
+        public Value getMetaObjectImpl(Object receiver) {
+            return super.getMetaObjectImpl(getLanguageView(receiver));
+        }
+
+        @Override
+        protected String toStringImpl(Object receiver) throws AssertionError {
+            return super.toStringImpl(getLanguageView(receiver));
+        }
+
+        private Object getLanguageView(Object receiver) {
+            if (languageContext == null) {
+                return receiver;
+            }
+            return languageContext.getLanguageViewNoCheck(receiver);
         }
 
     }
@@ -2717,6 +2866,26 @@ abstract class PolyglotValue extends AbstractValueImpl {
             } finally {
                 leave(languageContext, c);
             }
+        }
+
+        @Override
+        public boolean isMetaObject(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isMetaObject, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isMetaInstance(Object receiver, Object instance) {
+            return (boolean) CALL_PROFILED.call(cache.isMetaInstance, languageContext, receiver, instance);
+        }
+
+        @Override
+        public String getMetaQualifiedName(Object receiver) {
+            return (String) CALL_PROFILED.call(cache.getMetaQualifiedName, languageContext, receiver);
+        }
+
+        @Override
+        public String getMetaSimpleName(Object receiver) {
+            return (String) CALL_PROFILED.call(cache.getMetaSimpleName, languageContext, receiver);
         }
 
         private final class MemberSet extends AbstractSet<String> {

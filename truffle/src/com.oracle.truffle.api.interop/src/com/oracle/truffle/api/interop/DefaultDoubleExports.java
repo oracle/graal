@@ -41,8 +41,11 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = Double.class)
 @SuppressWarnings("unused")
@@ -153,6 +156,46 @@ final class DefaultDoubleExports {
     @ExportMessage
     static double asDouble(Double receiver) {
         return receiver;
+    }
+
+    /*
+     * We export these messages explicitly because the legacy default is very costly. Remove with
+     * the complicated legacy implementation in InteropLibrary.
+     */
+    @ExportMessage
+    static boolean hasLanguage(Double receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Class<? extends TruffleLanguage<?>> getLanguage(Double receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasSourceLocation(Double receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static SourceSection getSourceLocation(Double receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasMetaObject(Double receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Object getMetaObject(Double receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object toDisplayString(Double receiver, boolean allowSideEffects) {
+        return receiver.toString();
     }
 
 }

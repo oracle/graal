@@ -158,10 +158,6 @@ public class LanguageCacheTest {
             return null;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     /**

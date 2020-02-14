@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -61,6 +60,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
@@ -71,6 +71,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
@@ -85,14 +86,13 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.ServiceLoader;
-import org.graalvm.polyglot.EnvironmentAccess;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1037,8 +1037,14 @@ public abstract class TruffleLanguage<C> {
      * @param object the object to check
      * @return <code>true</code> if this language can deal with such object in native way
      * @since 0.8 or earlier
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object)}
+     *             instead.
      */
-    protected abstract boolean isObjectOfLanguage(Object object);
+    @Deprecated
+    protected boolean isObjectOfLanguage(Object object) {
+        return false;
+    }
 
     /**
      * Find a hierarchy of local scopes enclosing the given {@link Node node}. Unless the node is in
@@ -1134,7 +1140,11 @@ public abstract class TruffleLanguage<C> {
      *            {@link com.oracle.truffle.api.interop.TruffleObject}
      * @return textual representation of the value in this language
      * @since 0.8 or earlier
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object)}
+     *             instead.
      */
+    @Deprecated
     protected String toString(C context, Object value) {
         return Objects.toString(value);
     }
@@ -1173,6 +1183,154 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Wraps the value to provide language specific information for primitive and foreign values.
+     * This method is only invoked for values that is not associated with the current
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a
+     * high-level this method is supposed to wrap the value and add augmentation to look like a
+     * value of the current language. A typical implementation of this method may do the following:
+     * <ul>
+     * <li>Return the current language as their associated
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
+     * <li>Provide a language specific
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display string}
+     * for primitive and foreign values.
+     * <li>Return a language specific
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) meta-object}
+     * primitive or foreign values.
+     * <li>Add members to the object that would be implicitly be available for all objects. For
+     * example, any JavaScript object is expected to have a prototype member. Foreign objects, even
+     * if do not have such a member, are interpreted as if they have.
+     * </ul>
+     * <p>
+     * The default implementation returns <code>null</code>. If <code>null</code> is returned then
+     * the default language view will be used. The default language view wraps the value and returns
+     * the current language as their associated language. In the default view all interop library
+     * messages will be forwarded to the delegate value, except the messages for
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) meta-objects} and
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
+     * strings}.
+     * <p>
+     *
+     * This following example shows a simplified language view. For a full implementation including
+     * an example of meta-objects can be found in the Truffle examples language "SimpleLanguage".
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+     * final class ExampleLanguageView implements TruffleObject {
+     *
+     *     protected final Object delegate;
+     *
+     *     ExampleLanguageView(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasLanguage() {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Class<? extends TruffleLanguage<?>> getLanguage() {
+     *         return MyLanguage.class;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object toDisplayString(boolean allowSideEffects,
+     *                     &#64;CachedLibrary("this.delegate") InteropLibrary dLib) {
+     *         try {
+     *             if (dLib.isString(this.delegate)) {
+     *                 return dLib.asString(this.delegate);
+     *             } else if (dLib.isBoolean(this.delegate)) {
+     *                 return dLib.asBoolean(this.delegate) ? "TRUE" : "FALSE";
+     *             } else if (dLib.fitsInLong(this.delegate)) {
+     *                 return longToString(dLib.asLong(this.delegate));
+     *             } else {
+     *                 // full list truncated for this language
+     *                 return "Unsupported value";
+     *             }
+     *         } catch (UnsupportedMessageException e) {
+     *             CompilerDirectives.transferToInterpreter();
+     *             throw new AssertionError(e);
+     *         }
+     *     }
+     *
+     *     &#64;TruffleBoundary
+     *     private static String longToString(long value) {
+     *         return String.valueOf(value);
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary dLib) {
+     *         return dLib.isString(this.delegate)//
+     *                         || dLib.fitsInLong(this.delegate)//
+     *                         || dLib.isBoolean(this.delegate);
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary dLib)
+     *                     throws UnsupportedMessageException {
+     *         if (dLib.isString(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_STRING;
+     *         } else if (dLib.isBoolean(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_LONG;
+     *         } else if (dLib.fitsInLong(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_BOOLEAN;
+     *         } else {
+     *             // no associable meta-object
+     *             throw UnsupportedMessageException.create();
+     *         }
+     *     }
+     * }
+     *
+     * </pre>
+     *
+     * @param context the current context.
+     * @param value the value
+     * @since 20.1
+     */
+    protected Object getLanguageView(C context, Object value) {
+        return null;
+    }
+
+    /**
+     * Wraps the value to filter or add scoping specific information for values associated with the
+     * current language and location in the code. Allows the language to augment the perspective
+     * tools have on values depending on location and frame. This may be useful to apply local
+     * specific visibility rules. By default this method does return the passed value, not applying
+     * any scope information to the value. If a language does not implement any scoping and/or has
+     * not concept of visibility then this method typically can stay without an implementation. A
+     * typical implementation of this method may do the following:
+     * <ul>
+     * <li>Apply visiblity and scoping rules to the value hiding or removing members from the
+     * object.
+     * <li>Add or remove implicit members that are only available within this source location.
+     * </ul>
+     * <p>
+     * This method is only invoked with values that are associated with the current
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. For
+     * values without language the {@link #getLanguageView(Object, Object) language view} is
+     * requested first before the scoped view is requested. If this method needs an implementation
+     * then {@link #getLanguageView(Object, Object)} should be implemented as well.
+     * <p>
+     * Scoped views may be implemented in a very similar way to
+     * {@link #getLanguageView(Object, Object) language views}. Please refer to the examples from
+     * this method.
+     *
+     * @param context the current context.
+     * @param location the current source location. Guaranteed to be a node from a {@link RootNode}
+     *            associated with this language. Never <code>null</code>.
+     * @param frame the current active frame. Guaranteed to be a frame from a {@link RootNode}
+     *            associated with this language. Never <code>null</code>.
+     * @param value the value to provide scope information for. Never <code>null</code>. Always
+     *            associated with this language.
+     * @since 20.1
+     */
+    @SuppressWarnings("unused")
+    protected Object getScopedView(C context, Node location, Frame frame, Object value) {
+        return value;
+    }
+
+    /**
      * Find a meta-object of a value, if any. The meta-object represents a description of the
      * object, reveals it's kind and it's features. Some information that a meta-object might define
      * includes the base object's type, interface, class, methods, attributes, etc.
@@ -1197,7 +1355,11 @@ public abstract class TruffleLanguage<C> {
      * @param value a value to find the meta-object of
      * @return the meta-object, or <code>null</code>
      * @since 0.22
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object)}
+     *             instead.
      */
+    @Deprecated
     protected Object findMetaObject(C context, Object value) {
         return null;
     }
@@ -1211,7 +1373,11 @@ public abstract class TruffleLanguage<C> {
      * @param value a value to get the source location for
      * @return a source location of the object, or <code>null</code>
      * @since 0.22
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getSourceLocation(Object)}
+     *             instead.
      */
+    @Deprecated
     protected SourceSection findSourceLocation(C context, Object value) {
         return null;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,65 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.interop;
+package com.oracle.truffle.api.instrumentation.test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+
+import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-@ExportLibrary(value = InteropLibrary.class, receiverType = Character.class)
-@SuppressWarnings("unused")
-final class DefaultCharacterExports {
+public class InstrumentAPITest extends AbstractPolyglotTest {
 
-    @ExportMessage
-    static boolean isString(Character receiver) {
-        return true;
+    @Test
+    public void testGetLanguageInfo() throws UnsupportedMessageException {
+        setupEnv();
+
+        Object hostObject = languageEnv.lookupHostSymbol(InstrumentAPITest.class.getName());
+        Class<? extends TruffleLanguage<?>> lang = INTEROP.getLanguage(hostObject);
+        LanguageInfo host = instrumentEnv.getLanguageInfo(lang);
+        assertEquals("host", host.getId());
+
+        assertFails(() -> instrumentEnv.getLanguageInfo(InvalidLanguageClass.class), IllegalArgumentException.class);
+
+        LanguageInfo info = instrumentEnv.getLanguageInfo(ProxyLanguage.class);
+        assertEquals(ProxyLanguage.ID, info.getId());
+
+        assertSame(instrumentEnv.getLanguages().get(ProxyLanguage.ID), info);
     }
 
-    @ExportMessage
-    static String asString(Character receiver) {
-        return receiver.toString();
-    }
+    static class InvalidLanguageClass extends TruffleLanguage<Env> {
 
-    /*
-     * We export these messages explicitly because the legacy default is very costly. Remove with
-     * the complicated legacy implementation in InteropLibrary.
-     */
-    @ExportMessage
-    static boolean hasLanguage(Character receiver) {
-        return false;
-    }
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
 
-    @ExportMessage
-    static Class<? extends TruffleLanguage<?>> getLanguage(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasSourceLocation(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static SourceSection getSourceLocation(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static boolean hasMetaObject(Character receiver) {
-        return false;
-    }
-
-    @ExportMessage
-    static Object getMetaObject(Character receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    static Object toDisplayString(Character receiver, boolean allowSideEffects) {
-        return receiver.toString();
     }
 }

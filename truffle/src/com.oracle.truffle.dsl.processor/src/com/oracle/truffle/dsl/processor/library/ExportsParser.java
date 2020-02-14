@@ -320,7 +320,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 }
                             }
                         } else {
-                            isAbstract = true;
+                            isAbstract = !exportLib.hasExportDelegation();
                         }
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
@@ -328,7 +328,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
             }
-            if (!missingAbstractMessage.isEmpty() && !exportLib.hasExportDelegation()) {
+            if (!missingAbstractMessage.isEmpty()) {
                 StringBuilder msg = new StringBuilder(
                                 String.format("The following message(s) of library %s are abstract and must be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));

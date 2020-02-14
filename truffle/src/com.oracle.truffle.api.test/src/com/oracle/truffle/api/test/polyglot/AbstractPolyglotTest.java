@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -67,6 +68,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see #setupEnv(Context, ProxyLanguage, ProxyInstrument)
  */
 public abstract class AbstractPolyglotTest {
+
+    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     protected Context context;
     protected TruffleLanguage.Env languageEnv;

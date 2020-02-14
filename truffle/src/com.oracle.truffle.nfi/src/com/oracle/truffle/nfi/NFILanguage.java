@@ -79,11 +79,6 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof NFILibrary || object instanceof NFISymbol;
-    }
-
-    @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
     }

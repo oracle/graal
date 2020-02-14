@@ -56,6 +56,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJEC
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.META;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -311,6 +312,12 @@ public class ValueAssert {
                     } catch (UnsupportedOperationException unsupported) {
                         throw new AssertionError(unsupported);
                     }
+                    break;
+                case META:
+                    assertTrue(value.isMetaObject());
+                    assertNotNull(value.getMetaQualifiedName());
+                    assertNotNull(value.getMetaSimpleName());
+                    value.isMetaInstance("");
                     break;
 
                 default:
@@ -586,6 +593,12 @@ public class ValueAssert {
                 case EXCEPTION:
                     assertFalse(value.isException());
                     assertFails(() -> value.throwException(), UnsupportedOperationException.class);
+                    break;
+                case META:
+                    assertFalse(value.isMetaObject());
+                    assertFails(() -> value.getMetaQualifiedName(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getMetaSimpleName(), UnsupportedOperationException.class);
+                    assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
                     break;
                 default:
                     throw new AssertionError();
@@ -864,6 +877,9 @@ public class ValueAssert {
         if (value.isException()) {
             valueTypes.add(EXCEPTION);
         }
+        if (value.isMetaObject()) {
+            valueTypes.add(META);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -885,6 +901,7 @@ public class ValueAssert {
         TIMEZONE,
         DURATION,
         EXCEPTION,
+        META,
     }
 
 }

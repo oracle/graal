@@ -95,9 +95,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.ExportMessage.Ignore;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -199,7 +201,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
-    private final FunctionMetaObject functionMetaObject = new FunctionMetaObject();
 
     public InstrumentationTestLanguage() {
     }
@@ -1296,12 +1297,38 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
-    private static class AllocatedObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    static class AllocatedObject implements TruffleObject {
 
-        final String metaObject;
+        final Object metaObject;
 
         AllocatedObject(String name) {
-            this.metaObject = name;
+            this.metaObject = new InstrumentationMetaObject(this, name);
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return "AllocatedObject";
+        }
+
+        @ExportMessage
+        boolean hasMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMetaObject() {
+            return metaObject;
         }
 
     }
@@ -1803,28 +1830,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof Function || object == functionMetaObject;
-    }
-
-    @Override
-    protected Object findMetaObject(InstrumentContext context, Object obj) {
-        if (obj instanceof Integer || obj instanceof Long) {
-            return "Integer";
-        }
-        if (obj instanceof Boolean) {
-            return "Boolean";
-        }
-        if (obj instanceof AllocatedObject) {
-            return ((AllocatedObject) obj).metaObject;
-        }
-        if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
-            return "Infinity";
-        }
-        if (obj instanceof Function) {
-            return functionMetaObject;
-        }
-        return null;
+    protected Object getLanguageView(InstrumentContext context, Object value) {
+        return new InstrumentationLanguageView(value);
     }
 
     @Override
@@ -1861,36 +1868,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         };
     }
 
-    @Override
-    protected SourceSection findSourceLocation(InstrumentContext context, Object obj) {
-        if (obj instanceof Integer || obj instanceof Long) {
-            return Source.newBuilder(ID, "source integer", "integer").build().createSection(1);
-        }
-        if (obj instanceof Boolean) {
-            return Source.newBuilder(ID, "source boolean", "boolean").build().createSection(1);
-        }
-        if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
-            return Source.newBuilder(ID, "source infinity", "double").build().createSection(1);
-        }
-        if (obj instanceof Function) {
-            return ((RootCallTarget) ((Function) obj).ct).getRootNode().getSourceSection();
-        }
-        return null;
-    }
-
-    @Override
-    protected String toString(InstrumentContext context, Object value) {
-        if (value == functionMetaObject) {
-            return "Function";
-        } else {
-            return Objects.toString(value);
-        }
-    }
-
     public static int getRootSourceSectionQueryCount() {
         return rootSourceSectionQueryCount;
     }
 
+    @SuppressWarnings("static-method")
     @ExportLibrary(InteropLibrary.class)
     static final class Function implements TruffleObject {
 
@@ -1907,13 +1889,53 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object execute(Object[] arguments) {
             return ct.call(arguments);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean hasSourceLocation() {
+            return ((RootCallTarget) ct).getRootNode().getSourceSection() != null;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        SourceSection getSourceLocation() {
+            return ((RootCallTarget) ct).getRootNode().getSourceSection();
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return "Function:" + ct;
+        }
+
+        @ExportMessage
+        boolean hasMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMetaObject() {
+            return new InstrumentationMetaObject(this, "Function");
         }
 
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
     public static final class Null implements TruffleObject {
 
         public static final Null INSTANCE = new Null();
@@ -1934,6 +1956,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportMessage
         boolean isNull() {
             return true;
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return "Null";
         }
     }
 
@@ -1981,6 +2019,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return findFunction(key);
         }
 
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return "Functions:" + functions;
+        }
+
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -2017,9 +2071,154 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 throw InvalidArrayIndexException.create(index);
             }
         }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return "Keys" + Arrays.toString(keys);
+        }
+
     }
 
-    static class FunctionMetaObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class InstrumentationMetaObject implements TruffleObject {
+
+        private final Object original;
+        private final String name;
+
+        InstrumentationMetaObject(Object original, String name) {
+            this.original = original;
+            this.name = name;
+        }
+
+        @ExportMessage
+        boolean isMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        Object getMetaQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMetaSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMetaInstance(Object instance) {
+            return instance.equals(original);
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return name;
+        }
+
+    }
+
+    /**
+     * Default implementation for the instrumentation view in {@link TruffleLanguage}. Should be
+     * removed with deprecated methods in {@link TruffleLanguage}.
+     */
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+    @ExportLibrary(value = ReflectionLibrary.class, delegateTo = "delegate")
+    @SuppressWarnings("static-method")
+    static final class InstrumentationLanguageView implements TruffleObject {
+
+        protected final Object delegate;
+
+        InstrumentationLanguageView(Object delegate) {
+            this.delegate = delegate;
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return InstrumentationTestLanguage.class;
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            if (delegate instanceof Integer || delegate instanceof Long) {
+                return true;
+            } else if (delegate instanceof Boolean) {
+                return true;
+            } else if (delegate != null && delegate.equals(Double.POSITIVE_INFINITY)) {
+                return true;
+            }
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
+            if (delegate instanceof Integer || delegate instanceof Long) {
+                return Source.newBuilder(ID, "source integer", "integer").build().createSection(1);
+            } else if (delegate instanceof Boolean) {
+                return Source.newBuilder(ID, "source boolean", "boolean").build().createSection(1);
+            } else if (delegate != null && delegate.equals(Double.POSITIVE_INFINITY)) {
+                return Source.newBuilder(ID, "source infinity", "double").build().createSection(1);
+            }
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+            return Objects.toString(delegate);
+        }
+
+        @ExportMessage
+        boolean hasMetaObject() {
+            return true;
+        }
+
+        private String getTypeName() {
+            if (delegate instanceof Integer || delegate instanceof Long) {
+                return "Integer";
+            }
+            if (delegate instanceof Boolean) {
+                return "Boolean";
+            }
+            if (delegate.equals(Double.POSITIVE_INFINITY)) {
+                return "Infinity";
+            }
+            return null;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMetaObject() {
+            return new InstrumentationMetaObject(this, getTypeName());
+        }
 
     }
 
