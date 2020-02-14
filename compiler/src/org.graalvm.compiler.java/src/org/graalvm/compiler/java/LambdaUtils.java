@@ -29,22 +29,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -64,12 +59,31 @@ public final class LambdaUtils {
     private LambdaUtils() {
     }
 
+    /**
+     * Creates a stable name for a lambda by hashing all the invokes in the lambda. Lambda class
+     * names are typically created based on an increasing atomic counter (e.g.
+     * {@code Test$$Lambda$23}). A stable name is created by replacing the substring after
+     * {@code "$$Lambda$"} with a hash of the method descriptor for each method invoked by the
+     * lambda.
+     *
+     * @param cip plugin to
+     *            {@link ClassInitializationPlugin#loadReferencedType(org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext, jdk.vm.ci.meta.ConstantPool, int, int)
+     *            load} new types
+     * @param providers providers to use when processing the lambda code
+     * @param lambdaType the lambda type to analyze
+     * @param options options to use when analyzing the lamda code
+     * @param debug debug context to nest the analysis into
+     * @param ctx context to use for the
+     *            {@link DebugContext#scope(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
+     * @return stable name for the lambda class
+     */
     @SuppressWarnings("try")
-    public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType key, OptionValues options, DebugContext debug, Object ctx) throws RuntimeException {
-        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(key.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
+    public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx)
+                    throws RuntimeException {
+        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         assert lambdaProxyMethods.length == 1 : "There must be only one method calling the target.";
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
-        try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, key, ctx)) {
+        try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, lambdaType, ctx)) {
             GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(cip));
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
@@ -79,14 +93,13 @@ public final class LambdaUtils {
         Optional<Invoke> lambdaTargetInvokeOption = StreamSupport.stream(graph.getInvokes().spliterator(), false).findFirst();
         if (!lambdaTargetInvokeOption.isPresent()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Lambda without a target invoke: ").append(key.toClassName());
-            graph.getDebug().forceDump(graph, sb.toString());
-            for (ResolvedJavaMethod m : key.getDeclaredMethods()) {
+            sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
+            for (ResolvedJavaMethod m : lambdaType.getDeclaredMethods()) {
                 sb.append("\n  Method: ").append(m);
             }
             throw new JVMCIError(sb.toString());
         }
-        String lambdaTargetName = LambdaUtils.createStableLambdaName(key, lambdaTargetInvokeOption.get().getTargetMethod());
+        String lambdaTargetName = LambdaUtils.createStableLambdaName(lambdaType, lambdaTargetInvokeOption.get().getTargetMethod());
         return lambdaTargetName;
     }
 

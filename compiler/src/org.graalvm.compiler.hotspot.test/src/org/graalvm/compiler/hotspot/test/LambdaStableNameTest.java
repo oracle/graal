@@ -21,7 +21,9 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */package org.graalvm.compiler.hotspot.test;
+ */
+
+package org.graalvm.compiler.hotspot.test;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -64,7 +66,7 @@ public class LambdaStableNameTest {
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
     }
 
-    private void assertLambdaName(String name) {
+    private static void assertLambdaName(String name) {
         String expName = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
                         "$$Lambda$";
         if (!name.startsWith(expName)) {
@@ -77,6 +79,6 @@ public class LambdaStableNameTest {
         String hash = name.substring(last + 1, name.length() - 1);
 
         BigInteger aValue = new BigInteger(hash, 16);
-        assertNotNull("Hash can be parsed as a hex number: " + hash);
+        assertNotNull("Hash can be parsed as a hex number: " + hash, aValue);
     }
 }
