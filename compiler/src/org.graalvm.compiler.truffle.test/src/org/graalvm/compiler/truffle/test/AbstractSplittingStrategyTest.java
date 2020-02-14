@@ -202,10 +202,17 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         public abstract Object execute(VirtualFrame frame);
     }
 
-    static class ReturnsArgumentNode extends SplittingTestNode {
+    static class ReturnsFirstArgumentNode extends SplittingTestNode {
         @Override
         public Object execute(VirtualFrame frame) {
             return frame.getArguments()[0];
+        }
+    }
+
+    static class ReturnsSecondArgumentNode extends SplittingTestNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[1];
         }
     }
 
