@@ -29,7 +29,7 @@ package com.oracle.svm.jni;
 import java.lang.reflect.Array;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
@@ -106,10 +106,10 @@ public final class JNIGeneratedMethodSupport {
         }
     }
 
-    static PointerBase pinArrayAndGetAddress(Object array, CIntPointer isCopy) throws Throwable {
+    static PointerBase pinArrayAndGetAddress(Object array, CCharPointer isCopy) throws Throwable {
         if (array.getClass().isArray()) {
             if (isCopy.isNonNull()) {
-                isCopy.write(0);
+                isCopy.write((byte) 0);
             }
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(array);
         }
