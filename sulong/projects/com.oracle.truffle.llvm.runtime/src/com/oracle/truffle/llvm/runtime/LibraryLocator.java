@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -99,6 +99,16 @@ public abstract class LibraryLocator {
         }
     }
 
+    public static void traceStaticInits(LLVMContext context, Object prefix, Object module) {
+        traceStaticInits(context, prefix, module, "");
+    }
+
+    public static void traceStaticInits(LLVMContext context, Object prefix, Object module, Object details) {
+        if (context != null && context.loaderTraceStream() != null) {
+            traceLoader(context, "calling %s: %s %s\n", prefix, module, details);
+        }
+    }
+
     @CompilerDirectives.TruffleBoundary
     private static void traceLoader(LLVMContext context, String str) {
         PrintStream stream = context.loaderTraceStream();
@@ -118,6 +128,13 @@ public abstract class LibraryLocator {
         PrintStream stream = context.loaderTraceStream();
         printPrefix(stream, context);
         stream.printf(format, arg0, arg1);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1, Object arg2) {
+        PrintStream stream = context.loaderTraceStream();
+        printPrefix(stream, context);
+        stream.printf(format, arg0, arg1, arg2);
     }
 
     private static void printPrefix(PrintStream stream, LLVMContext context) {
