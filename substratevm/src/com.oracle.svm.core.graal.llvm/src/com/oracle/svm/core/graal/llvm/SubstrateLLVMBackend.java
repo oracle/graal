@@ -30,12 +30,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
-import jdk.vm.ci.code.site.ConstantReference;
-import jdk.vm.ci.code.site.DataPatch;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -54,18 +48,23 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering;
+import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.VMConstant;
 
 public class SubstrateLLVMBackend extends SubstrateBackend {
     private static final TimerKey EmitLLVM = DebugContext.timer("EmitLLVM").doc("Time spent generating LLVM from HIR.");
@@ -85,36 +84,35 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
-        LLVMContextRef context = LLVM.LLVMContextCreate();
-        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, context, 0);
+        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, 0);
         LLVMIRBuilder builder = generator.getBuilder();
 
-        builder.addMainFunction(generator.getLLVMFunctionType(method, true));
-        builder.setAttribute(builder.getMainFunction(), LLVM.LLVMAttributeFunctionIndex, "naked");
+        generator.addMainFunction(method);
+        builder.setFunctionAttribute("naked");
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
         builder.positionAtEnd(block);
 
-        long startPatchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
+        long startPatchpointId = LLVMGenerator.nextPatchpointId.getAndIncrement();
         builder.buildStackmap(builder.constantLong(startPatchpointId));
 
         LLVMValueRef jumpAddressAddress;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            LLVMValueRef thread = builder.buildInlineGetRegister(threadArg.getRegister().name);
+            LLVMValueRef thread = generator.buildInlineGetRegister(threadArg.getRegister().name);
             LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
             LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+            LLVMValueRef methodId = generator.buildInlineGetRegister(methodIdArg.getRegister().name);
             LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId, builder.longType()));
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
-            LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+            LLVMValueRef methodBase = generator.buildInlineGetRegister(methodIdArg.getRegister().name);
             jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
         }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
-        builder.buildInlineJump(jumpAddress);
+        generator.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 
-        byte[] bitcode = generator.getBuilder().getBitcode();
+        byte[] bitcode = generator.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
         result.setMethods(method, Collections.emptySet());
         result.recordInfopoint(NumUtil.safeToInt(startPatchpointId), null, InfopointReason.METHOD_START);
@@ -148,13 +146,12 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
             assert !graph.hasValueProxies();
 
             ResolvedJavaMethod method = graph.method();
-            LLVMContextRef context = LLVM.LLVMContextCreate();
-            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, context, IncludeLLVMDebugInfo.getValue());
+            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, IncludeLLVMDebugInfo.getValue());
             NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
 
             /* LLVM generation */
             generate(nodeBuilder, graph);
-            byte[] bitcode = nodeBuilder.getBitcode();
+            byte[] bitcode = generator.getBitcode();
             result.setTargetCode(bitcode, bitcode.length);
 
             try (DebugContext.Scope s = debug.scope("LIRStages", nodeBuilder, null, null)) {

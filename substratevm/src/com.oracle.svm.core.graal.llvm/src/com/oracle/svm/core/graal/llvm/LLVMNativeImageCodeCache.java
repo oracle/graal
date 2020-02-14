@@ -29,15 +29,12 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
-import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +43,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
-import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -68,12 +63,12 @@ import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMStackMapInfo;
 import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
+import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -212,7 +207,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
          * cause incorrect queries at runtime.
          */
         textSymbolOffsets.forEach((symbol, offset) -> {
-            if (symbol.startsWith(SYMBOL_PREFIX + LLVMUtils.JNI_WRAPPER_PREFIX)) {
+            if (symbol.startsWith(SYMBOL_PREFIX + LLVMGenerator.JNI_WRAPPER_BASE_NAME)) {
                 sortedMethodOffsets.remove(offset);
             }
         });
@@ -485,6 +480,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("opt", basePath, args);
         } catch (RunFailureException e) {
+            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: opt " + String.join(" ", args));
         }
@@ -505,6 +501,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("llc", basePath, args);
         } catch (RunFailureException e) {
+            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: llc " + String.join(" ", args));
         }
@@ -520,6 +517,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("llvm-link", basePath, args);
         } catch (RunFailureException e) {
+            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }
@@ -536,6 +534,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runCommand(basePath, cmd);
         } catch (RunFailureException e) {
+            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }

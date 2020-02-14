@@ -28,21 +28,14 @@ import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import com.oracle.svm.core.graal.llvm.LLVMIRBuilder;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.home.HomeFinder;
 
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
@@ -56,73 +49,15 @@ public class LLVMUtils {
     public static final int FALSE = 0;
     public static final int TRUE = 1;
     public static final Pointer NULL = null;
-    public static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
-    public static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
-    public static final int COMPRESSED_POINTER_ADDRESS_SPACE = 2;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     public static final String ALWAYS_INLINE = "alwaysinline";
-    public static final String COMPRESS_FUNCTION_NAME = "__llvm_compress";
-    public static final String UNCOMPRESS_FUNCTION_NAME = "__llvm_uncompress";
-    public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
-    public static final String GC_REGISTER_COMPRESSED_FUNCTION_NAME = "__llvm_gc_register_compressed";
-    public static final String ATOMIC_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_object_xchg";
-    public static final String ATOMIC_COMPRESSED_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_compressed_object_xchg";
-    public static final String LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_object_from_untracked_pointer";
-    public static final String LOAD_COMPRESSED_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_compressed_object_from_untracked_pointer";
     public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
-    public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
     public static final class DebugLevel {
         public static final int NONE = 0;
         public static final int FUNCTION = 1;
         public static final int BLOCK = 2;
         public static final int NODE = 3;
-    }
-
-    public static int getLLVMIntCond(Condition cond) {
-        switch (cond) {
-            case EQ:
-                return LLVM.LLVMIntEQ;
-            case NE:
-                return LLVM.LLVMIntNE;
-            case LT:
-                return LLVM.LLVMIntSLT;
-            case LE:
-                return LLVM.LLVMIntSLE;
-            case GT:
-                return LLVM.LLVMIntSGT;
-            case GE:
-                return LLVM.LLVMIntSGE;
-            case AE:
-                return LLVM.LLVMIntUGE;
-            case BE:
-                return LLVM.LLVMIntULE;
-            case AT:
-                return LLVM.LLVMIntUGT;
-            case BT:
-                return LLVM.LLVMIntULT;
-            default:
-                throw shouldNotReachHere("invalid condition");
-        }
-    }
-
-    public static int getLLVMRealCond(Condition cond, boolean unordered) {
-        switch (cond) {
-            case EQ:
-                return (unordered) ? LLVM.LLVMRealUEQ : LLVM.LLVMRealOEQ;
-            case NE:
-                return (unordered) ? LLVM.LLVMRealUNE : LLVM.LLVMRealONE;
-            case LT:
-                return (unordered) ? LLVM.LLVMRealULT : LLVM.LLVMRealOLT;
-            case LE:
-                return (unordered) ? LLVM.LLVMRealULE : LLVM.LLVMRealOLE;
-            case GT:
-                return (unordered) ? LLVM.LLVMRealUGT : LLVM.LLVMRealOGT;
-            case GE:
-                return (unordered) ? LLVM.LLVMRealUGE : LLVM.LLVMRealOGE;
-            default:
-                throw shouldNotReachHere("invalid condition");
-        }
     }
 
     public interface LLVMValueWrapper {
@@ -227,24 +162,24 @@ public class LLVMUtils {
     }
 
     public static class LLVMKindTool implements LIRKindTool {
-        private LLVMContextRef context;
+        private LLVMIRBuilder builder;
 
-        public LLVMKindTool(LLVMContextRef context) {
-            this.context = context;
+        public LLVMKindTool(LLVMIRBuilder builder) {
+            this.builder = builder;
         }
 
         @Override
         public LIRKind getIntegerKind(int bits) {
-            return LIRKind.value(new LLVMKind(LLVM.LLVMIntTypeInContext(context, bits)));
+            return LIRKind.value(new LLVMKind(builder.integerType(bits)));
         }
 
         @Override
         public LIRKind getFloatingKind(int bits) {
             switch (bits) {
                 case 32:
-                    return LIRKind.value(new LLVMKind(LLVM.LLVMFloatTypeInContext(context)));
+                    return LIRKind.value(new LLVMKind(builder.floatType()));
                 case 64:
-                    return LIRKind.value(new LLVMKind(LLVM.LLVMDoubleTypeInContext(context)));
+                    return LIRKind.value(new LLVMKind(builder.doubleType()));
                 default:
                     throw shouldNotReachHere("invalid float type");
             }
@@ -252,17 +187,17 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getObjectKind() {
-            return LIRKind.reference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), TRACKED_POINTER_ADDRESS_SPACE)));
+            return LIRKind.reference(new LLVMKind(builder.objectType(false)));
         }
 
         @Override
         public LIRKind getWordKind() {
-            return LIRKind.value(new LLVMKind(LLVM.LLVMInt64TypeInContext(context)));
+            return LIRKind.value(new LLVMKind(builder.longType()));
         }
 
         @Override
         public LIRKind getNarrowOopKind() {
-            return LIRKind.compressedReference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), COMPRESSED_POINTER_ADDRESS_SPACE)));
+            return LIRKind.compressedReference(new LLVMKind(builder.objectType(true)));
         }
 
         @Override
@@ -279,10 +214,10 @@ public class LLVMUtils {
         }
 
         static LIRKind toLIRKind(LLVMTypeRef type) {
-            if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind) {
-                if (LLVM.LLVMGetPointerAddressSpace(type) == TRACKED_POINTER_ADDRESS_SPACE) {
+            if (LLVMIRBuilder.isPointerType(type)) {
+                if (LLVMIRBuilder.isTrackedPointerType(type)) {
                     return LIRKind.reference(new LLVMKind(type));
-                } else if (LLVM.LLVMGetPointerAddressSpace(type) == COMPRESSED_POINTER_ADDRESS_SPACE) {
+                } else if (LLVMIRBuilder.isCompressedPointerType(type)) {
                     return LIRKind.compressedReference(new LLVMKind(type));
                 }
             }
