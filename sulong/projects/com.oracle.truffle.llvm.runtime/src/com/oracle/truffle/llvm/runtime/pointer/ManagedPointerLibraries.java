@@ -97,4 +97,5 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
                     @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
         return natives.toNativePointer(receiver.object).increment(receiver.getOffset());
     }
+
 }

@@ -114,4 +114,5 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver) {
         return receiver;
     }
+
 }

@@ -80,7 +80,7 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode implements Mem
             try {
                 Object member = library.readMember(baseMember, fieldName);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
-                Object metaObj = ldv.getMetaObject();
+                Object metaObj = ldv.resolveMetaObject();
                 DebugExprType type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
                 return Pair.create(member, type);
             } catch (UnsupportedMessageException e1) {

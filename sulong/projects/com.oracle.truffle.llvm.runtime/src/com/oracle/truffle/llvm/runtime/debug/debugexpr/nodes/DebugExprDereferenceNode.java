@@ -75,7 +75,7 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
         }
         try {
             LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) executedPointerNode;
-            Object metaObj = llvmDebuggerValue.getMetaObject();
+            Object metaObj = llvmDebuggerValue.resolveMetaObject();
             DebugExprType pointerType = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
             if (!pointerType.isPointer()) {
                 throw DebugExprException.create(this, llvmDebuggerValue + " is no pointer");

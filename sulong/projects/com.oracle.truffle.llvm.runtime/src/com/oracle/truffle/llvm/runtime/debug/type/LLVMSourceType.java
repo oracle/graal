@@ -29,14 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.type;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.ExportMessage.Ignore;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 
-import java.util.function.Supplier;
-
+@ExportLibrary(InteropLibrary.class)
 public abstract class LLVMSourceType extends LLVMDebuggerValue {
 
     public static final LLVMSourceType UNSUPPORTED = new LLVMSourceType(() -> "<unsupported>", 0, 0, 0, null) {
@@ -80,6 +87,37 @@ public abstract class LLVMSourceType extends LLVMDebuggerValue {
         this(UNKNOWN::getName, size, align, offset, location);
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isMetaObject() {
+        return true;
+    }
+
+    @ExportMessage(name = "getMetaSimpleName")
+    @ExportMessage(name = "getMetaQualifiedName")
+    final Object getMetaSimpleName() {
+        return getName();
+    }
+
+    @ExportMessage
+    final boolean isMetaInstance(Object instance) {
+        if (instance instanceof LLVMDebugObject) {
+            return ((LLVMDebugObject) instance).getType() == this;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    final boolean hasSourceLocation() {
+        return location != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final SourceSection getSourceLocation() {
+        return location.getSourceSection();
+    }
+
     @TruffleBoundary
     public String getName() {
         return nameSupplier.get();
@@ -108,6 +146,7 @@ public abstract class LLVMSourceType extends LLVMDebuggerValue {
         return this;
     }
 
+    @Ignore
     public boolean isPointer() {
         return false;
     }

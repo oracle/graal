@@ -121,8 +121,4 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
 }

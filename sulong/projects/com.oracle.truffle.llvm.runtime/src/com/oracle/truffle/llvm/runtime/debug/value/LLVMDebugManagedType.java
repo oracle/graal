@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,69 +27,55 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.interop;
+package com.oracle.truffle.llvm.runtime.debug.value;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
-@ValueType
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMNegatedForeignObject extends LLVMInternalTruffleObject {
+public final class LLVMDebugManagedType extends LLVMDebuggerValue {
 
-    final Object foreign;
+    private final Object type;
 
-    public static Object negate(Object obj) {
-        if (obj instanceof LLVMNegatedForeignObject) {
-            return ((LLVMNegatedForeignObject) obj).getForeign();
-        } else {
-            return new LLVMNegatedForeignObject(obj);
-        }
+    LLVMDebugManagedType(Object type) {
+        this.type = type;
     }
 
-    private LLVMNegatedForeignObject(Object foreign) {
-        this.foreign = foreign;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMetaObject() {
+        return true;
     }
 
-    public Object getForeign() {
-        return foreign;
+    @ExportMessage(name = "getMetaSimpleName")
+    @ExportMessage(name = "getMetaQualifiedName")
+    Object getMetaSimpleName() {
+        return String.valueOf(type);
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof LLVMNegatedForeignObject) {
-            LLVMNegatedForeignObject other = (LLVMNegatedForeignObject) obj;
-            return foreign.equals(other.foreign);
+    @ExportMessage
+    boolean isMetaInstance(Object instance) {
+        if (instance instanceof LLVMDebugManagedValue) {
+            return ((LLVMDebugManagedValue) instance).llvmType == type;
         }
         return false;
     }
 
     @Override
-    public int hashCode() {
-        return -foreign.hashCode();
+    protected int getElementCountForDebugger() {
+        return 0;
     }
 
-    @ExportMessage
-    boolean isNull(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        return interop.isNull(getForeign());
+    @Override
+    protected String[] getKeysForDebugger() {
+        return new String[0];
     }
 
-    @ExportMessage
-    boolean isPointer(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        return interop.isPointer(getForeign());
-    }
-
-    @ExportMessage
-    long asPointer(@CachedLibrary("this.foreign") InteropLibrary interop) throws UnsupportedMessageException {
-        return -interop.asPointer(getForeign());
-    }
-
-    @ExportMessage
-    void toNative(@CachedLibrary("this.foreign") InteropLibrary interop) {
-        interop.toNative(getForeign());
+    @Override
+    protected Object getElementForDebugger(String key) {
+        return null;
     }
 
 }
