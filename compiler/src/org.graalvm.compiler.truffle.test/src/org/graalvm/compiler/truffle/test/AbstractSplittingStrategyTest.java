@@ -25,16 +25,21 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import java.lang.reflect.Field;
@@ -44,6 +49,53 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
     protected SplitCountingListener listener;
+
+    protected static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+    }
+
+    protected static void testDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target needs split without reporting", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target does not need split but is split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
+    }
+
+    protected static Boolean getNeedsSplit(OptimizedCallTarget callTarget) {
+        try {
+            return (Boolean) reflectivelyGetField(callTarget, "needsSplit");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Assert.assertTrue("Cannot read \"needsSplit\" field from OptimizedCallTarget", false);
+            return false;
+        }
+    }
 
     @Before
     public void addListener() {
@@ -144,6 +196,19 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         }
     }
 
+    // Root node for all nodes in this test
+    @ReportPolymorphism
+    abstract static class SplittingTestNode extends Node {
+        public abstract Object execute(VirtualFrame frame);
+    }
+
+    static class ReturnsArgumentNode extends SplittingTestNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+    }
+
     abstract class SplittableRootNode extends RootNode {
 
         protected SplittableRootNode() {
@@ -153,6 +218,20 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         @Override
         public boolean isCloningAllowed() {
             return true;
+        }
+    }
+
+    class SplittingTestRootNode extends SplittableRootNode {
+        @Child private SplittingTestNode bodyNode;
+
+        SplittingTestRootNode(SplittingTestNode bodyNode) {
+            super();
+            this.bodyNode = bodyNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return bodyNode.execute(frame);
         }
     }
 }
