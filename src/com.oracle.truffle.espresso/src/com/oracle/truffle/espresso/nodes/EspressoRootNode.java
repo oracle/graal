@@ -142,6 +142,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 BytecodeNode bytecodeNode = getBytecodeNode();
                 bytecodeNode.methodMonitorEnter(frame, monitor);
             } else {
+                // TODO(Gregersen) - register monitors on frames for non-bytecode methods
                 InterpreterToVM.monitorEnter(monitor);
             }
             Object result;
@@ -155,6 +156,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                         getBytecodeNode().monitorExit(frame, monitor);
                     }
                 } else {
+                    // TODO(Gregersen) - exit monitors on frames for non-bytecode methods
                     InterpreterToVM.monitorExit(monitor);
                 }
             }
