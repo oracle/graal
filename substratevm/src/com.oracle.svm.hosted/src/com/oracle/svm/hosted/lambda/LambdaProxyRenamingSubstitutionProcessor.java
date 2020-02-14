@@ -36,6 +36,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -85,7 +86,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
             DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection()));
 
             Providers providers = GraalAccess.getOriginalProviders();
-            String lambdaTargetName = LambdaUtils.findStableLambdaName(providers, key, options, debug, this);
+            String lambdaTargetName = LambdaUtils.findStableLambdaName(new NoClassInitializationPlugin(), providers, key, options, debug, this);
             return new LambdaSubstitutionType(key, findUniqueLambdaProxyName(lambdaTargetName));
         });
     }
