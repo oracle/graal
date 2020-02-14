@@ -37,10 +37,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -849,91 +847,57 @@ final class Runner {
         // someone tries to execute the function
     }
 
-    private InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
-        // Split libraries into Sulong-specific ones and others, so that we can handle the
-        // Sulong-specific ones separately.
-        List<LLVMParserResult> sulongLibs = new ArrayList<>();
-        List<LLVMParserResult> otherLibs = new ArrayList<>();
+    private static InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         List<ExternalLibrary> sulongExternalLibraries = Arrays.asList(defaultLibraries);
+
+        ArrayList<LLVMParserResult> sulongLibs = new ArrayList<>();
+        ArrayList<LLVMParserResult> otherLibs = new ArrayList<>();
+        ArrayList<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
+        EconomicMap<Object, LLVMParserResult> dependencyToParserResult = EconomicMap.create(Equivalence.IDENTITY);
+        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
+        /*
+         * Split libraries into Sulong-specific ones and others, so that we can handle the
+         * Sulong-specific ones separately.
+         */
         for (LLVMParserResult parserResult : parserResults) {
-            if (sulongExternalLibraries.contains(parserResult.getRuntime().getLibrary())) {
+            ExternalLibrary library = parserResult.getRuntime().getLibrary();
+            dependencyToParserResult.put(library, parserResult);
+            if (sulongExternalLibraries.contains(library)) {
                 sulongLibs.add(parserResult);
+                visited.add(parserResult);
             } else {
                 otherLibs.add(parserResult);
             }
         }
 
-        // Typically, the initialization order is very close to the reversed parsing order. So, we
-        // only want to change the order when it is really necessary.
-        List<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
-        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
-        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = computeDependencies(otherLibs);
-        for (int i = otherLibs.size() - 1; i >= 0; i--) {
-            LLVMParserResult parserResult = otherLibs.get(i);
-            if (!visited.contains(parserResult)) {
-                addToInitializationOrder(parserResult, dependencies, otherLibsInitializationOrder, visited);
+        for (LLVMParserResult otherlib : otherLibs) {
+            if (!visited.contains(otherlib)) {
+                addModuleToInitializationOrder(otherlib, otherLibsInitializationOrder, dependencyToParserResult, visited);
+                assert otherLibsInitializationOrder.contains(otherlib);
             }
         }
-
-        assert sulongLibs.size() + otherLibsInitializationOrder.size() == parserResults.size();
+        assert otherLibsInitializationOrder.containsAll(otherLibs);
         return new InitializationOrder(sulongLibs, otherLibsInitializationOrder);
     }
 
-    private static void addToInitializationOrder(LLVMParserResult current, EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies, List<LLVMParserResult> initializationOrder,
+    private static void addModuleToInitializationOrder(LLVMParserResult module, ArrayList<LLVMParserResult> initializationOrder, EconomicMap<Object, LLVMParserResult> dependencyToParserResult,
                     EconomicSet<LLVMParserResult> visited) {
-        visited.add(current);
-        List<LLVMParserResult> currentDependencies = dependencies.get(current);
-        for (LLVMParserResult dependency : currentDependencies) {
-            if (!visited.contains(dependency)) {
-                addToInitializationOrder(dependency, dependencies, initializationOrder, visited);
+        if (visited.contains(module)) {
+            /*
+             * We don't know if the module has already been added to the initialization order list
+             * or if we are still processing its dependencies. In the second case we found a cycle,
+             * which we silently ignore.
+             */
+            return;
+        }
+        visited.add(module);
+        for (ExternalLibrary dep : module.getDependencies()) {
+            LLVMParserResult depLib = dependencyToParserResult.get(dep);
+            if (depLib != null) {
+                addModuleToInitializationOrder(depLib, initializationOrder, dependencyToParserResult, visited);
             }
         }
-        initializationOrder.add(current);
-    }
-
-    private EconomicMap<LLVMParserResult, List<LLVMParserResult>> computeDependencies(List<LLVMParserResult> parserResults) {
-        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = EconomicMap.create(Equivalence.IDENTITY);
-        Map<ExternalLibrary, LLVMParserResult> libsToParserResults = mapLibsToParserResults(parserResults);
-        LLVMScope globalScope = context.getGlobalScope();
-        for (LLVMParserResult parserResult : parserResults) {
-            List<LLVMParserResult> currentDependencies = new ArrayList<>();
-            for (ExternalLibrary lib : getImportedLibraries(globalScope, parserResult)) {
-                // ignore self imports
-                if (!parserResult.getRuntime().getLibrary().equals(lib)) {
-                    LLVMParserResult dependency = libsToParserResults.get(lib);
-                    if (dependency != null) {
-                        currentDependencies.add(dependency);
-                    }
-                }
-            }
-            dependencies.put(parserResult, currentDependencies);
-        }
-        return dependencies;
-    }
-
-    private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
-        EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
-        for (String imported : parserResult.getImportedSymbols()) {
-
-            LLVMSymbol symbol = globalScope.get(imported);
-
-            if (symbol != null) {
-                ExternalLibrary lib = symbol.getLibrary();
-
-                if (lib != null) {
-                    importedLibs.add(lib);
-                }
-            }
-        }
-        return importedLibs;
-    }
-
-    private static Map<ExternalLibrary, LLVMParserResult> mapLibsToParserResults(List<LLVMParserResult> parserResults) {
-        Map<ExternalLibrary, LLVMParserResult> map = new HashMap<>();
-        for (LLVMParserResult parserResult : parserResults) {
-            map.put(parserResult.getRuntime().getLibrary(), parserResult);
-        }
-        return map;
+        initializationOrder.add(module);
     }
 
     private static final class StaticInitsNode extends LLVMStatementNode {
