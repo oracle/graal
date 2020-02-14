@@ -317,9 +317,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
 
     @TruffleBoundary
     private JsonArray sourceSectionsToJson() {
-        return Json.array(getStateSet().stream().map(x -> ((RegexAST) getStateSet().getStateIndex()).getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream).map(x -> Json.obj(
-                        Json.prop("start", x.getCharIndex()),
-                        Json.prop("end", x.getCharEndIndex()))));
+        return RegexAST.sourceSectionsToJson(getStateSet().stream().map(x -> ((RegexAST) getStateSet().getStateIndex()).getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream));
     }
 
     @TruffleBoundary

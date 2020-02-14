@@ -55,6 +55,7 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -242,18 +243,14 @@ public final class RegexParser {
         ast.addSourceSection(group, token);
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        addSequence(token);
+        addSequence();
         return group;
     }
 
     /**
      * Adds a new {@link Sequence} to the current {@link Group}.
-     *
-     * @param token the opening bracket of the parent group ({@link Token.Kind#captureGroupBegin})
-     *            or the alternation symbol ({@link Token.Kind#alternation}) that opens the new
-     *            sequence.
      */
-    private void addSequence(Token token) {
+    private void addSequence() {
         if (!curGroup.isEmpty()) {
             setComplexLookAround();
         }
@@ -264,6 +261,9 @@ public final class RegexParser {
     private void popGroup(Token token) throws RegexSyntaxException {
         curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         ast.addSourceSection(curGroup, token);
+        if (curGroup.getParent() instanceof LookAroundAssertion) {
+            ast.addSourceSection(curGroup.getParent(), token);
+        }
         curTerm = curGroup;
         RegexASTNode parent = curGroup.getParent();
         if (parent instanceof RegexASTRootNode) {
@@ -329,12 +329,14 @@ public final class RegexParser {
 
     private void addLookBehindAssertion(Token token, boolean negate) {
         LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
+        ast.addSourceSection(lookBehind, token);
         addTerm(lookBehind);
         createGroup(token, false, false, lookBehind);
     }
 
     private void addLookAheadAssertion(Token token, boolean negate) {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
+        ast.addSourceSection(lookAhead, token);
         addTerm(lookAhead);
         createGroup(token, false, false, lookAhead);
     }
@@ -480,7 +482,7 @@ public final class RegexParser {
         return characterClass;
     }
 
-    private void createOptionalBranch(Term term, boolean greedy, boolean copy, int recurse) throws RegexSyntaxException {
+    private void createOptionalBranch(QuantifiableTerm term, Quantifier quantifier, boolean copy, int recurse) throws RegexSyntaxException {
         addTerm(copy ? copyVisitor.copy(term) : term);
         if (curTerm instanceof Group) {
             // When translating a quantified expression that allows zero occurrences into a
@@ -489,35 +491,39 @@ public final class RegexParser {
             // chapter 21.2.2.5.1.
             curTerm.setEmptyGuard(true);
         }
-        createOptional(term, greedy, true, recurse - 1);
+        term.setExpandedQuantifier(false);
+        term.setQuantifier(null);
+        createOptional(term, quantifier, true, recurse - 1);
     }
 
-    private void createOptional(Term term, boolean greedy, boolean copy, int recurse) throws RegexSyntaxException {
+    private void createOptional(QuantifiableTerm term, Quantifier quantifier, boolean copy, int recurse) throws RegexSyntaxException {
         if (recurse < 0) {
             return;
         }
         properties.setAlternations();
         createGroup(null);
         curGroup.setExpandedQuantifier(true);
+        curGroup.setQuantifier(quantifier);
         if (term instanceof Group) {
             curGroup.setEnclosedCaptureGroupsLow(((Group) term).getEnclosedCaptureGroupsLow());
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
         }
-        if (greedy) {
-            createOptionalBranch(term, greedy, copy, recurse);
-            addSequence(null);
+        if (quantifier.isGreedy()) {
+            createOptionalBranch(term, quantifier, copy, recurse);
+            addSequence();
+            curSequence.setExpandedQuantifier(true);
         } else {
-            addSequence(null);
-            createOptionalBranch(term, greedy, copy, recurse);
+            curSequence.setExpandedQuantifier(true);
+            addSequence();
+            createOptionalBranch(term, quantifier, copy, recurse);
         }
         popGroup(null);
     }
 
     private void expandQuantifier(QuantifiableTerm toExpand) {
-        assert toExpand.hasQuantifier();
+        assert toExpand.hasNotUnrolledQuantifier();
         Token.Quantifier quantifier = toExpand.getQuantifier();
         assert quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition : toExpand + " in " + source;
-        toExpand.setQuantifier(null);
         curTerm = toExpand;
         curSequence = (Sequence) curTerm.getParent();
         curGroup = curSequence.getParent();
@@ -532,14 +538,13 @@ public final class RegexParser {
         if (quantifier.getMin() == 0) {
             curSequence.removeLastTerm();
         }
-        Term t = curTerm;
+        QuantifiableTerm t = (QuantifiableTerm) curTerm;
+        curTerm.setExpandedQuantifier(true);
         for (int i = quantifier.getMin(); i > 1; i--) {
             addTerm(copyVisitor.copy(t));
-            if (curTerm instanceof Group) {
-                ((Group) curTerm).setExpandedQuantifier(true);
-            }
+            curTerm.setExpandedQuantifier(true);
         }
-        createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
+        createOptional(t, quantifier, quantifier.getMin() > 0, quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
         if (quantifier.isInfiniteLoop()) {
             ((Group) curTerm).setLoop(true);
         }
@@ -571,7 +576,7 @@ public final class RegexParser {
         }
 
         private void expand(QuantifiableTerm t) {
-            if (t.hasQuantifier()) {
+            if (t.hasNotUnrolledQuantifier()) {
                 parser.expandQuantifier(t);
             }
         }
@@ -664,7 +669,7 @@ public final class RegexParser {
                     break;
                 case alternation:
                     if (!tryMergeSingleCharClassAlternations()) {
-                        addSequence(token);
+                        addSequence();
                         properties.setAlternations();
                     }
                     break;
@@ -723,13 +728,14 @@ public final class RegexParser {
             replaceCurTermWithDeadNode();
             return;
         }
-        if (quantifier.getMax() == 0 ||
-                        quantifier.getMin() == 0 && (curTerm instanceof LookAroundAssertion || curTerm instanceof CharacterClass && ((CharacterClass) curTerm).getCharSet().matchesNothing())) {
+        boolean curTermIsZeroWidthGroup = curTerm instanceof Group && ((Group) curTerm).isAlwaysZeroWidth();
+        if (quantifier.getMax() == 0 || quantifier.getMin() == 0 && (curTerm instanceof LookAroundAssertion || curTermIsZeroWidthGroup ||
+                        curTerm instanceof CharacterClass && ((CharacterClass) curTerm).getCharSet().matchesNothing())) {
             removeCurTerm();
             return;
         }
         ast.addSourceSection(curTerm, quantifier);
-        if (curTerm instanceof LookAroundAssertion) {
+        if (curTerm instanceof LookAroundAssertion || curTermIsZeroWidthGroup) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
             return;
@@ -755,7 +761,7 @@ public final class RegexParser {
                     if (max > Integer.MAX_VALUE) {
                         max = -1;
                     }
-                    setQuantifier(prev, new Token.Quantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
+                    setQuantifier(prev, Token.createQuantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
                 }
             }
         }

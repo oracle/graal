@@ -68,10 +68,11 @@ import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAMap;
-import com.oracle.truffle.regex.tregex.nfa.PureNFAMarkLookBehindEntries;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
@@ -98,6 +99,7 @@ public final class TRegexCompilationRequest {
 
     private final RegexSource source;
     private RegexAST ast = null;
+    private PureNFAMap pureNFA = null;
     private NFA nfa = null;
     private NFA traceFinderNFA = null;
     private TRegexExecRootNode root = null;
@@ -163,6 +165,19 @@ public final class TRegexCompilationRequest {
         }
         return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(),
                         new TRegexNFAExecutorNode(nfa, ast.getNumberOfCaptureGroups()));
+    }
+
+    public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor() {
+        assert ast != null;
+        assert nfa != null;
+        pureNFA = PureNFAGenerator.mapToNFA(ast);
+        debugPureNFA();
+        TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
+                        : new TRegexExecutorNode[pureNFA.getLookArounds().size()];
+        for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
+            lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getLookArounds().get(i), lookAroundExecutors);
+        }
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors);
     }
 
     @TruffleBoundary
@@ -280,11 +295,6 @@ public final class TRegexCompilationRequest {
             phaseEnd("NFA");
         }
         debugNFA();
-        PureNFAMap map = PureNFAGenerator.mapToNFA(ast);
-        new PureNFAMarkLookBehindEntries(map).markEntries();
-        if (map == null) {
-            throw new IllegalStateException();
-        }
     }
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
@@ -313,6 +323,16 @@ public final class TRegexCompilationRequest {
             ASTLaTexExportVisitor.exportLatex(ast, file);
             file = env.getPublicTruffleFile("ast.json");
             ast.getWrappedRoot().toJson().dump(file);
+        }
+    }
+
+    private void debugPureNFA() {
+        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getPublicTruffleFile("pure_nfa.json");
+            Json.obj(Json.prop("dfa", Json.obj(
+                            Json.prop("pattern", source.toString()),
+                            Json.prop("pureNfa", pureNFA.toJson())))).dump(file);
         }
     }
 

@@ -157,4 +157,9 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     @Override
     protected void leaveLookAhead(LookAheadAssertion assertion) {
     }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
+        return true;
+    }
 }

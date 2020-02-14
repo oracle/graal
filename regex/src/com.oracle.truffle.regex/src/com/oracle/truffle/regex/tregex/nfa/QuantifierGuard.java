@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
 public final class QuantifierGuard {
 
@@ -48,7 +48,9 @@ public final class QuantifierGuard {
 
     public enum Kind {
         enter,
-        exit
+        exit,
+        enterZeroWidth,
+        exitZeroWidth
     }
 
     private final Kind kind;
@@ -59,14 +61,31 @@ public final class QuantifierGuard {
         this.kind = kind;
         this.quantifierIndex = quantifierIndex;
         this.threshold = threshold;
+        assert quantifierIndex >= 0;
     }
 
-    public static QuantifierGuard createEnter(QuantifiableTerm t) {
-        return new QuantifierGuard(Kind.enter, t.getQuantifierIndex(), t.getQuantifier().getMax());
+    public static QuantifierGuard create(Quantifier quantifier, boolean enter) {
+        return enter ? createEnter(quantifier) : createExit(quantifier);
     }
 
-    public static QuantifierGuard createExit(QuantifiableTerm t) {
-        return new QuantifierGuard(Kind.enter, t.getQuantifierIndex(), t.getQuantifier().getMin());
+    public static QuantifierGuard createEnter(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.enter, quantifier.getIndex(), quantifier.getMax());
+    }
+
+    public static QuantifierGuard createExit(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exit, quantifier.getIndex(), quantifier.getMin());
+    }
+
+    public static QuantifierGuard createZeroWidth(Quantifier quantifier, boolean enter) {
+        return enter ? createEnterZeroWidth(quantifier) : createExitZeroWidth(quantifier);
+    }
+
+    public static QuantifierGuard createEnterZeroWidth(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.enterZeroWidth, quantifier.getZeroWidthIndex(), -1);
+    }
+
+    public static QuantifierGuard createExitZeroWidth(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exitZeroWidth, quantifier.getZeroWidthIndex(), -1);
     }
 
     public Kind getKind() {

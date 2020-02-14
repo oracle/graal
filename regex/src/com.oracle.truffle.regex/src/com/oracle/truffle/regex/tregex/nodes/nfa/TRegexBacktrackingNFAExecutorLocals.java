@@ -58,68 +58,70 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
  * like this:
  *
  * <pre>
- * sp    sp+1      sp+2
- * |     |         |
- * v     v         v
- * --------------------------------
- * |index|nfa_state|capture_groups|
- * --------------------------------
+ * sp    sp+1      sp+2           sp+2+ncg    sp+2+ncg+nq
+ * |     |         |              |           |
+ * v     v         v              v           v
+ * -------------------------------------------------------------------
+ * |index|nfa_state|capture_groups|quantifiers|zero_width_quantifiers|
+ * -------------------------------------------------------------------
  *
- * frame size: 2 + n_capture_groups*2
+ * frame size: 2 + n_capture_groups*2 + n_quantifiers + n_zero_width_quantifiers
  * </pre>
  */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {
 
     private final int stackFrameSize;
+    private final int nQuantifiers;
+    private final int nZeroWidthQuantifiers;
     private final int stackBase;
-    private int[] stack;
+    private final Stack stack;
     private int sp;
     private final int[] result;
     private int lastResultSp = -1;
-    private final boolean forward;
 
-    public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups) {
-        this(input, fromIndex, index, maxIndex, nCaptureGroups, new int[getStackFrameSize(nCaptureGroups)], 0, true);
+    public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
+        this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers)]), 0);
         setIndex(fromIndex);
-        Arrays.fill(stack, sp + 2, stackFrameSize, -1);
+        Arrays.fill(stack(), sp + 2, stackFrameSize, -1);
     }
 
-    private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int[] stack, int stackBase, boolean forward) {
+    private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase) {
         super(input, fromIndex, maxIndex, index);
-        this.stackFrameSize = getStackFrameSize(nCaptureGroups);
+        this.stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers);
+        this.nQuantifiers = nQuantifiers;
+        this.nZeroWidthQuantifiers = nZeroWidthQuantifiers;
         this.stack = stack;
         this.stackBase = stackBase;
         this.sp = stackBase;
         this.result = new int[nCaptureGroups * 2];
-        this.forward = forward;
     }
 
-    private static int getStackFrameSize(int nCaptureGroups) {
-        return 2 + nCaptureGroups * 2;
+    private int[] stack() {
+        return stack.stack;
     }
 
-    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(boolean forwardArg) {
-        ensureCapacityForOneStackFrame();
-        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, stack, sp + stackFrameSize, forwardArg);
+    private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
+        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers;
+    }
+
+    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
+        dupFrame();
+        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifiers, nZeroWidthQuantifiers, stack, sp + stackFrameSize);
     }
 
     public void apply(PureNFATransition t) {
-        t.getGroupBoundaries().apply(stack, sp + 2, getIndex());
+        t.getGroupBoundaries().apply(stack(), sp + 2, getIndex());
     }
 
-    public void push(PureNFATransition t) {
-        ensureCapacityForOneStackFrame();
-        System.arraycopy(stack, sp, stack, sp + stackFrameSize, stackFrameSize);
-        apply(t);
-        incIndex(1);
-        setPc(t.getTarget().getId());
+    public void push() {
         sp += stackFrameSize;
     }
 
-    private void ensureCapacityForOneStackFrame() {
-        if (stack.length < sp + (stackFrameSize * 2)) {
-            stack = Arrays.copyOf(stack, stack.length * 2);
+    public void dupFrame() {
+        if (stack().length < sp + (stackFrameSize * 2)) {
+            stack.stack = Arrays.copyOf(stack(), stack().length * 2);
         }
+        System.arraycopy(stack(), sp, stack(), sp + stackFrameSize, stackFrameSize);
     }
 
     public void pushResult(PureNFATransition t) {
@@ -128,7 +130,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void pushResult() {
-        System.arraycopy(stack, sp + 2, result, 0, result.length);
+        System.arraycopy(stack(), sp + 2, result, 0, result.length);
         lastResultSp = sp;
     }
 
@@ -137,7 +139,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public int[] popResult() {
-        return result;
+        return lastResultSp < 0 ? null : result;
     }
 
     public boolean canPop() {
@@ -147,36 +149,68 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public int pop() {
         assert sp > stackBase;
         sp -= stackFrameSize;
-        return stack[sp + 1];
+        return stack()[sp + 1];
     }
 
     @Override
     public int getIndex() {
-        return stack[sp];
+        return stack()[sp];
     }
 
     @Override
     public void setIndex(int i) {
-        stack[sp] = i;
+        stack()[sp] = i;
     }
 
     @Override
     public void incIndex(int i) {
-        stack[sp] += forward ? i : -i;
+        stack()[sp] += i;
     }
 
     public int setPc(int pc) {
-        return stack[sp + 1] = pc;
+        return stack()[sp + 1] = pc;
+    }
+
+    public int getCaptureGroupStart(int backRefNumber) {
+        return stack()[sp + 2 + backRefNumber * 2];
+    }
+
+    public int getCaptureGroupEnd(int backRefNumber) {
+        return stack()[sp + 2 + backRefNumber * 2 + 1];
+    }
+
+    public void overwriteCaptureGroups(int[] captureGroups) {
+        assert captureGroups.length == result.length;
+        System.arraycopy(captureGroups, 0, stack(), sp + 2, captureGroups.length);
+    }
+
+    public int getZeroWidthQuantifierGuardIndex(int index) {
+        assert index < nZeroWidthQuantifiers;
+        return stack()[sp + 2 + result.length + nQuantifiers + index];
+    }
+
+    public void setZeroWidthQuantifierGuardIndex(int index) {
+        assert index < nZeroWidthQuantifiers;
+        stack()[sp + 2 + result.length + nQuantifiers + index] = getIndex();
     }
 
     @TruffleBoundary
     public void printStack(int curPc) {
         for (int i = sp; i >= 0; i -= stackFrameSize) {
-            System.out.print(String.format("pc: %3d, i: %3d, cg: [", (i == sp ? curPc : stack[i + 1]), stack[i]));
+            System.out.print(String.format("pc: %3d, i: %3d, cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
             for (int j = i + 2; j < i + stackFrameSize - 1; j++) {
-                System.out.print(String.format("%2d, ", stack[j]));
+                System.out.print(String.format("%2d, ", stack()[j]));
             }
-            System.out.println(String.format("%2d]", stack[i + stackFrameSize - 1]));
+            System.out.println(String.format("%2d]", stack()[i + stackFrameSize - 1]));
+        }
+    }
+
+    private static final class Stack {
+
+        private int[] stack;
+
+        Stack(int[] stack) {
+            this.stack = stack;
         }
     }
 }

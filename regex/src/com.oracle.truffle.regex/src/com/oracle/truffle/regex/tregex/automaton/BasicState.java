@@ -154,6 +154,14 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         setFlag(FLAG_UN_ANCHORED_FINAL_STATE);
     }
 
+    public boolean isAnchoredInitialState(boolean forward) {
+        return forward ? isAnchoredInitialState() : isAnchoredFinalState();
+    }
+
+    public boolean isUnAnchoredInitialState(boolean forward) {
+        return forward ? isUnAnchoredInitialState() : isUnAnchoredFinalState();
+    }
+
     public boolean isFinalState(boolean forward) {
         return forward ? isFinalState() : isInitialState();
     }
@@ -164,10 +172,6 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
 
     public boolean isUnAnchoredFinalState(boolean forward) {
         return forward ? isUnAnchoredFinalState() : isUnAnchoredInitialState();
-    }
-
-    public boolean isMatchCharState() {
-        return !getFlag(FLAG_ANY_INITIAL_OR_FINAL_STATE);
     }
 
     protected abstract boolean hasTransitionToUnAnchoredFinalState(boolean forward);
@@ -194,6 +198,14 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
 
     public T[] getPredecessors(boolean forward) {
         return forward ? getPredecessors() : getSuccessors();
+    }
+
+    public boolean hasSuccessors() {
+        return successors.length > 0;
+    }
+
+    public boolean hasPredecessors() {
+        return predecessors.length > 0;
     }
 
     /**

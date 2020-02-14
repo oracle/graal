@@ -44,14 +44,26 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Term;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
 /**
  * Represents a state of a {@link PureNFA}. All {@link PureNFAState}s correspond to a single
@@ -63,22 +75,69 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
 
     private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
+    public static final byte KIND_INITIAL_OR_FINAL_STATE = 0;
+    public static final byte KIND_CHARACTER_CLASS = 1;
+    public static final byte KIND_LOOK_AROUND = 2;
+    public static final byte KIND_BACK_REFERENCE = 3;
+
     private final short astNodeId;
+    private final short extraId;
+    private final byte kind;
     private final CodePointSet charSet;
     private Set<PureNFA> lookBehindEntries;
 
-    public PureNFAState(short id, short astNodeId, CodePointSet charSet) {
+    public PureNFAState(short id, Term t) {
         super(id, EMPTY_TRANSITIONS);
-        this.astNodeId = astNodeId;
-        this.charSet = charSet;
+        this.astNodeId = t.getId();
+        this.kind = getKind(t);
+        this.extraId = t instanceof LookAroundAssertion ? ((LookAroundAssertion) t).getSubTreeId() : isBackReference() ? (short) ((BackReference) t).getGroupNr() : -1;
+        this.charSet = t instanceof CharacterClass ? ((CharacterClass) t).getCharSet() : null;
     }
 
     public short getAstNodeId() {
         return astNodeId;
     }
 
+    public Term getAstNode(RegexAST ast) {
+        return (Term) ast.getState(astNodeId);
+    }
+
+    public short getLookAroundId() {
+        assert isLookAround();
+        return extraId;
+    }
+
+    public short getBackRefNumber() {
+        assert isBackReference();
+        return extraId;
+    }
+
+    public byte getKind() {
+        return kind;
+    }
+
+    public boolean isCharacterClass() {
+        return kind == KIND_CHARACTER_CLASS;
+    }
+
+    public boolean isLookAround() {
+        return kind == KIND_LOOK_AROUND;
+    }
+
+    public boolean isBackReference() {
+        return kind == KIND_BACK_REFERENCE;
+    }
+
     public CodePointSet getCharSet() {
         return charSet;
+    }
+
+    public boolean isLookAhead(RegexAST ast) {
+        return isLookAround() && ast.getLookArounds().get(getLookAroundId()) instanceof LookAheadAssertion;
+    }
+
+    public boolean isLookBehind(RegexAST ast) {
+        return isLookAround() && ast.getLookArounds().get(getLookAroundId()) instanceof LookBehindAssertion;
     }
 
     @Override
@@ -118,5 +177,69 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
             }
         }
         return false;
+    }
+
+    private static byte getKind(Term t) {
+        if (t instanceof CharacterClass) {
+            return KIND_CHARACTER_CLASS;
+        }
+        if (t instanceof MatchFound || t instanceof PositionAssertion) {
+            return KIND_INITIAL_OR_FINAL_STATE;
+        }
+        if (t instanceof LookAroundAssertion) {
+            return KIND_LOOK_AROUND;
+        }
+        if (t instanceof BackReference) {
+            return KIND_BACK_REFERENCE;
+        }
+        if (t instanceof Group && t.getParent() instanceof RegexASTRootNode) {
+            // dummy initial state
+            return KIND_INITIAL_OR_FINAL_STATE;
+        }
+        throw new IllegalArgumentException();
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return getId() + " " + toStringIntl();
+    }
+
+    private String toStringIntl() {
+        switch (getKind()) {
+            case KIND_INITIAL_OR_FINAL_STATE:
+                if (isUnAnchoredInitialState()) {
+                    return "I";
+                } else if (isAnchoredInitialState()) {
+                    return "^I";
+                } else if (isUnAnchoredFinalState()) {
+                    return "F";
+                } else if (isAnchoredFinalState()) {
+                    return "F$";
+                } else {
+                    throw new IllegalStateException();
+                }
+            case KIND_CHARACTER_CLASS:
+                return charSet.toString();
+            case KIND_LOOK_AROUND:
+                return "?=" + getLookAroundId();
+            case KIND_BACK_REFERENCE:
+                return "\\" + getBackRefNumber();
+            default:
+                throw new IllegalStateException();
+        }
+    }
+
+    @TruffleBoundary
+    public JsonObject toJson(RegexAST ast) {
+        return Json.obj(Json.prop("id", getId()),
+                        Json.prop("stateSet", Json.array(new int[]{getAstNodeId()})),
+                        Json.prop("sourceSections", RegexAST.sourceSectionsToJson(ast.getSourceSections(getAstNode(ast)))),
+                        Json.prop("matcherBuilder", isCharacterClass() ? Json.val(charSet.toString()) : Json.nullValue()),
+                        Json.prop("lookAround", isLookAround() ? Json.val(getLookAroundId()) : Json.nullValue()),
+                        Json.prop("backReference", isBackReference() ? Json.val(getBackRefNumber()) : Json.nullValue()),
+                        Json.prop("anchoredFinalState", isAnchoredFinalState()),
+                        Json.prop("unAnchoredFinalState", isUnAnchoredFinalState()),
+                        Json.prop("transitions", Arrays.stream(getSuccessors()).map(x -> Json.val(x.getId()))));
     }
 }

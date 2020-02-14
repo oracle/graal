@@ -321,4 +321,13 @@ public class GroupBoundaries implements JsonConvertible {
         }
         return array;
     }
+
+    @TruffleBoundary
+    public JsonArray indexUpdateSourceSectionsToJson(RegexAST ast) {
+        if (!hasIndexUpdates()) {
+            return Json.array();
+        }
+        return RegexAST.sourceSectionsToJson(getUpdateIndices().stream().mapToObj(x -> ast.getSourceSections(ast.getGroupByBoundaryIndex(x)).get(x & 1)));
+    }
+
 }

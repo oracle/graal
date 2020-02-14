@@ -40,16 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
@@ -59,7 +56,6 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     private final PureNFAGenerator nfaGen;
     private final ObjectArrayBuffer<PureNFATransition> transitionBuffer = new ObjectArrayBuffer<>(8);
-    private final ShortArrayBuffer traversedLookAroundsBuffer = new ShortArrayBuffer(8);
     private PureNFAState curState;
 
     public PureNFATransitionGenerator(RegexAST ast, PureNFAGenerator nfaGen) {
@@ -70,7 +66,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     public void generateTransitions(PureNFAState state) {
         this.curState = state;
         Term root = (Term) ast.getState(state.getAstNodeId());
-        setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
+        setCanTraverseCaret(state.isAnchoredInitialState() || state.isBackReference() || state.isLookAround());
         transitionBuffer.clear();
         run(root);
         curState.setSuccessors(transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]));
@@ -78,9 +74,8 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     @Override
     protected void visit(RegexASTNode target) {
-        traversedLookAroundsBuffer.clear();
-        // Optimization: eagerly remove useless look-around assertions or transitions that cannot
-        // match with their respective look-around assertions
+        // Optimization: eagerly remove transitions that cannot match with their respective
+        // look-around assertions
         if (pruneLookarounds(target)) {
             return;
         }
@@ -92,9 +87,9 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
             targetState = nfaGen.getOrCreateState((Term) target);
         }
         targetState.incPredecessors();
-        QuantifierGuard[] quantifiers = getQuantifierGuardsOnPath();
-        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), traversedLookAroundsBuffer.toArray(),
-                        quantifiers.length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(quantifiers, quantifiers.length)));
+        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(),
+                        curState.isBackReference() || curState.isLookAround() ? caretsOnPath() : false,
+                        target instanceof CharacterClass ? false : dollarsOnPath(), getQuantifierGuardsOnPath()));
     }
 
     @Override
@@ -106,26 +101,26 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     }
 
     private boolean pruneLookarounds(RegexASTNode target) {
-        CodePointSet lookBehindParentChars = curState.isMatchCharState() ? curState.getCharSet() : null;
-        CodePointSet lookAheadParentChars = target instanceof CharacterClass ? ((CharacterClass) target).getCharSet() : null;
-        for (int id : getLookAroundsOnPath()) {
-            LookAroundAssertion la = ast.getLookArounds().get(id);
-            boolean lookAhead = la instanceof LookAheadAssertion;
-            CodePointSet parentChars = lookAhead ? lookAheadParentChars : lookBehindParentChars;
-            if (parentChars != null && (lookAhead ? la.startsWithCharClass() : la.endsWithCharClass())) {
-                Term firstOrLastTerm = lookAhead ? la.getGroup().getFirstAlternative().getFirstTerm() : la.getGroup().getFirstAlternative().getLastTerm();
-                CodePointSet laChars = ((CharacterClass) firstOrLastTerm).getCharSet();
-                if (la.isNegated() ? laChars.contains(parentChars) : !laChars.intersects(parentChars)) {
-                    // transition can never be taken, prune
-                    return true;
-                }
-                if (la.isSingleCCNonCapturingLiteral() && (la.isNegated() ? !laChars.intersects(parentChars) : laChars.contains(parentChars))) {
-                    // lookaround does not have any influence on the match, remove it
-                    continue;
-                }
+        if (curState.isLookAhead(ast) && target instanceof CharacterClass) {
+            LookAheadAssertion la = (LookAheadAssertion) ast.getState(curState.getAstNodeId());
+            if (la.startsWithCharClass()) {
+                return noLookAroundIntersection(la, ((CharacterClass) target).getCharSet(), ((CharacterClass) la.getGroup().getFirstAlternative().getFirstTerm()).getCharSet());
             }
-            traversedLookAroundsBuffer.add((short) id);
+        } else if (curState.isCharacterClass() && target instanceof LookBehindAssertion) {
+            LookBehindAssertion lb = (LookBehindAssertion) target;
+            if (lb.endsWithCharClass()) {
+                return noLookAroundIntersection(lb, curState.getCharSet(), ((CharacterClass) lb.getGroup().getFirstAlternative().getLastTerm()).getCharSet());
+            }
         }
+        return false;
+    }
+
+    protected static boolean noLookAroundIntersection(LookAroundAssertion la, CodePointSet ccChars, CodePointSet laChars) {
+        return la.isNegated() ? laChars.contains(ccChars) : !laChars.intersects(ccChars);
+    }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
         return false;
     }
 }

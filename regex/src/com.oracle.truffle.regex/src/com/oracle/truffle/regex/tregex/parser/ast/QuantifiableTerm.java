@@ -56,7 +56,6 @@ import com.oracle.truffle.regex.tregex.parser.Token;
  */
 public abstract class QuantifiableTerm extends Term {
 
-    private short quantifierIndex = -1;
     private Token.Quantifier quantifier;
 
     QuantifiableTerm() {
@@ -64,6 +63,7 @@ public abstract class QuantifiableTerm extends Term {
 
     QuantifiableTerm(QuantifiableTerm copy) {
         super(copy);
+        this.quantifier = copy.quantifier;
     }
 
     @Override
@@ -71,6 +71,10 @@ public abstract class QuantifiableTerm extends Term {
 
     public boolean hasQuantifier() {
         return quantifier != null;
+    }
+
+    public boolean hasNotUnrolledQuantifier() {
+        return hasQuantifier() && !isExpandedQuantifier();
     }
 
     public Token.Quantifier getQuantifier() {
@@ -85,15 +89,6 @@ public abstract class QuantifiableTerm extends Term {
         return Objects.equals(quantifier, o.quantifier);
     }
 
-    public short getQuantifierIndex() {
-        return quantifierIndex;
-    }
-
-    public void setQuantifierIndex(int quantifierIndex) {
-        assert quantifierIndex <= Short.MAX_VALUE;
-        this.quantifierIndex = (short) quantifierIndex;
-    }
-
     @Override
     public boolean equalsSemantic(RegexASTNode obj) {
         return equalsSemantic(obj, false);
@@ -103,7 +98,7 @@ public abstract class QuantifiableTerm extends Term {
 
     @TruffleBoundary
     protected String quantifierToString() {
-        return hasQuantifier() ? quantifier.toString() : "";
+        return hasNotUnrolledQuantifier() ? quantifier.toString() : "";
     }
 
     @Override

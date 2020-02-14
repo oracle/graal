@@ -42,6 +42,12 @@ package com.oracle.truffle.regex.tregex.automaton;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
 
@@ -102,5 +108,16 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
     @Override
     public Iterator<T> iterator() {
         return states.iterator();
+    }
+
+    @TruffleBoundary
+    @Override
+    public Spliterator<T> spliterator() {
+        return Spliterators.spliterator(iterator(), states.size(), Spliterator.DISTINCT | Spliterator.NONNULL);
+    }
+
+    @TruffleBoundary
+    public Stream<T> stream() {
+        return StreamSupport.stream(spliterator(), false);
     }
 }

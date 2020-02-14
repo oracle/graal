@@ -46,6 +46,8 @@ import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * Contains a full mapping of every {@link RegexASTSubtreeRootNode} in a {@link RegexAST} to a
@@ -81,6 +83,10 @@ public class PureNFAMap {
         return prefixLength;
     }
 
+    public RegexASTSubtreeRootNode getASTSubtree(PureNFA nfa) {
+        return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getLookArounds().get(nfa.getSubTreeId());
+    }
+
     /**
      * Mark a potential look-behind entry starting {@code offset} characters before the root
      * expression.
@@ -101,5 +107,10 @@ public class PureNFAMap {
         }
         prefixLookbehindEntries[i].add(lookBehind);
         prefixLength = Math.max(prefixLength, offset);
+    }
+
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("root", root.toJson(ast)),
+                        Json.prop("lookArounds", lookArounds.stream().map(x -> x.toJson(ast))));
     }
 }

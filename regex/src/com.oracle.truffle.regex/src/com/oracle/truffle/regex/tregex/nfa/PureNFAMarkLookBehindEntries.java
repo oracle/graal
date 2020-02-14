@@ -42,13 +42,11 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 
 public class PureNFAMarkLookBehindEntries {
 
     private final PureNFAMap nfa;
-    private StateSet<LookBehindAssertion> allReferencedInState;
 
     private StateSet<PureNFAState> markLiteralStatesCur;
     private StateSet<PureNFAState> markLiteralStatesNext;
@@ -57,7 +55,6 @@ public class PureNFAMarkLookBehindEntries {
         this.nfa = nfa;
         markLiteralStatesCur = StateSet.create(nfa.getRoot());
         markLiteralStatesNext = StateSet.create(nfa.getRoot());
-        allReferencedInState = StateSet.create(nfa.getAst().getLookArounds());
     }
 
     public void markEntries() {
@@ -72,16 +69,8 @@ public class PureNFAMarkLookBehindEntries {
 
     private void markEntriesInSubtree(PureNFA subtree, boolean subtreeIsRoot) {
         for (PureNFAState s : subtree.getStates()) {
-            allReferencedInState.clear();
-            for (PureNFATransition t : s.getSuccessors()) {
-                for (int id : t.getTraversedLookArounds()) {
-                    LookAroundAssertion la = nfa.getAst().getLookArounds().get(id);
-                    if (la instanceof LookBehindAssertion) {
-                        allReferencedInState.add((LookBehindAssertion) la);
-                    }
-                }
-            }
-            for (LookBehindAssertion lb : allReferencedInState) {
+            if (s.isLookBehind(nfa.getAst())) {
+                LookBehindAssertion lb = (LookBehindAssertion) s.getAstNode(nfa.getAst());
                 PureNFA lookBehindNFA = nfa.getLookArounds().get(lb.getSubTreeId());
                 if (subtreeIsRoot && lb.getGroup().isLiteral()) {
                     markLiteral(s, lookBehindNFA);
@@ -97,6 +86,7 @@ public class PureNFAMarkLookBehindEntries {
      * nodes.
      */
     private void markLiteral(PureNFAState parentState, PureNFA lb) {
+        // TODO: handle look-around and back-reference states
         PureNFAState lbChar = lb.getReverseUnAnchoredEntry().getSource();
         markLiteralStatesCur.clear();
         markLiteralStatesCur.add(parentState);

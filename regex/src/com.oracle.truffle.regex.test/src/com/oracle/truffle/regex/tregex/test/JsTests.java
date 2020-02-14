@@ -63,4 +63,9 @@ public class JsTests extends RegexTestBase {
         test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
         test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
     }
+
+    @Test
+    public void zeroWidthQuantifier() {
+        test("(?:(?=(x))|y)?", "", "x", 0, true, 0, 0, -1, -1);
+    }
 }

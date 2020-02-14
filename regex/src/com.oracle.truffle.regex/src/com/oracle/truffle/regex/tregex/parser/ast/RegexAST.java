@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -63,6 +64,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
@@ -78,6 +80,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxParseTreeSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
+    private final Counter zeroWidthQuantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private RegexASTNode[] nodes;
     /**
@@ -157,6 +160,10 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public Counter getQuantifierCount() {
         return quantifierCount;
+    }
+
+    public Counter getZeroWidthQuantifierCount() {
+        return zeroWidthQuantifierCount;
     }
 
     public Group getGroupByBoundaryIndex(int index) {
@@ -486,6 +493,18 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         wrappedRoot = wrapRoot;
     }
 
+    public void hidePrefix() {
+        if (wrappedRoot != root) {
+            root.getSubTreeParent().setGroup(root);
+        }
+    }
+
+    public void unhidePrefix() {
+        if (wrappedRoot != root) {
+            root.getSubTreeParent().setGroup(wrappedRoot);
+        }
+    }
+
     public GroupBoundaries createGroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
         GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(updateIndices, clearIndices);
         if (staticInstance != null) {
@@ -584,5 +603,23 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
                         Json.prop("endsWithDollar", root.endsWithDollar()),
                         Json.prop("reachableDollars", reachableDollars),
                         Json.prop("properties", properties));
+    }
+
+    @TruffleBoundary
+    public static JsonArray sourceSectionsToJson(List<SourceSection> sourceSections) {
+        if (sourceSections == null) {
+            return Json.array();
+        }
+        return sourceSectionsToJson(sourceSections.stream());
+    }
+
+    @TruffleBoundary
+    public static JsonArray sourceSectionsToJson(Stream<SourceSection> sourceSections) {
+        if (sourceSections == null) {
+            return Json.array();
+        }
+        return Json.array(sourceSections.map(x -> Json.obj(
+                        Json.prop("start", x.getCharIndex()),
+                        Json.prop("end", x.getCharEndIndex()))));
     }
 }

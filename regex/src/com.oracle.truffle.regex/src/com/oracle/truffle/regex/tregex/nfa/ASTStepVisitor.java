@@ -219,4 +219,9 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
             return root.hashCode() + 31 * (Boolean.hashCode(canTraverseCaret) + 31 * traversableLookBehindAssertions.hashCode());
         }
     }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
+        return true;
+    }
 }

@@ -40,32 +40,33 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * Represents a transition of a {@link PureNFA}.
  */
 public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
-    public static final short[] NO_LOOK_AROUNDS = {};
-
     private final short id;
     private final PureNFAState source;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
-    private final short[] traversedLookArounds;
+    private final boolean caretGuard;
+    private final boolean dollarGuard;
     private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, short[] traversedLookArounds, QuantifierGuard[] quantifierGuards) {
+    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, QuantifierGuard[] quantifierGuards) {
         this.id = id;
         this.source = source;
         this.target = target;
+        this.caretGuard = caretGuard;
         this.groupBoundaries = groupBoundaries;
-        this.traversedLookArounds = traversedLookArounds;
+        this.dollarGuard = dollarGuard;
         this.quantifierGuards = quantifierGuards;
     }
 
@@ -91,21 +92,24 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
         return groupBoundaries;
     }
 
-    /**
-     * List of {@link RegexASTSubtreeRootNode#getSubTreeId() IDs} of {@link LookAroundAssertion}s
-     * traversed by this transition, in the exact order seen by {@link NFATraversalRegexASTVisitor}.
-     * All {@link LookAroundAssertion}s contained in this list must match in order for this
-     * transition to be valid.<br>
-     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookArounds()} of the
-     * transition from {@code a} to {@code [a-z]} will contain the look-ahead assertion
-     * {@code (?=b)}, so the regex matcher must check {@code (?=b)} before continuing to
-     * {@code [a-z]}.
-     */
-    public short[] getTraversedLookArounds() {
-        return traversedLookArounds;
+    public boolean hasCaretGuard() {
+        return caretGuard;
+    }
+
+    public boolean hasDollarGuard() {
+        return dollarGuard;
     }
 
     public QuantifierGuard[] getQuantifierGuards() {
         return quantifierGuards;
+    }
+
+    @TruffleBoundary
+    public JsonValue toJson(RegexAST ast) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("source", source.getId()),
+                        Json.prop("target", target.getId()),
+                        Json.prop("groupBoundaries", groupBoundaries),
+                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)));
     }
 }

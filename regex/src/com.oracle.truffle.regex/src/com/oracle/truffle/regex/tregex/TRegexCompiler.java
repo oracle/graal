@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 
 public final class TRegexCompiler implements RegexCompiler {
 
@@ -84,5 +85,10 @@ public final class TRegexCompiler implements RegexCompiler {
     @TruffleBoundary
     public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode, boolean allowSimpleCG) {
         return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
+    }
+
+    @TruffleBoundary
+    public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(NFA nfa) {
+        return new TRegexCompilationRequest(this, nfa).compileBacktrackingExecutor();
     }
 }
