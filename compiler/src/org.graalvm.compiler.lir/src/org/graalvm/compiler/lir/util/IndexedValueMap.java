@@ -65,6 +65,9 @@ public final class IndexedValueMap {
 
     public void put(int index, Value value) {
         if (values.length <= index) {
+            if (value == null) {
+                return;
+            }
             Value[] newValues = new Value[index + 1];
             if (values.length > 0) {
                 System.arraycopy(values, 0, newValues, 0, values.length);
