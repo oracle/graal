@@ -27,7 +27,6 @@ package com.oracle.svm.jni.nativeapi;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
@@ -118,7 +117,7 @@ public final class JNIFunctionPointerTypes {
 
     public interface GetStringUTFCharsFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle str, CIntPointer isCopy);
+        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle str, CCharPointer isCopy);
     }
 
     public interface ReleaseStringUTFCharsFunctionPointer extends CFunctionPointer {
