@@ -124,7 +124,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>{@link #hasMembers(Object) members}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasLanguage(Object) language}
- * <li>{@link #hasMetaObject(Object) associated meta-object}
+ * <li>{@link #hasMetaObject(Object) associated metaobject}
  * <li>{@link #hasSourceLocation(Object) source location}
  * <ul>
  * <p>
@@ -244,7 +244,7 @@ public abstract class InteropLibrary extends Library {
     // Instantiable Messages
     /**
      * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
-     * <code>false</code>. Contructors or meta-objects are typical examples of instantiable values.
+     * <code>false</code>. Contructors or metaobjects are typical examples of instantiable values.
      * Invoking this message does not cause any observable side-effects. Note that receiver values
      * which are {@link #isExecutable(Object) executable} might also be
      * {@link #isInstantiable(Object) instantiable}.
@@ -1186,10 +1186,10 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Returning a source location for a value is optional and typically impacts
      * the capabilities of tools like debuggers to jump to the declaration of a value.
      * <p>
-     * Examples for values that should might have a source location include:
+     * Examples for values that may provide a source location:
      * <ul>
-     * <li>Representation of {@link #isMetaObject(Object) meta-objects} like classes or types.
-     * <li>First class {@link #isExecutable(Object) executable}, like functions, closures or
+     * <li>{@link #isMetaObject(Object) Metaobjects} like classes or types.
+     * <li>First class {@link #isExecutable(Object) executables}, like functions, closures or
      * promises.
      * <li>Allocation sites for instances. Note that in most languages it is very expensive to track
      * the allocation site of an instance and it is therefore not recommended to support this
@@ -1292,20 +1292,20 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if the receiver value has a meta-object associated. The meta-object
+     * Returns <code>true</code> if the receiver value has a metaobject associated. The metaobject
      * represents a description of the object, reveals it's kind and it's features. Some information
-     * that a meta-object might define includes the base object's type, interface, class, methods,
-     * attributes, etc. When no meta-object is known for this type. Returns <code>false</code> by
-     * default.
+     * that a metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. Should return <code>false</code> when no metaobject is known for this type.
+     * Returns <code>false</code> by default.
      * <p>
-     * An example, for Java objects the returned meta-object is the {@link Object#getClass() class}
+     * An example, for Java objects the returned metaobject is the {@link Object#getClass() class}
      * instance. In JavaScript this could be the function or class that is associated with the
      * object.
      * <p>
-     * Meta-objects for primitive values or values of other languages may be provided using
+     * Metaobjects for primitive values or values of other languages may be provided using
      * {@link TruffleLanguage#getLanguageView(Object, Object) language views}. While an object is
-     * associated with a meta-object in one language, the meta-object might be a different when
-     * viewed from another language.
+     * associated with a metaobject in one language, the metaobject might be a different when viewed
+     * from another language.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #getMetaObject(Object)} must be implemented.
@@ -1328,17 +1328,18 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the meta-object that is associated with this value. The meta-object represents a
+     * Returns the metaobject that is associated with this value. The metaobject represents a
      * description of the object, reveals it's kind and it's features. Some information that a
-     * meta-object might define includes the base object's type, interface, class, methods,
-     * attributes, etc. When no meta-object is known for this type. Throws
+     * metaobject might define includes the base object's type, interface, class, methods,
+     * attributes, etc. When no metaobject is known for this type. Throws
      * {@link UnsupportedMessageException} by default.
      * <p>
      * The returned object must return <code>true</code> for {@link #isMetaObject(Object)} and
      * provide implementations for {@link #getMetaSimpleName(Object)},
-     * {@link #getMetaQualifiedName(Object)}, and {@link #isMetaInstance(Object, Object)}.
-     * {@link #isMetaInstance(Object, Object)} must at least returns <code>true</code> for the
-     * original receiver value.
+     * {@link #getMetaQualifiedName(Object)}, and {@link #isMetaInstance(Object, Object)}. For all
+     * values with metaobjects it must at hold that
+     * <code>isMetaInstance(getMetaObject(value), value) ==
+     * true</code>.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #hasMetaObject(Object)} must be implemented.
@@ -1406,16 +1407,16 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if the receiver value represents a meta-object. Meta-objects may be
+     * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
      * values that naturally occur in a language or they may be returned by
-     * {@link #getMetaObject(Object)}. A meta-object represents a description of the object, reveals
-     * it's kind and it's features. Some information that a meta-object might define includes the
-     * base object's type, interface, class, methods, attributes, etc. When no meta-object is known
-     * for this type. Returns <code>false</code> by default.
+     * {@link #getMetaObject(Object)}. A metaobject represents a description of the object, reveals
+     * it's kind and it's features. Some information thametaobjectject might define includes the
+     * base object's type, interface, class, methods, attributes, etc. Returns <code>false</code> by
+     * default.
      * <p>
-     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a
-     * meta-object. In JavaScript any function instance is a meta-object. For example, the
-     * meta-object of a JavaScript class is the associated constructor function.
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * In JavaScript any function instance is a metaobject. For example, the metaobject of a
+     * JavaScript class is the associated constructor function.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #getMetaQualifiedName(Object)}, {@link #getMetaSimpleName(Object)} and
@@ -1429,7 +1430,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the qualified name of a meta-object as {@link #isString(Object) string}.
+     * Returns the qualified name of a metaobject as {@link #isString(Object) string}.
      * <p>
      * <b>Sample interpretations:</b> The qualified name of a Java class includes the package name
      * and its class name. JavaScript does not have the notion of qualified name and therefore
@@ -1449,7 +1450,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the simple name of a meta-object as {@link #isString(Object) string}.
+     * Returns the simple name of a metaobject as {@link #isString(Object) string}.
      * <p>
      * <b>Sample interpretations:</b> The simple name of a Java class is the class name.
      * <p>
@@ -1467,7 +1468,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if the given instance is of the provided receiver meta-object, else
+     * Returns <code>true</code> if the given instance is of the provided receiver metaobject, else
      * <code>false</code>.
      * <p>
      * <b>Sample interpretations:</b> A Java object is an instance of its returned

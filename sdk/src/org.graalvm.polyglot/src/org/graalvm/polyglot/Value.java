@@ -89,7 +89,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * pointer value can be accessed using {@link #asNativePointer()}.
  * <li>{@link #isException() Exception}: This value represents an exception object. The exception
  * can be thrown using {@link #throwException()}.
- * <li>{@link #isMetaObject() Meta-Object}: This value represents a meta-object. Access meta-object
+ * <li>{@link #isMetaObject() Meta-Object}: This value represents a metaobject. Access metaobject
  * operations using {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()} and
  * {@link #isMetaInstance(Object)}.
  * </ul>
@@ -149,11 +149,10 @@ public final class Value {
     }
 
     /**
-     * Returns the meta-object that is associated with this value or <code>null</code> if no
-     * meta-object is available. The meta-object represents a description of the object, reveals
-     * it's kind and it's features. Some information that a meta-object might define includes the
-     * base object's type, interface, class, methods, attributes, etc. When no meta-object is known
-     * for this type.
+     * Returns the metaobject that is associated with this value or <code>null</code> if no
+     * metaobject is available. The metaobject represents a description of the object, reveals it's
+     * kind and it's features. Some information that a metaobject might define includes the base
+     * object's type, interface, class, methods, attributes, etc.
      * <p>
      * The returned value returns <code>true</code> for {@link #isMetaObject()} and provides
      * implementations for {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()}, and
@@ -171,16 +170,16 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if the receiver value represents a meta-object. Meta-objects may be
+     * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
      * values that naturally occur in a language or they may be returned by
-     * {@link #getMetaObject()}. A meta-object represents a description of the object, reveals it's
-     * kind and it's features. Some information that a meta-object might define includes the base
-     * object's type, interface, class, methods, attributes, etc. When no meta-object is known for
-     * this type. Returns <code>false</code> by default.
+     * {@link #getMetaObject()}. A metaobject represents a description of the object, reveals its
+     * kind and its features. Some information that a metaobject might define includes the base
+     * object's type, interface, class, methods, attributes, etc. Returns <code>false</code> by
+     * default.
      * <p>
-     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a
-     * meta-object. In JavaScript any function instance is a meta-object. For example, the
-     * meta-object of a JavaScript class is the associated constructor function.
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * In JavaScript any function instance is a metaobject. For example, the metaobject of a
+     * JavaScript class is the associated constructor function.
      * <p>
      * This method does not cause any observable side-effects. If this method is implemented then
      * also {@link #getMetaQualifiedName()}, {@link #getMetaSimpleName()} and
@@ -199,7 +198,7 @@ public final class Value {
     }
 
     /**
-     * Returns the qualified name of a meta-object as {@link String}.
+     * Returns the qualified name of a metaobject as {@link String}.
      * <p>
      * <b>Sample interpretations:</b> The qualified name of a Java class includes the package name
      * and its class name. JavaScript does not have the notion of qualified name and therefore
@@ -215,7 +214,7 @@ public final class Value {
     }
 
     /**
-     * Returns the simple name of a meta-object as {@link #isString() string}.
+     * Returns the simple name of a metaobject as {@link #isString() string}.
      * <p>
      * <b>Sample interpretations:</b> The simple name of a Java class is the class name.
      *
@@ -229,7 +228,7 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if the given instance is of the provided receiver meta-object, else
+     * Returns <code>true</code> if the given instance is of the provided receiver metaobject, else
      * <code>false</code>.
      * <p>
      * <b>Sample interpretations:</b> A Java object is an instance of its returned

@@ -1186,7 +1186,8 @@ public abstract class TruffleLanguage<C> {
      * This method is only invoked for values that is not associated with the current
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a
      * high-level this method is supposed to wrap the value and add augmentation to look like a
-     * value of the current language. A typical implementation of this method may do the following:
+     * value of the current language. The result value of an implementation of this method may do
+     * the following:
      * <ul>
      * <li>Return the current language as their associated
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
@@ -1194,7 +1195,7 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display string}
      * for primitive and foreign values.
      * <li>Return a language specific
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) meta-object}
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject}
      * primitive or foreign values.
      * <li>Add members to the object that would be implicitly be available for all objects. For
      * example, any JavaScript object is expected to have a prototype member. Foreign objects, even
@@ -1205,13 +1206,13 @@ public abstract class TruffleLanguage<C> {
      * the default language view will be used. The default language view wraps the value and returns
      * the current language as their associated language. In the default view all interop library
      * messages will be forwarded to the delegate value, except the messages for
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) meta-objects} and
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobjects} and
      * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
      * strings}.
      * <p>
      *
      * This following example shows a simplified language view. For a full implementation including
-     * an example of meta-objects can be found in the Truffle examples language "SimpleLanguage".
+     * an example of metaobjects can be found in the Truffle examples language "SimpleLanguage".
      *
      * <pre>
      * &#64;ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
@@ -1275,7 +1276,7 @@ public abstract class TruffleLanguage<C> {
      *         } else if (dLib.fitsInLong(this.delegate)) {
      *             return MyMetaObject.PRIMITIVE_BOOLEAN;
      *         } else {
-     *             // no associable meta-object
+     *             // no associable metaobject
      *             throw UnsupportedMessageException.create();
      *         }
      *     }
@@ -1330,29 +1331,29 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Find a meta-object of a value, if any. The meta-object represents a description of the
-     * object, reveals it's kind and it's features. Some information that a meta-object might define
-     * includes the base object's type, interface, class, methods, attributes, etc.
+     * Find a metaobject of a value, if any. The metaobject represents a description of the object,
+     * reveals it's kind and it's features. Some information that a metaobject might define includes
+     * the base object's type, interface, class, methods, attributes, etc.
      * <p>
      * A programmatic {@link #toString(java.lang.Object, java.lang.Object) textual representation}
-     * should be provided for meta-objects, when possible. The meta-object may have properties
+     * should be provided for metaobjects, when possible. The metaobject may have properties
      * describing their structure.
      * <p>
      * NOTE: Allocating the meta object must not be treated as or cause any
      * {@link com.oracle.truffle.api.instrumentation.AllocationListener reported guest language
      * value allocations}
      * <p>
-     * When no meta-object is known, return <code>null</code>. The default implementation returns
-     * <code>null</code>. The meta-object should be an interop value. An interop value can be either
+     * When no metaobject is known, return <code>null</code>. The default implementation returns
+     * <code>null</code>. The metaobject should be an interop value. An interop value can be either
      * a <code>TruffleObject</code> (e.g. a native object from the other language) to support
      * interoperability between languages or a {@link String}.
      * <p>
      * It can be beneficial for performance to return the same value for each guest type (i.e. cache
-     * the meta-objects per context).
+     * the metaobjects per context).
      *
      * @param context the execution context
-     * @param value a value to find the meta-object of
-     * @return the meta-object, or <code>null</code>
+     * @param value a value to find the metaobject of
+     * @return the metaobject, or <code>null</code>
      * @since 0.22
      * @deprecated implement {@link #getLanguageView(Object, Object)} and export
      *             {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object)}
@@ -1365,7 +1366,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Find a source location where a value is declared, if any. This is often useful especially for
-     * retrieval of source locations of {@link #findMetaObject meta-objects}. The default
+     * retrieval of source locations of {@link #findMetaObject metaobjects}. The default
      * implementation returns <code>null</code>.
      *
      * @param context the execution context
@@ -1863,11 +1864,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Find a meta-object of a value, if any. The meta-object represents a description of the
-         * object, reveals it's kind and it's features. Some information that a meta-object might
+         * Find a metaobject of a value, if any. The metaobject represents a description of the
+         * object, reveals it's kind and it's features. Some information that a metaobject might
          * define includes the base object's type, interface, class, methods, attributes, etc.
          * <p>
-         * When no meta-object is known, returns <code>null</code>. The meta-object is an interop
+         * When no metaobject is known, returns <code>null</code>. The metaobject is an interop
          * value. An interop value can be either a <code>TruffleObject</code> (e.g. a native object
          * from the other language) to support interoperability between languages or a
          * {@link String}.

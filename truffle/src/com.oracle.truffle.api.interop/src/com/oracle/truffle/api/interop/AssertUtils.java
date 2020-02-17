@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.util.Objects;
+
 final class AssertUtils {
 
     private AssertUtils() {
