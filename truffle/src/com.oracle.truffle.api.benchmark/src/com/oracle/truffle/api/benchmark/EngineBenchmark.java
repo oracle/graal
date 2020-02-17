@@ -553,7 +553,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @ExportMessage
-        final Object toDisplayString(boolean allowSideEffects) {
+        protected final Object toDisplayString(boolean allowSideEffects) {
             return "displayString";
         }
 
