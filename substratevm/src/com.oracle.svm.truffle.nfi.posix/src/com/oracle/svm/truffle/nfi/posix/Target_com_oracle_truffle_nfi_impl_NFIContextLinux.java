@@ -37,15 +37,13 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 final class Target_com_oracle_truffle_nfi_impl_NFIContextLinux {
 
     // Checkstyle: stop
-    static final int ISOLATED_NAMESPACE_FLAG = 0x10000;
-
     @Alias volatile long isolatedNamespaceId;
 
     @Alias @InjectAccessors(IsolatedAccessor.class) int ISOLATED_NAMESPACE;
 
     static class IsolatedAccessor {
         static int getISOLATED_NAMESPACE(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContextLinux ctx) {
-            return ISOLATED_NAMESPACE_FLAG;
+            return PosixTruffleNFISupport.ISOLATED_NAMESPACE_FLAG;
         }
     }
     // Checkstyle: resume
