@@ -232,6 +232,16 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
     return NULL;
 }
 
+jboolean VerifyFixClassname(char *utf_name) {
+    fprintf(stderr, "VerifyFixClassname(%s) called:  Unimplemented\n", utf_name);
+    abort();
+}
+
+jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) {
+    fprintf(stderr, "VerifyClassname(%s, %d) called:  Unimplemented\n", utf_name, arrayAllowed);
+    abort();
+}
+
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
