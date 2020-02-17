@@ -64,6 +64,8 @@ public class LambdaStableNameTest {
         ResolvedJavaType acType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(ac.getClass());
         String acName = findStableLambdaName(acType);
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
+
+        assertEquals("The name known in 19.3 version is computed", "Lorg/graalvm/compiler/hotspot/test/LambdaStableNameTest$$Lambda$3b571858be38d19370199ac2c3ec212a511e6f55;", name);
     }
 
     private static void assertLambdaName(String name) {
