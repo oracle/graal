@@ -58,7 +58,6 @@ import com.oracle.truffle.nfi.NFILibrary.Keys;
 import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
 final class NFISymbol implements TruffleObject {
 
     private static final Object NO_SIGNATURE = new Object();
@@ -163,16 +162,19 @@ final class NFISymbol implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean hasLanguage() {
         return true;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Class<? extends TruffleLanguage<?>> getLanguage() {
         return NFILanguage.class;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "Native Symbol";
     }

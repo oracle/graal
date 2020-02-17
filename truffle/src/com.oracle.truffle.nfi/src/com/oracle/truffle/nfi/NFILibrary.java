@@ -59,7 +59,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
 final class NFILibrary implements TruffleObject {
 
     private final Object library;
@@ -118,7 +117,7 @@ final class NFILibrary implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMemberInvocable(@SuppressWarnings("unused") String symbol) {
-        return true; // avoid expensive truffleboundary
+        return true; // avoid expensive truffle boundary
     }
 
     @ExportMessage
@@ -134,17 +133,20 @@ final class NFILibrary implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    @SuppressWarnings("unused")
+    static boolean hasLanguage(NFILibrary lib) {
         return true;
     }
 
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
+    @SuppressWarnings("unused")
+    static Class<? extends TruffleLanguage<?>> getLanguage(NFILibrary receiver) {
         return NFILanguage.class;
     }
 
     @ExportMessage
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+    @SuppressWarnings("unused")
+    static Object toDisplayString(NFILibrary receiver, boolean allowSideEffects) {
         return "Native Library";
     }
 
@@ -184,17 +186,17 @@ final class NFILibrary implements TruffleObject {
         }
 
         @ExportMessage
-        boolean hasLanguage() {
+        static boolean hasLanguage(@SuppressWarnings("unused") Keys receiver) {
             return true;
         }
 
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
+        static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Keys receiver) {
             return NFILanguage.class;
         }
 
         @ExportMessage
-        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        static Object toDisplayString(@SuppressWarnings("unused") Keys receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
             return "Native Members";
         }
     }
