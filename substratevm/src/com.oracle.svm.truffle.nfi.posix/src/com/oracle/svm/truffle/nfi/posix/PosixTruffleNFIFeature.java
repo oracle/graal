@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -114,7 +113,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
                         return handle;
                     }
 
-                    Lmid_tPointer namespacePtr = StackValue.get(SizeOf.get(Lmid_tPointer.class));
+                    Lmid_tPointer namespacePtr = StackValue.get(Lmid_tPointer.class);
                     int ret = Dlfcn.GNUExtensions.dlinfo(handle, Dlfcn.GNUExtensions.RTLD_DI_LMID(), namespacePtr);
                     if (ret != 0) {
                         CompilerDirectives.transferToInterpreter();
