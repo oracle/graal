@@ -77,7 +77,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     (*env)->GetJavaVM(env, &ret->javaVM);
     ret->functions = &truffleThreadAPI;
     ret->NFIContext = (*env)->NewGlobalRef(env, context);
-    
+
     CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
     ret->CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
 

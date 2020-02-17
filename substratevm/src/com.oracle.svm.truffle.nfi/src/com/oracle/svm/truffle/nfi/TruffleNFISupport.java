@@ -207,7 +207,7 @@ public abstract class TruffleNFISupport {
         return truffleNFISupport.lookupImpl(nativeContext, library, name);
     }
 
-    protected static Target_com_oracle_truffle_nfi_impl_NFIContext getNFIContext(long nativeContext) {
+    protected static Target_com_oracle_truffle_nfi_impl_NFIContext getContext(long nativeContext) {
         TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
         NativeAPI.NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
         return truffleNFISupport.resolveContextHandle(ctx.contextHandle());

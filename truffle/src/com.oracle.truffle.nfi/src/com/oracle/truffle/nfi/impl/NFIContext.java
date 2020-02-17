@@ -80,8 +80,8 @@ class NFIContext {
     @CompilationFinal int ISOLATED_NAMESPACE;
     // Checkstyle: resume field name check
 
-    // Isolated namespace initialization relies on Java double-checked locking (via JNI).
-    volatile long isolatedNamespaceId;
+    // Initialized lazily by native code.
+    private volatile long isolatedNamespaceId;
 
     private static class NativeEnv {
 

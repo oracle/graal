@@ -36,7 +36,8 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NFIContextLinux {
 
-    final static int ISOLATED_NAMESPACE_FLAG = 0x10000;
+    // Checkstyle: stop
+    static final int ISOLATED_NAMESPACE_FLAG = 0x10000;
 
     @Alias volatile long isolatedNamespaceId;
 
