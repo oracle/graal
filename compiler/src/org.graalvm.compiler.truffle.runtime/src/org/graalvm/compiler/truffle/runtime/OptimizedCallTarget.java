@@ -683,38 +683,40 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
-        if (bailout && !permanentBailout && !TruffleDebugOptions.verboseBailouts()) {
+        ExceptionAction action;
+        if (bailout && !permanentBailout && !TruffleDebugOptions.bailoutsAsErrors(engine.engineOptions)) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
              * example class redefinition during code installation. As opposed to permanent
              * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
              * failure state.
              */
+            action = TruffleDebugOptions.verboseBailouts(engine.engineOptions) ? ExceptionAction.Print : ExceptionAction.Silent;
         } else {
             compilationFailed = true;
-            if (engine.compilationFailureAction == ExceptionAction.Throw) {
-                final InternalError error = new InternalError(reasonAndStackTrace.get());
-                throw new OptimizationFailedException(error, this);
-            }
-
-            if (engine.compilationFailureAction.ordinal() >= ExceptionAction.Print.ordinal()) {
-                GraalTruffleRuntime rt = runtime();
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("ASTSize", getNonTrivialNodeCount());
-                rt.logEvent(0, "opt fail", toString(), properties);
-                rt.log(reasonAndStackTrace.get());
-                if (engine.compilationFailureAction == ExceptionAction.ExitVM) {
-                    String reason;
-                    if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
-                        reason = "engine.CompilationFailureAction=ExitVM";
-                    } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
-                        reason = "engine.CompilationExceptionsAreFatal=true";
-                    } else {
-                        reason = "engine.PerformanceWarningsAreFatal=true";
-                    }
-                    log(String.format("Exiting VM due to %s", reason));
-                    System.exit(-1);
+            action = engine.compilationFailureAction;
+        }
+        if (action == ExceptionAction.Throw) {
+            final InternalError error = new InternalError(reasonAndStackTrace.get());
+            throw new OptimizationFailedException(error, this);
+        }
+        if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
+            GraalTruffleRuntime rt = runtime();
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("ASTSize", getNonTrivialNodeCount());
+            rt.logEvent(0, "opt fail", toString(), properties);
+            rt.log(reasonAndStackTrace.get());
+            if (action == ExceptionAction.ExitVM) {
+                String reason;
+                if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
+                    reason = "engine.CompilationFailureAction=ExitVM";
+                } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
+                    reason = "engine.CompilationExceptionsAreFatal=true";
+                } else {
+                    reason = "engine.PerformanceWarningsAreFatal=true";
                 }
+                log(String.format("Exiting VM due to %s", reason));
+                System.exit(-1);
             }
         }
     }

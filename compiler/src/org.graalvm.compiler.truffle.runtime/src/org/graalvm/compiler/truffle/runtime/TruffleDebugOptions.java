@@ -24,13 +24,17 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.File;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TreatPerformanceWarningsAsErrors;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind.BAILOUT;
 
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -50,8 +54,14 @@ public final class TruffleDebugOptions {
         throw new IllegalStateException("No instance allowed.");
     }
 
-    public static boolean verboseBailouts() {
-        return getValue(CompilationBailoutAsFailure);
+    static boolean bailoutsAsErrors(OptionValues options) {
+        return TruffleRuntimeOptions.getPolyglotOptionValue(options, TreatPerformanceWarningsAsErrors).contains(BAILOUT) ||
+                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PerformanceWarningsAreFatal).contains(BAILOUT) ||
+                        getValue(CompilationBailoutAsFailure);
+    }
+
+    static boolean verboseBailouts(OptionValues options) {
+        return TruffleRuntimeOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).contains(BAILOUT) || bailoutsAsErrors(options);
     }
 
     static <T> T getValue(final OptionKey<T> key) {
