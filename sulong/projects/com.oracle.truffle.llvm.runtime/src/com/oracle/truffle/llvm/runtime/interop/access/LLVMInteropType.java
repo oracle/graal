@@ -152,7 +152,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             return new Value(kind, null, size);
         }
 
-        static Value pointer(Structured baseType, long size) {
+        public static Value pointer(Structured baseType, long size) {
             return new Value(ValueKind.POINTER, baseType, size);
         }
 
