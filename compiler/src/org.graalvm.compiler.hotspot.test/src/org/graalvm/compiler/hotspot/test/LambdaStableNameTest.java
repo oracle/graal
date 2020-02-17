@@ -69,10 +69,10 @@ public class LambdaStableNameTest {
     }
 
     private static void assertLambdaName(String name) {
-        String expName = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
+        String expectedPrefix = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
                         "$$Lambda$";
-        if (!name.startsWith(expName)) {
-            fail("Expecting " + expName + " as prefix in lambda class name: " + name);
+        if (!name.startsWith(expectedPrefix)) {
+            fail("Expecting " + expectedPrefix + " as prefix in lambda class name: " + name);
         }
         assertTrue("semicolon at the end", name.endsWith(";"));
 
