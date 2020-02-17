@@ -597,7 +597,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                if (Bytecodes.canTrap(curOpcode)) {
+                if (Bytecodes.canTrap(curOpcode) || instrument != null) {
                     setBCI(frame, curBCI);
                 }
 
