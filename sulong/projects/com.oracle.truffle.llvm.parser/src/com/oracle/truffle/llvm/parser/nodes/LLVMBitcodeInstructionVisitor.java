@@ -99,7 +99,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpressionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -1015,7 +1015,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 if (node instanceof LLVMStatementNode) {
                     node = LLVMFrameNullerNodeGen.create(frameSlots, (LLVMStatementNode) node);
                 } else {
-                    node = new LLVMFrameNullerExpression(frameSlots, (LLVMExpressionNode) node);
+                    node = LLVMFrameNullerExpressionNodeGen.create(frameSlots, (LLVMExpressionNode) node);
                 }
                 instructionNodes.set(instructionNodes.size() - 1, node);
             }

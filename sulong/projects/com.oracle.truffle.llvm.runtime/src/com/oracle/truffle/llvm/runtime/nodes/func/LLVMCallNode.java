@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -36,32 +38,33 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public final class LLVMCallNode extends LLVMExpressionNode {
+@NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
+public abstract class LLVMCallNode extends LLVMExpressionNode {
 
     public static final int USER_ARGUMENT_OFFSET = 1;
 
     @Children private final LLVMExpressionNode[] argumentNodes;
     @Children private final LLVMPrepareArgumentNode[] prepareArgumentNodes;
-    @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
     @Child private LLVMDispatchNode dispatchNode;
 
     // this node is also used to execute inline assembly, which is not instrumentable and should
     // therefore not be considered a function call for the debugger
     private final boolean isSourceCall;
 
-    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
+    public static LLVMCallNode create(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
+        return LLVMCallNodeGen.create(functionType, argumentNodes, isSourceCall, LLVMLookupDispatchTargetNodeGen.create(functionNode));
+    }
+
+    LLVMCallNode(FunctionType functionType, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
         this.argumentNodes = argumentNodes;
         this.prepareArgumentNodes = createPrepareArgumentNodes(argumentNodes);
-        this.dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
         this.dispatchNode = LLVMDispatchNodeGen.create(functionType);
         this.isSourceCall = isSourceCall;
     }
 
     @ExplodeLoop
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        Object function = dispatchTargetNode.executeGeneric(frame);
-
+    @Specialization
+    Object doCall(VirtualFrame frame, Object function) {
         Object[] argValues = new Object[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
             argValues[i] = prepareArgumentNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));

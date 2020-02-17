@@ -49,14 +49,14 @@ import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeFactory.LandingpadCatchEntryNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeFactory.LandingpadFilterEntryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadCatchEntryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadFilterEntryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMLandingpadNode extends LLVMExpressionNode {
+public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode getStack;
     @Child private LLVMExpressionNode allocateLandingPadValue;
@@ -77,8 +77,8 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         this.entries = entries;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object doLandingpad(VirtualFrame frame) {
         try {
             LLVMUserException exception = (LLVMUserException) frame.getObject(exceptionSlot);
             LLVMPointer unwindHeader = exception.getUnwindHeader();
