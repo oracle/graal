@@ -76,7 +76,6 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     private byte groupNumber = -1;
     private byte enclosedCaptureGroupsLow;
     private byte enclosedCaptureGroupsHigh;
-    private short zeroWidthQuantifierIndex = -1;
 
     /**
      * Creates an empty non-capturing group.
@@ -224,14 +223,6 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
 
     public boolean hasEnclosedCaptureGroups() {
         return enclosedCaptureGroupsHigh > enclosedCaptureGroupsLow;
-    }
-
-    public short getZeroWidthQuantifierIndex() {
-        return zeroWidthQuantifierIndex;
-    }
-
-    public void setZeroWidthQuantifierIndex(int zeroWidthQuantifierIndex) {
-        this.zeroWidthQuantifierIndex = (short) zeroWidthQuantifierIndex;
     }
 
     /**

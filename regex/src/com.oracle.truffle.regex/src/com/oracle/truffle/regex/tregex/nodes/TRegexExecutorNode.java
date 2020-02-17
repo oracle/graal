@@ -78,7 +78,10 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getNumberOfCaptureGroups();
     }
 
+    public abstract boolean writesCaptureGroups();
+
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
     public abstract Object execute(TRegexExecutorLocals locals, boolean compactString);
+
 }

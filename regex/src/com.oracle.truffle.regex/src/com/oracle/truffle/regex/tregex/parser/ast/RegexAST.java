@@ -439,7 +439,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * }
      */
     public void createPrefix() {
-        if (root.startsWithCaret()) {
+        if (root.startsWithCaret() || properties.hasNonLiteralLookBehindAssertions()) {
             wrappedRoot = root;
             return;
         }

@@ -56,8 +56,8 @@ public class BackReference extends QuantifiableTerm {
 
     private final int groupNr;
 
-    BackReference(int groupNr) {
-        this.groupNr = groupNr;
+    BackReference(int referencedGroupNr) {
+        this.groupNr = referencedGroupNr;
     }
 
     private BackReference(BackReference copy) {
@@ -70,8 +70,37 @@ public class BackReference extends QuantifiableTerm {
         return ast.register(new BackReference(this));
     }
 
+    /**
+     * Returns the capture group number this back-reference is referring to, e.g. the referenced
+     * group of {@code \1} is 1.
+     */
     public int getGroupNr() {
         return groupNr;
+    }
+
+    public boolean isNestedBackReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_NESTED);
+    }
+
+    public void setNestedBackReference() {
+        setFlag(FLAG_BACK_REFERENCE_IS_NESTED, true);
+    }
+
+    public boolean isForwardReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_FORWARD);
+    }
+
+    public void setForwardReference() {
+        setFlag(FLAG_BACK_REFERENCE_IS_FORWARD, true);
+    }
+
+    /**
+     * Returns {@code true} iff this "back-reference" is actually a reference to its own parent
+     * group or a later group in the expression. In JavaScript, such nested/forward references will
+     * always match the empty string.
+     */
+    public boolean isNestedOrForwardReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_NESTED | FLAG_BACK_REFERENCE_IS_FORWARD);
     }
 
     @Override

@@ -150,7 +150,6 @@ public final class TRegexCompilationRequest {
             phaseEnd("Parser");
         }
         debugAST();
-        RegexProperties properties = ast.getProperties();
         if (ast.getRoot().isDead()) {
             return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
         }
@@ -158,17 +157,18 @@ public final class TRegexCompilationRequest {
         if (literal != null) {
             return literal;
         }
-        if (properties.hasBackReferences() && !ast.getRoot().hasQuantifiers()) {
-            return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(), ast.getNumberOfCaptureGroups(),
-                            compileBacktrackingExecutor());
+        if (canTransformToDFA(ast)) {
+            try {
+                createNFA();
+                if (nfa.isDead()) {
+                    return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+                }
+                return new TRegexExecRootNode(tRegexCompiler, ast, new TRegexNFAExecutorNode(nfa));
+            } catch (UnsupportedRegexException e) {
+                // fall back to backtracking executor
+            }
         }
-        checkFeatureSupport(properties);
-        createNFA();
-        if (nfa.isDead()) {
-            return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
-        }
-        return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(), ast.getNumberOfCaptureGroups(),
-                        new TRegexNFAExecutorNode(nfa));
+        return new TRegexExecRootNode(tRegexCompiler, ast, compileBacktrackingExecutor());
     }
 
     public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor() {
@@ -231,38 +231,18 @@ public final class TRegexCompilationRequest {
     TRegexDFAExecutorNode compileEagerDFAExecutor() {
         createAST();
         RegexProperties properties = ast.getProperties();
-        assert isSupported(properties);
+        assert canTransformToDFA(ast);
         assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
         assert !ast.getRoot().isDead();
         createNFA();
         return createDFAExecutor(nfa, true, true, true, false);
     }
 
-    private static void checkFeatureSupport(RegexProperties properties) throws UnsupportedRegexException {
-        if (properties.hasBackReferences()) {
-            throw new UnsupportedRegexException("backreferences not supported");
-        }
-        if (properties.hasLargeCountedRepetitions()) {
-            throw new UnsupportedRegexException("bounds of range quantifier too high");
-        }
-        if (properties.hasNegativeLookAheadAssertions()) {
-            throw new UnsupportedRegexException("negative lookahead assertions not supported");
-        }
-        if (properties.hasNonLiteralLookBehindAssertions()) {
-            throw new UnsupportedRegexException("body of lookbehind assertion too complex");
-        }
-        if (properties.hasNegativeLookBehindAssertions()) {
-            throw new UnsupportedRegexException("negative lookbehind assertions not supported");
-        }
-    }
-
-    private static boolean isSupported(RegexProperties properties) {
-        try {
-            checkFeatureSupport(properties);
-            return true;
-        } catch (UnsupportedRegexException e) {
-            return false;
-        }
+    private static boolean canTransformToDFA(RegexAST ast) throws UnsupportedRegexException {
+        RegexProperties p = ast.getProperties();
+        return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && !(p.hasBackReferences() || p.hasLargeCountedRepetitions() || p.hasNegativeLookAheadAssertions() ||
+                        p.hasNonLiteralLookBehindAssertions() || p.hasNegativeLookBehindAssertions() ||
+                        ast.getRoot().hasQuantifiers());
     }
 
     private void createAST() {

@@ -84,11 +84,6 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         this.subTreeId = subTreeId;
     }
 
-    /**
-     * Returns {@code true} iff this subtree is the root of the entire regular expression.
-     */
-    public abstract boolean isRoot();
-
     @Override
     public abstract RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive);
 

@@ -59,11 +59,6 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
     }
 
     @Override
-    public boolean isRoot() {
-        return true;
-    }
-
-    @Override
     public RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive) {
         return new RegexASTRootNode(this, ast, recursive);
     }

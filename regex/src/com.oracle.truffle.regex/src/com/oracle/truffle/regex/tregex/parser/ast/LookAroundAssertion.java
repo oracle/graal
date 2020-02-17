@@ -56,11 +56,6 @@ public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
         super(copy, ast, recursive);
     }
 
-    @Override
-    public boolean isRoot() {
-        return false;
-    }
-
     /**
      * Indicates whether this is a negative lookaround assertion (written as {@code (?!...)}
      * {@code (?<!...)}) or a positive one (written as {@code (?=...)} or {@code (?<=)}).

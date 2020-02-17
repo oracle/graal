@@ -82,7 +82,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
         this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers) * 4]), 0);
         setIndex(fromIndex);
-        Arrays.fill(stack(), sp + 2, stackFrameSize, -1);
+        Arrays.fill(stack(), sp + 2, sp + 2 + nCaptureGroups * 2, -1);
     }
 
     private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase) {
@@ -106,6 +106,16 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
         dupFrame();
+        return newSubLocals();
+    }
+
+    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t) {
+        dupFrame();
+        t.getGroupBoundaries().apply(stack(), sp + stackFrameSize + 2, getIndex());
+        return newSubLocals();
+    }
+
+    private TRegexBacktrackingNFAExecutorLocals newSubLocals() {
         return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifiers, nZeroWidthQuantifiers, stack, sp + stackFrameSize);
     }
 
@@ -188,13 +198,33 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         System.arraycopy(captureGroups, 0, stack(), sp + 2, captureGroups.length);
     }
 
+    public int getQuantifierCount(int index) {
+        assert 0 <= index && index < nQuantifiers;
+        return stack()[sp + 2 + result.length + index];
+    }
+
+    public void setQuantifierCount(int index, int count) {
+        assert 0 <= index && index < nQuantifiers;
+        stack()[sp + 2 + result.length + index] = count;
+    }
+
+    public void resetQuantifierCount(int index) {
+        assert 0 <= index && index < nQuantifiers;
+        stack()[sp + 2 + result.length + index] = 0;
+    }
+
+    public void incQuantifierCount(int index) {
+        assert 0 <= index && index < nQuantifiers;
+        stack()[sp + 2 + result.length + index]++;
+    }
+
     public int getZeroWidthQuantifierGuardIndex(int index) {
-        assert index < nZeroWidthQuantifiers;
+        assert 0 <= index && index < nZeroWidthQuantifiers;
         return stack()[sp + 2 + result.length + nQuantifiers + index];
     }
 
     public void setZeroWidthQuantifierGuardIndex(int index) {
-        assert index < nZeroWidthQuantifiers;
+        assert 0 <= index && index < nZeroWidthQuantifiers;
         stack()[sp + 2 + result.length + nQuantifiers + index] = getIndex();
     }
 

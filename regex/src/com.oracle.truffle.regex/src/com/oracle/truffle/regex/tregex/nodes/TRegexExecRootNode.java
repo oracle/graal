@@ -71,6 +71,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyFindStartRootNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfile.TracksRegexProfile {
 
@@ -90,14 +91,13 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     @Child private RunRegexSearchNode runnerNode;
 
-    public TRegexExecRootNode(RegexLanguage language, TRegexCompiler tRegexCompiler, RegexSource source, RegexFlags flags, boolean regressionTestMode, int numberOfCaptureGroups,
-                    TRegexExecutorNode nfaExecutor) {
-        super(language, source, flags.isUnicode());
+    public TRegexExecRootNode(TRegexCompiler tRegexCompiler, RegexAST ast, TRegexExecutorNode nfaExecutor) {
+        super(tRegexCompiler.getLanguage(), ast.getSource(), ast.getFlags().isUnicode());
         this.tRegexCompiler = tRegexCompiler;
-        this.numberOfCaptureGroups = numberOfCaptureGroups;
+        this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
-        this.regressionTestMode = !backtrackingMode && regressionTestMode;
+        this.regressionTestMode = !backtrackingMode && tRegexCompiler.getOptions().isRegressionTestMode();
         this.runnerNode = nfaNode;
         if (this.regressionTestMode) {
             regressTestBacktrackingNode = new NFARegexSearchNode(createEntryNode(tRegexCompiler.compileBacktrackingExecutor(((TRegexNFAExecutorNode) nfaNode.getExecutor()).getNFA())));

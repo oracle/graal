@@ -106,6 +106,16 @@ public class PositionAssertion extends Term {
     }
 
     @Override
+    public boolean isCaret() {
+        return type == Type.CARET;
+    }
+
+    @Override
+    public boolean isDollar() {
+        return type == Type.DOLLAR;
+    }
+
+    @Override
     public boolean equalsSemantic(RegexASTNode obj) {
         return obj instanceof PositionAssertion && ((PositionAssertion) obj).type == type;
     }

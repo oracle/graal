@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
@@ -77,6 +78,11 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
+    public boolean writesCaptureGroups() {
+        return true;
+    }
+
+    @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates());
     }
@@ -100,6 +106,9 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
             return null;
         }
         while (true) {
+            if (CompilerDirectives.inInterpreter()) {
+                RegexRootNode.checkThreadInterrupted();
+            }
             if (locals.getIndex() < getInputLength(locals)) {
                 findNextStates(locals);
                 // If locals.successorsEmpty() is true, then all of our paths have either been

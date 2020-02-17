@@ -56,17 +56,19 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_HAS_DOLLAR = 1 << 3;
     static final int FLAG_STARTS_WITH_CARET = 1 << 4;
     static final int FLAG_ENDS_WITH_DOLLAR = 1 << 5;
-    static final int FLAG_GROUP_LOOP = 1 << 6;
-    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 7;
-    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 8;
-    static final int FLAG_EMPTY_GUARD = 1 << 9;
-    static final int FLAG_HAS_LOOPS = 1 << 10;
-    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 11;
-    static final int FLAG_HAS_QUANTIFIERS = 1 << 12;
-    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 13;
-    static final int FLAG_HAS_LOOK_AHEADS = 1 << 14;
-    static final int FLAG_HAS_BACK_REFERENCES = 1 << 15;
-    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 16;
+    static final int FLAG_BACK_REFERENCE_IS_NESTED = 1 << 6;
+    static final int FLAG_BACK_REFERENCE_IS_FORWARD = 1 << 7;
+    static final int FLAG_GROUP_LOOP = 1 << 8;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 9;
+    static final int FLAG_EMPTY_GUARD = 1 << 10;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 11;
+    static final int FLAG_HAS_LOOPS = 1 << 12;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 13;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 14;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 15;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 16;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 17;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 18;
 
     private short id = -1;
     private RegexASTNode parent;
@@ -204,6 +206,19 @@ public abstract class RegexASTNode implements JsonConvertible {
         setHasCaret(true);
     }
 
+    /**
+     * Indicates whether or not this node should be allowed to match the empty string.
+     *
+     * @return true if this node is <em>not</em> allowed to match the empty string
+     */
+    public boolean hasEmptyGuard() {
+        return isFlagSet(FLAG_EMPTY_GUARD);
+    }
+
+    public void setEmptyGuard(boolean emptyGuard) {
+        setFlag(FLAG_EMPTY_GUARD, emptyGuard);
+    }
+
     public void setHasCaret(boolean hasCaret) {
         setFlag(FLAG_HAS_CARET, hasCaret);
     }
@@ -297,19 +312,6 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
-     * Indicates whether or not this node should be allowed to match the empty string.
-     *
-     * @return true if this node is <em>not</em> allowed to match the empty string
-     */
-    public boolean hasEmptyGuard() {
-        return isFlagSet(FLAG_EMPTY_GUARD);
-    }
-
-    public void setEmptyGuard(boolean emptyGuard) {
-        setFlag(FLAG_EMPTY_GUARD, emptyGuard);
-    }
-
-    /**
      * Indicates whether this {@link RegexASTNode} was inserted into the AST as the result of
      * expanding quantifier syntax (*, +, ?, {n,m}).
      *
@@ -398,6 +400,102 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     protected static JsonValue astNodeId(RegexASTNode astNode) {
         return astNode == null ? Json.nullValue() : Json.val(astNode.id);
+    }
+
+    public boolean isBackReference() {
+        return this instanceof BackReference;
+    }
+
+    public boolean isCharacterClass() {
+        return this instanceof CharacterClass;
+    }
+
+    public boolean isGroup() {
+        return this instanceof Group;
+    }
+
+    public boolean isLookAroundAssertion() {
+        return this instanceof LookAroundAssertion;
+    }
+
+    public boolean isLookAheadAssertion() {
+        return this instanceof LookAheadAssertion;
+    }
+
+    public boolean isLookBehindAssertion() {
+        return this instanceof LookBehindAssertion;
+    }
+
+    public boolean isMatchFound() {
+        return this instanceof MatchFound;
+    }
+
+    public boolean isPositionAssertion() {
+        return this instanceof PositionAssertion;
+    }
+
+    public boolean isQuantifiableTerm() {
+        return this instanceof QuantifiableTerm;
+    }
+
+    public boolean isRoot() {
+        return this instanceof RegexASTRootNode;
+    }
+
+    public boolean isSubtreeRoot() {
+        return this instanceof RegexASTSubtreeRootNode;
+    }
+
+    public boolean isSequence() {
+        return this instanceof Sequence;
+    }
+
+    public boolean isCaret() {
+        return isPositionAssertion() && asPositionAssertion().isCaret();
+    }
+
+    public boolean isDollar() {
+        return isPositionAssertion() && asPositionAssertion().isDollar();
+    }
+
+    public BackReference asBackReference() {
+        return (BackReference) this;
+    }
+
+    public CharacterClass asCharacterClass() {
+        return (CharacterClass) this;
+    }
+
+    public Group asGroup() {
+        return (Group) this;
+    }
+
+    public LookAroundAssertion asLookAroundAssertion() {
+        return (LookAroundAssertion) this;
+    }
+
+    public LookAheadAssertion asLookAheadAssertion() {
+        return (LookAheadAssertion) this;
+    }
+
+    public LookBehindAssertion asLookBehindAssertion() {
+        return (LookBehindAssertion) this;
+    }
+
+    public MatchFound asMatchFound() {
+        return (MatchFound) this;
+    }
+
+    public PositionAssertion asPositionAssertion() {
+        return (PositionAssertion) this;
+    }
+
+    public QuantifiableTerm asQuantifiableTerm() {
+        return (QuantifiableTerm) this;
+    }
+
+    public Sequence asSequence() {
+        return (Sequence) this;
     }
 
     protected JsonObject toJson(String typeName) {

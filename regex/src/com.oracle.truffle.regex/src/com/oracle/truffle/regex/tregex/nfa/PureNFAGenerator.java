@@ -44,7 +44,6 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
@@ -56,7 +55,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 public final class PureNFAGenerator {
 
     private final RegexAST ast;
-    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "NFA explosion");
+    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(Short.MAX_VALUE, "PureNFA explosion");
     private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(Short.MAX_VALUE, "NFA transition explosion");
     private PureNFAState anchoredFinalState;
     private PureNFAState unAnchoredFinalState;
