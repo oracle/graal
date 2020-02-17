@@ -218,10 +218,13 @@ public final class ResourceLimits {
          *
          * @see ThreadMXBean#getThreadCpuTime(long)
          * @see ResourceLimits Example Usage
-         * @since 20.0
+         * @since 19.3
          */
         @SuppressWarnings("hiding")
-        public Builder cpuTimeLimit(Duration timeLimit, Duration accuracy) {
+        /*
+         * Not ready for prime time yet. We need to solve GR-18742.
+         */
+        Builder cpuTimeLimit(Duration timeLimit, Duration accuracy) {
             if (timeLimit == null && accuracy == null) {
                 // fall through to allow reset
             } else if (timeLimit == null || accuracy == null) {
