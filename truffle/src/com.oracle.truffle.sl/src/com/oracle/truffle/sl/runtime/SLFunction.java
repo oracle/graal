@@ -48,6 +48,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -151,6 +152,7 @@ public final class SLFunction implements TruffleObject {
      */
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     SourceSection getSourceLocation() {
         return getCallTarget().getRootNode().getSourceSection();
     }
