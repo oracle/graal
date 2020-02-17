@@ -52,6 +52,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -109,13 +111,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         this.libraryConstants = libraryConstants;
     }
 
-    static class MergeLibraryKey {
+    static class CacheKey {
 
         private final TypeMirror libraryType;
         private final DSLExpression expressionKey;
         private final CacheExpression cache;
 
-        MergeLibraryKey(CacheExpression cache) {
+        CacheKey(CacheExpression cache) {
             this.libraryType = cache.getParameter().getType();
             this.expressionKey = cache.getDefaultExpression().reduce(new DSLExpressionReducer() {
                 public DSLExpression visitVariable(Variable binary) {
@@ -156,8 +158,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             if (this == obj) {
                 return true;
             }
-            if (obj instanceof MergeLibraryKey) {
-                MergeLibraryKey other = (MergeLibraryKey) obj;
+            if (obj instanceof CacheKey) {
+                CacheKey other = (CacheKey) obj;
                 return Objects.equals(libraryType, other.libraryType) && Objects.equals(expressionKey, other.expressionKey);
             }
             return false;
@@ -220,14 +222,14 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return Arrays.asList(genClass);
     }
 
-    private static void groupMergedLibraries(Collection<SpecializationData> specializations, final Map<MergeLibraryKey, List<CacheExpression>> mergedLibraries) {
+    private static void groupMergedLibraries(Collection<SpecializationData> specializations, final Map<CacheKey, List<CacheExpression>> mergedLibraries) {
         for (SpecializationData specialization : specializations) {
             if (!specialization.isReachable()) {
                 continue;
             }
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.isMergedLibrary()) {
-                    mergedLibraries.computeIfAbsent(new MergeLibraryKey(cache), (b) -> new ArrayList<>()).add(cache);
+                    mergedLibraries.computeIfAbsent(new CacheKey(cache), (b) -> new ArrayList<>()).add(cache);
                 }
             }
         }
@@ -421,32 +423,68 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
         DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
 
-        final Map<MergeLibraryKey, List<CacheExpression>> mergedLibraries = new LinkedHashMap<>();
-
+        final Map<CacheKey, List<CacheExpression>> mergedLibraries = new LinkedHashMap<>();
         for (ExportMessageData message : libraryExports.getExportedMessages().values()) {
             if (message.getSpecializedNode() != null) {
                 groupMergedLibraries(message.getSpecializedNode().getSpecializations(), mergedLibraries);
             }
         }
+        // caches initialized as part
+        final ExportMessageData acceptsMessage = libraryExports.getExportedMessages().get(ACCEPTS);
+        Map<CacheKey, List<CacheExpression>> eagerCaches = initializeEagerCaches(libraryExports);
 
         CodeTypeElement cacheClass = createClass(libraryExports, null, modifiers(PRIVATE, STATIC, FINAL), "Cached", libraryBaseType);
         CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
 
+        Set<NodeData> cachedSharedNodes = new LinkedHashSet<>();
+        for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+            if (export.getSpecializedNode() != null) {
+                cachedSharedNodes.add(export.getSpecializedNode());
+            }
+        }
+
         CodeExecutableElement constructor = cacheClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cacheClass));
         if (needsReceiver(libraryExports, true)) {
-            constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
-
+            final String receiverName = "receiver";
             CodeTreeBuilder builder = constructor.appendBuilder();
-            for (MergeLibraryKey key : mergedLibraries.keySet()) {
-                CodeTree mergedLibraryIdentifier = writeExpression(key.cache, "receiver", context.getType(Object.class), libraryExports.getReceiverType());
+            if (ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType())) {
+                constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "originalReceiver"));
+                builder.declaration(libraryExports.getReceiverType(), receiverName,
+                                CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), libraryExports.getReceiverType(), "originalReceiver").build());
+            } else {
+                constructor.addParameter(new CodeVariableElement(context.getType(Object.class), receiverName));
+            }
+
+            for (CacheKey key : mergedLibraries.keySet()) {
+                CodeTree mergedLibraryIdentifier = writeExpression(key.cache, receiverName, libraryExports.getReceiverType(), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startStatement();
-                builder.string("this.", identifier, " = insert(");
+                builder.string("this.", identifier, " = super.insert(");
                 builder.staticReference(useLibraryConstant(key.libraryType)).startCall(".create").tree(mergedLibraryIdentifier).end();
                 builder.string(")").end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
                 var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
             }
+
+            if (acceptsMessage != null && acceptsMessage.getSpecializedNode() != null) {
+                SpecializationData firstSpecialization = null;
+                for (SpecializationData s : acceptsMessage.getSpecializedNode().getSpecializations()) {
+                    if (!s.isSpecialized() || !s.isReachable()) {
+                        continue;
+                    }
+                    firstSpecialization = s;
+                    break;
+                }
+
+                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, acceptsMessage.getSpecializedNode(),
+                                cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
+                List<CacheExpression> caches = new ArrayList<>();
+                for (CacheKey key : eagerCaches.keySet()) {
+                    caches.add(key.cache);
+                }
+                builder.tree(factory.createInitializeCaches(firstSpecialization, caches, constructor, receiverName));
+            }
+
         }
 
         CodeTreeBuilder builder;
@@ -476,7 +514,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             CodeExecutableElement acceptsMethod = (CodeExecutableElement) libraryExports.getExportedMessages().get("accepts").getMessageElement();
             VariableElement delegateLibraryParam = acceptsMethod.getParameters().get(1);
             String mergedLibraryId = null;
-            outer: for (Entry<MergeLibraryKey, List<CacheExpression>> library : mergedLibraries.entrySet()) {
+            outer: for (Entry<CacheKey, List<CacheExpression>> library : mergedLibraries.entrySet()) {
                 for (CacheExpression cache : library.getValue()) {
                     if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), delegateLibraryParam)) {
                         mergedLibraryId = library.getKey().getCache().getMergedLibraryIdentifier();
@@ -502,7 +540,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         accepts.renameArguments("receiver");
         builder = accepts.createBuilder();
 
-        final ExportMessageData acceptsMessage = libraryExports.getExportedMessages().get(ACCEPTS);
         if (acceptsAssertions != null) {
             builder.tree(acceptsAssertions);
         }
@@ -519,7 +556,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startBlock();
             builder.returnFalse();
             builder.end();
-            for (MergeLibraryKey key : mergedLibraries.keySet()) {
+            for (CacheKey key : mergedLibraries.keySet()) {
                 CodeTree mergedLibraryInitializer = writeExpression(key.cache, "receiver", context.getType(Object.class), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startElseIf();
@@ -555,12 +592,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
 
-        Set<NodeData> cachedSharedNodes = new LinkedHashSet<>();
-        for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-            if (export.getSpecializedNode() != null) {
-                cachedSharedNodes.add(export.getSpecializedNode());
-            }
-        }
         Map<NodeData, CodeTypeElement> sharedNodes = new HashMap<>();
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
@@ -629,7 +660,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 throw new AssertionError("execute not found");
             }
             if (message.getName().equals(ACCEPTS)) {
-                if (export.getExportsLibrary().isFinalReceiver() && (cachedSpecializedNode == null || !cachedSpecializedNode.needsRewrites(context))) {
+                if (export.getExportsLibrary().isFinalReceiver() && (cachedSpecializedNode == null || !cachedSpecializedNode.needsRewrites(context)) && eagerCaches.isEmpty()) {
                     cachedExecute.getModifiers().add(Modifier.STATIC);
                 }
                 cachedExecute.setSimpleName(CodeNames.of(ACCEPTS_METHOD_NAME));
@@ -641,6 +672,69 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
         return cacheClass;
+    }
+
+    private static Map<CacheKey, List<CacheExpression>> initializeEagerCaches(ExportsLibrary libraryExports) {
+        final ExportMessageData acceptsMessage = libraryExports.getExportedMessages().get(ACCEPTS);
+        final Map<CacheKey, List<CacheExpression>> eagerCaches = new LinkedHashMap<>();
+        if (acceptsMessage != null && acceptsMessage.getSpecializedNode() != null) {
+            int specializationCount = 0;
+            for (SpecializationData s : acceptsMessage.getSpecializedNode().getSpecializations()) {
+                if (!s.isReachable() || !s.isSpecialized()) {
+                    continue;
+                }
+                specializationCount++;
+                for (CacheExpression cache : s.getCaches()) {
+                    if (isEagerInitialize(acceptsMessage, cache)) {
+                        eagerCaches.computeIfAbsent(new CacheKey(cache), (b) -> new ArrayList<>()).add(cache);
+                    }
+                }
+            }
+            if (specializationCount > 1) {
+                Iterator<List<CacheExpression>> iterator = eagerCaches.values().iterator();
+                while (iterator.hasNext()) {
+                    List<CacheExpression> caches = iterator.next();
+                    if (caches.size() != specializationCount) {
+                        // if a cache is not contained on all specializations
+                        // do not initialize it eagerly. Probably a pretty rare case
+                        // for accepts exports.
+                        iterator.remove();
+                    }
+                }
+            }
+        }
+
+        Set<String> eagerSharedGroups = new HashSet<>();
+        for (List<CacheExpression> caches : eagerCaches.values()) {
+            for (CacheExpression cache : caches) {
+                if (cache.isMergedLibrary()) {
+                    // merged libraries are handled elsewhere
+                    continue;
+                }
+                cache.setEagerInitialize(true);
+
+                if (cache.getSharedGroup() != null) {
+                    eagerSharedGroups.add(cache.getSharedGroup());
+                }
+            }
+        }
+        if (eagerSharedGroups.size() > 0) {
+            for (ExportMessageData message : libraryExports.getExportedMessages().values()) {
+                if (message.getSpecializedNode() != null) {
+                    for (SpecializationData specialization : message.getSpecializedNode().getSpecializations()) {
+                        if (!specialization.isReachable()) {
+                            continue;
+                        }
+                        for (CacheExpression cache : specialization.getCaches()) {
+                            if (cache.getSharedGroup() != null && eagerSharedGroups.contains(cache.getSharedGroup())) {
+                                cache.setEagerInitialize(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return eagerCaches;
     }
 
     private static boolean needsReceiver(ExportsLibrary libraryExports, boolean cached) {
@@ -655,12 +749,21 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                             if (cache.isMergedLibrary()) {
                                 return true;
                             }
+                            if (isEagerInitialize(message, cache)) {
+                                return true;
+                            }
                         }
                     }
                 }
             }
         }
         return libraryExports.needsDynamicDispatch() || !libraryExports.isFinalReceiver();
+    }
+
+    private static boolean isEagerInitialize(ExportMessageData message, @SuppressWarnings("unused") CacheExpression cache) {
+        // any cached in accepts can be always initialized and needs
+        // a receiver to initialize.
+        return message.getResolvedMessage().getName().equals(ACCEPTS);
     }
 
     private CodeExecutableElement createCastMethod(ExportsLibrary libraryExports, TypeMirror exportReceiverType, boolean cached) {
@@ -721,7 +824,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                                 Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverType(), null)));
                 libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), receiverClassType, "receiverClass_"));
 
-                if (ElementUtils.isObject(libraryExports.getReceiverType())) {
+                if (cached || ElementUtils.isObject(libraryExports.getReceiverType())) {
                     constructor.appendBuilder().startStatement().string("this.receiverClass_ = receiver.getClass()").end();
                 } else {
                     constructor.appendBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverType()).string("receiver).getClass()").end();

@@ -385,6 +385,9 @@ public final class SpecializationData extends TemplateMethod {
 
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
+                if (cache.isEagerInitialize()) {
+                    continue;
+                }
                 if (!cache.isAlwaysInitialized() || cache.isCachedContext() || cache.isCachedLanguage()) {
                     return true;
                 }

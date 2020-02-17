@@ -123,6 +123,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
 import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.CreateCastData;
@@ -614,6 +615,22 @@ public class FlatNodeGenFactory {
             fields.add(supplierField);
         }
         return fields;
+    }
+
+    /**
+     * Used by {@link ExportsGenerator} to eagerly initialize caches referenced in accepts.
+     */
+    public CodeTree createInitializeCaches(SpecializationData specialization, List<CacheExpression> expressions,
+                    CodeExecutableElement method, String receiverName) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        FrameState frameState = FrameState.load(this, NodeExecutionMode.SLOW_PATH, method);
+        NodeExecutionData execution = specialization.getNode().getChildExecutions().get(0);
+        frameState.set(execution, frameState.getValue(execution).accessWith(CodeTreeBuilder.singleString(receiverName)));
+        for (CacheExpression cache : expressions) {
+            Collection<IfTriple> triples = persistAndInitializeCache(frameState, specialization, cache, false, true);
+            IfTriple.materialize(b, triples, true);
+        }
+        return b.build();
     }
 
     private static boolean shouldReportPolymorphism(NodeData node, List<SpecializationData> reachableSpecializations) {
@@ -3872,6 +3889,9 @@ public class FlatNodeGenFactory {
         }
         List<IfTriple> triples = new ArrayList<>();
         for (CacheExpression cache : caches) {
+            if (cache.isEagerInitialize()) {
+                continue;
+            }
             triples.addAll(initializeCasts(frameState, group, cache.getDefaultExpression(), mode));
             triples.addAll(persistAndInitializeCache(frameState, group.getSpecialization(), cache, store, forcePersist));
         }
@@ -3973,7 +3993,7 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
-            if (sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+            if (!cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
                 builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
                 builder.end();
@@ -4949,6 +4969,10 @@ public class FlatNodeGenFactory {
 
         public void set(String id, LocalVariable var) {
             values.put(id, var);
+        }
+
+        public void set(NodeExecutionData execution, LocalVariable var) {
+            set(valueName(execution), var);
         }
 
         public LocalVariable get(String id) {

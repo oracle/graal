@@ -65,6 +65,7 @@ public final class CacheExpression extends MessageContainer {
     private DSLExpression defaultExpression;
     private DSLExpression uncachedExpression;
     private boolean alwaysInitialized = false;
+    private boolean eagerInitialize = false;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private String sharedGroup;
@@ -98,6 +99,14 @@ public final class CacheExpression extends MessageContainer {
         } else {
             return ElementUtils.typeEquals(getReferenceType(), getParameter().getType());
         }
+    }
+
+    public boolean isEagerInitialize() {
+        return eagerInitialize;
+    }
+
+    public void setEagerInitialize(boolean alreadyInitialized) {
+        this.eagerInitialize = alreadyInitialized;
     }
 
     public TypeMirror getReferenceType() {
