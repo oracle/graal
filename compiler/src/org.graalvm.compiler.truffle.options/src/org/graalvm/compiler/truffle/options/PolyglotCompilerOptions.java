@@ -252,6 +252,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
 
+    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
     // Tracing
 
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
