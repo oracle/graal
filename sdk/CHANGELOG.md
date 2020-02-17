@@ -9,12 +9,11 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added [Context.Builder.currentWorkingDirectory](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#currentWorkingDirectory-java.nio.file.Path-) to set the current working directory used by the guest application to resolve relative paths.
 * The algorithm used to generate a unique [URI](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
 * All Truffle Graal runtime options (-Dgraal.) will be deprecated with 20.1. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-). The `TRUFFLE_STRICT_OPTION_DEPRECATION` environment variable can be used to detect usages of deprecated Graal options. When the `TRUFFLE_STRICT_OPTION_DEPRECATION` is set to `true` and the deprecated Graal option is used the engine throws a `PolyglotException` listing the used deprecated options and corresponding replacements.
-* Added `org.graalvm.polyglot.ResourceLimits` that allows to specify context specific time execution limits.
 
 
 ## Version 19.3.0
 * The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
-* Added `org.graalvm.polyglot.ResourceLimits` that allows to specify context specific statement count execution limits.
+* Added `org.graalvm.polyglot.ResourceLimits` that allows to specify context specific time and statement count execution limits.
 * Added [HomeFinder](http://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html), a utility class to find various paths of the running GraalVM.
 * Contexts can now be closed if they are still explicitly entered using `Context.enter` on the current thread. This allows for simpler error recovery code.
 * Added `Value.getContext()` to access the context a value is associated with.
