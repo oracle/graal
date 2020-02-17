@@ -2,9 +2,9 @@ var counter = 0;
 
 function ping() {
     console.log(`Ping ${++counter}`);
-    setTimeout(ping, 1000);
+    setTimeout(ping, 5000);
 }
-setTimeout(ping, 1000);
+setTimeout(ping, 5000);
 
 // define T-Trace script via curl anytime later:
 function connect() {
@@ -17,4 +17,4 @@ function connect() {
     const { exec } = require('child_process');
     exec(cmd);
 }
-setTimeout(connect, 2500);
+setTimeout(connect, 12500);
