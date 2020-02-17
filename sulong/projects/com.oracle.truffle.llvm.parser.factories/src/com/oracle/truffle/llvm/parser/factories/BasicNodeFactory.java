@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -86,7 +86,9 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMFunctionRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMFunctionRootNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMAddressRetNodeGen;
@@ -102,7 +104,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMStru
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
-import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
@@ -159,7 +161,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEndNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VAStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ComparisonNodeFactory.LLVMX86_CmpssNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
@@ -1115,9 +1117,9 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
                     LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
-        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]));
+        LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]));
         body.setSourceLocation(LLVMSourceLocation.orDefault(location));
-        final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
+        final LLVMFunctionRootNode functionRoot = LLVMFunctionRootNodeGen.create(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
         functionRoot.setSourceLocation(LLVMSourceLocation.orDefault(location));
         return functionRoot;
     }
@@ -1158,7 +1160,7 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
         assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), new FrameDescriptor(),
-                        new LLVMStatementNode[]{LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)}, new ArrayList<>(), null);
+                        Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
     }
 
@@ -1400,7 +1402,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.va_start":
                     return LLVMX86_64VAStartNodeGen.create(callerArgumentCount, createVarargsAreaStackAllocation(), createMemMove(), args[1]);
                 case "llvm.va_end":
-                    return new LLVMX86_64BitVAEnd(args[1]);
+                    return LLVMX86_64BitVAEndNodeGen.create(args[1]);
                 case "llvm.va_copy":
                     return LLVMX86_64BitVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
                 case "llvm.eh.sjlj.longjmp":
@@ -1672,7 +1674,7 @@ public class BasicNodeFactory implements NodeFactory {
             for (int i = 0; i < writes.length; i++) {
                 writes[i] = createFrameWrite(types[i], null, to[i]);
             }
-            return new LLVMWritePhisNode(from, writes);
+            return LLVMWritePhisNodeGen.create(from, writes);
         }
         return null;
     }

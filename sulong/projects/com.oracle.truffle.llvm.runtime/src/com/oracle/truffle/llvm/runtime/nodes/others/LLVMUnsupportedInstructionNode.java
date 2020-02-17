@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,40 +30,42 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNodeGen.LLVMUnsupportedExpressionNodeGen;
 
-public final class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
+public abstract class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
 
     public static LLVMUnsupportedInstructionNode create(UnsupportedReason reason) {
-        return new LLVMUnsupportedInstructionNode(reason, null);
+        return LLVMUnsupportedInstructionNodeGen.create(reason, null);
     }
 
     public static LLVMUnsupportedInstructionNode create(UnsupportedReason reason, String message) {
-        return new LLVMUnsupportedInstructionNode(reason, message);
+        return LLVMUnsupportedInstructionNodeGen.create(reason, message);
     }
 
     public static LLVMUnsupportedExpressionNode createExpression(UnsupportedReason reason) {
-        return new LLVMUnsupportedExpressionNode(create(reason));
+        return LLVMUnsupportedExpressionNodeGen.create(create(reason));
     }
 
     public static LLVMUnsupportedExpressionNode createExpression(UnsupportedReason reason, String message) {
-        return new LLVMUnsupportedExpressionNode(create(reason, message));
+        return LLVMUnsupportedExpressionNodeGen.create(create(reason, message));
     }
 
     private final String message;
     private final UnsupportedReason reason;
 
-    private LLVMUnsupportedInstructionNode(UnsupportedReason reason, String message) {
+    LLVMUnsupportedInstructionNode(UnsupportedReason reason, String message) {
         this.message = message;
         this.reason = reason;
     }
 
-    @Override
-    public void execute(VirtualFrame frame) {
+    @Specialization
+    void doUnsupported() {
         CompilerDirectives.transferToInterpreter();
         if (message == null) {
             throw new LLVMUnsupportedException(this, reason);
@@ -71,16 +73,16 @@ public final class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
         throw new LLVMUnsupportedException(this, reason, "Unsupported operation: " + message);
     }
 
-    public static final class LLVMUnsupportedExpressionNode extends LLVMExpressionNode {
+    public abstract static class LLVMUnsupportedExpressionNode extends LLVMExpressionNode {
 
         @Child private LLVMUnsupportedInstructionNode instruction;
 
-        private LLVMUnsupportedExpressionNode(LLVMUnsupportedInstructionNode instruction) {
+        LLVMUnsupportedExpressionNode(LLVMUnsupportedInstructionNode instruction) {
             this.instruction = instruction;
         }
 
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
+        @Specialization
+        public Object doUnsupported(VirtualFrame frame) {
             instruction.execute(frame);
             return null;
         }

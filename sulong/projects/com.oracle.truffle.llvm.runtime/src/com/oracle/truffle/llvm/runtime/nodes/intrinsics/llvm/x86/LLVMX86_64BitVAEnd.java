@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+public abstract class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode target;
 
@@ -40,8 +40,8 @@ public final class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
         this.target = target;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    Object doGeneric() {
         // nop
         return null;
     }

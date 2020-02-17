@@ -116,7 +116,7 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
@@ -578,7 +578,7 @@ public class CommonNodeFactory {
     }
 
     public static LLVMStatementNode createDebugTrap() {
-        return new LLVMDebugTrapNode();
+        return LLVMDebugTrapNodeGen.create();
     }
 
     public static LLVMDebugValue.Builder createDebugDeclarationBuilder() {

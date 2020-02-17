@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 
-public final class LLVMX86_MissingBuiltin extends LLVMBuiltin {
+public abstract class LLVMX86_MissingBuiltin extends LLVMBuiltin {
     private final String name;
 
-    private LLVMX86_MissingBuiltin(String name) {
+    LLVMX86_MissingBuiltin(String name) {
         this.name = name;
     }
 
     public static LLVMX86_MissingBuiltin create(String name) {
-        return new LLVMX86_MissingBuiltin(name);
+        return LLVMX86_MissingBuiltinNodeGen.create(name);
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    Object doMissing() {
+        CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Missing LLVM builtin: " + name);
     }
 }

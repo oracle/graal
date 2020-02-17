@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,20 +38,20 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNodeGen;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
-    @Child private LLVMInlineAssemblyPrologueNode prologue;
+    @Child private LLVMInlineAssemblyBlockNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
 
     @Child private LLVMExpressionNode result;
 
     public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor,
-                    LLVMStatementNode[] statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
+                    List<LLVMStatementNode> statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
-        this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
-        this.block = new LLVMInlineAssemblyBlockNode(statements);
+        this.prologue = LLVMInlineAssemblyBlockNodeGen.create(writeNodes);
+        this.block = LLVMInlineAssemblyBlockNodeGen.create(statements);
         this.result = result;
     }
 

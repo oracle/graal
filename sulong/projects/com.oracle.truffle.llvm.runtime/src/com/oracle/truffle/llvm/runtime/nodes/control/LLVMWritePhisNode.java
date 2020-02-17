@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public final class LLVMWritePhisNode extends LLVMStatementNode {
+public abstract class LLVMWritePhisNode extends LLVMStatementNode {
 
     @Children private final LLVMExpressionNode[] from;
     @Children private final LLVMWriteNode[] writes;
@@ -47,8 +48,8 @@ public final class LLVMWritePhisNode extends LLVMStatementNode {
         assert from.length == writes.length;
     }
 
-    @Override
-    public void execute(VirtualFrame frame) {
+    @Specialization
+    void doWritePhis(VirtualFrame frame) {
         // because of dependencies between the values, we need to read all the values before writing
         // any new value
         if (from.length == 1) {
