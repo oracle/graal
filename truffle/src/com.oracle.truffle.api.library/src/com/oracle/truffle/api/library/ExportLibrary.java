@@ -333,6 +333,32 @@ public @interface ExportLibrary {
      */
     int priority() default 0;
 
+    /**
+     * If set to <code>true</code> allows the accepts condition to transition from <code>true</code>
+     * to <code>false</code> for a library created for a receiver instance. The transition may
+     * happen as part of a message invocation. If this option is set to <code>false</code> any
+     * modification of the receiver that causes the custom accepts condition to change throws an
+     * {@link AssertionError} if assertions (-ea) are enabled. By default this option is set to
+     * <code>false</code>. If the receiver transitions in parallel then there are no guarantees
+     * provided. The library caller is responsible to provide proper synchronization.
+     * <p>
+     * This feature is useful to implement runtime value representations that dynamically transition
+     * from one state to the next. With arrays, a common example is the access strategy that changes
+     * from sparse or dense arrays. Another use-case is the Truffle object model, where the shape
+     * should be used in the accepts condition, to common out the shape check, but at the same time
+     * the shape should be able to transition due to a property write.
+     * <p>
+     * <b>Performance note:</b> If enabled, the accepts guard of this library effectively needs to
+     * be repeated on every message invocation of this export. It is therefore recommended to keep
+     * set this flag <code>false</code> for performance reasons, if possible. It is also recommended
+     * to double check that the duplicated accepts guard for every message is eliminated in the
+     * compiler graphs after Partial evaluation.
+     *
+     * @see Library#accepts(Object)
+     * @since 20.1
+     */
+    boolean allowTransition() default false;
+
     /***
      * Repeat annotation for {@link ExportLibrary}.
      *

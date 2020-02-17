@@ -73,6 +73,7 @@ public final class ExportsLibrary extends Template {
     private int defaultExportPriority;
     private Map<CacheExpression, String> sharedExpressions;
     private VariableElement delegationVariable;
+    private boolean allowTransition;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -220,6 +221,14 @@ public final class ExportsLibrary extends Template {
 
     public int getDefaultExportPriority() {
         return defaultExportPriority;
+    }
+
+    public void setAllowTransition(boolean allowTransition) {
+        this.allowTransition = allowTransition;
+    }
+
+    public boolean isAllowTransition() {
+        return allowTransition;
     }
 
 }

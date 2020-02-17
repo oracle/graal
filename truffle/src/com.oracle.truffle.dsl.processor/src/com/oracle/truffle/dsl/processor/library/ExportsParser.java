@@ -533,6 +533,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             }
 
+            Boolean allowTransition = ElementUtils.getAnnotationValue(Boolean.class, exportAnnotationMirror, "allowTransition", false);
+            if (allowTransition != null) {
+                lib.setAllowTransition(allowTransition);
+            }
+
             String delegateTo = ElementUtils.getAnnotationValue(String.class, exportAnnotationMirror, "delegateTo", false);
             if (delegateTo != null) {
                 AnnotationValue delegateToValue = ElementUtils.getAnnotationValue(exportAnnotationMirror, "delegateTo");
