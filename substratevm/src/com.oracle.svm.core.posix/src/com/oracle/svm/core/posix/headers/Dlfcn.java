@@ -24,15 +24,20 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.CTypedefOfInfo;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
 
 // Checkstyle: stop
@@ -88,4 +93,34 @@ public class Dlfcn {
 
     @CFunction
     public static native int dladdr(WordBase address, Dl_info info);
+
+    @Platforms(Platform.LINUX.class)
+    @CContext(PosixDirectives.class)
+    @CLibrary("dl")
+    public static class GNUExtensions {
+
+        public interface Lmid_t extends SignedWord {
+        }
+
+        @CTypedefOfInfo("long int")
+        @CPointerTo(nameOfCType = "Lmid_t")
+        public interface Lmid_tPointer extends PointerBase {
+            Lmid_t read();
+        }
+
+        @CConstant
+        public static native int RTLD_DI_LMID();
+
+        @CConstant
+        public static native int LM_ID_NEWLM();
+
+        @CConstant
+        public static native int LM_ID_BASE();
+
+        @CFunction
+        public static native PointerBase dlmopen(Lmid_t lmid, CCharPointer filename, int mode);
+
+        @CFunction
+        public static native int dlinfo(PointerBase handle, int request, PointerBase info);
+    }
 }
