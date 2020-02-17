@@ -696,7 +696,7 @@ public final class DebuggerController implements ContextsListener {
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
 
             if (steppingInfo != null) {
-                // get the top frame for chekcing instance filters
+                // get the top frame for checking instance filters
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1);
                 if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
                     JDWPLogger.log("not suspending here: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection());
