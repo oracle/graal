@@ -94,17 +94,100 @@ public class TypedInteropTest extends InteropTestBase {
         Assert.assertEquals(25, ret);
     }
 
-    public static class DistSquaredByCopyNode extends SulongTestNode {
+    private static StructObject makeDoublePoint(double x, double y) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+        return new StructObject(point);
+    }
 
-        public DistSquaredByCopyNode() {
-            super(testLibrary, "distSquaredByCopy");
+    public static class DistSquaredDesugaredNode extends SulongTestNode {
+
+        public DistSquaredDesugaredNode() {
+            super(testLibrary, "distSquaredDesugared");
         }
     }
 
     @Test
-    public void testDistSquaredByCopy(@Inject(DistSquaredByCopyNode.class) CallTarget distSquaredByCopy) {
-        Object ret = distSquaredByCopy.call(makePoint(3, 7), makePoint(6, 3));
+    public void testDistSquaredDesugared(@Inject(DistSquaredDesugaredNode.class) CallTarget distSquaredDesugared) {
+        Object ret = distSquaredDesugared.call(makeDoublePoint(3, 7), makeDoublePoint(6, 3));
         Assert.assertEquals(25, ret);
+    }
+
+    private static StructObject makeByValPoint(int x, int y, long a, long b) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+        point.put("a", a);
+        point.put("b", b);
+        return new StructObject(point);
+    }
+
+    public static class DistSquaredByValNode extends SulongTestNode {
+
+        public DistSquaredByValNode() {
+            super(testLibrary, "distSquaredByVal");
+        }
+    }
+
+    @Test
+    public void testDistSquaredByVal(@Inject(DistSquaredByValNode.class) CallTarget distSquaredByVal) {
+        Object ret = distSquaredByVal.call(makeByValPoint(3, 7, 8, 9), makeByValPoint(6, 3, 10, 11));
+        Assert.assertEquals(25, ret);
+    }
+
+    public static class ByValGet extends SulongTestNode {
+
+        public ByValGet() {
+            super(testLibrary, "byValGet");
+        }
+    }
+
+    @Test
+    public void byValGet(@Inject(ByValGet.class) CallTarget byValGet) {
+        Object ret = byValGet.call(makeByValPoint(3, 7, 8, 9));
+        Assert.assertEquals((long) 17, ret);
+    }
+
+    private static StructObject makeNestedByValPoint(int x, int y, long a, long b) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("x", x);
+        point.put("y", y);
+
+        Map<String, Object> nested = new HashMap<>();
+        nested.put("a", a);
+        nested.put("b", b);
+        StructObject nestedObject = new StructObject(nested);
+
+        point.put("nested", nestedObject);
+
+        return new StructObject(point);
+    }
+
+    public static class DistSquaredNestedByValNode extends SulongTestNode {
+
+        public DistSquaredNestedByValNode() {
+            super(testLibrary, "distSquaredNestedByVal");
+        }
+    }
+
+    @Test
+    public void testDistSquaredNestedByVal(@Inject(DistSquaredNestedByValNode.class) CallTarget distSquaredNestedByVal) {
+        Object ret = distSquaredNestedByVal.call(makeNestedByValPoint(3, 7, 8, 9), makeNestedByValPoint(6, 3, 10, 11));
+        Assert.assertEquals(25, ret);
+    }
+
+    public static class NestedByValGetNested extends SulongTestNode {
+
+        public NestedByValGetNested() {
+            super(testLibrary, "nestedByValGetNested");
+        }
+    }
+
+    @Test
+    public void testNestedByValGetNested(@Inject(NestedByValGetNested.class) CallTarget nestedByValGetNested) {
+        Object ret = nestedByValGetNested.call(makeNestedByValPoint(3, 7, 8, 9));
+        Assert.assertEquals((long) 17, ret);
     }
 
     public static class FlipPointNode extends SulongTestNode {

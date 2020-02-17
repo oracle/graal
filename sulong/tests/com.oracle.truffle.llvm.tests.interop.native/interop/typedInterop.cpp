@@ -44,10 +44,51 @@ extern "C" int distSquared(void *a, void *b) {
   return distX * distX + distY * distY;
 }
 
-extern "C" int distSquaredByCopy(struct Point a, struct Point b) {
+struct DoublePoint {
+  double x;
+  double y;
+};
+
+extern "C" int distSquaredDesugared(struct DoublePoint a, struct DoublePoint b) {
   int distX = b.x - a.x;
   int distY = b.y - a.y;
   return distX * distX + distY * distY;
+}
+
+struct ByValPoint {
+  int x;
+  long a;
+  long b;
+  int y;
+};
+
+extern "C" int distSquaredByVal(struct ByValPoint a, struct ByValPoint b) {
+  int distX = b.x - a.x;
+  int distY = b.y - a.y;
+  return distX * distX + distY * distY;
+}
+
+extern "C" long byValGet(struct ByValPoint a) {
+  return a.a + a.b;
+}
+
+struct NestedPoint {
+  int x;
+  struct {
+    long a;
+    long b;
+  } nested;
+  int y;
+};
+
+extern "C" int distSquaredNestedByVal(struct NestedPoint a, struct NestedPoint b) {
+  int distX = b.x - a.x;
+  int distY = b.y - a.y;
+  return distX * distX + distY * distY;
+}
+
+extern "C" long nestedByValGetNested(struct NestedPoint a) {
+  return a.nested.a + a.nested.b;
 }
 
 extern "C" void flipPoint(void *value) {
@@ -128,8 +169,8 @@ struct BitFields {
 POLYGLOT_DECLARE_STRUCT(BitFields)
 
 extern "C" int accessBitFields(void *arg) {
-	struct BitFields *obj = polyglot_as_BitFields(arg);
-	return obj->x + obj->y + obj->z;
+        struct BitFields *obj = polyglot_as_BitFields(arg);
+        return obj->x + obj->y + obj->z;
 }
 
 struct FusedArray {
