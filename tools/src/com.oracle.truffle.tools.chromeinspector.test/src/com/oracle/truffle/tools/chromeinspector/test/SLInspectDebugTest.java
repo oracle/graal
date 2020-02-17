@@ -1940,6 +1940,61 @@ public class SLInspectDebugTest {
     }
 
     @Test
+    public void testCompletionUpdate() throws Exception {
+        tester = InspectorTester.start(true);
+        Source source = Source.newBuilder("sl", CODE1, "Code1Compl.sl").build();
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":1}\n" +
+                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        tester.eval(source);
+        long id = tester.getContextId();
+        // Suspend at the beginning of the script:
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":0,\"executionContextId\":" + id + ",\"url\":\"" + SL_BUILTIN_URI + "\",\"hash\":\"ffffffffffffffffffffffffffffffffffffffff\"}}\n" +
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":18,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":245,\"executionContextId\":" + id + ",\"url\":\"" + slTestURI + "\",\"hash\":\"f8058ed0f3c2f0acf3e37e59f953127afdba90e5\"}}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"1\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
+                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"objectId\":\"3\"}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":1}," +
+                                                 "\"url\":\"" + slTestURI + "\"}]}}\n"));
+        // Get global completion:
+        tester.sendMessage("{\"id\":6,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\",\"ownProperties\":false,\"accessorPropertiesOnly\":false,\"generatePreview\":false}}");
+        String globals = tester.receiveMessages(true,
+                        "{\"result\":{\"result\":[",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"factorial\",\"value\":{\"description\":\"Function factorial\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "]},\"id\":6}\n");
+        assertFalse(globals.contains("foo0") || globals.contains("foo1"));
+        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"function foo0() {n = 0;} function foo1() {n = 1;}\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":{\"description\":\"NULL\",\"type\":\"object\",\"value\":\"NULL\"}},\"id\":7}\n"));
+
+        // Get new global completion:
+        tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\",\"ownProperties\":false,\"accessorPropertiesOnly\":false,\"generatePreview\":false}}");
+        tester.receiveMessages(true,
+                        "{\"result\":{\"result\":[",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"factorial\",\"value\":{\"description\":\"Function factorial\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"foo0\",\"value\":{\"description\":\"Function foo0\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"foo1\",\"value\":{\"description\":\"Function foo1\",\"className\":\"Function\",\"type\":\"function\"",
+                                                 "]},\"id\":8}\n");
+
+        // Resume to finish:
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":20}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        tester.finish();
+    }
+
+    @Test
     public void testObjectGroups() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE_OBJECT_GROUPS, "SLObjectGroups.sl").build();
