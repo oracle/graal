@@ -44,6 +44,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Layout.Builder;
 import com.oracle.truffle.api.object.Layout.ImplicitCast;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class SharedShapeTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     final Builder builder = Layout.newLayout().addAllowedImplicitCast(ImplicitCast.IntToLong);
     final Layout layout = new DefaultLayoutFactory().createLayout(builder);
@@ -67,9 +69,9 @@ public class SharedShapeTest {
     @Test
     public void testDifferentLocationsImplicitCast() {
         DynamicObject object = sharedShape.newInstance();
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        object.define("a", 2L);
+        LIBRARY.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
@@ -83,15 +85,15 @@ public class SharedShapeTest {
     @Test
     public void testNoReuseOfPreviousLocation() {
         DynamicObject object = sharedShape.newInstance();
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        object.define("a", 2L);
+        LIBRARY.put(object, "a", 2L);
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
         Assert.assertEquals(Object.class, getLocationType(location2));
 
-        object.define("b", 3);
+        LIBRARY.put(object, "b", 3);
         Location locationB = object.getShape().getProperty("b").getLocation();
 
         DOTestAsserts.assertShape("{" +
@@ -109,9 +111,9 @@ public class SharedShapeTest {
     @Test
     public void testCanReuseLocationsUntilShared() {
         DynamicObject object = rootShape.newInstance();
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         Location locationA1 = object.getShape().getProperty("a").getLocation();
-        object.define("a", 2L);
+        LIBRARY.put(object, "a", 2L);
         Location locationA2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertSameLocation(locationA1, locationA2);
@@ -120,14 +122,14 @@ public class SharedShapeTest {
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
         // Share object
-        object.setShapeAndGrow(object.getShape(), object.getShape().makeSharedShape());
+        LIBRARY.makeShared(object);
 
-        object.define("b", 3);
+        LIBRARY.put(object, "b", 3);
         Location locationB1 = object.getShape().getProperty("b").getLocation();
-        object.define("b", 4L);
+        LIBRARY.put(object, "b", 4L);
         Location locationB2 = object.getShape().getProperty("b").getLocation();
 
-        object.define("c", 5);
+        LIBRARY.put(object, "c", 5);
 
         DOTestAsserts.assertNotSameLocation(locationB1, locationB2);
         Assert.assertEquals(Object.class, getLocationType(locationB2));
@@ -142,7 +144,7 @@ public class SharedShapeTest {
         // The old location can still be read
         Assert.assertEquals(3, locationB1.get(object));
         Assert.assertEquals(4L, locationB2.get(object));
-        Assert.assertEquals(5, object.get("c"));
+        Assert.assertEquals(5, LIBRARY.getOrDefault(object, "c", null));
     }
 
     @Test
@@ -151,30 +153,32 @@ public class SharedShapeTest {
         Assert.assertEquals(false, rootShape.isShared());
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
-        object.setShapeAndGrow(rootShape, sharedShape);
+        LIBRARY.makeShared(object);
+        Assert.assertSame(sharedShape, object.getShape());
 
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         final Shape sharedShapeWithA = object.getShape();
         Assert.assertEquals(true, sharedShapeWithA.isShared());
 
         DynamicObject object2 = rootShape.newInstance();
-        object2.setShapeAndGrow(rootShape, sharedShape);
-        object2.define("a", 1);
+        LIBRARY.makeShared(object2);
+        Assert.assertSame(sharedShape, object2.getShape());
+        LIBRARY.put(object2, "a", 1);
         Assert.assertSame(sharedShapeWithA, object2.getShape());
 
         // Currently, sharing is a transition and transitions do not commute magically
         DynamicObject object3 = rootShape.newInstance();
-        object3.define("a", 1);
-        object3.setShapeAndGrow(object3.getShape(), object3.getShape().makeSharedShape());
+        LIBRARY.put(object3, "a", 1);
+        LIBRARY.makeShared(object3);
         Assert.assertNotSame(sharedShapeWithA, object3.getShape());
     }
 
     @Test
     public void testReuseReplaceProperty() {
         DynamicObject object = sharedShape.newInstance();
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        object.define("a", 2, 42);
+        LIBRARY.putWithFlags(object, "a", 2, 42);
         Location location2 = object.getShape().getProperty("a").getLocation();
         DOTestAsserts.assertSameLocation(location1, location2);
     }
@@ -182,12 +186,12 @@ public class SharedShapeTest {
     @Test
     public void testCannotDeleteFromSharedShape() {
         DynamicObject object = sharedShape.newInstance();
-        object.define("a", 1);
+        LIBRARY.put(object, "a", 1);
         try {
-            object.delete("a");
+            LIBRARY.removeKey(object, "a");
             Assert.fail();
         } catch (UnsupportedOperationException e) {
-            Assert.assertEquals(1, object.get("a"));
+            Assert.assertEquals(1, LIBRARY.getOrDefault(object, "a", null));
         }
     }
 }

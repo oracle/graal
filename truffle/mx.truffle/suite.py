@@ -431,6 +431,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.api.object"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
 
@@ -443,6 +444,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "testProject" : True,
     },

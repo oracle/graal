@@ -126,7 +126,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location newIntLocation(boolean useFinal) {
-        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.IntegerLocations) {
+        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.IntegerLocations) {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new IntLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
             } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
@@ -142,7 +142,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     }
 
     Location newDoubleLocation(boolean useFinal, boolean allowedIntToDouble) {
-        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.DoubleLocations) {
+        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.DoubleLocations) {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new DoubleLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToDouble));
             } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
@@ -188,13 +188,13 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     }
 
     @SuppressWarnings("unused")
-    Location locationForValue(Object value, boolean useFinal, boolean nonNull, int putFlags) {
+    Location locationForValue(Object value, boolean useFinal, boolean nonNull, long putFlags) {
         if (value instanceof Integer) {
             return newIntLocation(useFinal);
         } else if (value instanceof Double) {
-            return newDoubleLocation(useFinal, getLayout().isAllowedIntToDouble());
+            return newDoubleLocation(useFinal, Flags.isImplicitCastIntToDouble(putFlags) || layout.isAllowedIntToDouble());
         } else if (value instanceof Long) {
-            return newLongLocation(useFinal, getLayout().isAllowedIntToLong());
+            return newLongLocation(useFinal, Flags.isImplicitCastIntToLong(putFlags) || layout.isAllowedIntToLong());
         } else if (value instanceof Boolean) {
             return newBooleanLocation(useFinal);
         } else if (com.oracle.truffle.object.ObjectStorageOptions.TypedObjectLocations && value != null) {
@@ -221,7 +221,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     }
 
     @Override
-    protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
+    protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
         assert !oldLocation.canSet(value);
 
         if (oldLocation instanceof DeclaredLocation) {
@@ -231,8 +231,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
             if (!shared && ((TypedLocation) oldLocation).getType() == int.class) {
                 LongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLocation();
-                boolean allowedIntToLong = layout.isAllowedIntToLong();
-                boolean allowedIntToDouble = layout.isAllowedIntToDouble();
+                boolean allowedIntToLong = layout.isAllowedIntToLong() || Flags.isImplicitCastIntToLong(putFlags);
+                boolean allowedIntToDouble = layout.isAllowedIntToDouble() || Flags.isImplicitCastIntToDouble(putFlags);
                 if (allowedIntToLong && value instanceof Long) {
                     return new LongLocationDecorator(primLocation, true);
                 } else if (allowedIntToDouble && value instanceof Double) {

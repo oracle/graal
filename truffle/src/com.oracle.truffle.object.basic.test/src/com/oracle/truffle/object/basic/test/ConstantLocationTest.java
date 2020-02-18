@@ -44,6 +44,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Layout;
@@ -54,6 +55,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class ConstantLocationTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     final Layout layout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
     final Shape rootShape = layout.createShape(new ObjectType());
@@ -64,9 +66,9 @@ public class ConstantLocationTest {
     @Test
     public void testConstantLocation() {
         DynamicObject object = shapeWithConstant.newInstance();
-        Assert.assertSame(value, object.get("constant"));
+        Assert.assertSame(value, LIBRARY.getOrDefault(object, "constant", null));
 
-        object.set("constant", value);
+        LIBRARY.putIfPresent(object, "constant", value);
         Assert.assertSame(shapeWithConstant, object.getShape());
 
         Property property = object.getShape().getProperty("constant");
@@ -88,21 +90,22 @@ public class ConstantLocationTest {
             Assert.assertTrue(e instanceof FinalLocationException);
         }
 
-        Assert.assertSame(value, object.get("constant"));
+        Assert.assertSame(value, LIBRARY.getOrDefault(object, "constant", null));
     }
 
     @Test
     public void testMigrateConstantLocation() {
         DynamicObject object = shapeWithConstant.newInstance();
         Assert.assertSame(shapeWithConstant, object.getShape());
-        Assert.assertSame(value, object.get("constant"));
+        Assert.assertSame(value, LIBRARY.getOrDefault(object, "constant", null));
 
         Object newValue = new Object();
-        object.set("constant", newValue);
+        LIBRARY.putIfPresent(object, "constant", newValue);
         Assert.assertNotSame(shapeWithConstant, object.getShape());
-        Assert.assertSame(newValue, object.get("constant"));
+        Assert.assertSame(newValue, LIBRARY.getOrDefault(object, "constant", null));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testAddConstantLocation() {
         Property property = shapeWithConstant.getProperty("constant");
@@ -110,7 +113,7 @@ public class ConstantLocationTest {
         DynamicObject object = rootShape.newInstance();
         property.setSafe(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
-        Assert.assertSame(value, object.get("constant"));
+        Assert.assertSame(value, LIBRARY.getOrDefault(object, "constant", null));
 
         DynamicObject object2 = rootShape.newInstance();
         Object newValue = new Object();
@@ -123,7 +126,7 @@ public class ConstantLocationTest {
             // Expected
         }
         Assert.assertSame(rootShape, object2.getShape());
-        Assert.assertEquals(false, object2.containsKey("constant"));
+        Assert.assertEquals(false, LIBRARY.containsKey(object2, "constant"));
     }
 
 }

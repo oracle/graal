@@ -53,6 +53,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
+import java.util.function.IntPredicate;
+import java.util.function.Predicate;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -69,7 +73,6 @@ import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.ShapeListener;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
@@ -98,7 +101,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     protected final LayoutImpl layout;
     /** @since 0.17 or earlier */
-    protected final ObjectType objectType;
+    protected final com.oracle.truffle.api.object.ObjectType objectType;
     /** @since 0.17 or earlier */
     protected final ShapeImpl parent;
     /** @since 0.17 or earlier */
@@ -147,8 +150,12 @@ public abstract class ShapeImpl extends Shape {
 
     private final Transition transitionFromParent;
 
+    private volatile PropertyAssumptions sharedPropertyAssumptions;
+
     private static final AtomicReferenceFieldUpdater<ShapeImpl, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Object.class, "transitionMap");
     private static final AtomicReferenceFieldUpdater<ShapeImpl, Assumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, Assumption.class, "leafAssumption");
+    private static final AtomicReferenceFieldUpdater<ShapeImpl, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
 
     /**
      * Private constructor.
@@ -156,13 +163,13 @@ public abstract class ShapeImpl extends Shape {
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
      *
-     * @see #ShapeImpl(Layout, ShapeImpl, ObjectType, Object, PropertyMap, Transition,
-     *      BaseAllocator, int)
+     * @see #ShapeImpl(Layout, ShapeImpl, Object, Object, PropertyMap, Transition, BaseAllocator,
+     *      int)
      */
-    private ShapeImpl(Layout layout, ShapeImpl parent, ObjectType objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
-                    int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags) {
+    private ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
+                    int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
-        this.objectType = Objects.requireNonNull(objectType);
+        this.objectType = (com.oracle.truffle.api.object.ObjectType) Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
         this.root = parent != null ? parent.getRoot() : this;
         this.parent = parent;
@@ -190,6 +197,10 @@ public abstract class ShapeImpl extends Shape {
         this.sharedData = sharedData;
         assert parent == null || this.sharedData == parent.sharedData;
 
+        this.sharedPropertyAssumptions = parent == null && (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0 && singleContextAssumption != null
+                        ? new PropertyAssumptions(singleContextAssumption)
+                        : null;
+
         shapeCount.inc();
         if (ObjectStorageOptions.DumpShapes) {
             Debug.trackShape(this);
@@ -197,18 +208,18 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    protected ShapeImpl(Layout layout, ShapeImpl parent, ObjectType objectType, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+    protected ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
         this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
-                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, flags);
+                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, flags, null);
     }
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
-    protected abstract ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id);
+    protected abstract ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id);
 
     /** @since 0.17 or earlier */
-    protected ShapeImpl(Layout layout, ObjectType objectType, Object sharedData, int flags) {
-        this(layout, null, objectType, sharedData, PropertyMap.empty(), null, layout.createAllocator(), flags);
+    protected ShapeImpl(Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
+        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, true, flags, constantObjectAssumption);
     }
 
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap) {
@@ -231,6 +242,15 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final int getId() {
         return getObjectFlags(flags);
+    }
+
+    @Override
+    public final int getFlags() {
+        return getObjectFlags(flags);
+    }
+
+    public final int getFlagsInternal() {
+        return flags;
     }
 
     /**
@@ -300,8 +320,9 @@ public abstract class ShapeImpl extends Shape {
     /**
      * @return true if this shape has instance properties.
      */
+    @Override
     protected boolean hasInstanceProperties() {
-        return getObjectFieldSize() != 0 || getObjectArraySize() != 0 || getPrimitiveFieldSize() != 0 || getPrimitiveArraySize() != 0;
+        return objectFieldSize != 0 || objectArraySize != 0 || primitiveFieldSize != 0 || primitiveArraySize != 0;
     }
 
     /**
@@ -336,6 +357,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private void addTransitionInternal(Transition transition, ShapeImpl successor) {
+        CompilerAsserts.neverPartOfCompilation();
         Object prev;
         Object next;
         do {
@@ -483,9 +505,16 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @TruffleBoundary
     protected void onPropertyTransition(Property property) {
-        if (sharedData instanceof ShapeListener) {
-            ((ShapeListener) sharedData).onPropertyTransition(property.getKey());
+        if (allowPropertyAssumptions()) {
+            PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
+            if (propertyAssumptions != null) {
+                propertyAssumptions.invalidatePropertyAssumption(property.getKey());
+            }
+        }
+        if (sharedData instanceof com.oracle.truffle.api.object.ShapeListener) {
+            ((com.oracle.truffle.api.object.ShapeListener) sharedData).onPropertyTransition(property.getKey());
         }
     }
 
@@ -707,6 +736,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @TruffleBoundary
     @Override
     public final boolean isLeaf() {
         Assumption assumption = leafAssumption;
@@ -836,6 +866,7 @@ public abstract class ShapeImpl extends Shape {
      *
      * @since 0.17 or earlier
      */
+    @TruffleBoundary
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
@@ -899,8 +930,26 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     @Override
-    public ObjectType getObjectType() {
+    public com.oracle.truffle.api.object.ObjectType getObjectType() {
         return objectType;
+    }
+
+    @Override
+    public Object getDynamicType() {
+        return getObjectType();
+    }
+
+    @TruffleBoundary
+    @Override
+    protected Shape setDynamicType(Object newObjectType) {
+        Objects.requireNonNull(newObjectType, "dynamicType");
+        if (!(newObjectType instanceof ObjectType)) {
+            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
+        }
+        if (getDynamicType() == newObjectType) {
+            return this;
+        }
+        return changeType((ObjectType) newObjectType);
     }
 
     /** @since 0.17 or earlier */
@@ -925,6 +974,51 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final Object getSharedData() {
         return sharedData;
+    }
+
+    final Object getSharedDataInternal() {
+        return sharedData;
+    }
+
+    final boolean allowPropertyAssumptions() {
+        return (flags & FLAG_ALLOW_PROPERTY_ASSUMPTIONS) != 0;
+    }
+
+    private PropertyAssumptions getOrCreatePropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert allowPropertyAssumptions();
+        PropertyAssumptions ass = root.sharedPropertyAssumptions;
+        if (ass == null) {
+            ass = new PropertyAssumptions(null);
+            if (!PROPERTY_ASSUMPTIONS_UPDATER.compareAndSet(root, null, ass)) {
+                ass = getPropertyAssumptions();
+            }
+        }
+        assert ass != null;
+        return ass;
+    }
+
+    private PropertyAssumptions getPropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert allowPropertyAssumptions();
+        return root.sharedPropertyAssumptions;
+    }
+
+    @TruffleBoundary
+    protected void invalidateAllPropertyAssumptions() {
+        assert allowPropertyAssumptions();
+        PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
+        if (propertyAssumptions != null) {
+            propertyAssumptions.invalidateAllPropertyAssumptions();
+        }
+    }
+
+    protected Assumption getSingleContextAssumption() {
+        PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
+        if (propertyAssumptions != null) {
+            return propertyAssumptions.getSingleContextAssumption();
+        }
+        return null;
     }
 
     /** @since 0.17 or earlier */
@@ -960,6 +1054,9 @@ public abstract class ShapeImpl extends Shape {
     @Override
     @TruffleBoundary
     public final ShapeImpl changeType(ObjectType newObjectType) {
+        if (getObjectType() == newObjectType) {
+            return this;
+        }
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
@@ -972,15 +1069,20 @@ public abstract class ShapeImpl extends Shape {
     }
 
     @TruffleBoundary
-    public final ShapeImpl setObjectFlags(int newObjectFlags) {
-        checkObjectFlags(newObjectFlags);
-        ObjectFlagsTransition transition = new ObjectFlagsTransition(newObjectFlags);
+    @Override
+    protected ShapeImpl setFlags(int newShapeFlags) {
+        checkObjectFlags(newShapeFlags);
+        if (getFlags() == newShapeFlags) {
+            return this;
+        }
+
+        ObjectFlagsTransition transition = new ObjectFlagsTransition(newShapeFlags);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
             return layout.getStrategy().ensureValid(cachedShape);
         }
 
-        int newFlags = newObjectFlags | (flags & ~OBJECT_FLAGS_MASK);
+        int newFlags = newShapeFlags | (flags & ~OBJECT_FLAGS_MASK);
         ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), newFlags);
         addDirectTransition(transition, newShape);
         return newShape;
@@ -1010,6 +1112,10 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObjectFactory createFactory() {
+        if (!layout.isLegacyLayout()) {
+            throw DefaultLayout.unsupported();
+        }
+
         List<Property> properties = getPropertyListInternal(true);
         List<Property> filtered = null;
         for (ListIterator<Property> iterator = properties.listIterator(); iterator.hasNext();) {
@@ -1047,10 +1153,11 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.18 */
     @Override
     public boolean isShared() {
-        return (flags & SHARED_SHAPE) != 0;
+        return (flags & FLAG_SHARED_SHAPE) != 0;
     }
 
     /** @since 0.18 */
+    @TruffleBoundary
     @Override
     public Shape makeSharedShape() {
         if (isShared()) {
@@ -1063,7 +1170,7 @@ public abstract class ShapeImpl extends Shape {
             return layout.getStrategy().ensureValid(cachedShape);
         }
 
-        ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), flags | SHARED_SHAPE);
+        ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), flags | FLAG_SHARED_SHAPE);
         addDirectTransition(transition, newShape);
         return newShape;
     }
@@ -1073,7 +1180,8 @@ public abstract class ShapeImpl extends Shape {
     protected static final int OBJECT_FLAGS_SHIFT = 0;
 
     /** Shared shape flag. */
-    protected static final int SHARED_SHAPE = 1 << 16;
+    protected static final int FLAG_SHARED_SHAPE = 1 << 16;
+    protected static final int FLAG_ALLOW_PROPERTY_ASSUMPTIONS = 1 << 17;
 
     protected static int getObjectFlags(int flags) {
         return ((flags & OBJECT_FLAGS_MASK) >>> OBJECT_FLAGS_SHIFT);
@@ -1086,7 +1194,57 @@ public abstract class ShapeImpl extends Shape {
         return flags;
     }
 
-    private static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
+    /** @since 20.2.0 */
+    @TruffleBoundary
+    @Override
+    public Shape addConstantProperty(Object key, Object value, int propertyFlags) {
+        if (getProperty(key) != null) {
+            throw new IllegalArgumentException("Property already exists");
+        }
+        Location location = allocator().constantLocation(value);
+        Property property = Property.create(key, location, propertyFlags);
+        return addProperty(property);
+    }
+
+    /** @since 20.2.0 */
+    @TruffleBoundary
+    @Override
+    public Assumption getPropertyAssumption(Object key) {
+        if (allowPropertyAssumptions()) {
+            Assumption propertyAssumption = getOrCreatePropertyAssumptions().getPropertyAssumption(key);
+            if (propertyAssumption != null && propertyAssumption.isValid()) {
+                return propertyAssumption;
+            }
+        }
+        return NeverValidAssumption.INSTANCE;
+    }
+
+    protected boolean testPropertyFlags(IntPredicate predicate) {
+        for (Property p : getProperties()) {
+            if (predicate.test(p.getFlags())) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** @since 20.2.0 */
+    @TruffleBoundary
+    @Override
+    public boolean allPropertiesMatch(Predicate<Property> predicate) {
+        for (Property p : getProperties()) {
+            if (predicate.test(p)) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
         private final ShapeImpl shape;
         @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields;
         private static final PropertyImpl[] EMPTY = new PropertyImpl[0];
@@ -1096,10 +1254,15 @@ public abstract class ShapeImpl extends Shape {
             this.instanceFields = properties.toArray(EMPTY);
         }
 
-        @ExplodeLoop
         public DynamicObject newInstance(Object... initialValues) {
             assert initialValues.length == instanceFields.length : wrongArguments(initialValues.length);
-            DynamicObject store = shape.newInstance();
+            CompilerAsserts.partialEvaluationConstant(shape);
+            DynamicObject store = shape.layout.construct(shape);
+            return fillValues(store, initialValues);
+        }
+
+        @ExplodeLoop
+        private DynamicObject fillValues(DynamicObject store, Object... initialValues) {
             CompilerAsserts.partialEvaluationConstant(instanceFields.length);
             for (int i = 0; i < instanceFields.length; i++) {
                 instanceFields[i].setInternal(store, initialValues[i]);
@@ -1214,7 +1377,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         @SuppressWarnings("unused")
-        protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
+        protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
             throw new UnsupportedOperationException();
         }
 
@@ -1298,10 +1461,58 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
+    static final class PropertyAssumptions {
+        private final EconomicMap<Object, Assumption> stablePropertyAssumptions;
+        private final Assumption singleContextAssumption;
+
+        PropertyAssumptions(Assumption singleContextAssumption) {
+            this.singleContextAssumption = singleContextAssumption;
+            this.stablePropertyAssumptions = EconomicMap.create();
+        }
+
+        synchronized Assumption getPropertyAssumption(Object propertyName) {
+            CompilerAsserts.neverPartOfCompilation();
+            EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
+            Assumption assumption = map.get(propertyName);
+            if (assumption != null) {
+                return assumption;
+            }
+            assumption = Truffle.getRuntime().createAssumption(propertyName.toString());
+            map.put(propertyName, assumption);
+            propertyAssumptionsCreated.inc();
+            return assumption;
+        }
+
+        synchronized void invalidatePropertyAssumption(Object propertyName) {
+            CompilerAsserts.neverPartOfCompilation();
+            EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
+            Assumption assumption = map.get(propertyName);
+            if (assumption != null && assumption != NeverValidAssumption.INSTANCE) {
+                assumption.invalidate("invalidatePropertyAssumption");
+                map.put(propertyName, NeverValidAssumption.INSTANCE);
+                propertyAssumptionsRemoved.inc();
+            }
+        }
+
+        synchronized void invalidateAllPropertyAssumptions() {
+            CompilerAsserts.neverPartOfCompilation();
+            for (Assumption assumption : stablePropertyAssumptions.getValues()) {
+                assumption.invalidate("invalidateAllPropertyAssumptions");
+            }
+            stablePropertyAssumptions.clear();
+        }
+
+        Assumption getSingleContextAssumption() {
+            return singleContextAssumption;
+        }
+    }
+
     private static final DebugCounter shapeCount = DebugCounter.create("Shapes allocated total");
     private static final DebugCounter shapeCloneCount = DebugCounter.create("Shapes allocated cloned");
     private static final DebugCounter shapeCacheHitCount = DebugCounter.create("Shape cache hits");
     private static final DebugCounter shapeCacheMissCount = DebugCounter.create("Shape cache misses");
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
+    static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
+    static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
 
 }

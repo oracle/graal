@@ -45,12 +45,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class DynamicObjectFactoryTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     final Layout layout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
     final Shape rootShape = layout.createShape(new ObjectType());
@@ -75,8 +77,8 @@ public class DynamicObjectFactoryTest {
         }
 
         DynamicObject object = factory.newInstance(3, 4);
-        Assert.assertEquals(3, object.get("x"));
-        Assert.assertEquals(4, object.get("y"));
+        Assert.assertEquals(3, LIBRARY.getOrDefault(object, "x", null));
+        Assert.assertEquals(4, LIBRARY.getOrDefault(object, "y", null));
 
         try {
             factory.newInstance(1, 2, 3);

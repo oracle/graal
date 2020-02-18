@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.object.basic.test;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
-public class BasicLayout extends DefaultLayout {
-    BasicLayout(LayoutStrategy strategy, int allowedImplicitCasts) {
-        super(DynamicObjectBasic.class, strategy, allowedImplicitCasts, DynamicObjectBasic.OBJECT_FIELD_LOCATIONS, DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS);
-    }
+public abstract class TestNestedDispatchNode extends Node {
 
-    public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
-        Class<? extends DynamicObject> dynamicObjectClass = getType(builder);
-        if (dynamicObjectClass != null) {
-            return DefaultLayout.createCoreLayout(builder);
+    final Object key = "testKey";
+
+    public abstract Object execute(DynamicObject obj);
+
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    // @CachedLibrary({"obj", "key"}) DynamicObjectLibrary lib,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
         }
-        return new BasicLayout(DefaultStrategy.SINGLETON, implicitCastFlags(getAllowedImplicitCasts(builder)));
+        return value;
     }
 
-    @Override
-    public DynamicObject newInstance(Shape shape) {
-        return new DynamicObjectBasic(shape);
+    @Specialization(limit = "3")
+    Object cached(DynamicObject obj,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", uncached = "obj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
 
-    @Override
-    protected DynamicObject construct(Shape shape) {
-        return new DynamicObjectBasic(shape);
-    }
-
-    @Override
-    protected boolean isLegacyLayout() {
-        return true;
-    }
-
-    @Override
-    protected int getLongFieldSize() {
-        return 1;
-    }
 }

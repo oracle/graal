@@ -47,6 +47,8 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 /**
  * Property location.
  *
+ * Planned to be deprecated.
+ *
  * @see Shape
  * @see Property
  * @see DynamicObject
@@ -124,7 +126,8 @@ public abstract class Location {
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier
      */
-    public final void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
+    @SuppressWarnings("deprecation")
+    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
             store.setShapeAndGrow(oldShape, newShape);
             try {

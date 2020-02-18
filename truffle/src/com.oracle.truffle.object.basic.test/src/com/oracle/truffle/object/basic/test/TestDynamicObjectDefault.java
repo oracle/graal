@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,21 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object;
+package com.oracle.truffle.object.basic.test;
 
-/**
- * A listener to be notified of property transitions.
- *
- * @since 0.8 or earlier
- * @deprecated consider using {@link Shape#getPropertyAssumption(Object)} instead.
- */
-@Deprecated
-public interface ShapeListener {
-    /**
-     * Called when a property is added, removed, or replaced.
-     *
-     * @param key identifier of the property
-     * @since 0.8 or earlier
-     */
-    void onPropertyTransition(Object key);
+import com.oracle.truffle.api.object.Shape;
+
+class TestDynamicObjectDefault extends TestDynamicObject {
+    @DynamicField Object o0;
+    @DynamicField Object o1;
+    @DynamicField Object o2;
+    @DynamicField Object o3;
+    @DynamicField long p0;
+    @DynamicField long p1;
+    @DynamicField long p2;
+
+    protected TestDynamicObjectDefault(Shape shape) {
+        super(shape);
+    }
 }

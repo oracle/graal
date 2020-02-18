@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.api.object;
 
-/** @since 0.8 or earlier */
+/**
+ * Planned to be deprecated.
+ *
+ * @since 0.8 or earlier
+ */
+@SuppressWarnings("deprecation")
 public interface LongLocation extends TypedLocation {
     /**
      * @see #get(DynamicObject, Shape)

@@ -58,9 +58,6 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     private Object object3;
     private Object object4;
 
-    private Object[] objext;
-    private long[] primext;
-
     protected DynamicObjectBasic(Shape shape) {
         super(shape);
     }
@@ -73,7 +70,7 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
             this.setObjectStore(new Object[capacity], shape);
         }
         if (((ShapeImpl) shape).getPrimitiveArrayCapacity() != 0) {
-            this.setPrimitiveStore(new long[((ShapeImpl) shape).getPrimitiveArrayCapacity()], shape);
+            this.setPrimitiveStore(new int[((ShapeImpl) shape).getPrimitiveArrayCapacity()], shape);
         }
     }
 
@@ -119,10 +116,10 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     }
 
     private void growPrimitiveStoreIntl(int oldPrimitiveCapacity, int newPrimitiveCapacity, Shape newShape) {
-        long[] newPrimitiveArray = new long[newPrimitiveCapacity];
+        int[] newPrimitiveArray = new int[newPrimitiveCapacity];
         if (oldPrimitiveCapacity != 0) {
             // primitive array can shrink due to type changes
-            long[] oldPrimitiveArray = this.getPrimitiveStore(newShape);
+            int[] oldPrimitiveArray = this.getPrimitiveStore(newShape);
             for (int i = 0; i < Math.min(oldPrimitiveCapacity, newPrimitiveCapacity); ++i) {
                 newPrimitiveArray[i] = oldPrimitiveArray[i];
             }
@@ -148,31 +145,31 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
     }
 
     private Object[] getObjectStore(@SuppressWarnings("unused") Shape currentShape) {
-        return objext;
+        return LayoutImpl.ACCESS.getObjectArray(this);
     }
 
     private void setObjectStore(Object[] newArray, @SuppressWarnings("unused") Shape currentShape) {
-        objext = newArray;
+        LayoutImpl.ACCESS.setObjectArray(this, newArray);
     }
 
-    private long[] getPrimitiveStore(@SuppressWarnings("unused") Shape currentShape) {
-        return primext;
+    private int[] getPrimitiveStore(@SuppressWarnings("unused") Shape currentShape) {
+        return LayoutImpl.ACCESS.getPrimitiveArray(this);
     }
 
-    private void setPrimitiveStore(long[] newArray, @SuppressWarnings("unused") Shape currentShape) {
-        primext = newArray;
+    private void setPrimitiveStore(int[] newArray, @SuppressWarnings("unused") Shape currentShape) {
+        LayoutImpl.ACCESS.setPrimitiveArray(this, newArray);
     }
 
     @Override
     protected final void resizePrimitiveStore(Shape oldShape, Shape newShape) {
         assert ((ShapeImpl) newShape).hasPrimitiveArray();
-        long[] newPrimitiveArray = null;
+        int[] newPrimitiveArray = null;
         int destinationCapacity = ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
         if (destinationCapacity != 0) {
-            newPrimitiveArray = new long[destinationCapacity];
+            newPrimitiveArray = new int[destinationCapacity];
             int sourceCapacity = ((ShapeImpl) oldShape).getPrimitiveArrayCapacity();
             if (sourceCapacity != 0) {
-                long[] oldPrimitiveArray = this.getPrimitiveStore(newShape);
+                int[] oldPrimitiveArray = this.getPrimitiveStore(newShape);
                 for (int i = 0; i < Math.min(sourceCapacity, destinationCapacity); ++i) {
                     newPrimitiveArray[i] = oldPrimitiveArray[i];
                 }
@@ -244,9 +241,6 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
 
     static final BasicObjectFieldLocation[] OBJECT_FIELD_LOCATIONS;
     static final BasicLongFieldLocation[] PRIMITIVE_FIELD_LOCATIONS;
-
-    static final BasicObjectFieldLocation OBJECT_ARRAY_LOCATION;
-    static final BasicObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
 
     abstract static class BasicLongFieldLocation extends SimpleLongFieldLocation {
         protected BasicLongFieldLocation(int index) {
@@ -358,29 +352,5 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
                 ((DynamicObjectBasic) store).object4 = value;
             }
         }};
-
-        OBJECT_ARRAY_LOCATION = new BasicObjectFieldLocation(index++) {
-            @Override
-            public Object[] get(DynamicObject store, boolean condition) {
-                return ((DynamicObjectBasic) store).objext;
-            }
-
-            @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
-                ((DynamicObjectBasic) store).objext = (Object[]) value;
-            }
-        };
-
-        PRIMITIVE_ARRAY_LOCATION = new BasicObjectFieldLocation(index++) {
-            @Override
-            public long[] get(DynamicObject store, boolean condition) {
-                return ((DynamicObjectBasic) store).primext;
-            }
-
-            @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
-                ((DynamicObjectBasic) store).primext = (long[]) value;
-            }
-        };
     }
 }
