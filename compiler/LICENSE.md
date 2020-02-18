@@ -325,23 +325,55 @@ License instead of this License.
 
 "CLASSPATH" EXCEPTION TO THE GPL
 
-Certain source files distributed by Oracle America and/or its affiliates are
-subject to the following clarification and special exception to the GPL, but
-only where Oracle has expressly included in the particular source file's header
-the words "Oracle designates this particular file as subject to the "Classpath"
-exception as provided by Oracle in the LICENSE file that accompanied this code."
+Certain source files distributed by Oracle America and/or its affiliates 
+are subject to the following clarification and special exception to the GPLv2, 
+based on the GNU Project exception for its Classpath libraries, known as the 
+GNU Classpath Exception, but only where Oracle has expressly included in the 
+particular source file's header the words "Oracle designates this particular 
+file as subject to the "Classpath" exception as provided by Oracle in the 
+LICENSE file that accompanied this code."
 
-    Linking this library statically or dynamically with other modules is making
-    a combined work based on this library.  Thus, the terms and conditions of
-    the GNU General Public License cover the whole combination.
+You should also note that Oracle includes multiple, independent programs in 
+this software package. Some of those programs are provided under licenses 
+deemed incompatible with the GPLv2 by the Free Software Foundation and others. 
+For example, the package includes programs licensed under the Apache License, 
+Version 2.0. Such programs are licensed to you under their original licenses.
 
-    As a special exception, the copyright holders of this library give you
-    permission to link this library with independent modules to produce an
-    executable, regardless of the license terms of these independent modules,
-    and to copy and distribute the resulting executable under terms of your
-    choice, provided that you also meet, for each linked independent module,
-    the terms and conditions of the license of that module.  An independent
-    module is a module which is not derived from or based on this library.  If
-    you modify this library, you may extend this exception to your version of
-    the library, but you are not obligated to do so.  If you do not wish to do
-    so, delete this exception statement from your version.
+Oracle facilitates your further distribution of this package by adding the 
+Classpath Exception to the necessary parts of its GPLv2 code, which permits you 
+to use that code in combination with other independent modules not licensed 
+under the GPLv2. However, note that this would not permit you to commingle code 
+under an incompatible license with Oracle's GPLv2 licensed code by, for 
+example, cutting and pasting such code into a file also containing Oracle's 
+GPLv2 licensed code and then distributing the result.
+
+Additionally, if you were to remove the Classpath Exception from any of the 
+files to which it applies and distribute the result, you would likely be 
+required to license some or all of the other code in that distribution under 
+the GPLv2 as well, and since the GPLv2 is incompatible with the license terms 
+of some items included in the distribution by Oracle, removing the Classpath 
+Exception could therefore effectively compromise your ability to further 
+distribute the package.
+
+Proceed with caution and we recommend that you obtain the advice of a lawyer 
+skilled in open source matters before removing the Classpath Exception or 
+making modifications to this package which may subsequently be redistributed 
+and/or involve the use of third party software.
+
+CLASSPATH EXCEPTION
+
+Linking this library statically or dynamically with other modules is making a 
+combined work based on this library. Thus, the terms and conditions of the GNU 
+General Public License version 2 cover the whole combination.
+
+As a special exception, the copyright holders of this library give you 
+permission to link this library with independent modules to produce an 
+executable, regardless of the license terms of these independent modules, and 
+to copy and distribute the resulting executable under terms of your choice, 
+provided that you also meet, for each linked independent module, the terms and 
+conditions of the license of that module. An independent module is a module 
+which is not derived from or based on this library. If you modify this library, 
+you may extend this exception to your version of the library, but you are not 
+obligated to do so. If you do not wish to do so, delete this exception 
+statement from your version.
+
