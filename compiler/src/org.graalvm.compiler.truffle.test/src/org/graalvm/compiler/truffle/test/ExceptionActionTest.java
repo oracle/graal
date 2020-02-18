@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -62,93 +63,173 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @BeforeClass
     public static void setUp() {
-        permanentBailoutTestImpl();
+        Truffle.getRuntime().createCallTarget(createPermanentBailoutNode()).call();
     }
 
     @Test
     public void testPermanentBailoutSilent() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertFalse(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
-        },
+        };
+        executeForked(verifier,
                         "engine.CompilationExceptionsArePrinted", "false",
                         "engine.CompilationFailureAction", "Silent");
     }
 
     @Test
     public void testPermanentBailoutPrint() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertTrue(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
-        },
+        };
+        executeForked(verifier,
                         "engine.CompilationExceptionsArePrinted", "false",
                         "engine.CompilationFailureAction", "Print");
     }
 
     @Test
     public void testPermanentBailoutExceptionsArePrinted() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertTrue(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
-        },
+        };
+        executeForked(verifier,
                         "engine.CompilationExceptionsArePrinted", "true",
                         "engine.CompilationFailureAction", "Silent");
     }
 
     @Test
     public void testPermanentBailoutExitVM() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertTrue(hasBailout(log));
             Assert.assertTrue(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
-        },
-                        "engine.CompilationFailureAction", "ExitVM");
+        };
+        executeForked(verifier, "engine.CompilationFailureAction", "ExitVM");
     }
 
     @Test
     public void testPermanentBailoutExceptionsAreFatal() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertTrue(hasBailout(log));
             Assert.assertTrue(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
-        },
-                        "engine.CompilationExceptionsAreFatal", "true");
+        };
+        executeForked(verifier, "engine.CompilationExceptionsAreFatal", "true");
     }
 
     @Test
     public void testPermanentBailoutThrow() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertFalse(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertTrue(hasOptFailedException(log));
-        },
-                        "engine.CompilationFailureAction", "Throw");
+        };
+        executeForked(verifier, "engine.CompilationFailureAction", "Throw");
     }
 
     @Test
     public void testPermanentBailoutCompilationExceptionsAreThrown() throws Exception {
-        executeForked((log) -> {
+        Consumer<Path> verifier = (log) -> {
             Assert.assertFalse(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertTrue(hasOptFailedException(log));
-
-        },
-                        "engine.CompilationExceptionsAreThrown", "true");
+        };
+        executeForked(verifier, "engine.CompilationExceptionsAreThrown", "true");
     }
 
-    private void executeForked(Consumer<? super Path> verifier, String... options) throws IOException, InterruptedException {
+    @Test
+    public void testNonPermanentBailoutPerfWarningsDisabled() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertFalse(hasBailout(log));
+            Assert.assertFalse(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.CompilationFailureAction", "ExitVM");
+    }
+
+    @Test
+    public void testNonPermanentBailoutPerfWarningsPrinted() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertFalse(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.TracePerformanceWarnings", "bailout");
+    }
+
+    @Test
+    public void testNonPermanentBailoutPerfWarningsFatal() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertTrue(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.PerformanceWarningsAreFatal", "bailout");
+    }
+
+    @Test
+    public void testNonPermanentBailoutPerfWarningsAsErrorsDefaultAction() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertFalse(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.TreatPerformanceWarningsAsErrors", "bailout");
+    }
+
+    @Test
+    public void testNonPermanentBailoutPerfWarningsAsErrorsExitVMAction() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertTrue(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.TreatPerformanceWarningsAsErrors", "bailout",
+                        "engine.CompilationFailureAction", "ExitVM");
+    }
+
+    @Test
+    public void testNonPermanentBailoutCompilationBailoutAsFailureExitVMAction() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertTrue(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout", "-Dgraal.CompilationBailoutAsFailure=true"},
+                        "engine.CompilationFailureAction", "ExitVM");
+    }
+
+    private void executeForked(Consumer<? super Path> verifier, String... contextOptions) throws IOException, InterruptedException {
+        executeForked(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
+    }
+
+    private void executeForked(Consumer<? super Path> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions) throws IOException, InterruptedException {
         if (!isConfigured()) {
             Path log = File.createTempFile("compiler", ".log").toPath();
-            String testName = Thread.currentThread().getStackTrace()[2].getMethodName();
-            execute(testName, false, log);
+            String testName = getTestName();
+            execute(testName, log, additionalVmOptions);
             verifier.accept(log);
         } else {
-            setupContext(options);
+            setupContext(contextOptions);
             try {
-                permanentBailoutTestImpl();
+                OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
+                target.call();
             } catch (RuntimeException e) {
                 OptimizationFailedException optFailedException = isOptimizationFailed(e);
                 if (optFailedException != null) {
@@ -156,6 +237,21 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                 }
             }
         }
+    }
+
+    private static String getTestName() {
+        boolean inExecuteForked = false;
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        if (stack != null) {
+            for (StackTraceElement frame : stack) {
+                if ("executeForked".equals(frame.getMethodName())) {
+                    inExecuteForked = true;
+                } else if (inExecuteForked) {
+                    return frame.getMethodName();
+                }
+            }
+        }
+        throw new IllegalStateException("Failed to find test name");
     }
 
     private static OptimizationFailedException isOptimizationFailed(Throwable t) {
@@ -178,14 +274,14 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         return Boolean.getBoolean(String.format("%s", ExceptionActionTest.class.getSimpleName()));
     }
 
-    private static void execute(String testName, boolean addCompilationBailoutAsFailure, Path logFile) throws IOException, InterruptedException {
+    private static void execute(String testName, Path logFile, String... additionalVmOptions) throws IOException, InterruptedException {
         SubprocessUtil.java(
-                        configure(getVmArgs(), addCompilationBailoutAsFailure, logFile),
+                        configure(getVmArgs(), logFile, additionalVmOptions),
                         "com.oracle.mxtool.junit.MxJUnitWrapper",
                         String.format("%s#%s", ExceptionActionTest.class.getName(), testName));
     }
 
-    private static List<String> configure(List<String> vmArgs, boolean addCompilationBailoutAsFailure, Path logFile) {
+    private static List<String> configure(List<String> vmArgs, Path logFile, String... additionalVmOptions) {
         List<String> newVmArgs = new ArrayList<>();
         newVmArgs.addAll(vmArgs.stream().filter(new Predicate<String>() {
             @Override
@@ -193,8 +289,8 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                 return !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName()) && !vmArg.contains(GraalCompilerOptions.CompilationBailoutAsFailure.getName());
             }
         }).collect(Collectors.toList()));
-        if (addCompilationBailoutAsFailure) {
-            newVmArgs.add(1, String.format("-Dgraal.%s=%s", GraalCompilerOptions.CompilationBailoutAsFailure.getName(), true));
+        for (String additionalVmOption : additionalVmOptions) {
+            newVmArgs.add(1, additionalVmOption);
         }
         newVmArgs.add(1, String.format("-Dgraal.LogFile=%s", logFile.toAbsolutePath().toString()));
         newVmArgs.add(1, String.format("-D%s=true", ExceptionActionTest.class.getSimpleName()));
@@ -237,17 +333,22 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         throw (T) t;
     }
 
-    private static void permanentBailoutTestImpl() {
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(createPermanentBailoutNode());
-        target.call();
-    }
-
     private static RootNode createPermanentBailoutNode() {
         FrameDescriptor fd = new FrameDescriptor();
-        return new RootTestNode(fd, "test-node", new AbstractTestNode() {
+        return new RootTestNode(fd, "permanent-bailout-test-node", new AbstractTestNode() {
             @Override
             public int execute(VirtualFrame frame) {
                 CompilerAsserts.partialEvaluationConstant(nonConstant);
+                return 0;
+            }
+        });
+    }
+
+    private static RootNode createConstantNode() {
+        FrameDescriptor fd = new FrameDescriptor();
+        return new RootTestNode(fd, "nonpermanent-bailout-test-node", new AbstractTestNode() {
+            @Override
+            public int execute(VirtualFrame frame) {
                 return 0;
             }
         });
