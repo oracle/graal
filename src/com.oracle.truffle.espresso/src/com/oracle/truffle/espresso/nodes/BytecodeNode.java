@@ -1032,6 +1032,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 }
                 // @formatter:on
             } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
+                if (instrument != null && e instanceof EspressoException) {
+                    instrument.notifyExceptionAt(frame, e, statementIndex);
+                }
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
                 if (e == getContext().getStackOverflow() || e instanceof StackOverflowError) {
@@ -1066,7 +1069,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             }
                         }
                     }
-
                     throw wrappedStackOverflowError;
 
                 } else /* EspressoException or OutOfMemoryError */ {
