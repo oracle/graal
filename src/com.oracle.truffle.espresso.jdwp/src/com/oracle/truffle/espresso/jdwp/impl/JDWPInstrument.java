@@ -139,4 +139,8 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     public JDWPContext getContext() {
         return context;
     }
+
+    TruffleInstrument.Env getEnv() {
+        return env;
+    }
 }

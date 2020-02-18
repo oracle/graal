@@ -511,13 +511,14 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean systemExitImplemented() {
-        return false;
+        return true;
     }
 
     @Override
     public void exit(int exitCode) {
         // TODO - implement proper system exit for Espresso
         // tracked here: /browse/GR-20496
+        System.exit(exitCode);
     }
 
     @Override
@@ -591,7 +592,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait;
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
     }
 
     @Override

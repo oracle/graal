@@ -22,10 +22,18 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+
+import java.util.Iterator;
 
 public final class CallFrame {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final byte typeTag;
     private final long classId;
@@ -34,10 +42,10 @@ public final class CallFrame {
     private final long threadId;
     private final MaterializedFrame materializedFrame;
     private final RootNode rootNode;
-    private final Object thisValue;
-    private final Object[] variables;
+    private final TruffleInstrument.Env env;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, MaterializedFrame materializedFrame, RootNode rootNode, Object thisValue, Object[] variables) {
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, MaterializedFrame materializedFrame, RootNode rootNode,
+                    TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
@@ -45,8 +53,7 @@ public final class CallFrame {
         this.codeIndex = codeIndex;
         this.materializedFrame = materializedFrame;
         this.rootNode = rootNode;
-        this.thisValue = thisValue;
-        this.variables = variables;
+        this.env = env;
     }
 
     public byte getTypeTag() {
@@ -78,10 +85,37 @@ public final class CallFrame {
     }
 
     public Object getThisValue() {
-        return thisValue;
+        Scope scope = getScope();
+        return scope != null ? scope.getReceiver() : null;
     }
 
-    public Object[] getVariables() {
-        return variables;
+    public Object getVariable(String identifier) {
+        Scope scope = getScope();
+        if (scope == null) {
+            return null;
+        }
+        try {
+            return INTEROP.readMember(scope.getVariables(), identifier);
+        } catch (Exception e) {
+            JDWPLogger.log("Unable to read member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+            return null;
+        }
+    }
+
+    public void setVariable(Object value, String identifier) {
+        Scope scope = getScope();
+        if (scope == null) {
+            return;
+        }
+        try {
+            INTEROP.writeMember(scope.getVariables(), identifier, value);
+        } catch (Exception e) {
+            JDWPLogger.log("Unable to write member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+        }
+    }
+
+    private Scope getScope() {
+        Iterator<Scope> it = env.findLocalScopes(rootNode, materializedFrame).iterator();
+        return it.hasNext() ? it.next() : null;
     }
 }

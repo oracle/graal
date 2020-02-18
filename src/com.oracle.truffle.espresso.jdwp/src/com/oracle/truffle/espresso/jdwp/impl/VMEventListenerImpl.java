@@ -677,6 +677,8 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object guestThread = context.asGuestThread(Thread.currentThread());
         // a call to wait marks the monitor as contended
         currentContendedMonitor.put(guestThread, monitor);
+        // capture the call frames before entering a known blocking state
+        debuggerController.captureCallFramesBeforeBlocking(guestThread);
 
         if (monitorWaitRequests.isEmpty()) {
             return;

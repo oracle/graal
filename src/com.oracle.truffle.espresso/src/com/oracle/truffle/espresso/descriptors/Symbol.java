@@ -159,6 +159,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
         // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
+        // variable 'this' name
+        public static final Symbol<Name> thiz = StaticSymbols.putName("this");
 
         // finding main
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");

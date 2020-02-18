@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,32 +51,43 @@ public class EspressoScope {
         slots = frame.getFrameDescriptor().getSlots();
         int size = slots.size();
 
-        Map<String, FrameSlot> slotsMap;
+        Map<String, FrameSlotInfo> slotsMap;
         if (slots.isEmpty()) {
             slotsMap = Collections.emptyMap();
         } else if (size == 1) {
             FrameSlot slot = slots.get(0);
-            String identifier = getIdentifier(liveLocals, slot);
-            getIdentifier(liveLocals, slot);
-            slotsMap = Collections.singletonMap(Objects.toString(identifier), slot);
+            String identifier = slot.getIdentifier().toString();
+            slotsMap = Collections.singletonMap(Objects.toString(identifier), new FrameSlotInfo(slot));
         } else {
             slotsMap = new LinkedHashMap<>(size);
             for (FrameSlot slot : slots) {
-                String identifier = getIdentifier(liveLocals, slot);
-                if (identifier != null) {
-                    slotsMap.put(identifier, slot);
+                String identifier = slot.getIdentifier().toString();
+                Local local = getLocal(liveLocals, slot);
+                if (local != null) {
+                    String type = local.getTypeAsString();
+                    if ("D".equals(type)) {
+                        slotsMap.put(identifier, new FrameSlotInfo(slot, FrameSlotInfo.Kind.DOUBLE));
+                    } else if ("F".equals(type)) {
+                        slotsMap.put(identifier, new FrameSlotInfo(slot, FrameSlotInfo.Kind.FLOAT));
+                    } else if ("J".equals(type)) {
+                        slotsMap.put(identifier, new FrameSlotInfo(slot, FrameSlotInfo.Kind.LONG));
+                    } else if ("I".equals(type)) {
+                        slotsMap.put(identifier, new FrameSlotInfo(slot, FrameSlotInfo.Kind.INT));
+                    } else {
+                        slotsMap.put(identifier, new FrameSlotInfo(slot));
+                    }
                 }
             }
         }
         return new VariablesMapObject(slotsMap, frame);
     }
 
-    private static String getIdentifier(Local[] liveLocals, FrameSlot slot) {
+    private static Local getLocal(Local[] liveLocals, FrameSlot slot) {
         String identifier = slot.getIdentifier().toString();
         for (Local local : liveLocals) {
             try {
                 if (local.getSlot() == Integer.parseInt(identifier)) {
-                    return local.getName().toString();
+                    return local;
                 }
             } catch (NumberFormatException nf) {
                 // ignore
@@ -87,10 +99,10 @@ public class EspressoScope {
     @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
-        final Map<String, ? extends FrameSlot> slots;
+        final Map<String, FrameSlotInfo> slots;
         final Frame frame;
 
-        private VariablesMapObject(Map<String, ? extends FrameSlot> slots, Frame frame) {
+        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Frame frame) {
             this.slots = slots;
             this.frame = frame;
         }
@@ -107,11 +119,17 @@ public class EspressoScope {
             if (frame == null) {
                 return EspressoScope.NullValue.INSTANCE;
             }
-            FrameSlot slot = slots.get(member);
-            if (slot == null) {
+            FrameSlotInfo slotInfo = slots.get(member);
+            if (slotInfo == null || slotInfo.getSlot() == null) {
                 throw UnknownIdentifierException.create(member);
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
+                return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, slotInfo.getSlot()));
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.FLOAT) {
+                return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, slotInfo.getSlot()));
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.LONG || slotInfo.getKind() == FrameSlotInfo.Kind.INT) {
+                return FrameUtil.getLongSafe(frame, slotInfo.getSlot());
             } else {
-                return frame.getValue(slot);
+                return frame.getValue(slotInfo.getSlot());
             }
         }
 
@@ -139,11 +157,19 @@ public class EspressoScope {
             if (frame == null) {
                 throw UnsupportedMessageException.create();
             }
-            FrameSlot slot = slots.get(member);
-            if (slot == null) {
+            FrameSlotInfo slotInfo = slots.get(member);
+            if (slotInfo == null || slotInfo.getSlot() == null) {
                 throw UnknownIdentifierException.create(member);
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.DOUBLE) {
+                frame.setLong(slotInfo.getSlot(), Double.doubleToRawLongBits((double) value));
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.FLOAT) {
+                frame.setLong(slotInfo.getSlot(), Float.floatToRawIntBits((float) value));
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.INT) {
+                frame.setLong(slotInfo.getSlot(), (int) value);
+            } else if (slotInfo.getKind() == FrameSlotInfo.Kind.LONG) {
+                frame.setLong(slotInfo.getSlot(), (long) value);
             } else {
-                frame.setObject(slot, value);
+                frame.setObject(slotInfo.getSlot(), value);
             }
         }
 
@@ -172,8 +198,6 @@ public class EspressoScope {
 
     @ExportLibrary(InteropLibrary.class)
     static final class VariableNamesObject implements TruffleObject {
-
-        static final EspressoScope.VariableNamesObject EMPTY = new EspressoScope.VariableNamesObject(Collections.emptySet());
 
         final List<String> names;
 
@@ -206,6 +230,37 @@ public class EspressoScope {
         @CompilerDirectives.TruffleBoundary
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < names.size();
+        }
+    }
+
+    private static class FrameSlotInfo {
+
+        private final FrameSlot slot;
+        private final Kind kind;
+
+        private enum Kind {
+            DOUBLE,
+            FLOAT,
+            INT,
+            LONG,
+            OTHER
+        }
+
+        FrameSlotInfo(FrameSlot slot) {
+            this(slot, Kind.OTHER);
+        }
+
+        FrameSlotInfo(FrameSlot slot, Kind kind) {
+            this.slot = slot;
+            this.kind = kind;
+        }
+
+        public FrameSlot getSlot() {
+            return slot;
+        }
+
+        public Kind getKind() {
+            return kind;
         }
     }
 }

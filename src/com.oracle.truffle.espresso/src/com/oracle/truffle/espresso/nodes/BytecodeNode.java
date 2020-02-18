@@ -1137,7 +1137,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
     }
 
-    int readBCI(MaterializedFrame frame) {
+    public int readBCI(MaterializedFrame frame) {
         try {
             assert bciSlot != null;
             return frame.getInt(bciSlot);

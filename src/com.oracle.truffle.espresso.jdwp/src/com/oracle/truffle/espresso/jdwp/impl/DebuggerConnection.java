@@ -590,7 +590,7 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 }
                                 case JDWP.StackFrame.THIS_OBJECT.ID: {
-                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, context);
+                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, controller);
                                     break;
                                 }
                                 default:
