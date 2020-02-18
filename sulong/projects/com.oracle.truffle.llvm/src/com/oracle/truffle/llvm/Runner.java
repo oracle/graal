@@ -189,7 +189,6 @@ final class Runner {
         final FrameSlot stackPointerSlot;
         @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
-        final int initContextBefore;
         @Child LLVMStatementNode initContext;
 
         @Children final InitializeSymbolsNode[] initSymbols;
@@ -201,7 +200,6 @@ final class Runner {
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
-            this.initContextBefore = order.sulongLibraries.size();
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
 
             int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
@@ -214,7 +212,7 @@ final class Runner {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
                 createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initGlobals, node.initModules);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initGlobals, node.initModules);
+                createNodes(runner, rootFrame, order.otherLibraries, order.sulongLibraries.size(), node.initSymbols, node.initGlobals, node.initModules);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -246,11 +244,9 @@ final class Runner {
                 LLVMPointer[] roSections = new LLVMPointer[initSymbols.length];
                 doInitSymbols(ctx, shouldInit, roSections);
 
-                doInitGlobals(frame, shouldInit, roSections, 0, initContextBefore);
-                doInitGlobals(frame, shouldInit, roSections, initContextBefore, initGlobals.length);
+                doInitGlobals(frame, shouldInit, roSections);
                 initContext.execute(frame);
-                doInitModules(frame, ctx, shouldInit, 0, initContextBefore);
-                doInitModules(frame, ctx, shouldInit, initContextBefore, initModules.length);
+                doInitModules(frame, ctx, shouldInit);
                 return sulongLibrary;
             }
         }
@@ -271,8 +267,8 @@ final class Runner {
         }
 
         @ExplodeLoop
-        private void doInitGlobals(VirtualFrame frame, BitSet shouldInit, LLVMPointer[] roSections, int from, int to) {
-            for (int i = from; i < to; i++) {
+        private void doInitGlobals(VirtualFrame frame, BitSet shouldInit, LLVMPointer[] roSections) {
+            for (int i = 0; i < initGlobals.length; i++) {
                 if (shouldInit.get(i)) {
                     initGlobals[i].execute(frame, roSections[i]);
                 }
@@ -280,8 +276,8 @@ final class Runner {
         }
 
         @ExplodeLoop
-        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit, int from, int to) {
-            for (int i = from; i < to; i++) {
+        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit) {
+            for (int i = 0; i < initModules.length; i++) {
                 if (shouldInit.get(i)) {
                     initModules[i].execute(frame, ctx);
                 }
