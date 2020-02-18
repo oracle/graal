@@ -68,7 +68,8 @@ public class PECoffObjectFile extends ObjectFile {
     private PECoffDirectiveSection directives;
     private boolean runtimeDebugInfoGeneration;
 
-    private PECoffObjectFile(boolean runtimeDebugInfoGeneration) {
+    private PECoffObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
+        super(pageSize);
         this.runtimeDebugInfoGeneration = runtimeDebugInfoGeneration;
         // Create the elements of an empty PECoff file:
         // 1. create header
@@ -81,8 +82,8 @@ public class PECoffObjectFile extends ObjectFile {
         directives = new PECoffDirectiveSection(".drectve", 1);
     }
 
-    public PECoffObjectFile() {
-        this(false);
+    public PECoffObjectFile(int pageSize) {
+        this(pageSize, false);
     }
 
     @Override

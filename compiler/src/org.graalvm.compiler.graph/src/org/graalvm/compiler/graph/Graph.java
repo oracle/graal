@@ -1184,7 +1184,7 @@ public class Graph {
      *
      * @return the number of node ids generated so far
      */
-    int nodeIdCount() {
+    public int nodeIdCount() {
         return nodesSize;
     }
 
