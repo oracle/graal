@@ -91,6 +91,27 @@ extern "C" long nestedByValGetNested(struct NestedPoint a) {
   return a.nested.a + a.nested.b;
 }
 
+struct SmallNested {
+  int x;
+  struct {
+    int y;
+  } nested;
+};
+
+extern "C" long nestedByValGetSmallNested(struct SmallNested a) {
+  return a.x + a.nested.y;
+}
+
+struct ArrStruct {
+  int a;
+  int b;
+  int x[2];
+};
+
+extern "C" int arrStructSum(struct ArrStruct s) {
+  return s.a + s.b + s.x[0] + s.x[1];
+}
+
 extern "C" void flipPoint(void *value) {
   struct Point *point = polyglot_as_Point(value);
   int tmp = point->x;

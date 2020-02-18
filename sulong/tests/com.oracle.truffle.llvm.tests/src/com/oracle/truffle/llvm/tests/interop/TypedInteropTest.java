@@ -190,6 +190,59 @@ public class TypedInteropTest extends InteropTestBase {
         Assert.assertEquals((long) 17, ret);
     }
 
+    private static StructObject makeSmallNestedByVal(int x, int y) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("x", x);
+
+        Map<String, Object> nested = new HashMap<>();
+        nested.put("y", y);
+        StructObject nestedObject = new StructObject(nested);
+
+        struct.put("nested", nestedObject);
+
+        return new StructObject(struct);
+    }
+
+    public static class NestedByValGetSmallNested extends SulongTestNode {
+
+        public NestedByValGetSmallNested() {
+            super(testLibrary, "nestedByValGetSmallNested");
+        }
+    }
+
+    @Test
+    @Ignore("GR-21364")
+    public void testNestedByValGetSmallNested(@Inject(NestedByValGetSmallNested.class) CallTarget nestedByValGetSmallNested) {
+        Object ret = nestedByValGetSmallNested.call(makeSmallNestedByVal(3, 7));
+        Assert.assertEquals(10, ret);
+    }
+
+    private static StructObject makeArrStruct(int a, int b, int c, int d) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("a", a);
+        struct.put("b", b);
+
+        ArrayObject arr = new ArrayObject(c, d);
+
+        struct.put("x", arr);
+
+        return new StructObject(struct);
+    }
+
+    public static class ArrStructSum extends SulongTestNode {
+
+        public ArrStructSum() {
+            super(testLibrary, "arrStructSum");
+        }
+    }
+
+    @Test
+    @Ignore("GR-21364")
+    public void testArrStructSum(@Inject(ArrStructSum.class) CallTarget arrStructSum) {
+        Object ret = arrStructSum.call(makeArrStruct(3, 7, 8, 9));
+        Assert.assertEquals(27, ret);
+    }
+
     public static class FlipPointNode extends SulongTestNode {
 
         public FlipPointNode() {
