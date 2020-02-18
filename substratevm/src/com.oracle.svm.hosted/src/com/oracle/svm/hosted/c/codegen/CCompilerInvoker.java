@@ -64,7 +64,7 @@ public abstract class CCompilerInvoker {
     public final Path tempDirectory;
     public final CompilerInfo compilerInfo;
 
-    public CCompilerInvoker(Path tempDirectory) {
+    protected CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
         this.compilerInfo = getCCompilerInfo();
         if (compilerInfo == null) {
@@ -122,7 +122,7 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        protected CompilerInfo createCompilerInfo(Scanner scanner) {
+        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
                 /* For cl.exe the first line holds all necessary information */
                 scanner.findInLine(Pattern.quote("Microsoft (R) C/C++ Optimizing Compiler Version "));
@@ -133,7 +133,7 @@ public abstract class CCompilerInvoker {
                 scanner.reset(); /* back to default delimiters */
                 scanner.findInLine("for ");
                 String targetArch = scanner.next();
-                return new CompilerInfo("microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
+                return new CompilerInfo(compilerPath, "microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
             } catch (NoSuchElementException e) {
                 return null;
             }
@@ -172,7 +172,7 @@ public abstract class CCompilerInvoker {
         }
 
         @Override
-        protected CompilerInfo createCompilerInfo(Scanner scanner) {
+        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
                 String[] triplet = guessTargetTriplet(scanner);
                 while (scanner.findInLine("gcc version ") == null) {
@@ -182,7 +182,7 @@ public abstract class CCompilerInvoker {
                 int major = scanner.nextInt();
                 int minor0 = scanner.nextInt();
                 int minor1 = scanner.nextInt();
-                return new CompilerInfo(triplet[1], "GNU project C and C++ compiler", "gcc", major, minor0, minor1, triplet[0]);
+                return new CompilerInfo(compilerPath, triplet[1], "GNU project C and C++ compiler", "gcc", major, minor0, minor1, triplet[0]);
             } catch (NoSuchElementException e) {
                 return null;
             }
@@ -211,7 +211,7 @@ public abstract class CCompilerInvoker {
 
         @Override
         @SuppressWarnings("try")
-        protected CompilerInfo createCompilerInfo(Scanner scanner) {
+        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
                 while (scanner.findInLine("Apple (clang|LLVM) version ") == null) {
                     scanner.nextLine();
@@ -224,7 +224,7 @@ public abstract class CCompilerInvoker {
                 int minor1 = scanner.hasNextInt() ? scanner.nextInt() : 0;
                 scanner.reset(); /* back to default delimiters */
                 String[] triplet = guessTargetTriplet(scanner);
-                return new CompilerInfo(triplet[1], "LLVM", "clang", major, minor0, minor1, triplet[0]);
+                return new CompilerInfo(compilerPath, triplet[1], "LLVM", "clang", major, minor0, minor1, triplet[0]);
             } catch (NoSuchElementException e) {
                 return null;
             }
@@ -245,6 +245,7 @@ public abstract class CCompilerInvoker {
     }
 
     public static final class CompilerInfo {
+        public final Path compilerPath;
         public final String name;
         public final String shortName;
         public final String vendor;
@@ -253,7 +254,8 @@ public abstract class CCompilerInvoker {
         public final int versionMinor1;
         public final String targetArch;
 
-        public CompilerInfo(String vendor, String name, String shortName, int versionMajor, int versionMinor0, int versionMinor1, String targetArch) {
+        public CompilerInfo(Path compilerPath, String vendor, String name, String shortName, int versionMajor, int versionMinor0, int versionMinor1, String targetArch) {
+            this.compilerPath = compilerPath;
             this.name = name;
             this.vendor = vendor;
             this.shortName = shortName;
@@ -274,13 +276,15 @@ public abstract class CCompilerInvoker {
             sink.accept("Vendor: " + vendor);
             sink.accept(String.format("Version: %d.%d.%d", versionMajor, versionMinor0, versionMinor1));
             sink.accept("Target architecture: " + targetArch);
+            sink.accept("Path: " + compilerPath);
         }
     }
 
     public abstract void verifyCompiler();
 
     public CompilerInfo getCCompilerInfo() {
-        List<String> compilerCommand = createCompilerCommand(getVersionInfoOptions(), null);
+        Path compilerPath = getCCompilerPath().toAbsolutePath();
+        List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
         ProcessBuilder pb = new ProcessBuilder()
                         .command(compilerCommand)
                         .directory(tempDirectory.toFile())
@@ -290,7 +294,7 @@ public abstract class CCompilerInvoker {
         try {
             process = pb.start();
             try (Scanner scanner = new Scanner(process.getInputStream())) {
-                result = createCompilerInfo(scanner);
+                result = createCompilerInfo(compilerPath, scanner);
             }
             process.waitFor();
         } catch (InterruptedException ex) {
@@ -309,7 +313,7 @@ public abstract class CCompilerInvoker {
         return Arrays.asList("-v");
     }
 
-    protected abstract CompilerInfo createCompilerInfo(Scanner scanner);
+    protected abstract CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner);
 
     protected static String[] guessTargetTriplet(Scanner scanner) {
         while (scanner.findInLine("Target: ") == null) {
@@ -447,9 +451,12 @@ public abstract class CCompilerInvoker {
     }
 
     public List<String> createCompilerCommand(List<String> options, Path target, Path... input) {
-        List<String> command = new ArrayList<>();
+        return createCompilerCommand(compilerInfo.compilerPath, options, target, input);
+    }
 
-        command.add(getCCompilerPath().normalize().toString());
+    private List<String> createCompilerCommand(Path compilerPath, List<String> options, Path target, Path... input) {
+        List<String> command = new ArrayList<>();
+        command.add(compilerPath.toString());
         command.addAll(Arrays.asList(SubstrateOptions.CCompilerOption.getValue()));
         command.addAll(options);
 
