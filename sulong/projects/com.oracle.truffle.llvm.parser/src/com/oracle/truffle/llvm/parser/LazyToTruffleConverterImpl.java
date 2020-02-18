@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -313,18 +314,26 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return nestedGEPs;
     }
 
+    private void elementOrMemberHelper(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, FrameSlot slot, int argIndex, PointerType topLevelPointerType, List<Long> indices, long i,
+                    Type elementType) {
+        indices.add(i);
+        copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelPointerType, elementType, indices);
+        indices.remove(indices.size() - 1);
+    }
+
     private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, FrameSlot slot, int argIndex, PointerType topLevelPointerType, Type currentType,
                     List<Long> indices) {
         if (currentType instanceof StructureType) {
             StructureType t = (StructureType) currentType;
 
             for (int i = 0; i < t.getNumberOfElements(); i++) {
-                Type memberType = t.getElementType(i);
+                elementOrMemberHelper(initializers, nodeFactory, slot, argIndex, topLevelPointerType, indices, i, t.getElementType(i));
+            }
+        } else if (currentType instanceof ArrayType) {
+            ArrayType t = (ArrayType) currentType;
 
-                List<Long> newIndices = new ArrayList<>(indices);
-                newIndices.add((long) i);
-
-                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelPointerType, memberType, newIndices);
+            for (int i = 0; i < t.getNumberOfElements(); i++) {
+                elementOrMemberHelper(initializers, nodeFactory, slot, argIndex, topLevelPointerType, indices, i, t.getElementType(i));
             }
         } else {
             LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), currentType, topLevelPointerType.getPointeeType(), indices);
