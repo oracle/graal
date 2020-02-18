@@ -397,7 +397,8 @@ public abstract class CCompilerInvoker {
         for (String s : cmd) {
             if (s.indexOf(' ') != -1) {
                 // Quote command line arguments that contain a space
-                sb.append('\'').append(s).append('\'');
+                String escaped = s.replace("'", "\\'");
+                sb.append('\'').append(escaped).append('\'');
             } else {
                 sb.append(s);
             }
