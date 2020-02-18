@@ -36,6 +36,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @TruffleBoundary
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
+        // TODO(tg): inject meta
         Meta meta = constructor.getKlass().getMeta();
         Klass klass = ((StaticObject) meta.java_lang_reflect_Constructor_clazz.get(constructor)).getMirrorKlass();
         klass.safeInitialize();

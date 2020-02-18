@@ -45,6 +45,7 @@ public final class Target_java_lang_System {
 
     @Substitution
     public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+        // TODO(tg): inject meta
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
             doArrayCopy(src, srcPos, dest, destPos, length);

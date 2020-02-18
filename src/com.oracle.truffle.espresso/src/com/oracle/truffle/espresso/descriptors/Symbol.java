@@ -134,7 +134,7 @@ public final class Symbol<T> extends ByteSequence {
 
     /**
      * Contains commonly used (name) symbols.
-     * 
+     *
      * Symbols declared here must match exactly the field name; notable exceptions include
      * {@link #_init_}, {@link #_clinit_} and hidden field names.
      */
@@ -205,6 +205,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
         public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
+        public static final Symbol<Name> detailMessage = StaticSymbols.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
         // j.l.Thread
