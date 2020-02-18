@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,27 +29,20 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
-FC?=gfortran
+default: dynLink/reorder/ref.bc
 
-CFLAGS+= $(SUITE_CFLAGS)
-CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
-CPPFLAGS+= $(SUITE_CPPFLAGS)
-LDFLAGS+= $(SUITE_LDFLAGS)
+dynLink/reorder/libA$(SO_EXT): dynLink/reorder/a.c dynLink/reorder/Makefile
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-.PHONY: default
-default:
+dynLink/reorder/libB$(SO_EXT): dynLink/reorder/b.c dynLink/reorder/Makefile dynLink/reorder/libC$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lC -o $@ $<
 
-ifeq ($(OS), darwin)
-SO_EXT=.dylib
-ORIGIN_TOKEN='@loader_path'
-SO_LDFLAGS=-Wl,-install_name,@rpath/$(notdir $@)
-else
-SO_EXT=.so
-ORIGIN_TOKEN='$$ORIGIN'
-endif
+dynLink/reorder/libC$(SO_EXT): dynLink/reorder/c.c dynLink/reorder/Makefile dynLink/reorder/libA$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lA -o $@ $<
 
-include $(SRC_DIR)/*/Makefile
+dynLink/reorder/ref.out: dynLink/reorder/main.c dynLink/reorder/Makefile dynLink/reorder/libA$(SO_EXT) dynLink/reorder/libB$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lB -lA -o $@ $<
