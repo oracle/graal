@@ -46,7 +46,7 @@ dynLink/cycle/libB$(SO_EXT): dynLink/cycle/b.c dynLink/cycle/Makefile dynLink/cy
 
 dynLink/cycle/libC$(SO_EXT): dynLink/cycle/c.c dynLink/cycle/Makefile dynLink/cycle/libA$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -Lfake -lA -o $@ $<
 
 dynLink/cycle/ref.out: dynLink/cycle/main.c dynLink/cycle/Makefile dynLink/cycle/libA$(SO_EXT) dynLink/cycle/libB$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
