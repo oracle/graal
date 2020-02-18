@@ -132,7 +132,7 @@ public class CAnnotationProcessor {
         }
         String fileName = fileNamePath.toString();
         Path binary = queryFile.resolveSibling(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
-        compilerInvoker.compileAndParseError(codeCtx.getDirectives().getOptions(), queryFile, binary, this::reportCompilerError);
+        compilerInvoker.compileAndParseError(codeCtx.getDirectives().getOptions(), queryFile, binary, this::reportCompilerError, nativeLibs.debug);
         return binary;
     }
 
