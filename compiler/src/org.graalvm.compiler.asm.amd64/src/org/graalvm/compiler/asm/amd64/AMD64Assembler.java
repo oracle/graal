@@ -108,8 +108,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         @Option(help = "Force branch instructions to align with 32-bytes boundary, to mitigate the jcc erratum. " +
                 "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details. " +
-                "If not set explicitly, the default value will be overwritten according to the CPU model. " + 
-                "See VM_Version::compute_has_intel_jcc_erratum for more details.", type = OptionType.User)
+                "If not set explicitly, the default value will be determined according to the CPU model.", type = OptionType.User)
         public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
         // @formatter:on
     }
