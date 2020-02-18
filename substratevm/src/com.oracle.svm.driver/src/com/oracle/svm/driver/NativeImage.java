@@ -1186,7 +1186,7 @@ public class NativeImage {
         command.addAll(createImageBuilderArgs(imageArgs, imagecp));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
-        showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
+        showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(command));
         showVerboseMessage(isVerbose() || dryRun, "]");
 
         if (dryRun) {

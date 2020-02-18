@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -300,7 +301,7 @@ public abstract class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '" + String.join(" ", pb.command()) + "' failed");
+            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(pb.command()) + "' failed");
         } finally {
             if (process != null) {
                 process.destroy();
@@ -357,7 +358,7 @@ public abstract class CCompilerInvoker {
         Process compilingProcess = null;
         try {
             try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debugLogCompilerCommand(debug, pb.command());
+                debug.log("Using CompilerCommand: %s", SubstrateUtil.getShellCommandString(pb.command()));
             }
             compilingProcess = pb.start();
 
@@ -390,22 +391,6 @@ public abstract class CCompilerInvoker {
                 compilingProcess.destroy();
             }
         }
-    }
-
-    public static StringBuilder debugLogCompilerCommand(DebugContext debug, List<String> cmd) {
-        StringBuilder sb = new StringBuilder();
-        for (String s : cmd) {
-            if (s.indexOf(' ') != -1) {
-                // Quote command line arguments that contain a space
-                String escaped = s.replace("'", "\\'");
-                sb.append('\'').append(escaped).append('\'');
-            } else {
-                sb.append(s);
-            }
-            sb.append(' ');
-        }
-        debug.log("Using CompilerCommand: %s", sb);
-        return sb;
     }
 
     protected boolean detectError(String line) {
