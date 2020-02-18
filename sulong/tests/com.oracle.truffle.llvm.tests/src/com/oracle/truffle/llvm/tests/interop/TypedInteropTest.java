@@ -243,6 +243,31 @@ public class TypedInteropTest extends InteropTestBase {
         Assert.assertEquals(27, ret);
     }
 
+    private static StructObject makeBigArrStruct(int a, int b, int c, int d, int e, int f, int g) {
+        Map<String, Object> struct = new HashMap<>();
+        struct.put("a", a);
+        struct.put("b", b);
+
+        ArrayObject arr = new ArrayObject(c, d, e, f, g);
+
+        struct.put("x", arr);
+
+        return new StructObject(struct);
+    }
+
+    public static class BigArrStructSum extends SulongTestNode {
+
+        public BigArrStructSum() {
+            super(testLibrary, "bigArrStructSum");
+        }
+    }
+
+    @Test
+    public void testBigArrStructSum(@Inject(BigArrStructSum.class) CallTarget bigArrStructSum) {
+        Object ret = bigArrStructSum.call(makeBigArrStruct(3, 7, 8, 9, 10, 11, 12));
+        Assert.assertEquals(50, ret);
+    }
+
     public static class FlipPointNode extends SulongTestNode {
 
         public FlipPointNode() {

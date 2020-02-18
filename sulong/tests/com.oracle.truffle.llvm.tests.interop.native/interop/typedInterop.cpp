@@ -112,6 +112,22 @@ extern "C" int arrStructSum(struct ArrStruct s) {
   return s.a + s.b + s.x[0] + s.x[1];
 }
 
+struct BigArrStruct {
+  int a;
+  int b;
+  int x[5];
+};
+
+extern "C" int bigArrStructSum(struct BigArrStruct s) {
+  int sum = 0;
+
+  for (int i = 0; i < 5; i++) {
+    sum += s.x[i];
+  }
+
+  return sum;
+}
+
 extern "C" void flipPoint(void *value) {
   struct Point *point = polyglot_as_Point(value);
   int tmp = point->x;
