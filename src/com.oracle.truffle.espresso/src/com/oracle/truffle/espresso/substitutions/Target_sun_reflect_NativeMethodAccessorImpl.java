@@ -224,6 +224,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
                     @Host(Object[].class) StaticObject args) {
+        // TODO(tg): inject meta
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject curMethod = guestMethod;
 

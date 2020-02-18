@@ -344,16 +344,17 @@ public final class EspressoContext {
         // Init memoryError instances
         StaticObject stackOverflowErrorInstance = meta.java_lang_StackOverflowError.allocateInstance();
         StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance();
-        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
-        stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        // Preemptively set stack trace.
+        stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
         stackOverflowErrorInstance.setField(meta.java_lang_Throwable_backtrace, stackOverflowErrorInstance);
-        outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, VM.StackTrace.EMPTY_STACK_TRACE);
         outOfMemoryErrorInstance.setField(meta.java_lang_Throwable_backtrace, outOfMemoryErrorInstance);
 
         this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance);
         this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance);
+        meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+        meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
         // Create application (system) class loader.
         meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);

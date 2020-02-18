@@ -52,6 +52,7 @@ public final class Target_java_lang_Object {
 
     @TruffleBoundary
     public static void registerFinalizer(@Host(Object.class) StaticObject self) {
+        // TODO(tg): inject meta
         self.getKlass().getMeta().java_lang_ref_Finalizer_register.invokeDirect(null, self);
     }
 

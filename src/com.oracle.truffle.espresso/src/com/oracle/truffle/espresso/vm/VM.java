@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
@@ -57,8 +58,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -93,6 +92,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -120,6 +120,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 
@@ -323,6 +324,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return self.copy();
         }
 
+        // TODO(tg): inject Meta
         Meta meta = self.getKlass().getMeta();
         if (!meta.java_lang_Cloneable.isAssignableFrom(self.getKlass())) {
             throw Meta.throwException(meta.java_lang_CloneNotSupportedException);
@@ -539,13 +541,19 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     public static class StackTrace {
+        public static final StackTrace EMPTY_STACK_TRACE = new StackTrace(0);
+
         public StackElement[] trace;
         public int size;
         public int capacity;
 
         public StackTrace() {
-            this.trace = new StackElement[EspressoContext.DEFAULT_STACK_SIZE];
-            this.capacity = EspressoContext.DEFAULT_STACK_SIZE;
+            this(DEFAULT_STACK_SIZE);
+        }
+
+        private StackTrace(int size) {
+            this.trace = new StackElement[size];
+            this.capacity = size;
             this.size = 0;
         }
 
@@ -562,8 +570,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        InterpreterToVM.fillInStackTrace(self, false, getMeta());
-        return self;
+        return InterpreterToVM.fillInStackTrace(self, false, getMeta());
     }
 
     @VmImpl
@@ -609,6 +616,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private static void checkTag(ConstantPool pool, int index, ConstantPool.Tag expected) {
         ConstantPool.Tag target = pool.tagAt(index);
         if (target != expected) {
+            // TODO(tg): inject Meta
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Wrong type at constant pool index");
         }
@@ -898,6 +906,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
      */
     private static FrameInstance getCallerFrame(int depth, boolean securityStackWalk) {
+        // TODO(tg): inject meta
         if (depth == JVM_CALLER_DEPTH) {
             return getCallerFrame(1, securityStackWalk);
         }
@@ -1311,6 +1320,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 Method m = getMethodFromFrame(frameInstance);
                 if (m != null) {
                     Klass holder = m.getDeclaringKlass();
+                    // TODO(tg): inject meta
                     Meta meta = holder.getMeta();
                     // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
                     if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holder) || meta.sun_reflect_ConstructorAccessorImpl.isAssignableFrom(holder)) {
@@ -1426,6 +1436,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Method.class) StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Method.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Method);
         StaticObject curMethod = seed;
@@ -1440,6 +1451,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Field.class) StaticObject getGuestReflectiveFieldRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Field);
         StaticObject curField = seed;
@@ -1454,6 +1466,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static @Host(java.lang.reflect.Constructor.class) StaticObject getGuestReflectiveConstructorRoot(@Host(java.lang.reflect.Constructor.class) StaticObject seed) {
+        // TODO(tg): inject meta
         Meta meta = seed.getKlass().getMeta();
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Constructor);
         StaticObject curConstructor = seed;
@@ -1539,11 +1552,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Method)) {
             StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
             assert methodRoot != null;
-            return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+            return (StaticObject) methodRoot.getHiddenField(getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Constructor)) {
             StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
             assert constructorRoot != null;
-            return (StaticObject) constructorRoot.getHiddenField(constructorRoot.getKlass().getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+            return (StaticObject) constructorRoot.getHiddenField(getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -1555,7 +1568,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().java_lang_reflect_Field);
         StaticObject fieldRoot = getGuestReflectiveFieldRoot(guestReflectionField);
         assert fieldRoot != null;
-        return (StaticObject) fieldRoot.getHiddenField(fieldRoot.getKlass().getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        return (StaticObject) fieldRoot.getHiddenField(getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
     }
 
     private StaticObject guestBox(Object elem) {
