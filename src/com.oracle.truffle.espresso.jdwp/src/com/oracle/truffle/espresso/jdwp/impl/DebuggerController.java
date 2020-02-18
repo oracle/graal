@@ -662,6 +662,14 @@ public final class DebuggerController implements ContextsListener {
                     // fall back to start of the method then
                     codeIndex = 0;
                 }
+
+                // check if current bci is higher than the first index on the last line,
+                // in which case we must report the last line index instead
+                long lastLineBCI = method.getBCIFromLine(method.getLastLine());
+                if (codeIndex > lastLineBCI) {
+                    codeIndex = lastLineBCI;
+                }
+
                 MaterializedFrame materializedFrame = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize();
                 callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, materializedFrame, root, instrument.getEnv()));
                 return null;
@@ -750,14 +758,12 @@ public final class DebuggerController implements ContextsListener {
                     }
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
-                    KlassRef klass = info.getKlass(); // null means no filtering
                     Throwable exception = event.getException().getRawException(context.getLanguageClass());
                     if (exception == null) {
                         JDWPLogger.log("Unable to retrieve raw exception for %s", JDWPLogger.LogLevel.ALL, event.getException());
                         // failed to get the raw exception, so don't suspend here.
                         return;
                     }
-
                     Object guestException = getContext().getGuestException(exception);
                     JDWPLogger.log("checking exception breakpoint for exception: %s", JDWPLogger.LogLevel.STEPPING, exception);
                     // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is
@@ -769,6 +775,7 @@ public final class DebuggerController implements ContextsListener {
                     // properly due to this.
                     // we need to do a real type check here, since subclasses
                     // of the specified exception should also hit.
+                    KlassRef klass = info.getKlass(); // null means no filtering
                     if (klass == null) {
                         // always hit when broad exception filter is used
                         hit = true;
@@ -948,8 +955,13 @@ public final class DebuggerController implements ContextsListener {
                             codeIndex = 0;
                         }
                     }
+                    // check if current bci is higher than the first index on the last line,
+                    // in which case we must report the last line index instead
+                    long lastLineBCI = method.getBCIFromLine(method.getLastLine());
+                    if (codeIndex > lastLineBCI) {
+                        codeIndex = lastLineBCI;
+                    }
                 }
-
                 list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, materializedFrame, root, instrument.getEnv()));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {

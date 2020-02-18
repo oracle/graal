@@ -168,6 +168,13 @@ public interface MethodRef {
     int getFirstLine();
 
     /**
+     * Returns the last line number for the method, or -1 if unknown.
+     *
+     * @return last line
+     */
+    int getLastLine();
+
+    /**
      * Returns all information about potential method breakpoints set on this method.
      *
      * @return array of method breakpoint info

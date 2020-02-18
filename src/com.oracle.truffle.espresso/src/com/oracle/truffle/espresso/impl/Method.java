@@ -983,6 +983,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getLineNumberTable().getFirstLine();
     }
 
+    @Override
+    public int getLastLine() {
+        return getLineNumberTable().getLastLine();
+    }
+
     public String getGenericSignatureAsString() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) linkedMethod.getAttribute(SignatureAttribute.NAME);
