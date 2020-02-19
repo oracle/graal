@@ -482,6 +482,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 for (CacheKey key : eagerCaches.keySet()) {
                     caches.add(key.cache);
                 }
+                if (firstSpecialization == null) {
+                    throw new AssertionError();
+                }
                 builder.tree(factory.createInitializeCaches(firstSpecialization, caches, constructor, receiverName));
             }
 
@@ -604,7 +607,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startIf().string("localFallback == null").end().startBlock();
             builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             builder.startStatement();
-            builder.string("this.fallback_ = localFallback = ").staticReference(useLibraryConstant(libraryType)).string(".create(receiver)");
+            builder.string("this.fallback_ = localFallback = insert(").staticReference(useLibraryConstant(libraryType)).string(".create(receiver))");
             builder.end();
             builder.end(); // block
             builder.startReturn().string("localFallback").end();
@@ -836,12 +839,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTreeBuilder constructorBuilder = null;
         CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
         if (libraryExports.needsDynamicDispatch()) {
-            CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), types.DynamicDispatchLibrary, "dynamicDispatch_"));
-            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Child));
-
-            CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
+            if (libraryGen != null) {
+                CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), types.DynamicDispatchLibrary, "dynamicDispatch_"));
+                dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Child));
+            }
 
             if (constructor != null) {
+                CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
                 constructorBuilder = constructor.appendBuilder();
                 if (cached) {
                     constructorBuilder.startStatement().string("this.dynamicDispatch_ = insert(").staticReference(dispatchLibraryConstant).string(".create(receiver))").end();
@@ -859,6 +863,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(Class.class), name));
                 }
                 if (constructor != null) {
+                    CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
                     if (cached) {
                         constructorBuilder.startStatement();
                         constructorBuilder.string("this.dynamicDispatchTarget_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver).dispatch(receiver)");

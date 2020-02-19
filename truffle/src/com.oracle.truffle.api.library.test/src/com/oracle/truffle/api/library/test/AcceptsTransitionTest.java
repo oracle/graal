@@ -55,6 +55,9 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -102,8 +105,16 @@ public class AcceptsTransitionTest extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         String transition(Strategy s,
-                        @Shared("strategy") @Cached("this.strategy") Strategy cached) {
+                        @Shared("strategy") @Cached("this.strategy") Strategy cached,
+                        @CachedLibrary("cached.toString()") InteropLibrary lib) {
             assertSame(cached, this.strategy);
+            try {
+                // testing that we can use a library in the transition
+                // and all nodes adopted properly
+                assertEquals(cached.toString(), lib.asString(cached.toString()));
+            } catch (UnsupportedMessageException e) {
+                throw new AssertionError(e);
+            }
             Strategy old = this.strategy;
             this.strategy = s;
             return "transition_" + old + "_" + s;
