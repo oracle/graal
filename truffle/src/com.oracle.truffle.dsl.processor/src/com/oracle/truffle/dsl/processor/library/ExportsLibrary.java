@@ -57,6 +57,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -73,7 +74,7 @@ public final class ExportsLibrary extends Template {
     private int defaultExportPriority;
     private Map<CacheExpression, String> sharedExpressions;
     private VariableElement delegationVariable;
-    private boolean allowTransition;
+    private DSLExpression transitionLimit;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -223,12 +224,16 @@ public final class ExportsLibrary extends Template {
         return defaultExportPriority;
     }
 
-    public void setAllowTransition(boolean allowTransition) {
-        this.allowTransition = allowTransition;
+    public void setTransitionLimit(DSLExpression allowTransition) {
+        this.transitionLimit = allowTransition;
+    }
+
+    public DSLExpression getTransitionLimit() {
+        return transitionLimit;
     }
 
     public boolean isAllowTransition() {
-        return allowTransition;
+        return transitionLimit != null;
     }
 
 }

@@ -85,6 +85,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
+import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
@@ -533,9 +536,18 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             }
 
-            Boolean allowTransition = ElementUtils.getAnnotationValue(Boolean.class, exportAnnotationMirror, "allowTransition", false);
-            if (allowTransition != null) {
-                lib.setAllowTransition(allowTransition);
+            String transitionLimit = ElementUtils.getAnnotationValue(String.class, exportAnnotationMirror, "transitionLimit", false);
+            if (transitionLimit != null) {
+                DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
+                                NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false));
+                try {
+                    DSLExpression expression = DSLExpression.parse(transitionLimit);
+                    expression.accept(resolver);
+                    lib.setTransitionLimit(expression);
+                } catch (InvalidExpressionException e) {
+                    AnnotationValue allowTransition = ElementUtils.getAnnotationValue(exportAnnotationMirror, "transitionLimit");
+                    model.addError(exportAnnotationMirror, allowTransition, "Error parsing expression '%s': %s", transitionLimit, e.getMessage());
+                }
             }
 
             String delegateTo = ElementUtils.getAnnotationValue(String.class, exportAnnotationMirror, "delegateTo", false);

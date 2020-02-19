@@ -607,8 +607,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startIf().string("localFallback == null").end().startBlock();
             builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             builder.startStatement();
-            builder.string("this.fallback_ = localFallback = insert(").staticReference(useLibraryConstant(libraryType)).string(".create(receiver))");
-            builder.end();
+            CodeTree transitionLimit = DSLExpressionGenerator.write(libraryExports.getTransitionLimit(), null, Collections.emptyMap());
+            builder.string("this.fallback_ = localFallback = insert(").staticReference(useLibraryConstant(libraryType)).startCall(".createDispatched").tree(transitionLimit).end().string(")");
+            builder.end(); // statement
             builder.end(); // block
             builder.startReturn().string("localFallback").end();
         }
