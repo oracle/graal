@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -200,7 +200,7 @@ public final class Module implements ParserListener {
         final int value = buffer.readInt();
         final long linkage = buffer.read();
 
-        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value, -1);
+        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value);
         assignNameFromStrTab(name, global);
         module.addAlias(global);
         scope.addSymbol(global, global.getType());
@@ -215,7 +215,7 @@ public final class Module implements ParserListener {
         int value = buffer.readInt();
         long linkage = buffer.read();
 
-        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value, -1);
+        final GlobalAlias global = GlobalAlias.create(type, linkage, Visibility.DEFAULT.ordinal(), scope.getSymbols(), value);
         assignNameFromStrTab(name, global);
         module.addAlias(global);
         scope.addSymbol(global, global.getType());

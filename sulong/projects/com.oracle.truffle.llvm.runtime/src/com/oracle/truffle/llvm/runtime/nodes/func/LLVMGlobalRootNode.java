@@ -44,8 +44,8 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolVariableStorageNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
@@ -57,13 +57,13 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    @Child LLVMAccessSymbolVariableStorageNode accessMainFunction;
+    @Child LLVMAccessSymbolNode accessMainFunction;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunction);
-        this.accessMainFunction = LLVMAccessSymbolVariableStorageNodeGen.create(mainFunction);
+        this.accessMainFunction = LLVMAccessSymbolNodeGen.create(mainFunction);
         this.applicationPath = applicationPath;
     }
 

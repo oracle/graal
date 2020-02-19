@@ -229,7 +229,7 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
             CompilerAsserts.neverPartOfCompilation();
             if (address.getObject() instanceof LLVMFunctionDescriptor) {
                 LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) address.getObject();
-                return getShortString() + " value=" + address + " function=\"" + function.getFunctionDetail().getName() + "\"";
+                return getShortString() + " value=" + address + " function=\"" + function.getLLVMFunction().getName() + "\"";
             }
 
             return getShortString() + " value=" + address;

@@ -284,7 +284,10 @@ public final class LLVMContext {
         loader.loadDefaults(this, internalLibraryPath);
         if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
             Function function = new UnresolvedFunction();
-            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), 0, 0);
+            // This function currently has the index 0, as it is the first function defined in the
+            // table reserved for misc functions
+            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), LLVMSymbol.MISCFUNCTION_ID,
+                            LLVMSymbol.getMiscSymbolIndex());
             LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
             functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
             registerSymbolTable(0, new AssumedValue[5]);
@@ -619,7 +622,6 @@ public final class LLVMContext {
     }
 
     List<Path> getLibraryPaths() {
-        // TODO (je) should this be unmodifiable?done
         synchronized (libraryPathsLock) {
             return libraryPaths;
         }
@@ -715,7 +717,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
         if (nativeCallStatistics != null) {
-            String name = descriptor.getFunctionDetail().getName() + " " + descriptor.getFunctionDetail().getType();
+            String name = descriptor.getLLVMFunction().getName() + " " + descriptor.getLLVMFunction().getType();
             if (nativeCallStatistics.containsKey(name)) {
                 int count = nativeCallStatistics.get(name) + 1;
                 nativeCallStatistics.put(name, count);

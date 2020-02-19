@@ -155,7 +155,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             String targetString;
             if (target instanceof LLVMFunctionDescriptor) {
                 final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) target;
-                targetString = "LLVM function " + function.getFunctionDetail().getName();
+                targetString = "LLVM function " + function.getLLVMFunction().getName();
 
             } else {
                 targetString = "<managed pointer>";

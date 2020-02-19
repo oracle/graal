@@ -72,7 +72,7 @@ public final class LLVMParserRuntime {
         return nodeFactory;
     }
 
-    public int getbitcodeID() {
+    public int getBitcodeID() {
         return bitcodeID;
     }
 

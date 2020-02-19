@@ -119,11 +119,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolVariableStorageNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolVariableStorageNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -262,15 +262,18 @@ final class Runner {
 
         @ExplodeLoop
         private void doInitSymbols(LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections) {
+
             for (int i = 0; i < initSymbols.length; i++) {
                 if (initSymbols[i].shouldInitialize(ctx)) {
                     shouldInit.set(i);
                     initSymbols[i].initializeSymbolTable(ctx);
                 }
             }
-
-            for (int i = shouldInit.nextSetBit(0); i >= 0; i = shouldInit.nextSetBit(i + 1)) {
-                roSections[i] = initSymbols[i].execute(ctx);
+            for (int i = 0; i < initSymbols.length; i++) {
+                // Only execute the symbols that are initialized into the symbol table.
+                if (shouldInit.get(i)) {
+                    roSections[i] = initSymbols[i].execute(ctx);
+                }
             }
         }
 
@@ -458,8 +461,8 @@ final class Runner {
 
         @Child LLVMAllocateNode allocRoSection;
         @Child LLVMAllocateNode allocRwSection;
-        @Child LLVMCheckSymbolVariableStorageNode checkGlobals;
-        @Child LLVMWriteSymbolVariableStorageNode writeSymbols;
+        @Child LLVMCheckSymbolNode checkGlobals;
+        @Child LLVMWriteSymbolNode writeSymbols;
 
         @Children final AllocGlobalNode[] allocGlobals;
 
@@ -471,14 +474,13 @@ final class Runner {
         private final int bitcodeID;
         private final int globalLength;
 
-        @SuppressWarnings("unchecked")
         InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
-            this.checkGlobals = LLVMCheckSymbolVariableStorageNodeGen.create();
+            this.checkGlobals = LLVMCheckSymbolNodeGen.create();
             this.globalLength = res.getSymbolTableSize();
-            this.bitcodeID = res.getRuntime().getbitcodeID();
+            this.bitcodeID = res.getRuntime().getBitcodeID();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -499,21 +501,21 @@ final class Runner {
                 }
             }
 
-            // Functions are allocated based on whether they are intrinsic function, regular llvm
-            // bitcode function
-            // or eager llvm bitcode function.
+            /*
+             * Functions are allocated based on whether they are intrinsic function, regular llvm
+             * bitcode function, or eager llvm bitcode function.
+             */
+
             ArrayList<AllocFunctionNode> allocFunctionsList = new ArrayList<>();
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             for (FunctionSymbol global : res.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(global.getName());
                 if (isSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory));
+                } else if (lazyParsing) {
+                    allocFunctionsList.add(new AllocLLVMFunctionNode(function));
                 } else {
-                    if (lazyParsing) {
-                        allocFunctionsList.add(new AllocLLVMFunctionNode(function));
-                    } else {
-                        allocFunctionsList.add(new AllocLLVMEagerFunctionNode(function));
-                    }
+                    allocFunctionsList.add(new AllocLLVMEagerFunctionNode(function));
                 }
             }
 
@@ -521,7 +523,7 @@ final class Runner {
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
             this.allocFuncs = allocFunctionsList.toArray(AllocFunctionNode.EMPTY);
-            this.writeSymbols = LLVMWriteSymbolVariableStorageNodeGen.create();
+            this.writeSymbols = LLVMWriteSymbolNodeGen.create();
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {
@@ -807,7 +809,7 @@ final class Runner {
         // However, this is based on the assumption that polyglot-mock is the first loaded library!
         int symbolSize = polyglotMockResult.getDefinedFunctions().size() + polyglotMockResult.getDefinedGlobals().size() + polyglotMockResult.getExternalFunctions().size() +
                         polyglotMockResult.getExternalGlobals().size();
-        context.registerSymbolTable(polyglotMockResult.getRuntime().getbitcodeID(), new AssumedValue[symbolSize]);
+        context.registerSymbolTable(polyglotMockResult.getRuntime().getBitcodeID(), new AssumedValue[symbolSize]);
 
         for (LLVMSymbol symbol : polyglotMockResult.getRuntime().getGlobalScope().values()) {
             if (symbol.isFunction()) {
@@ -889,7 +891,7 @@ final class Runner {
                 LLVMSymbol functionSymbol = globalScope.get(function.getName());
 
                 if (functionSymbol == null) {
-                    functionSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getbitcodeID(),
+                    functionSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
                                     function.getIndex());
                     globalScope.register(functionSymbol);
                 } else if (!functionSymbol.isFunction()) {
@@ -907,7 +909,7 @@ final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getbitcodeID());
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID());
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
                     throw new LLVMLinkerException(
@@ -943,23 +945,26 @@ final class Runner {
                     NodeFactory nodeFactory) {
         LLVMFunctionDescriptor functionDescriptor = ctx.createFunctionDescriptor(function);
         boolean canBind = false;
-        if (functionDescriptor.getFunctionDetail().getName().startsWith("llvm.")) {
+        String functionKind = "bitcode";
+        if (functionDescriptor.getLLVMFunction().getName().startsWith("llvm.")) {
             // llvm intrinsic
-        } else if (intrinsicProvider.isIntrinsified(functionDescriptor.getFunctionDetail().getName())) {
+        } else if (intrinsicProvider.isIntrinsified(functionDescriptor.getLLVMFunction().getName())) {
             functionDescriptor.define(intrinsicProvider, nodeFactory);
             canBind = true;
+            functionKind = "intrinisc";
         } else if (nfiContextExtension != null) {
-            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, functionDescriptor.getFunctionDetail().getName());
+            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, functionDescriptor.getLLVMFunction().getName());
             if (nativeFunction != null) {
                 functionDescriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
                 canBind = true;
+                functionKind = "native";
             }
         }
 
         if (canBind) {
             AssumedValue<LLVMPointer>[] functions = ctx.findSymbolTable(function.getBitcodeID(false));
             int index = function.getSymbolIndex(false);
-            functions[index] = new AssumedValue<>("LLVMFunction." + function.getName() + "(unresolved/external)", LLVMManagedPointer.create(functionDescriptor));
+            functions[index] = new AssumedValue<>("LLVMFunction." + function.getName() + "(unresolved/external " + functionKind + ")", LLVMManagedPointer.create(functionDescriptor));
         }
         // if we were unable to bind the function, then we will try another lookup when
         // someone tries to execute the function
@@ -1233,8 +1238,8 @@ final class Runner {
 
     private CallTarget createLibraryCallTarget(String name, List<LLVMParserResult> parserResults, InitializationOrder initializationOrder) {
         RootCallTarget mainFunctionCallTarget = null;
-        LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod();
-        LLVMFunction mainFunction = findMainMethod(parserResults);
+        LLVMFunctionDescriptor startFunctionDescriptor = findStartFunctionDescriptor();
+        LLVMFunction mainFunction = findMainFunction(parserResults);
         if (startFunctionDescriptor != null && mainFunction != null) {
             RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunctionSlowPath();
             Path applicationPath = mainFunction.getLibrary().getPath();
@@ -1257,7 +1262,10 @@ final class Runner {
         }
     }
 
-    private static LLVMFunction findMainMethod(List<LLVMParserResult> parserResults) {
+    /**
+     * Retrieves the function for the main method.
+     */
+    private static LLVMFunction findMainFunction(List<LLVMParserResult> parserResults) {
         // check if the freshly parsed code exports a main method
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
@@ -1279,7 +1287,12 @@ final class Runner {
         return null;
     }
 
-    private LLVMFunctionDescriptor findStartMethod() {
+    /**
+     * Creates and returns the function descriptor (function code) of the start method.
+     *
+     * @return The function descriptor containing the start function.
+     */
+    private LLVMFunctionDescriptor findStartFunctionDescriptor() {
         // the start method just needs to be present in the global scope, we don't care when it was
         // parsed.
         LLVMScope globalScope = context.getGlobalScope();

@@ -119,7 +119,7 @@ public final class NFIContextExtension implements ContextExtension {
         TruffleObject wrapper = null;
 
         try {
-            String signature = getNativeSignature(descriptor.getFunctionDetail().getType(), 0);
+            String signature = getNativeSignature(descriptor.getLLVMFunction().getType(), 0);
             TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "createNativeWrapper", String.format("(env, %s):object", signature));
             try {
                 wrapper = (TruffleObject) INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(descriptor));

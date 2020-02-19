@@ -43,49 +43,49 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMReplaceSymbolVariableStorageNode extends LLVMNode {
+public abstract class LLVMWriteSymbolNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer value, LLVMSymbol descriptor);
+    public abstract void execute(LLVMPointer pointer, LLVMSymbol descriptor);
 
     @SuppressWarnings("unused")
     @Specialization
-    void doReplace(LLVMPointer value, LLVMGlobal descriptor,
+    void doWrite(LLVMPointer pointer, LLVMGlobal global,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(global.getBitcodeID(false));
         synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
+            CompilerAsserts.partialEvaluationConstant(global);
             try {
-                int index = descriptor.getSymbolIndex(false);
-                symbols[index].set(value);
+                int index = global.getSymbolIndex(false);
+                symbols[index] = new AssumedValue<>("LLVMGlobal." + global.getName(), pointer);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global replacement is inconsistent.");
+                throw new RuntimeException("Writing global symbol into symbol table is inconsistent.", e);
             }
         }
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doReplace(LLVMPointer value, LLVMFunction descriptor,
+    void doWrite(LLVMPointer pointer, LLVMFunction function,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
         synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
+            CompilerAsserts.partialEvaluationConstant(function);
             try {
-                int index = descriptor.getSymbolIndex(false);
-                symbols[index].set(value);
+                int index = function.getSymbolIndex(false);
+                symbols[index] = new AssumedValue<>("LLVMFunction." + function.getName(), pointer);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Function replacement is inconsistent.");
+                throw new RuntimeException("Writing function symbol into symbol table is inconsistent.", e);
             }
         }
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doReplace(LLVMPointer value, LLVMAlias descriptor,
+    void doWrite(LLVMPointer pointer, LLVMAlias alias,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMSymbol target = descriptor.getTarget();
+        LLVMSymbol target = alias.getTarget();
         while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
         }
@@ -94,10 +94,12 @@ public abstract class LLVMReplaceSymbolVariableStorageNode extends LLVMNode {
             CompilerAsserts.partialEvaluationConstant(target);
             try {
                 int index = target.getSymbolIndex(false);
-                symbols[index].set(value);
+                if (symbols[index] == null) {
+                    symbols[index] = new AssumedValue<>(target.getKind() + "." + target.getName(), pointer);
+                }
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Function replacement is inconsistent.");
+                throw new RuntimeException("Writing alias symbol into symbol table is inconsistent.", e);
             }
         }
     }

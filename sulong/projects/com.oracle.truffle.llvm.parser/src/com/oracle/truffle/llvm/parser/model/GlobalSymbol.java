@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,9 @@ public abstract class GlobalSymbol implements ValueSymbol {
     private final Linkage linkage;
     private final int index;
 
+    // Index for alias symbol from bitcode.
+    public static final int ALIAS_INDEX = -1;
+
     public GlobalSymbol(String name, Linkage linkage, int index) {
         this.name = name;
         this.linkage = linkage;
@@ -58,8 +61,14 @@ public abstract class GlobalSymbol implements ValueSymbol {
         this.name = name;
     }
 
+    /**
+     * Get the unique index of the symbol. Symbols that are alias have the value of
+     * {@link GlobalSymbol#ALIAS_INDEX}, and should not be retrieved.
+     *
+     * @return Index of the global symbol.
+     */
     public final int getIndex() {
-        assert index > -2;
+        assert index != ALIAS_INDEX;
         return index;
     }
 

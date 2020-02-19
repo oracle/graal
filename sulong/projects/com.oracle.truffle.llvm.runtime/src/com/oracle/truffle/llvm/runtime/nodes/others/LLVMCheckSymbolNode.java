@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,65 +39,43 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMAccessSymbolVariableStorageNode extends LLVMExpressionNode {
+public abstract class LLVMCheckSymbolNode extends LLVMNode {
 
-    protected final LLVMSymbol descriptor;
-
-    public LLVMAccessSymbolVariableStorageNode(LLVMSymbol descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    @Override
-    public String toString() {
-        return getShortString("descriptor");
-    }
-
-    public LLVMSymbol getDescriptor() {
-        return descriptor;
-    }
-
-    public abstract LLVMPointer execute();
+    public abstract boolean execute(LLVMSymbol descriptor);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"descriptor.isAlias()"})
-    LLVMPointer doAliasAccess(
+    @Specialization(guards = "descriptor.isAlias()")
+    boolean doCheckAlias(LLVMAlias alias,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        CompilerAsserts.partialEvaluationConstant(descriptor);
-        LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
-        while (target.isAlias()) {
+        LLVMSymbol target = alias.getTarget();
+        do {
             target = ((LLVMAlias) target).getTarget();
-        }
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
-        int index = target.getSymbolIndex(false);
-        return symbols[index].get();
+        } while (target.isAlias());
+        return doCheck(target, context);
     }
 
+    @SuppressWarnings("unused")
     @Specialization
-    LLVMPointer doFallback(
+    boolean doCheck(LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        CompilerAsserts.partialEvaluationConstant(descriptor);
-        if (descriptor.hasValidIndexAndID()) {
-            int bitcodeID = descriptor.getBitcodeID(false);
+        CompilerAsserts.partialEvaluationConstant(symbol);
+
+        if (symbol.hasValidIndexAndID()) {
+            int bitcodeID = symbol.getBitcodeID(false);
             if (context.symbolTableExists(bitcodeID)) {
                 AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
-                int index = descriptor.getSymbolIndex(false);
-                AssumedValue<LLVMPointer> symbol = symbols[index];
-                if (symbol != null) {
-                    return symbol.get();
+                int index = symbol.getSymbolIndex(false);
+                AssumedValue<LLVMPointer> pointer = symbols[index];
+                if (pointer == null) {
+                    return false;
                 }
+                return pointer.get() != null;
             }
         }
-
         CompilerDirectives.transferToInterpreter();
-        if (descriptor.isFunction()) {
-            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
-        } else if (descriptor.isGlobalVariable()) {
-            throw new LLVMLinkerException(String.format("External global %s cannot be found.", descriptor.getName()));
-        } else {
-            throw new LLVMLinkerException(String.format("External symbol %s cannot be found.", descriptor.getName()));
-        }
+        throw new LLVMLinkerException(String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 }

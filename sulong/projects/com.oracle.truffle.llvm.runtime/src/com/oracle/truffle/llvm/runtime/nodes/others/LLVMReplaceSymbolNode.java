@@ -39,53 +39,54 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMWriteSymbolVariableStorageNode extends LLVMNode {
+public abstract class LLVMReplaceSymbolNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer pointer, LLVMSymbol descriptor);
+    public abstract void execute(LLVMPointer value, LLVMSymbol descriptor);
 
     @SuppressWarnings("unused")
     @Specialization
-    void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
+    void doReplace(LLVMPointer value, LLVMGlobal global,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(global.getBitcodeID(false));
         synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
+            CompilerAsserts.partialEvaluationConstant(global);
             try {
-                int index = descriptor.getSymbolIndex(false);
-                symbols[index] = new AssumedValue<>("LLVMGlobal." + descriptor.getName(), pointer);
+                int index = global.getSymbolIndex(false);
+                symbols[index].set(value);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global write is inconsistent.");
+                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
             }
         }
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doWrite(LLVMPointer pointer, LLVMFunction descriptor,
+    void doReplace(LLVMPointer value, LLVMFunction function,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(descriptor.getBitcodeID(false));
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
         synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
+            CompilerAsserts.partialEvaluationConstant(function);
             try {
-                int index = descriptor.getSymbolIndex(false);
-                symbols[index] = new AssumedValue<>("LLVMFunction." + descriptor.getName(), pointer);
+                int index = function.getSymbolIndex(false);
+                symbols[index].set(value);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Function write is inconsistent.");
+                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
             }
         }
     }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doWrite(LLVMPointer pointer, LLVMAlias descriptor,
+    void doReplace(LLVMPointer value, LLVMAlias alias,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMSymbol target = descriptor.getTarget();
+        LLVMSymbol target = alias.getTarget();
         while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
         }
@@ -94,20 +95,10 @@ public abstract class LLVMWriteSymbolVariableStorageNode extends LLVMNode {
             CompilerAsserts.partialEvaluationConstant(target);
             try {
                 int index = target.getSymbolIndex(false);
-                if (symbols[index] == null) {
-                    String name;
-                    if (target.isFunction()) {
-                        name = "LLVMFunction";
-                    } else if (target.isGlobalVariable()) {
-                        name = "LLVMGlobal";
-                    } else {
-                        throw new IllegalStateException("Target of the alias is neither a global or function.");
-                    }
-                    symbols[index] = new AssumedValue<>(name + target.getName(), pointer);
-                }
+                symbols[index].set(value);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global write is inconsistent.");
+                throw new RuntimeException("Function replacement is inconsistent.");
             }
         }
     }

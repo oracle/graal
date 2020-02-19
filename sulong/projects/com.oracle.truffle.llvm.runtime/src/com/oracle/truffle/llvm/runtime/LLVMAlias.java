@@ -42,7 +42,7 @@ public class LLVMAlias extends LLVMSymbol {
     @CompilationFinal private LLVMSymbol target;
 
     public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target) {
-        super(name, library, -1, -1);
+        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID);
         setTarget(target);
     }
 
@@ -90,7 +90,7 @@ public class LLVMAlias extends LLVMSymbol {
 
     @Override
     public String toString() {
-        return super.getName() + " -> " + target.getName();
+        return super.getName() + " -> " + target.toString();
     }
 
     private void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {

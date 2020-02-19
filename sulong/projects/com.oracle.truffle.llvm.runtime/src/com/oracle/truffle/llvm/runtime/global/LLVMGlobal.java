@@ -74,21 +74,7 @@ public final class LLVMGlobal extends LLVMSymbol {
 
         this.interopTypeCached = false;
         this.interopType = null;
-        this.globalIndex = globalIndex;
-        this.moduleId = moduleId;
     }
-
-    public boolean isAvailable() {
-        return moduleId >= 0;
-    }
-
-    public int getIndex() {
-        return globalIndex;
-    }
-
-    public int getID() {
-        return moduleId;
- }
 
     @Override
     public String toString() {

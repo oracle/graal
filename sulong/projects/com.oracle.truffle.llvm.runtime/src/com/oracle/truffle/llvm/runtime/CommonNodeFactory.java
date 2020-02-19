@@ -195,7 +195,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory;
@@ -355,13 +355,13 @@ public class CommonNodeFactory {
 
         Object value = null;
         if (isGlobal) {
-            assert valueNode instanceof LLVMAccessSymbolVariableStorageNode;
-            LLVMAccessSymbolVariableStorageNode node = (LLVMAccessSymbolVariableStorageNode) valueNode;
+            assert valueNode instanceof LLVMAccessSymbolNode;
+            LLVMAccessSymbolNode node = (LLVMAccessSymbolNode) valueNode;
             LLVMSymbol symbol = node.getDescriptor();
             if (symbol.isGlobalVariable()) {
                 value = new LLVMDebugGlobalVariable(symbol.asGlobalVariable(), context);
             } else {
-                throw new IllegalStateException("Unknown symbol: " + symbol.getName());
+                throw new IllegalStateException(symbol.getKind() + " symbol: " + symbol.getName());
             }
         } else {
             try {

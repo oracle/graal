@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.collections.Pair;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -83,10 +81,8 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     }
 
     private final LLVMContext context;
-    private final Pair<Integer, Integer> functionId;
-
     private final AssumedValue<Function> function;
-    private final LLVMFunction functionDetail;
+    private final LLVMFunction llvmFunction;
 
     @CompilationFinal private TruffleObject nativeWrapper;
     @CompilationFinal private long nativePointer;
@@ -224,7 +220,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             }
 
             if (wrapper == null) {
-                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.getFunctionID().getRight()));
+                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.getLLVMFunction().getSymbolIndex(true)));
                 wrapper = pointer;
             }
 
@@ -284,16 +280,16 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
 
                 NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                assert !intrinsicProvider.isIntrinsified(descriptor.getFunctionDetail().getName());
+                assert !intrinsicProvider.isIntrinsified(descriptor.getLLVMFunction().getName());
                 if (nfiContextExtension != null) {
-                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getFunctionDetail().getName());
+                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getLLVMFunction().getName());
                     if (nativeFunction != null) {
                         descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
                         return;
                     }
                 }
             }
-            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getFunctionDetail().getName()));
+            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getLLVMFunction().getName()));
         }
 
         @Override
@@ -333,20 +329,15 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         return function.get();
     }
 
-    public Pair<Integer, Integer> getFunctionID() {
-        return functionId;
+    public LLVMFunction getLLVMFunction() {
+        return llvmFunction;
     }
 
-    public LLVMFunction getFunctionDetail() {
-        return functionDetail;
-    }
-
-    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction functionDetail) {
+    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction llvmFunction) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
-        this.functionId = Pair.create(functionDetail.getBitcodeID(true), functionDetail.getSymbolIndex(true));
-        this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", functionDetail.getFunction());
-        this.functionDetail = functionDetail;
+        this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", llvmFunction.getFunction());
+        this.llvmFunction = llvmFunction;
     }
 
     public interface LazyToTruffleConverter {
@@ -398,7 +389,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
-        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, functionDetail.getName(), nodeFactory);
+        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, llvmFunction.getName(), nodeFactory);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }
 
@@ -409,11 +400,11 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     private void define(ExternalLibrary lib, Function newFunction, boolean allowReplace) {
         assert lib != null && newFunction != null;
         if (!isDefined() || allowReplace) {
-            functionDetail.setLibrary(lib);
+            llvmFunction.setLibrary(lib);
             setFunction(newFunction);
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Found multiple definitions of function " + functionDetail.getName() + ".");
+            throw new AssertionError("Found multiple definitions of function " + llvmFunction.getName() + ".");
         }
     }
 
@@ -447,24 +438,28 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         TruffleObject nativeFunction = ((NativeFunction) fn).nativeFunction;
         if (nativeFunction == null) {
             CompilerDirectives.transferToInterpreter();
-            throw new LLVMLinkerException("Native function " + functionDetail.getName() + " not found");
+            throw new LLVMLinkerException("Native function " + llvmFunction.getName() + " not found");
         }
         return nativeFunction;
     }
 
     @Override
     public String toString() {
-        String name = functionDetail.getName();
-        if (name != null) {
-            return String.format("function@%d '%s'", getFunctionID().getRight(), name);
-        } else {
-            return String.format("function@%d (anonymous)", getFunctionID().getRight());
-        }
+        return String.format("function@%d '%s'", llvmFunction.getSymbolIndex(true), llvmFunction.getName());
     }
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Long.compare(getFunctionID().getLeft() + getFunctionID().getRight(), o.getFunctionID().getLeft() + o.getFunctionID().getLeft());
+        int otherIndex = o.llvmFunction.getSymbolIndex(true);
+        int otherID = o.llvmFunction.getBitcodeID(true);
+        int index = llvmFunction.getSymbolIndex(true);
+        int id = llvmFunction.getBitcodeID(true);
+
+        if (id == otherID) {
+            return Long.compare(index, otherIndex);
+        }
+
+        throw new IllegalStateException("Comparing functions from different bitcode files.");
     }
 
     public LLVMContext getContext() {
@@ -496,7 +491,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             try {
                 nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
             } catch (UnsupportedMessageException ex) {
-                nativePointer = tagSulongFunctionPointer(getFunctionID().getRight());
+                nativePointer = tagSulongFunctionPointer(llvmFunction.getSymbolIndex(true));
             }
         }
         return this;

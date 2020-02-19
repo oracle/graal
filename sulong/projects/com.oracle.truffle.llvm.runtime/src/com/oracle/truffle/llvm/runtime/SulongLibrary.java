@@ -77,11 +77,7 @@ public final class SulongLibrary implements TruffleObject {
         AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
         LLVMPointer pointer = symbols[index].get();
         LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
-
-        if (functionDescriptor != null) {
-            return functionDescriptor;
-        }
-        return null;
+        return functionDescriptor;
     }
 
     public String getName() {
