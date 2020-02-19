@@ -228,7 +228,8 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if the given instance is an instance of this value, else
-     * <code>false</code>.
+     * <code>false</code>. The instance value is subject to polyglot value mapping rules as
+     * described in {@link Context#asValue(Object)}.
      * <p>
      * <b>Sample interpretations:</b> A Java object is an instance of its returned
      * {@link Object#getClass() class}.
