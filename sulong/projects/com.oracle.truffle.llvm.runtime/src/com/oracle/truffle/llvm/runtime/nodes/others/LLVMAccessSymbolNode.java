@@ -91,6 +91,6 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             }
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(String.format("External %s %s cannot be found.", descriptor.getKind(), descriptor.getName()));
+        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", descriptor.getKind(), descriptor.getName()));
     }
 }

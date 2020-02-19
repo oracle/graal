@@ -39,6 +39,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -57,9 +59,9 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             try {
                 int index = global.getSymbolIndex(false);
                 symbols[index] = new AssumedValue<>("LLVMGlobal." + global.getName(), pointer);
-            } catch (Exception e) {
+            } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Writing global symbol into symbol table is inconsistent.", e);
+                throw new LLVMLinkerException(this, "Writing global symbol into symbol table is inconsistent.");
             }
         }
     }
@@ -74,9 +76,9 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             try {
                 int index = function.getSymbolIndex(false);
                 symbols[index] = new AssumedValue<>("LLVMFunction." + function.getName(), pointer);
-            } catch (Exception e) {
+            } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Writing function symbol into symbol table is inconsistent.", e);
+                throw new LLVMLinkerException(this, "Writing function symbol into symbol table is inconsistent.");
             }
         }
     }
@@ -97,9 +99,9 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
                 if (symbols[index] == null) {
                     symbols[index] = new AssumedValue<>(target.getKind() + "." + target.getName(), pointer);
                 }
-            } catch (Exception e) {
+            } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Writing alias symbol into symbol table is inconsistent.", e);
+                throw new LLVMLinkerException(this, "Writing alias symbol into symbol table is inconsistent.");
             }
         }
     }

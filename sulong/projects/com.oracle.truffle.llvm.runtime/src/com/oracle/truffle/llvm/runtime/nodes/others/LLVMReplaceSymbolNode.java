@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -75,9 +76,9 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
             try {
                 int index = function.getSymbolIndex(false);
                 symbols[index].set(value);
-            } catch (Exception e) {
+            } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMIllegalSymbolIndexException("Global replacement is inconsistent. Accessing the symbol with an invalid index.");
+                throw new LLVMLinkerException(this, "Global replacement is inconsistent. Accessing the symbol with an invalid index.");
             }
         }
     }
@@ -96,9 +97,9 @@ public abstract class LLVMReplaceSymbolNode extends LLVMNode {
             try {
                 int index = target.getSymbolIndex(false);
                 symbols[index].set(value);
-            } catch (Exception e) {
+            } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Function replacement is inconsistent.");
+                throw new LLVMLinkerException(this, "Function replacement is inconsistent.");
             }
         }
     }

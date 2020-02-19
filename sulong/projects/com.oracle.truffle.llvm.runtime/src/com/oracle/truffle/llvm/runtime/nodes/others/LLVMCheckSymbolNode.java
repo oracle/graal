@@ -47,7 +47,7 @@ public abstract class LLVMCheckSymbolNode extends LLVMNode {
     public abstract boolean execute(LLVMSymbol descriptor);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "descriptor.isAlias()")
+    @Specialization(guards = "alias.isAlias()")
     boolean doCheckAlias(LLVMAlias alias,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         LLVMSymbol target = alias.getTarget();
@@ -76,6 +76,6 @@ public abstract class LLVMCheckSymbolNode extends LLVMNode {
             }
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 }
