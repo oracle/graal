@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,7 +336,6 @@ import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -354,6 +353,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -2073,11 +2073,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (exceptionEdge == ExceptionEdgeAction.OMIT) {
             return createInvoke(invokeBci, callTarget, resultType);
         } else {
-            Invoke invoke = createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge);
-            AbstractBeginNode beginNode = graph.add(KillingBeginNode.create(LocationIdentity.any()));
-            invoke.setNext(beginNode);
-            lastInstr = beginNode;
-            return invoke;
+            return createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge);
         }
     }
 
@@ -2925,10 +2921,23 @@ public class BytecodeParser implements GraphBuilderContext {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                 assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
                 lastInstr = fixedWithNextNode;
+            } else if (fixedNode instanceof WithExceptionNode) {
+                lastInstr = updateWithExceptionNode((WithExceptionNode) fixedNode);
             } else {
                 lastInstr = null;
             }
         }
+    }
+
+    private AbstractBeginNode updateWithExceptionNode(WithExceptionNode withExceptionNode) {
+        if (withExceptionNode.exceptionEdge() == null) {
+            AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
+            withExceptionNode.setExceptionEdge(exceptionEdge);
+        }
+        assert withExceptionNode.next() == null : "new WithExceptionNode with existing next";
+        AbstractBeginNode nextBegin = graph.add(withExceptionNode.createNextBegin());
+        withExceptionNode.setNext(nextBegin);
+        return nextBegin;
     }
 
     private Target checkLoopExit(Target target, BciBlock targetBlock) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -776,6 +776,17 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         node.clearSuccessors();
         node.replaceAtPredecessor(survivingSuccessor);
         node.replaceAtUsagesAndDelete(replacement);
+    }
+
+    @SuppressWarnings("static-method")
+    public void replaceWithExceptionSplit(WithExceptionNode node, WithExceptionNode replacement) {
+        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        node.replaceAtPredecessor(replacement);
+        AbstractBeginNode next = node.next();
+        AbstractBeginNode exceptionEdge = node.exceptionEdge();
+        node.replaceAtUsagesAndDelete(replacement);
+        replacement.setNext(next);
+        replacement.setExceptionEdge(exceptionEdge);
     }
 
     @SuppressWarnings("static-method")
