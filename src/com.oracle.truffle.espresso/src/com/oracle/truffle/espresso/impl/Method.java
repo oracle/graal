@@ -469,6 +469,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private boolean usesMonitors() {
         if (isSynchronized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return (usesMonitors = 1) != 0;
         }
         if (codeAttribute != null) {
