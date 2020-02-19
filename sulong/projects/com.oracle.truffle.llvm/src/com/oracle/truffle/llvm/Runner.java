@@ -1041,8 +1041,14 @@ final class Runner {
                     globalScope.register(functionSymbol);
                 } else if (!functionSymbol.isFunction()) {
                     assert functionSymbol.isGlobalVariable();
-                    throw new LLVMLinkerException(
-                                    "The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
+                    // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                    // nothing instead of throwing an exception does not make it more wrong but
+                    // allows certain use cases to work correctly
+                    // This was:
+                    // throw new LLVMLinkerException(
+                    // "The function " + function.getName() + " is declared as external but its
+                    // definition is shadowed by a conflicting global variable with the same
+                    // name.");
                 }
 
                 // there can already be a different local entry in the file scope
@@ -1057,8 +1063,13 @@ final class Runner {
                     globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID());
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
-                    throw new LLVMLinkerException(
-                                    "The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
+                    // TODO (je) Symbol resolution is currently not correct [GR-21400] - doing
+                    // nothing instead of throwing an exception does not make it more wrong but
+                    // allows certain use cases to work correctly
+                    // This was:
+                    // throw new LLVMLinkerException("The global variable " + global.getName() + "
+                    // is declared as external but its definition is shadowed by a conflicting
+                    // function with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
