@@ -29,6 +29,10 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
+ifeq ($(OS), darwin)
+# symbol resolution on darwin is not fully implemented [GR-21379]
+else
+
 default: dynLink/symbolResolution/ref.bc
 
 dynLink/symbolResolution/libA$(SO_EXT): dynLink/symbolResolution/a.c dynLink/symbolResolution/Makefile
@@ -46,3 +50,5 @@ dynLink/symbolResolution/libC$(SO_EXT): dynLink/symbolResolution/c.c dynLink/sym
 dynLink/symbolResolution/ref.out: dynLink/symbolResolution/main.c dynLink/symbolResolution/Makefile dynLink/symbolResolution/libA$(SO_EXT) dynLink/symbolResolution/libB$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -LdynLink/symbolResolution -lA -lB -o $@ $<
+
+endif
