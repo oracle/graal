@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.core.match.MatchPattern;
@@ -99,6 +100,8 @@ import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -617,6 +620,28 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         if (x instanceof InvokeWithExceptionNode) {
             gen.emitJump(getLIRBlock(((InvokeWithExceptionNode) x).next()));
+        }
+    }
+
+    @Override
+    public void emitForeignCall(ForeignCall x) {
+        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(x.getDescriptor());
+
+        LabelRef exceptionEdge = null;
+        if (x instanceof ForeignCallWithExceptionNode) {
+            exceptionEdge = getLIRBlock(((ForeignCallWithExceptionNode) x).exceptionEdge());
+        }
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
+
+        Value[] args = x.operands(this);
+
+        Value result = gen.emitForeignCall(linkage, callState, args);
+        if (result != null) {
+            setResult(x.asNode(), result);
+        }
+
+        if (x instanceof ForeignCallWithExceptionNode) {
+            gen.emitJump(getLIRBlock(((ForeignCallWithExceptionNode) x).next()));
         }
     }
 
