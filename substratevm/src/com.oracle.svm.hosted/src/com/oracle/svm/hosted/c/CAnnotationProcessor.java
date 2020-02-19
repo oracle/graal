@@ -168,7 +168,7 @@ public class CAnnotationProcessor {
         CInterfaceError error = new CInterfaceError(
                         String.format("Error compiling query code (in %s). Compiler command '%s' output included error: %s",
                                         queryFile,
-                                        SubstrateUtil.getShellCommandString(current.command()),
+                                        SubstrateUtil.getShellCommandString(current.command(), false),
                                         line),
                         elements);
         nativeLibs.getErrors().add(error);

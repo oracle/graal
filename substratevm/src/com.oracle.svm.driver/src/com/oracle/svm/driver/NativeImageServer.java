@@ -566,7 +566,7 @@ final class NativeImageServer extends NativeImage {
         Path logFilePath = serverDir.resolve("server.log");
         command.add(NativeImageBuildServer.LOG_PREFIX + logFilePath);
         showVerboseMessage(isVerbose(), "StartServer [");
-        showVerboseMessage(isVerbose(), SubstrateUtil.getShellCommandString(command));
+        showVerboseMessage(isVerbose(), SubstrateUtil.getShellCommandString(command, true));
         showVerboseMessage(isVerbose(), "]");
         int childPid = NativeImageServerHelper.daemonize(() -> {
             try {

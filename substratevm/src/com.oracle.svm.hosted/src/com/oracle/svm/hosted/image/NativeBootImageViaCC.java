@@ -357,7 +357,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             }
             try (DebugContext.Scope s = debug.scope("InvokeCC")) {
                 List<String> cmd = inv.getCommand();
-                String commandLine = SubstrateUtil.getShellCommandString(cmd);
+                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
                 debug.log("Using CompilerCommand: %s", commandLine);
 
                 if (NativeImageOptions.MachODebugInfoTesting.getValue()) {

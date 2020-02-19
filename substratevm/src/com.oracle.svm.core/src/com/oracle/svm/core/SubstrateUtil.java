@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -85,7 +86,6 @@ import com.oracle.svm.core.util.Counter;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
-import org.graalvm.compiler.java.LambdaUtils;
 
 public class SubstrateUtil {
 
@@ -152,10 +152,15 @@ public class SubstrateUtil {
         return "'" + arg.replace("'", "'\"'\"'") + "'";
     }
 
-    public static String getShellCommandString(List<String> cmd) {
+    public static String getShellCommandString(List<String> cmd, boolean multiLine) {
         StringBuilder sb = new StringBuilder();
         for (String arg : cmd) {
-            sb.append(quoteShellArg(arg)).append(' ');
+            sb.append(quoteShellArg(arg));
+            if (multiLine) {
+                sb.append(" \\\n");
+            } else {
+                sb.append(' ');
+            }
         }
         return sb.toString();
     }

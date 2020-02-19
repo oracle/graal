@@ -301,7 +301,7 @@ public abstract class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(pb.command()) + "' failed");
+            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(pb.command(), false) + "' failed");
         } finally {
             if (process != null) {
                 process.destroy();
@@ -358,7 +358,7 @@ public abstract class CCompilerInvoker {
         Process compilingProcess = null;
         try {
             try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debug.log("Using CompilerCommand: %s", SubstrateUtil.getShellCommandString(pb.command()));
+                debug.log("Using CompilerCommand: %s", SubstrateUtil.getShellCommandString(pb.command(), false));
             }
             compilingProcess = pb.start();
 
