@@ -39,7 +39,7 @@ public abstract class LLVMDebugObjectBuilder {
 
         @Override
         public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
+            return LLVMDebugObject.create(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
         }
 
     };

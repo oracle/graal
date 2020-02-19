@@ -68,7 +68,7 @@ final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
         final LLVMDebugValue provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
-        return LLVMDebugObject.instantiate(type, 0, provider, declaration);
+        return LLVMDebugObject.create(type, 0, provider, declaration);
     }
 
     private static final class FragmentValueProvider implements LLVMDebugValue {

@@ -60,6 +60,6 @@ public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
         final LLVMDebugValue valueProvider = getProvider();
-        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
+        return LLVMDebugObject.create(type, 0L, valueProvider, declaration);
     }
 }

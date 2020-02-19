@@ -274,7 +274,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             final LLVMSourceType elementType = getType().getElementType(key);
             final long newOffset = this.offset + elementType.getOffset();
             final LLVMSourceLocation declaration = getType().getElementDeclaration(key);
-            return instantiate(elementType, newOffset, value, declaration);
+            return create(elementType, newOffset, value, declaration);
         }
 
         @Override
@@ -529,7 +529,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             if (targetValue == null) {
                 return null;
             }
-            return instantiate(pointerType.getBaseType(), 0L, targetValue, null);
+            return create(pointerType.getBaseType(), 0L, targetValue, null);
         }
     }
 
@@ -612,8 +612,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
         }
     }
 
-    @Ignore
-    public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
+    public static LLVMDebugObject create(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
         if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
             return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);
 
