@@ -341,7 +341,7 @@ final class JDWP {
                 reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
                 reply.writeBoolean(false); // canPopFrames
                 reply.writeBoolean(true); // canUseInstanceFilters
-                reply.writeBoolean(false); // canGetSourceDebugExtension
+                reply.writeBoolean(true); // canGetSourceDebugExtension
                 reply.writeBoolean(true); // canRequestVMDeathEvent
                 reply.writeBoolean(false); // canSetDefaultStratum
                 reply.writeBoolean(CAN_GET_INSTANCE_INFO); // canGetInstanceInfo
@@ -701,6 +701,32 @@ final class JDWP {
                 Object classObject = klass.getKlassObject();
 
                 reply.writeLong(context.getIds().getIdAsLong(classObject));
+                return new CommandResult(reply);
+            }
+        }
+
+        static class SOURCE_DEBUG_EXTENSION {
+            public static final int ID = 12;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                long refTypeId = input.readLong();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                String sourceDebugExtension = klass.getSourceDebugExtension();
+
+                if (sourceDebugExtension == null) {
+                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
+                    return new CommandResult(reply);
+                }
+
+                reply.writeString(sourceDebugExtension);
                 return new CommandResult(reply);
             }
         }

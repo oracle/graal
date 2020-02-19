@@ -330,6 +330,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+        public static final Symbol<Name> SourceDebugExtension = StaticSymbols.putName("SourceDebugExtension");
         public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");
         public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
 

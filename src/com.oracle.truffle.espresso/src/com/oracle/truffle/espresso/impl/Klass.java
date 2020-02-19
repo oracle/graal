@@ -862,5 +862,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return new JDWPConstantPool(pool.length(), pool.getRawBytes());
     }
 
+    @Override
+    public String getSourceDebugExtension() {
+        return null;
+    }
+
     // endregion jdwp-specific
 }

@@ -359,6 +359,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.CLASS_OBJECT.ID:
                                     result = JDWP.ReferenceType.CLASS_OBJECT.createReply(packet, context);
                                     break;
+                                case JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.ID:
+                                    result = JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.createReply(packet, context);
+                                    break;
                                 case JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.ID:
                                     result = JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.createReply(packet, context);
                                     break;
