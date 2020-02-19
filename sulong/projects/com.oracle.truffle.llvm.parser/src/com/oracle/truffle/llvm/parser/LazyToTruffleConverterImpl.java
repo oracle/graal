@@ -78,6 +78,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMUnpackVarargsNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -292,7 +293,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     private static final Long[] EMPTY_LONGS_ARRAY = {};
 
-    private LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type targetType, Type sourceType, List<Long> indices) {
+    private LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type sourceType, List<Long> indices) {
         LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.size()];
 
         for (int i = indices.size() - 1; i >= 0; i--) {
@@ -336,8 +337,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 elementOrMemberHelper(initializers, nodeFactory, slot, argIndex, topLevelPointerType, indices, i, t.getElementType(i));
             }
         } else {
-            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), currentType, topLevelPointerType.getPointeeType(), indices);
-            LLVMExpressionNode sourceAddress = getTargetAddress(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType), currentType, topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
+            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
             LLVMExpressionNode sourceLoadNode = CommonNodeFactory.createLoad(currentType, sourceAddress);
             LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
             initializers.add(storeNode);
