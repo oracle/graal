@@ -414,10 +414,10 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     def query_native_image(all_args, option):
 
         def remove_quotes(val):
-           if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
-               return val[1:-1].replace("\\'", "'")
-           else:
-               return val
+            if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
+                return val[1:-1].replace("\\'", "'")
+            else:
+                return val
 
         out = mx.LinesOutputCapture()
         _native_image(['--dry-run'] + all_args, out=out)
