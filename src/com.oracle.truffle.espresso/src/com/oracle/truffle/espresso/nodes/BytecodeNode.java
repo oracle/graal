@@ -1069,6 +1069,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             }
                         }
                     }
+                    if (instrument != null) {
+                        instrument.notifyExceptionAt(frame, wrappedStackOverflowError, statementIndex);
+                    }
                     throw wrappedStackOverflowError;
 
                 } else /* EspressoException or OutOfMemoryError */ {
@@ -1111,6 +1114,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         curBCI = targetBCI;
                         continue loop; // skip bs.next()
                     } else {
+                        if (instrument != null) {
+                            instrument.notifyExceptionAt(frame, wrappedException, statementIndex);
+                        }
                         throw wrappedException;
                     }
                 }
