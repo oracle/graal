@@ -412,13 +412,22 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         raise mx.abort("GraalVM not built? could not find " + native_image_cmd)
 
     def query_native_image(all_args, option):
+
+        def remove_quotes(val):
+            if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
+                return val[1:-1].replace("\\'", "'")
+            else:
+                return val
+
         out = mx.LinesOutputCapture()
         _native_image(['--dry-run'] + all_args, out=out)
         for line in out.lines:
-            _, sep, after = line.partition(option)
+            arg = remove_quotes(line.rstrip('\\').strip())
+            _, sep, after = arg.partition(option)
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
+
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
         path = query_native_image(all_args, '-H:Path=')

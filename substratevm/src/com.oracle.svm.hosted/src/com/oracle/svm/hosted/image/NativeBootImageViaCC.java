@@ -48,6 +48,7 @@ import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
@@ -354,20 +355,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            List<String> cmd = inv.getCommand();
-            StringBuilder sb = new StringBuilder();
-            for (String s : cmd) {
-                if (s.indexOf(' ') != -1) {
-                    // Quote command line arguments that contain a space
-                    sb.append('\'').append(s).append('\'');
-                } else {
-                    sb.append(s);
-                }
-                sb.append(' ');
-            }
-            String commandLine = sb.toString().trim();
             try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debug.log("Running command: %s", sb);
+                List<String> cmd = inv.getCommand();
+                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+                debug.log("Using CompilerCommand: %s", commandLine);
 
                 if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
                     System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
@@ -388,7 +379,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                         throw handleLinkerFailure(e.toString(), commandLine, null);
                     }
 
-                    debug.log("%s", output);
+                    debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
 
                     if (status != 0) {
                         throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());

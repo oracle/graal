@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -132,7 +133,7 @@ public class CAnnotationProcessor {
         }
         String fileName = fileNamePath.toString();
         Path binary = queryFile.resolveSibling(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
-        compilerInvoker.compileAndParseError(codeCtx.getDirectives().getOptions(), queryFile, binary, this::reportCompilerError);
+        compilerInvoker.compileAndParseError(codeCtx.getDirectives().getOptions(), queryFile, binary, this::reportCompilerError, nativeLibs.debug);
         return binary;
     }
 
@@ -167,7 +168,7 @@ public class CAnnotationProcessor {
         CInterfaceError error = new CInterfaceError(
                         String.format("Error compiling query code (in %s). Compiler command '%s' output included error: %s",
                                         queryFile,
-                                        String.join(" ", current.command()),
+                                        SubstrateUtil.getShellCommandString(current.command(), false),
                                         line),
                         elements);
         nativeLibs.getErrors().add(error);
