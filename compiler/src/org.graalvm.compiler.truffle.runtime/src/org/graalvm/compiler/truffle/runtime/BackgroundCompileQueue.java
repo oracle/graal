@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
-
 import java.lang.ref.WeakReference;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -40,8 +38,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.options.OptionValues;
 
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
@@ -86,7 +82,7 @@ public class BackgroundCompileQueue {
             }
             threads = Math.max(1, threads);
 
-            ThreadFactory factory = newThreadFactory("TruffleCompilerThread");
+            ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
             return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
                             new PriorityBlockingQueue<>(), factory) {
@@ -98,14 +94,14 @@ public class BackgroundCompileQueue {
         }
     }
 
-    protected ThreadFactory newThreadFactory(String threadNamePrefix) {
+    @SuppressWarnings("unused")
+    protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
         return new TruffleCompilerThreadFactory(threadNamePrefix);
     }
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
-        final OptionValues optionOverrides = TruffleRuntimeOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
-        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, optionOverrides, target, cancellable, request);
+        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, target, cancellable, request);
         cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
     }
@@ -165,15 +161,13 @@ public class BackgroundCompileQueue {
 
         private final long id;
         private final Priority priority;
-        private final OptionValues optionOverrides;
         private final TruffleCompilationTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
 
-        RequestImpl(long id, Priority priority, OptionValues optionOverrides, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
             this.id = id;
             this.priority = priority;
-            this.optionOverrides = optionOverrides;
             this.targetRef = new WeakReference<>(callTarget);
             this.task = task;
             this.request = request;
@@ -191,9 +185,7 @@ public class BackgroundCompileQueue {
         @SuppressWarnings("try")
         @Override
         public V call() {
-            try (TruffleRuntimeOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides) : null) {
-                request.execute(task, targetRef);
-            }
+            request.execute(task, targetRef);
             return null;
         }
 

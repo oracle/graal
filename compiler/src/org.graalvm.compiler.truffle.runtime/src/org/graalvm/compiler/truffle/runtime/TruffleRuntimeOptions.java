@@ -34,7 +34,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.options.OptionDescriptor;
@@ -99,17 +98,16 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 @SharedTruffleOptions(name = "SharedTruffleRuntimeOptions", runtime = true)
 public final class TruffleRuntimeOptions {
 
+    @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
+
     private TruffleRuntimeOptions() {
         throw new IllegalStateException("No instance allowed.");
     }
 
-    static class Lazy {
-        static final ThreadLocal<TruffleRuntimeOptionsOverrideScope> overrideScope = new ThreadLocal<>();
-    }
-
-    @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
-
-    private static OptionValuesImpl getInitialOptions() {
+    /**
+     * Gets the object holding the values of Truffle options.
+     */
+    private static OptionValues getOptions() {
         OptionValuesImpl result = optionValues;
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
@@ -125,25 +123,6 @@ public final class TruffleRuntimeOptions {
             optionValues = result;
         }
         return result;
-    }
-
-    /**
-     * Gets the object holding the values of Truffle options, taking into account any active
-     * {@linkplain #overrideOptions(OptionKey, Object, Object...) overrides}.
-     */
-    public static OptionValues getOptions() {
-        TruffleRuntimeOptionsOverrideScope scope = Lazy.overrideScope.get();
-        return scope != null ? scope.options : getInitialOptions();
-    }
-
-    /**
-     * Gets the options defined in the current option
-     * {@linkplain #overrideOptions(OptionKey, Object, Object...) override} scope or {@code null} if
-     * there is no override scope active for the current thread.
-     */
-    public static OptionValues getCurrentOptionOverrides() {
-        TruffleRuntimeOptionsOverrideScope scope = Lazy.overrideScope.get();
-        return scope != null ? scope.options : null;
     }
 
     /**
@@ -180,7 +159,7 @@ public final class TruffleRuntimeOptions {
         }
         Pair<? extends OptionKey<?>, Function<Object, ?>> runtimeOptionKeyPair = POLYGLOT_TO_RUNTIME.get(optionKey);
         if (runtimeOptionKeyPair != null) {
-            return (T) runtimeOptionKeyPair.getRight().apply(getValue(runtimeOptionKeyPair.getLeft()));
+            return (T) runtimeOptionKeyPair.getRight().apply(runtimeOptionKeyPair.getLeft().getValue(getOptions()));
         }
         return optionKey.getDefaultValue();
     }
@@ -204,59 +183,6 @@ public final class TruffleRuntimeOptions {
                         valueClass == Float.class ||
                         valueClass == Double.class ||
                         valueClass == String.class;
-    }
-
-    public static class TruffleRuntimeOptionsOverrideScope implements AutoCloseable {
-        private final TruffleRuntimeOptionsOverrideScope outer;
-        private final OptionValuesImpl options;
-
-        TruffleRuntimeOptionsOverrideScope(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
-            outer = Lazy.overrideScope.get();
-            options = new OptionValuesImpl(outer == null ? getInitialOptions() : outer.options, overrides);
-            GraalTVMCI.resetEngineData();
-            Lazy.overrideScope.set(this);
-        }
-
-        @Override
-        public void close() {
-            Lazy.overrideScope.set(outer);
-            GraalTVMCI.resetEngineData();
-        }
-    }
-
-    /**
-     * Gets the value of a given Truffle option key taking into account any active
-     * {@linkplain #overrideOptions overrides}.
-     */
-    public static <T> T getValue(OptionKey<T> key) {
-        return key.getValue(getOptions());
-    }
-
-    public static TruffleRuntimeOptionsOverrideScope overrideOptions(final OptionValues values) {
-        return new TruffleRuntimeOptionsOverrideScope(asEconomicMap(values));
-    }
-
-    public static TruffleRuntimeOptionsOverrideScope overrideOptions(OptionKey<?> key1, Object value1, Object... extraOverrides) {
-        final EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(key1, value1);
-        if ((extraOverrides.length & 1) == 1) {
-            throw new IllegalArgumentException("extraOverrides.length must be even: " + extraOverrides.length);
-        }
-        for (int i = 0; i < extraOverrides.length; i += 2) {
-            map.put((OptionKey<?>) extraOverrides[i], extraOverrides[i + 1]);
-        }
-        return new TruffleRuntimeOptionsOverrideScope(map);
-    }
-
-    private static EconomicMap<OptionKey<?>, Object> asEconomicMap(final OptionValues values) {
-        final EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        for (OptionDescriptor desc : values.getDescriptors()) {
-            final OptionKey<?> key = desc.getKey();
-            if (values.hasBeenSet(key)) {
-                map.put(key, values.get(key));
-            }
-        }
-        return map;
     }
 
     // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.

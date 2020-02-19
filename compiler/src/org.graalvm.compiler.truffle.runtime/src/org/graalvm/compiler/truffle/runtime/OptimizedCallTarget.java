@@ -422,7 +422,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private boolean interpreterCall() {
         if (isValid()) {
             // Native entry stubs were deoptimized => reinstall.
-            runtime().bypassedInstalledCode();
+            runtime().bypassedInstalledCode(this);
         }
         ensureInitialized();
         int intCallCount = --callThreshold;

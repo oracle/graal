@@ -40,7 +40,7 @@ public interface TruffleCompiler {
      *
      * @since 20.0.0
      */
-    void initialize();
+    void initialize(Map<String, Object> options);
 
     /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation

@@ -32,16 +32,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -49,17 +47,10 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
-    // Needed to make some tests actually blow the budget
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope maxRecursiveDepthScope;
-
-    @BeforeClass
-    public static void beforeClass() {
-        maxRecursiveDepthScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining, 4);
-    }
-
-    @AfterClass
-    public static void afterClass() {
-        maxRecursiveDepthScope.close();
+    @Before
+    public void before() {
+        // Needed to make some tests actually blow the budget
+        setupContext("engine.InliningRecursionDepth", "4");
     }
 
     @Test
@@ -174,7 +165,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
         int nodeCount = target.getNonTrivialNodeCount();
         try {
             exploreCallSites.invoke(TruffleInlining.class, new ArrayList<>(Arrays.asList(target)), nodeCount, POLICY, visitedNodes, new HashMap<>());
-            Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize), visitedNodes[0]);
+            Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * target.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget), visitedNodes[0]);
         } catch (IllegalAccessException | InvocationTargetException e) {
             Assert.assertFalse("Could not invoke exploreCallSites: " + e, true);
         }

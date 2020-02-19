@@ -31,44 +31,25 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 
 import java.lang.reflect.Field;
 
-public class AbstractSplittingStrategyTest {
+public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
     protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope doNotCompileScope;
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope growthLimitScope;
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope hardLimitScope;
-
-    @BeforeClass
-    public static void before() {
-        doNotCompileScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileOnly, "DisableCompilationsForThisTest");
-        growthLimitScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit, 2.0);
-        hardLimitScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
-    }
-
-    @AfterClass
-    public static void after() {
-        hardLimitScope.close();
-        growthLimitScope.close();
-        doNotCompileScope.close();
-    }
 
     protected SplitCountingListener listener;
 
     @Before
     public void addListener() {
+        setupContext("engine.CompileOnly", "DisableCompilationsForThisTest",
+                        "engine.SplittingGrowthLimit", "2.0",
+                        "engine.SplittingMaxNumberOfSplitNodes", "1000");
         listener = new SplitCountingListener();
         runtime.addListener(listener);
     }

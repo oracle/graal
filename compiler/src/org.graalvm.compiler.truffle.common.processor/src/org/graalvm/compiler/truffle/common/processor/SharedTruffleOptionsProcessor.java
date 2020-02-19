@@ -170,7 +170,7 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         List<String> extraHelp = option.help.length > 1 ? Arrays.asList(option.help).subList(1, option.help.length) : new ArrayList<>();
                         info.options.add(new OptionInfo(option.name, optionType, help, extraHelp, option.type, pkg + '.' + className, option.name));
                     }
-                    out.printf("    public static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
+                    out.printf("    static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
                     out.println();
                 }
                 out.println("}");

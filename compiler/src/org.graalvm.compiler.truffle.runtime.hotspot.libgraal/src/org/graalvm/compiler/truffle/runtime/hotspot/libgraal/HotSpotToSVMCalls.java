@@ -85,7 +85,7 @@ final class HotSpotToSVMCalls {
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
 
     @HotSpotToSVM(InitializeCompiler)
-    static native void initializeCompiler(long isolateThreadId, long compilerHandle);
+    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options);
 
     @HotSpotToSVM(GetInitialOptions)
     static native byte[] getInitialOptions(long isolateThreadId, long truffleRuntimeHandle);

@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIntrinsifyFrameAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -83,7 +82,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
@@ -443,16 +441,13 @@ public class TruffleGraphBuilderPlugins {
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
-
-        if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess)) {
-            registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Double, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Float, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Boolean, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Byte, constantReflection, types);
-        }
+        registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Double, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Float, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Boolean, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Byte, constantReflection, types);
     }
 
     /**
@@ -558,7 +553,7 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode frame = receiver.get();
-                if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                if (frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
                     Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;

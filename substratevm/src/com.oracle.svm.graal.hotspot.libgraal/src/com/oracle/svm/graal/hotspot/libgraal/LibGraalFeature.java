@@ -418,7 +418,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
             // Also register Truffle plugins
             TruffleCompilerBase truffleCompiler = (TruffleCompilerBase) GraalTruffleRuntime.getRuntime().newTruffleCompiler();
-            InvocationPlugins trufflePlugins = truffleCompiler.getPartialEvaluator().getConfigForParsing().getPlugins().getInvocationPlugins();
+            InvocationPlugins trufflePlugins = truffleCompiler.getPartialEvaluator().getConfigPrototype().getPlugins().getInvocationPlugins();
             registerMethodSubstitutions(debug, trufflePlugins, metaAccess);
         } catch (Throwable t) {
             throw debug.handle(t);

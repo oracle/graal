@@ -57,7 +57,9 @@ public class OptionsVerifierTest {
 
     private static Set<String> WHITELIST = new TreeSet<>(Arrays.asList(//
                     // Generated options delegating default values to PolyglotCompilerOptions
-                    "org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions"));
+                    "org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions",
+                    // Deprecated options delegating default values to PolyglotCompilerOptions
+                    "org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions"));
 
     @Test
     public void verifyOptions() throws IOException {
