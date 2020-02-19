@@ -131,9 +131,10 @@ public final class SourceUtils {
         } else {
             languageInfo = defaultLanguageInfo;
         }
-        if (INTEROP.hasSourceLocation(env.getLanguageView(languageInfo, object))) {
+        Object view = env.getLanguageView(languageInfo, object);
+        if (INTEROP.hasSourceLocation(view)) {
             try {
-                return INTEROP.getSourceLocation(object);
+                return INTEROP.getSourceLocation(view);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
