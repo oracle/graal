@@ -19,6 +19,16 @@ It can be necessary to run the target application more than once with different 
 
 If the specified target directory or configuration files in it are missing when using `config-merge-dir`, the agent creates them and prints a warning.
 
+By default the agent will write the configuration files after the JVM process terminates. In addition, the agent provides the following flags to write configuration files on a periodic basis.
+- `config-write-period-secs`: Executes a periodic write every number of seconds as specified in this configuration. Supports only integer values greater than zero.
+- `config-write-initial-delay-secs`: The number of seconds before the first write is schedule for execution. Supports only integer values greater or equal to zero. Enabled only if `config-write-period-secs` is greater than zero.
+
+For example:
+```
+/path/to/graalvm/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
+```
+
+
 It is advisable to manually review the generated configuration files. Because the agent observes only code that was executed, the resulting configurations can be missing elements that are used in other code paths. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
 
 The generated configuration files can be supplied to the `native-image` tool by placing them in a `META-INF/native-image/` directory on the class path, for example, in a JAR file used in the image build. This directory (or any of its subdirectories) is searched for files with the names `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`, which are then automatically included in the build. Not all of those files must be present. When multiple files with the same name are found, all of them are included.

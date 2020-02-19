@@ -39,12 +39,14 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -56,9 +58,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.configure.json.JsonPrintable;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -113,6 +118,8 @@ public final class Agent {
     private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
     private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
 
+    private static ScheduledThreadPoolExecutor periodicConfigWriterExecutor = null;
+
     private static TraceWriter traceWriter;
 
     private static Path configOutputDirPath;
@@ -138,6 +145,9 @@ public final class Agent {
         List<String> callerFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = false;
         boolean build = false;
+        int configWritePeriod = -1; // in seconds
+        int configWritePeriodInitialDelay = 1; // in seconds
+
         if (options.isNonNull()) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
@@ -185,6 +195,18 @@ public final class Agent {
                     callerFilterFiles.add(getTokenValue(token));
                 } else if (token.equals("experimental-class-loader-support")) {
                     experimentalClassLoaderSupport = true;
+                } else if (token.startsWith("config-write-period-secs=")) {
+                    configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
+                    if (configWritePeriod <= 0) {
+                        System.err.println(MESSAGE_PREFIX + "config-write-period-secs can only be an integer greater than 0");
+                        return 1;
+                    }
+                } else if (token.startsWith("config-write-initial-delay-secs=")) {
+                    configWritePeriodInitialDelay = parseIntegerOrNegative(getTokenValue(token));
+                    if (configWritePeriodInitialDelay < 0) {
+                        System.err.println(MESSAGE_PREFIX + "config-write-initial-delay-secs can only be an integer greater or equal to 0");
+                        return 1;
+                    }
                 } else if (token.equals("build")) {
                     build = true;
                 } else if (token.startsWith("build=")) {
@@ -330,7 +352,40 @@ public final class Agent {
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_DEATH, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullHandle()));
+
+        setupExecutorServiceForPeriodicConfigurationCapture(configWritePeriod, configWritePeriodInitialDelay);
         return 0;
+    }
+
+    private static int parseIntegerOrNegative(String number) {
+        try {
+            return Integer.parseInt(number);
+        } catch (NumberFormatException ex) {
+            return -1;
+        }
+    }
+
+    private static void setupExecutorServiceForPeriodicConfigurationCapture(int writePeriod, int initialDelay) {
+        if (traceWriter == null || configOutputDirPath == null) {
+            return;
+        }
+
+        // No periodic writing of files by default
+        if (writePeriod == -1) {
+            return;
+        }
+
+        periodicConfigWriterExecutor = new ScheduledThreadPoolExecutor(1, r -> {
+            Thread workerThread = new Thread(r);
+            workerThread.setDaemon(true);
+            workerThread.setName("AgentConfigurationsPeriodicWriter");
+            return workerThread;
+        });
+        periodicConfigWriterExecutor.setRemoveOnCancelPolicy(true);
+        periodicConfigWriterExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        periodicConfigWriterExecutor
+                        .scheduleAtFixedRate(Agent::writeConfigurationFiles,
+                                        initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
     interface AddURI {
@@ -496,31 +551,93 @@ public final class Agent {
         }
     }
 
+    private static final int MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES = 5;
+    private static int currentFailuresWritingConfigs = 0;
+
+    private static void writeConfigurationFiles() {
+        try {
+            final Path tempDirectory = configOutputDirPath.toFile().exists()
+                            ? Files.createTempDirectory(configOutputDirPath, "tempConfig-")
+                            : Files.createTempDirectory("tempConfig-");
+            TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
+
+            Map<String, JsonPrintable> allConfigFiles = new HashMap<>(4);
+            allConfigFiles.put(ConfigurationFiles.REFLECTION_NAME, p.getReflectionConfiguration());
+            allConfigFiles.put(ConfigurationFiles.JNI_NAME, p.getJniConfiguration());
+            allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
+            allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
+
+            for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
+                Path tempPath = tempDirectory.resolve(configFile.getKey());
+                try (JsonWriter writer = new JsonWriter(tempPath)) {
+                    configFile.getValue().printJson(writer);
+                }
+            }
+
+            for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
+                Path source = tempDirectory.resolve(configFile.getKey());
+                Path target = configOutputDirPath.resolve(configFile.getKey());
+                tryAtomicMove(source, target);
+            }
+
+            compulsoryDelete(tempDirectory);
+        } catch (IOException e) {
+            printUpToLimit(currentFailuresWritingConfigs++, MAX_WARNINGS_FOR_WRITING_CONFIGS_FAILURES,
+                            MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
+        }
+    }
+
+    private static void compulsoryDelete(Path pathToDelete) {
+        final int maxRetries = 3;
+        int retries = 0;
+        while (pathToDelete.toFile().exists() && !pathToDelete.toFile().delete() && retries < maxRetries) {
+            retries++;
+        }
+    }
+
+    private static void printUpToLimit(int currentCount, int limit, String message) {
+        if (currentCount < limit) {
+            System.err.println(message);
+            return;
+        }
+
+        if (currentCount == limit) {
+            System.err.println(message);
+            System.err.println(MESSAGE_PREFIX + "WARNING: The above failure will be silenced, and will no longer be reported");
+        }
+    }
+
+    private static final int MAX_FAILURES_ATOMIC_MOVE = 20;
+    private static int currentFailuresAtomicMove = 0;
+
+    private static void tryAtomicMove(final Path source, final Path target) throws IOException {
+        try {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            printUpToLimit(currentFailuresAtomicMove++, MAX_FAILURES_ATOMIC_MOVE,
+                            String.format(MESSAGE_PREFIX + ": Could not move temporary configuration profile from (%s) to (%s) atomically. " +
+                                            "This might result in inconsistencies.", source.toAbsolutePath(), target.toAbsolutePath()));
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
     @CEntryPoint(name = "Agent_OnUnload")
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     public static void onUnload(@SuppressWarnings("unused") JNIJavaVM vm) {
+        if (periodicConfigWriterExecutor != null) {
+            periodicConfigWriterExecutor.shutdown();
+            try {
+                periodicConfigWriterExecutor.awaitTermination(300, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ex) {
+                periodicConfigWriterExecutor.shutdownNow();
+            }
+        }
+
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("unload");
             traceWriter.close();
-
             if (configOutputDirPath != null) {
-                TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
-                try {
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.REFLECTION_NAME))) {
-                        p.getReflectionConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.JNI_NAME))) {
-                        p.getJniConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME))) {
-                        p.getProxyConfiguration().printJson(writer);
-                    }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.RESOURCES_NAME))) {
-                        p.getResourceConfiguration().printJson(writer);
-                    }
-                } catch (IOException e) {
-                    System.err.println(MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
-                }
+                writeConfigurationFiles();
                 configOutputDirPath = null;
             }
             traceWriter = null;

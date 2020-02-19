@@ -26,10 +26,8 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -57,8 +55,8 @@ public class ResourceConfiguration implements JsonPrintable {
         }
     }
 
-    private final Map<String, Pattern> resources = new HashMap<>();
-    private final Set<String> bundles = new HashSet<>();
+    private final ConcurrentMap<String, Pattern> resources = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap.KeySetView<String, Boolean> bundles = ConcurrentHashMap.newKeySet();
 
     public void addResourcePattern(String pattern) {
         resources.computeIfAbsent(pattern, Pattern::compile);
