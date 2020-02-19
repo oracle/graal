@@ -208,10 +208,10 @@ def _get_component_type_base(c, apply_substitutions=False):
         result = '<jre_base>/lib/'
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
         svm_component = get_component('svm', stage1=True)
-        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + '/' + svm_component.dir_name + '/macros/'
+        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/macros/'
     elif isinstance(c, mx_sdk.GraalVMSvmStaticLib):
         svm_component = get_component('svm')
-        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + '/' + svm_component.dir_name + '/static-libs/'
+        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/static-libs/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
@@ -2065,7 +2065,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
         metadata = BaseGraalVmLayoutDistribution._get_metadata(sorted_suites)
-        layout.setdefault(base_dir + '/release', []).append('string:' + metadata)
+        layout.setdefault(base_dir + 'release', []).append('string:' + metadata)
 
         for dependency_name, details in component.standalone_dependencies.items():
             dependency_path = details[0]
