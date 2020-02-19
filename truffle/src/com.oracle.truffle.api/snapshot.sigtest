@@ -557,7 +557,7 @@ meth public java.lang.Throwable fillInStackTrace()
 meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Throwable)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
 supr java.lang.Exception
-hfds EMPTY,frames,lazyFrames,materializedHostException
+hfds EMPTY,UNSAFE,causeFieldIndex,frames,lazyFrames,materializedHostException
 hcls LazyStackTrace,TracebackElement
 
 CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
