@@ -108,7 +108,7 @@ suite = {
       },
     },
     # This is a dummy library for linux amd64 support.
-    "LINUX_AMD64_SYSCALL_SUPPORT" : {
+    "LINUX_AMD64_SUPPORT" : {
       "os_arch" : {
         "linux" : {
           "amd64" : {
@@ -730,6 +730,9 @@ suite = {
       "dependencies" : [
         "SULONG_TEST",
       ],
+      "buildDependencies" : [
+        "LINUX_AMD64_SUPPORT",
+      ],
       "testProject" : True,
       "defaultBuild" : False,
     },
@@ -771,7 +774,7 @@ suite = {
         "SULONG_TEST_SUITES",
       ],
       "buildDependencies" : [
-        "LINUX_AMD64_SYSCALL_SUPPORT",
+        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,

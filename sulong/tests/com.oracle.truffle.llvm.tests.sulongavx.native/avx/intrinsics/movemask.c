@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,24 +31,14 @@
 #include <assert.h>
 
 int main() {
-  __m128i val1_1 = { 0x00110011, 0x00110011 };
-  __m128i val1_2 = { 0x11001100, 0x11001100 };
-  __m128i res1 = { 0xffffffff00000000L, 0xffffffff00000000L };
-
-  __m128i val2_1 = { 0, 0 };
-  __m128i val2_2 = { -1, -1 };
-  __m128i res2 = { 0, 0 };
-
-  __m128i val3_1 = { 0, 0 };
-  __m128i val3_2 = { 0, 0 };
-  __m128i res3 = { 0xffffffffffffffffL, 0xffffffffffffffffL };
-
-  assert(_mm_cmpeq_epi8(val1_1, val1_2)[0] == res1[0]);
-  assert(_mm_cmpeq_epi8(val1_1, val1_2)[1] == res1[1]);
-
-  assert(_mm_cmpeq_epi8(val2_1, val2_2)[0] == res2[0]);
-  assert(_mm_cmpeq_epi8(val2_1, val2_2)[1] == res2[1]);
-
-  assert(_mm_cmpeq_epi8(val3_1, val3_2)[0] == res3[0]);
-  assert(_mm_cmpeq_epi8(val3_1, val3_2)[1] == res3[1]);
+  __m128i val1 = { 54312, 32423 };
+  __m128i val2 = { 0x80808080, 0x80808080 };
+  __m128i val3 = { 0x8080808080808080L, 0x8080808080808080L };
+  __m128i val4 = { 0, 0 };
+  __m128i val5 = { -1, -1 };
+  assert(_mm_movemask_epi8(val1) == 258);
+  assert(_mm_movemask_epi8(val2) == 0x0f0f);
+  assert(_mm_movemask_epi8(val3) == 0xffff);
+  assert(_mm_movemask_epi8(val4) == 0);
+  assert(_mm_movemask_epi8(val5) == 0xffff);
 }
