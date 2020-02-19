@@ -28,6 +28,7 @@ import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -50,15 +51,6 @@ public class LLVMUtils {
     public static final int TRUE = 1;
     public static final Pointer NULL = null;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
-    public static final String ALWAYS_INLINE = "alwaysinline";
-    public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
-
-    public static final class DebugLevel {
-        public static final int NONE = 0;
-        public static final int FUNCTION = 1;
-        public static final int BLOCK = 2;
-        public static final int NODE = 3;
-    }
 
     public interface LLVMValueWrapper {
         LLVMValueRef get();
@@ -142,22 +134,16 @@ public class LLVMUtils {
         private static int id = 0;
 
         private LLVMValueRef value;
-        private final LLVMVariable address;
 
         public LLVMStackSlot(LLVMValueRef value) {
             super(id++, LLVMKind.toLIRKind(LLVM.LLVMTypeOf(value)));
 
             this.value = value;
-            this.address = new LLVMVariable(value);
         }
 
         @Override
         public LLVMValueRef get() {
             return value;
-        }
-
-        public LLVMVariable address() {
-            return address;
         }
     }
 
@@ -216,9 +202,11 @@ public class LLVMUtils {
         static LIRKind toLIRKind(LLVMTypeRef type) {
             if (LLVMIRBuilder.isPointerType(type)) {
                 if (LLVMIRBuilder.isTrackedPointerType(type)) {
-                    return LIRKind.reference(new LLVMKind(type));
-                } else if (LLVMIRBuilder.isCompressedPointerType(type)) {
-                    return LIRKind.compressedReference(new LLVMKind(type));
+                    if (LLVMIRBuilder.isCompressedPointerType(type)) {
+                        return LIRKind.compressedReference(new LLVMKind(type));
+                    } else {
+                        return LIRKind.reference(new LLVMKind(type));
+                    }
                 }
             }
             return LIRKind.value(new LLVMKind(type));

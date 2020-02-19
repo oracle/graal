@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.LinkageType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
@@ -146,8 +147,8 @@ public class LLVMHelperFunctions {
         String funcName = compressed ? INT_TO_COMPRESSED_OBJECT_FUNCTION_NAME : INT_TO_OBJECT_FUNCTION_NAME;
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(compressed), builder.longType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
@@ -165,8 +166,8 @@ public class LLVMHelperFunctions {
         String funcName = compressed ? LOAD_COMPRESSED_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME : LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME;
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(compressed), builder.rawPointerType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
@@ -185,8 +186,8 @@ public class LLVMHelperFunctions {
         String funcName = compressed ? ATOMIC_COMPRESSED_OBJECT_XCHG_FUNCTION_NAME : ATOMIC_OBJECT_XCHG_FUNCTION_NAME;
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(compressed), builder.objectType(false), builder.objectType(compressed)));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
@@ -208,8 +209,8 @@ public class LLVMHelperFunctions {
         LLVMTypeRef exchangeType = builder.objectType(compressed);
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(exchangeType, builder.pointerType(exchangeType, true, compressed), exchangeType, exchangeType));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
@@ -228,8 +229,8 @@ public class LLVMHelperFunctions {
         String funcName = COMPRESS_FUNCTION_BASE_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(true), builder.objectType(false), builder.longType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
@@ -258,8 +259,8 @@ public class LLVMHelperFunctions {
         String funcName = UNCOMPRESS_FUNCTION_BASE_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
         LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(false), builder.objectType(true), builder.longType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
-        builder.setFunctionAttribute(func, LLVMUtils.ALWAYS_INLINE);
-        builder.setFunctionAttribute(func, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        builder.setFunctionAttribute(func, Attribute.AlwaysInline);
+        builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);

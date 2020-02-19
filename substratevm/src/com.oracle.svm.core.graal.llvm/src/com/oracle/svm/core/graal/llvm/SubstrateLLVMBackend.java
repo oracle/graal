@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -86,9 +87,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
         CompilationResult result = new CompilationResult(identifier);
         LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, 0);
         LLVMIRBuilder builder = generator.getBuilder();
-
-        generator.addMainFunction(method);
-        builder.setFunctionAttribute("naked");
+        builder.setFunctionAttribute(Attribute.Naked);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
         builder.positionAtEnd(block);
