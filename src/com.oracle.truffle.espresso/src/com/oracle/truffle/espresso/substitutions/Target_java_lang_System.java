@@ -126,4 +126,14 @@ public final class Target_java_lang_System {
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
+
+    @Substitution
+    public static long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
+    @Substitution
+    public static long nanoTime() {
+        return System.nanoTime();
+    }
 }
