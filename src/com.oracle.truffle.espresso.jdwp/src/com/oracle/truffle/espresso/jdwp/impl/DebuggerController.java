@@ -653,7 +653,7 @@ public final class DebuggerController implements ContextsListener {
                 // frame instance
                 long codeIndex = -1;
                 try {
-                    codeIndex = context.readBCIFromFrame(root, frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize());
+                    codeIndex = context.readBCIFromFrame(root, frameInstance);
                 } catch (Throwable t) {
                     t.printStackTrace();
                     JDWPLogger.log("Unable to read current BCI from frame in method: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
@@ -669,9 +669,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-
-                MaterializedFrame materializedFrame = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize();
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, materializedFrame, root, instrument.getEnv()));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, frameInstance, null, root, instrument.getEnv()));
                 return null;
             }
         });
@@ -690,7 +688,7 @@ public final class DebuggerController implements ContextsListener {
             RootNode rootNode = rootCallTarget.getRootNode();
             // check if we can read the current bci to validate
             try {
-                context.readBCIFromFrame(rootNode, frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize());
+                context.readBCIFromFrame(rootNode, frameInstance);
             } catch (Throwable t) {
                 // cannot use this root node for reading bci
                 return null;
@@ -955,14 +953,8 @@ public final class DebuggerController implements ContextsListener {
                             codeIndex = 0;
                         }
                     }
-                    // check if current bci is higher than the first index on the last line,
-                    // in which case we must report the last line index instead
-                    long lastLineBCI = method.getBCIFromLine(method.getLastLine());
-                    if (codeIndex > lastLineBCI) {
-                        codeIndex = lastLineBCI;
-                    }
                 }
-                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, materializedFrame, root, instrument.getEnv()));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, null, materializedFrame, root, instrument.getEnv()));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

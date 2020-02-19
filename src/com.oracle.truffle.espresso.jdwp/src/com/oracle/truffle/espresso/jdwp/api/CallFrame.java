@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -40,17 +41,19 @@ public final class CallFrame {
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
+    private final FrameInstance frameInstance;
     private final MaterializedFrame materializedFrame;
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, MaterializedFrame materializedFrame, RootNode rootNode,
-                    TruffleInstrument.Env env) {
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, MaterializedFrame materializedFrame, RootNode rootNode,
+                     TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
         this.codeIndex = codeIndex;
+        this.frameInstance = frameInstance;
         this.materializedFrame = materializedFrame;
         this.rootNode = rootNode;
         this.env = env;
@@ -77,7 +80,7 @@ public final class CallFrame {
     }
 
     public MaterializedFrame getMaterializedFrame() {
-        return materializedFrame;
+        return materializedFrame != null ? materializedFrame : frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize();
     }
 
     public RootNode getRootNode() {
@@ -115,7 +118,7 @@ public final class CallFrame {
     }
 
     private Scope getScope() {
-        Iterator<Scope> it = env.findLocalScopes(rootNode, materializedFrame).iterator();
+        Iterator<Scope> it = env.findLocalScopes(rootNode, getMaterializedFrame()).iterator();
         return it.hasNext() ? it.next() : null;
     }
 }

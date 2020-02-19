@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -588,11 +589,22 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public long readBCIFromFrame(RootNode root, FrameInstance frameIn) {
+        if (root instanceof EspressoRootNode && frameIn != null) {
+            EspressoRootNode rootNode = (EspressoRootNode) root;
+            if (rootNode.isBytecodeNode()) {
+                return rootNode.readBCI(frameIn);
+            }
+        }
+        return -1;
+    }
+
+    @Override
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait;
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null, null);
     }
 
     @Override

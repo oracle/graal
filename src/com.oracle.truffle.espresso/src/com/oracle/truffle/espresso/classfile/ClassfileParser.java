@@ -677,8 +677,7 @@ public final class ClassfileParser {
                     throw ConstantPool.classFormatError("Duplicate SourceDebugExtension attribute");
                 }
                 classAttributes[i] = sourceDebugExtensionAttribute = parseSourceDebugExtensionAttribute(attributeName, attributeSize);
-            }
-            else if (attributeName.equals(Name.Synthetic)) {
+            } else if (attributeName.equals(Name.Synthetic)) {
                 classFlags |= ACC_SYNTHETIC;
                 classAttributes[i] = new Attribute(attributeName, null);
             } else if (attributeName.equals(Name.InnerClasses)) {

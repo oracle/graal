@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -408,6 +409,15 @@ public interface JDWPContext {
      * @return the BCI or -1
      */
     long readBCIFromFrame(RootNode root, MaterializedFrame materializedFrame);
+
+    /**
+     * Returns the current BCI or -1 if the BCI cannot be read.
+     *
+     * @param root the root node, representing the method/function
+     * @param frameInstance the frame to read the bci from
+     * @return the BCI or -1
+     */
+    long readBCIFromFrame(RootNode root, FrameInstance frameInstance);
 
     /**
      * Returns a {@link CallFrame} representation of the location of
