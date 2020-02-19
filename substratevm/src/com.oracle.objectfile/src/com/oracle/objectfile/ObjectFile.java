@@ -26,7 +26,6 @@ package com.oracle.objectfile;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,7 +49,6 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
-import sun.misc.Unsafe;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -116,6 +114,13 @@ public abstract class ObjectFile {
      */
     public interface ValueEnum {
         long value();
+    }
+
+    private final int pageSize;
+
+    public ObjectFile(int pageSize) {
+        assert pageSize > 0 : "invalid page size";
+        this.pageSize = pageSize;
     }
 
     /*
@@ -208,25 +213,25 @@ public abstract class ObjectFile {
         }
     }
 
-    private static ObjectFile getNativeObjectFile(boolean runtimeDebugInfoGeneration) {
+    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
         switch (ObjectFile.getNativeFormat()) {
             case ELF:
-                return new ELFObjectFile(runtimeDebugInfoGeneration);
+                return new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
             case MACH_O:
-                return new MachOObjectFile();
+                return new MachOObjectFile(pageSize);
             case PECOFF:
-                return new PECoffObjectFile();
+                return new PECoffObjectFile(pageSize);
             default:
                 throw new AssertionError("unreachable");
         }
     }
 
-    public static ObjectFile getNativeObjectFile() {
-        return getNativeObjectFile(true);
+    public static ObjectFile getNativeObjectFile(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
-    public static ObjectFile createRuntimeDebugInfo() {
-        return getNativeObjectFile(true);
+    public static ObjectFile createRuntimeDebugInfo(int pageSize) {
+        return getNativeObjectFile(pageSize, true);
     }
 
     /*
@@ -1626,37 +1631,8 @@ public abstract class ObjectFile {
 
     protected abstract int getMinimumFileSize();
 
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    public static int getHostPageSize() {
-        try {
-            return getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
-    }
-
-    private int pageSize = hostPageSize;
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
-
     public int getPageSize() {
+        assert pageSize > 0 : "must be initialized";
         return pageSize;
     }
 

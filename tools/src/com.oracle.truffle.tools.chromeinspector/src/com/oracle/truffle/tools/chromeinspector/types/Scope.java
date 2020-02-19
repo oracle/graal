@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -34,13 +35,15 @@ public final class Scope {
     private final String name;
     private final Location startLocation;
     private final Location endLocation;
+    private final int internalIndex; // the index of language implementation scope
 
-    public Scope(String type, RemoteObject object, String name, Location startLocation, Location endLocation) {
+    public Scope(String type, RemoteObject object, String name, Location startLocation, Location endLocation, int internalIndex) {
         this.type = type;
         this.object = object;
         this.name = name;
         this.startLocation = startLocation;
         this.endLocation = endLocation;
+        this.internalIndex = internalIndex;
     }
 
     public String getType() {
@@ -57,6 +60,10 @@ public final class Scope {
 
     public Location getEndLocation() {
         return endLocation;
+    }
+
+    public int getInternalIndex() {
+        return internalIndex;
     }
 
     private JSONObject createJSON() {
@@ -76,7 +83,11 @@ public final class Scope {
     static JSONArray createScopesJSON(Scope[] scopes) {
         JSONArray array = new JSONArray();
         for (Scope scope : scopes) {
-            array.put(scope.createJSON());
+            DebugScope dscope = scope.object.getScope();
+            if (dscope.isFunctionScope() || dscope.getDeclaredValues().iterator().hasNext()) {
+                // provide only scopes that have some variables
+                array.put(scope.createJSON());
+            }
         }
         return array;
     }
