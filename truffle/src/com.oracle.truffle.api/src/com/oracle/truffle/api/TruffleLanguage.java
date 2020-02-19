@@ -1183,7 +1183,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Wraps the value to provide language specific information for primitive and foreign values.
-     * This method is only invoked for values that is not associated with the current
+     * This method is only invoked for values that are not associated with the current
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a
      * high-level this method is supposed to wrap the value and add augmentation to look like a
      * value of the current language. The result value of an implementation of this method may do
