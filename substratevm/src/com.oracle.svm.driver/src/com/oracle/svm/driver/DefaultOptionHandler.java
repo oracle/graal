@@ -81,6 +81,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (!NativeImage.graalvmConfig.isEmpty()) {
                     message += " " + NativeImage.graalvmConfig;
                 }
+                message += " (Java Version " + System.getProperty("java.version") + ")";
                 nativeImage.showMessage(message);
                 System.exit(0);
                 return true;

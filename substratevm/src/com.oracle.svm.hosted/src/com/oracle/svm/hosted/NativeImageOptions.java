@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -59,7 +60,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
 
     @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
-    public static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);
@@ -201,5 +202,23 @@ public class NativeImageOptions {
             throw UserError.abort("Number of analysis threads can't be larger than NumberOfThreads. Set the NumberOfAnalysisThreads flag to a positive value smaller than NumberOfThreads.");
         }
         return analysisThreads;
+    }
+
+    public static int getPageSize() {
+        int value = PageSize.getValue();
+        if (value == 0) {
+            return hostPageSize;
+        }
+        return value;
+    }
+
+    private static int hostPageSize = getHostPageSize();
+
+    private static int getHostPageSize() {
+        try {
+            return GraalUnsafeAccess.getUnsafe().pageSize();
+        } catch (IllegalArgumentException e) {
+            return 4096;
+        }
     }
 }

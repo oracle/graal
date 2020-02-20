@@ -30,7 +30,6 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -57,8 +56,11 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
-    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+    private final boolean isInstrumentPerInlineSite;
+
+    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
         super(options, snippetReflection, instrumentation);
+        isInstrumentPerInlineSite = instrumentPerInlineSite;
     }
 
     @Override
@@ -78,8 +80,8 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite(org.graalvm.compiler.options.OptionValues options) {
-        return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
+    protected boolean instrumentPerInlineSite() {
+        return isInstrumentPerInlineSite;
     }
 
     @Override
@@ -117,8 +119,8 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified(org.graalvm.compiler.options.OptionValues options) {
-            return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
+        public boolean isPrettified() {
+            return isInstrumentPerInlineSite;
         }
 
         public long ifVisits() {

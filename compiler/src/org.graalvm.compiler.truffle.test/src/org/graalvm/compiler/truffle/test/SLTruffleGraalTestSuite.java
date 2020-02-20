@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.test.builtins.SLAssertFalseBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLAssertTrueBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
-import org.graalvm.compiler.truffle.test.builtins.SLCallWithOptionOverrideBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLGetOptionBuiltinFactory;
@@ -58,7 +57,6 @@ public class SLTruffleGraalTestSuite {
         SLTestRunner.installBuiltin(SLWaitForOptimizationBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLDisableSplittingBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallUntilOptimizedBuiltinFactory.getInstance());
-        SLTestRunner.installBuiltin(SLCallWithOptionOverrideBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallFunctionsWithBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsCompilationConstantBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLDeoptimizeWhenCompiledBuiltinFactory.getInstance());

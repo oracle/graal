@@ -63,11 +63,14 @@ public class Space {
         return accounting;
     }
 
-    /** Flag specifying if this is a young space. */
-    private final boolean isYoungSpace;
-
     /** The name of this Space. */
     protected final String name;
+
+    /** The age of this Space. */
+    private final int age;
+
+    /** Flag specifying if this is a From space. */
+    private final boolean isFrom;
 
     /**
      * The name of this Space. This method is used in logging and so should not require any work.
@@ -117,12 +120,12 @@ public class Space {
      * with a simple, fast, constant check.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected Space(String name, boolean isYoungSpace) {
+    protected Space(String name, boolean isFrom, int age) {
         this.name = name;
         assert name != null : "Space name should not be null.";
         this.accounting = Accounting.factory();
-
-        this.isYoungSpace = isYoungSpace;
+        this.isFrom = isFrom;
+        this.age = age;
     }
 
     /** Return all allocated virtual memory chunks to HeapChunkProvider. */
@@ -132,8 +135,32 @@ public class Space {
         HeapChunkProvider.freeUnalignedChunkList(getFirstUnalignedHeapChunk());
     }
 
-    final boolean isYoungSpace() {
-        return isYoungSpace;
+    boolean isEdenSpace() {
+        return (age == 0);
+    }
+
+    boolean isYoungSpace() {
+        return age <= HeapPolicy.getMaxSurvivorSpaces();
+    }
+
+    boolean isSurvivorSpace() {
+        return (age > 0 && age <= HeapPolicy.getMaxSurvivorSpaces());
+    }
+
+    boolean isOldSpace() {
+        return (age == (HeapPolicy.getMaxSurvivorSpaces() + 1));
+    }
+
+    int getAge() {
+        return age;
+    }
+
+    int getNextAgeForPromotion() {
+        return (getAge() + 1);
+    }
+
+    boolean isFrom() {
+        return isFrom;
     }
 
     /** Walk the Objects in this Space, passing each to a Visitor. */
@@ -244,7 +271,11 @@ public class Space {
             if (newChunk.isNonNull()) {
                 /* Allocate the Object within the new chunk. */
                 result = AlignedHeapChunk.allocateMemory(newChunk, objectSize);
-                trace.string("  newChunk provides: ").hex(result);
+                if (isSurvivorSpace()) {
+                    trace.string("  newSurvivorChunk provides: ").hex(result);
+                } else {
+                    trace.string("  newChunk provides: ").hex(result);
+                }
             }
         }
         trace.string("  returns: ").hex(result).string("]").newline();
@@ -809,6 +840,20 @@ public class Space {
             uChunk = uChunk.getNext();
         }
         return result;
+    }
+
+    public void verifyDirtyCards() {
+        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
+        while (aChunk.isNonNull()) {
+            if (!CardTable.verify(AlignedHeapChunk.getCardTableStart(aChunk),
+                            AlignedHeapChunk.getFirstObjectTableStart(aChunk),
+                            AlignedHeapChunk.getAlignedHeapChunkStart(aChunk),
+                            aChunk.getTop())) {
+                Log.log().string("AlignedChunk card verification failed!").newline();
+                Log.log().flush();
+            }
+            aChunk = aChunk.getNext();
+        }
     }
 
     /**

@@ -42,8 +42,8 @@ public abstract class FunctionSymbol extends GlobalSymbol implements ValueSymbol
     private final FunctionType type;
     private final AttributesCodeEntry paramAttr;
 
-    public FunctionSymbol(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
-        super(name, linkage);
+    public FunctionSymbol(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr, int index) {
+        super(name, linkage, index);
         this.type = type;
         this.paramAttr = paramAttr;
     }

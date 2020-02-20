@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -247,6 +247,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                         }
                         if (value == null) {
                             value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
+                            suspendedInfo.refreshFrames();
                         }
                         if (returnByValue) {
                             result = RemoteObject.createJSONResultValue(value, context.getErr());
@@ -659,6 +660,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 }
                                 code.append(")");
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code.toString());
+                                suspendedInfo.refreshFrames();
                                 result = asResult(eval);
                             }
                             json.put("result", result);

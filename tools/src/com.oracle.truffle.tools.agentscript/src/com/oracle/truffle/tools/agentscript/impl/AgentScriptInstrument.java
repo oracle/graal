@@ -102,7 +102,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     if (lang == null) {
                         throw AgentException.notRecognized(file);
                     }
-                    return Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
+                    return Source.newBuilder(lang, file).uri(file.toUri()).name(file.getName()).build();
                 } catch (IOException ex) {
                     throw AgentException.raise(ex);
                 }

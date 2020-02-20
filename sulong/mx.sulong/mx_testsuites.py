@@ -172,6 +172,7 @@ class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestor
         env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
         env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
         env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
         env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")

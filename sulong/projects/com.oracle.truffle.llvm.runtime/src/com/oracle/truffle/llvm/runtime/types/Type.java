@@ -225,6 +225,14 @@ public abstract class Type {
         return res;
     }
 
+    public static long multiplySignedExact(long x, long y) throws TypeOverflowException {
+        try {
+            return Math.multiplyExact(x, y);
+        } catch (ArithmeticException e) {
+            throw new TypeOverflowException(e);
+        }
+    }
+
     public static long addUnsignedExact(long x, long y) throws TypeOverflowException {
         long res = x + y;
         if (Long.compareUnsigned(res, x) < 0) {

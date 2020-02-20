@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,8 +58,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(global.getBitcodeID(false));
         return globals[index].get() != null && currentValue != null && currentValue.canRead(bitOffset, bits);
     }
 
@@ -168,8 +168,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private LLVMDebugValue getCurrentValue() {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(global.getBitcodeID(false));
         if (isInNative()) {
             return new LLDBMemoryValue(LLVMNativePointer.cast(globals[index].get()));
         } else {
@@ -178,8 +178,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean isInNative() {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getSymbolIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(global.getBitcodeID(false));
         return LLVMNativePointer.isInstance(globals[index].get());
     }
 }

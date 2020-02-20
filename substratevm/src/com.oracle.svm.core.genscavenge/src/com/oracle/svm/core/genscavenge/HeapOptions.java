@@ -66,4 +66,10 @@ public class HeapOptions {
 
     @Option(help = "Trace stack verification.")//
     public static final HostedOptionKey<Boolean> TraceStackVerification = new HostedOptionKey<>(false);
+
+    @Option(help = "Verify dirty cards before each collection.") //
+    public static final HostedOptionKey<Boolean> VerifyDirtyCardsBeforeCollection = new HostedOptionKey<>(false);
+
+    @Option(help = "Verify dirty cards after each collection.") //
+    public static final HostedOptionKey<Boolean> VerifyDirtyCardsAfterCollection = new HostedOptionKey<>(false);
 }

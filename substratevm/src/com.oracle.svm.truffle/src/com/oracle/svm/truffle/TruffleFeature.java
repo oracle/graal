@@ -421,7 +421,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
             registerTruffleOptions(config);
 
-            GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigForParsing();
+            GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
 
             if (Options.TruffleInlineDuringParsing.getValue()) {
                 graphBuilderConfig.getPlugins().appendInlineInvokePlugin(

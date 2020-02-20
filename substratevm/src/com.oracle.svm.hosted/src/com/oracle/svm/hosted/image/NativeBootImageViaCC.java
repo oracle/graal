@@ -231,19 +231,24 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             // Add debugging info
             cmd.add("/Zi");
 
-            if (removeUnusedSymbols()) {
-                cmd.add("/OPT:REF");
-            }
-
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                cmd.add("/PDBSTRIPPED");
-            }
-
             for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
                 cmd.add(staticLibrary.toString());
             }
 
-            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT");
+            cmd.add("/link");
+            cmd.add("/INCREMENTAL:NO");
+            cmd.add("/NODEFAULTLIB:LIBCMT");
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                String outputFileString = getOutputFile().toString();
+                String outputFileSuffix = getOutputKind().getFilenameSuffix();
+                String pdbFile = outputFileString.substring(0, outputFileString.length() - outputFileSuffix.length()) + ".stripped.pdb";
+                cmd.add("/PDBSTRIPPED:" + pdbFile);
+            }
+
+            if (removeUnusedSymbols()) {
+                cmd.add("/OPT:REF");
+            }
 
             // Add clibrary paths to command
             for (String libraryPath : nativeLibs.getLibraryPaths()) {

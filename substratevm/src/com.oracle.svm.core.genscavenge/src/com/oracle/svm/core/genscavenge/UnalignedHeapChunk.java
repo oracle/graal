@@ -197,7 +197,7 @@ public class UnalignedHeapChunk extends HeapChunk {
         final Pointer cardTableStart = getCardTableStart(chunk);
         final UnsignedWord objectIndex = getObjectIndex();
         if (verifyOnly) {
-            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty");
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty", "", "");
         } else {
             CardTable.dirtyEntryAtIndex(cardTableStart, objectIndex);
         }
@@ -230,15 +230,15 @@ public class UnalignedHeapChunk extends HeapChunk {
         trace.string("  rememberedSetStart: ").hex(rememberedSetStart).string("  objectIndex: ").unsigned(objectIndex);
         // If the card for this chunk is dirty, visit the object.
         if (CardTable.isDirtyEntryAtIndex(rememberedSetStart, objectIndex)) {
+            if (clean) {
+                CardTable.cleanEntryAtIndex(rememberedSetStart, objectIndex);
+            }
             final Pointer objectsStart = getUnalignedStart(that);
             final Object obj = objectsStart.toObject();
             trace.string("  obj: ").object(obj);
             // Visit the object.
             if (!visitor.visitObjectInline(obj)) {
                 result = false;
-            }
-            if (clean) {
-                CardTable.cleanEntryAtIndex(rememberedSetStart, objectIndex);
             }
         }
         trace.string("  returns: ").bool(result).string("]").newline();

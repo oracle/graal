@@ -112,7 +112,7 @@ public class HeapImpl extends Heap {
         this.heapPolicy = new HeapPolicy(access);
         this.pinHead = new AtomicReference<>();
         /* Pre-allocate verifiers for use during collection. */
-        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC()) {
+        if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = HeapVerifierImpl.factory();
             this.stackVerifier = new StackVerifier();
         } else {
@@ -258,7 +258,7 @@ public class HeapImpl extends Heap {
      * This method has to be final so it can be called (transitively) from the allocation snippets.
      */
     final Space getAllocationSpace() {
-        return getYoungGeneration().getSpace();
+        return getYoungGeneration().getEden();
     }
 
     public HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
@@ -283,11 +283,43 @@ public class HeapImpl extends Heap {
     public Object promoteObject(Object original) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
-        final OldGeneration oldGen = getOldGeneration();
-        final Object result = oldGen.promoteObject(original);
+        Object result;
+        if (!getGCImpl().isCompleteCollection()) {
+            result = getYoungGeneration().promoteObject(original);
+        } else {
+            result = getOldGeneration().promoteObject(original);
+        }
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;
+    }
+
+    void dirtyCardIfNecessary(Object holderObject, Pointer objRef, Object object) {
+        final Log trace = Log.noopLog().string("[HeapImpl.dirtyCardIfNecessary:");
+        trace.string(" holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
+        trace.string(", objRef: ").hex(objRef);
+        trace.string(", object: ").hex(Word.objectToUntrackedPointer(object)).newline();
+
+        if (holderObject == null || GCImpl.getGCImpl().isCompleteCollection()) {
+            return;
+        }
+
+        if (!youngGeneration.contains(object)) {
+            return;
+        }
+
+        final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
+        final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
+        if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
+            if (ohi.isAlignedObject(holderObject)) {
+                AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(holderObject, false);
+                trace.string("[Dirty card] aligned holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
+            } else {
+                assert ohi.isUnalignedObject(holderObject) : "sanity";
+                UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(holderObject, false);
+                trace.string("[Dirty card] unaligned holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
+            }
+        }
     }
 
     boolean hasSurvivedThisCollection(Object obj) {
@@ -303,8 +335,7 @@ public class HeapImpl extends Heap {
              */
             final HeapChunk.Header<?> chunk = getEnclosingHeapChunk(obj);
             final Space space = chunk.getSpace();
-            final OldGeneration oldGen = getOldGeneration();
-            return space == oldGen.getToSpace();
+            return !space.isFrom();
         }
         return false;
     }
@@ -336,6 +367,10 @@ public class HeapImpl extends Heap {
 
     public OldGeneration getOldGeneration() {
         return oldGeneration;
+    }
+
+    public boolean isOldGeneration(Space space) {
+        return space.isOldSpace();
     }
 
     /** The head of the linked list of object pins. */
@@ -371,8 +406,7 @@ public class HeapImpl extends Heap {
     }
 
     UnsignedWord getYoungUsedChunkBytes() {
-        final Space.Accounting young = getYoungGeneration().getSpace().getAccounting();
-        return young.getAlignedChunkBytes().add(young.getUnalignedChunkBytes());
+        return getYoungGeneration().getChunkUsedBytes();
     }
 
     UnsignedWord getOldUsedChunkBytes() {
@@ -397,11 +431,15 @@ public class HeapImpl extends Heap {
 
     /** Return the size, in bytes, of the actual used memory, not the committed memory. */
     public UnsignedWord getUsedObjectBytes() {
-        final Space youngSpace = getYoungGeneration().getSpace();
-        final UnsignedWord youngBytes = youngSpace.getObjectBytes();
+        final Space edenSpace = getYoungGeneration().getEden();
+        final UnsignedWord edenBytes = edenSpace.getObjectBytes();
+        UnsignedWord survivorFromBytes = WordFactory.zero();
+        for (int i = 0; i < HeapPolicy.getMaxSurvivorSpaces(); i++) {
+            survivorFromBytes = survivorFromBytes.add(getYoungGeneration().getSurvivorFromSpaceAt(i).getObjectBytes());
+        }
         final Space fromSpace = getOldGeneration().getFromSpace();
-        final UnsignedWord fromBytes = fromSpace.getObjectBytes();
-        return youngBytes.add(fromBytes);
+        final UnsignedWord oldFromBytes = fromSpace.getObjectBytes();
+        return edenBytes.add(survivorFromBytes).add(oldFromBytes);
     }
 
     protected void report(Log log) {
@@ -537,6 +575,16 @@ public class HeapImpl extends Heap {
         return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
     }
 
+    @Fold
+    static boolean getVerifyDirtyCardBeforeGC() {
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
+    }
+
+    @Fold
+    static boolean getVerifyDirtyCardAfterGC() {
+        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
+    }
+
     @NeverInline("Starting a stack walk in the caller frame")
     void verifyBeforeGC(String cause, UnsignedWord epoch) {
         final Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
@@ -556,6 +604,11 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+        if (getVerifyDirtyCardBeforeGC()) {
+            assert heapVerifier != null : "No heap verifier!";
+            Log.log().string("[Verify dirtyCard before GC: ");
+            heapVerifier.verifyDirtyCard(false);
+        }
         trace.string("]").newline();
     }
 
@@ -574,6 +627,11 @@ public class HeapImpl extends Heap {
                 Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  stack fails to verify after epoch: ").unsigned(epoch).string("]").newline();
                 assert false;
             }
+        }
+        if (getVerifyDirtyCardAfterGC()) {
+            assert heapVerifier != null : "No heap verifier!";
+            Log.log().string("[Verify dirtyCard after GC: ");
+            heapVerifier.verifyDirtyCard(true);
         }
     }
 
@@ -609,7 +667,7 @@ public class HeapImpl extends Heap {
         /*
          * Report "chunk bytes" rather than the slower but more accurate "object bytes".
          */
-        return maxMemory().subtract(HeapPolicy.getBytesAllocatedSinceLastCollection()).subtract(getOldUsedChunkBytes());
+        return maxMemory().subtract(HeapPolicy.getYoungUsedBytes()).subtract(getOldUsedChunkBytes());
     }
 
     /**

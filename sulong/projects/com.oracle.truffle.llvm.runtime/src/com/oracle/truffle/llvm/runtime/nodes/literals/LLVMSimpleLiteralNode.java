@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -229,7 +229,7 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
             CompilerAsserts.neverPartOfCompilation();
             if (address.getObject() instanceof LLVMFunctionDescriptor) {
                 LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) address.getObject();
-                return getShortString() + " value=" + address + " function=\"" + function.getName() + "\"";
+                return getShortString() + " value=" + address + " function=\"" + function.getLLVMFunction().getName() + "\"";
             }
 
             return getShortString() + " value=" + address;

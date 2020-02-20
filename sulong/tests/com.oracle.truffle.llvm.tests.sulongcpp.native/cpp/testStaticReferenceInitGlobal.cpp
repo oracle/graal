@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,44 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.others;
+#include <stdio.h>
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+struct Klass {
+  Klass() : y(1) {
+  }
+  int x;
+  int y;
+};
 
-public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
+Klass m;
+static Klass &k = m;
 
-    protected final LLVMGlobal descriptor;
-
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    @Override
-    public String toString() {
-        return getShortString("descriptor");
-    }
-
-    public LLVMGlobal getDescriptor() {
-        return descriptor;
-    }
-
-    public abstract boolean execute();
-
-    @SuppressWarnings("unused")
-    @Specialization
-    Object doAccess(
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        CompilerAsserts.partialEvaluationConstant(descriptor);
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
-        int index = descriptor.getIndex();
-        return globals[index].get();
-    }
+int main() {
+  return k.x + k.y;
 }

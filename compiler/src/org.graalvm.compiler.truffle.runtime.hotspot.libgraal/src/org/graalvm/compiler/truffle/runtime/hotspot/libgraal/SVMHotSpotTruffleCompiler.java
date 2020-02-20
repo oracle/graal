@@ -57,9 +57,10 @@ final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffl
 
     @SuppressWarnings("try")
     @Override
-    public void initialize() {
+    public void initialize(Map<String, Object> options) {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle);
+            byte[] encodedOptions = OptionsEncoder.encode(options);
+            HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle, encodedOptions);
         }
     }
 

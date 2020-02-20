@@ -228,4 +228,12 @@ public class DiscoverableReference {
             return that.getNextDiscoverableReference();
         }
     }
+
+    /**
+     * Read access to the next field, as a Pointer. This is the low-level access for the garbage
+     * collector, so no barriers are used.
+     */
+    public Pointer getNextRefPointer() {
+        return Word.objectToUntrackedPointer(this).add(WordFactory.signed(NEXT_FIELD_OFFSET));
+    }
 }

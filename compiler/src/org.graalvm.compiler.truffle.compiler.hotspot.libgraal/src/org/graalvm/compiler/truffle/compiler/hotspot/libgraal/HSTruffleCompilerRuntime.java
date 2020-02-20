@@ -353,7 +353,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     @Override
-    public TruffleCompiler getTruffleCompiler() {
+    public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
         throw new UnsupportedOperationException("Should never be called in the compiler.");
     }
 

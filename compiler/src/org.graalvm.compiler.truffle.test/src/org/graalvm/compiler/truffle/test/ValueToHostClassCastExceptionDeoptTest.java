@@ -27,34 +27,15 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 
 public class ValueToHostClassCastExceptionDeoptTest {
-    private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
-    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
-
-    @BeforeClass
-    public static void before() {
-        backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, true);
-    }
-
-    @AfterClass
-    public static void after() {
-        immediateCompilationScope.close();
-        backgroundCompilationScope.close();
-    }
 
     class CompilationCountingListener implements GraalTruffleRuntimeListener {
 
@@ -80,7 +61,8 @@ public class ValueToHostClassCastExceptionDeoptTest {
         final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         final CompilationCountingListener listener = new CompilationCountingListener();
         runtime.addListener(listener);
-        final Value toString = Context.newBuilder().allowHostAccess(HostAccess.ALL).build().asValue(String.class).getMember("toString");
+        final Value toString = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").option("engine.CompileImmediately",
+                        "true").build().asValue(String.class).getMember("toString");
         for (int i = 0; i < 10; i++) {
             try {
                 toString.asNativePointer();
