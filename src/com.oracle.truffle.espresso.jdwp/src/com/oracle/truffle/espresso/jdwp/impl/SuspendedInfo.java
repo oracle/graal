@@ -23,7 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 
@@ -70,7 +71,7 @@ public class SuspendedInfo {
         return callerRootNode;
     }
 
-    public MaterializedFrame getCallerFrame() {
-        return stackFrames.length > 1 ? stackFrames[1].getMaterializedFrame() : null;
+    public Frame getCallerFrame() {
+        return stackFrames.length > 1 ? stackFrames[1].getFrame(FrameInstance.FrameAccess.READ_ONLY) : null;
     }
 }

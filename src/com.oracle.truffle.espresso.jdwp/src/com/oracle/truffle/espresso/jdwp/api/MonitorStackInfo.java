@@ -22,26 +22,18 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-
 public final class MonitorStackInfo {
 
     private final Object monitor;
-    private final MaterializedFrame materializedFrame;
     private final int stackDepth;
 
-    public MonitorStackInfo(Object monitor, MaterializedFrame materializedFrame, int stackDepth) {
+    public MonitorStackInfo(Object monitor, int stackDepth) {
         this.monitor = monitor;
-        this.materializedFrame = materializedFrame;
         this.stackDepth = stackDepth;
     }
 
     public Object getMonitor() {
         return monitor;
-    }
-
-    public MaterializedFrame getMaterializedFrame() {
-        return materializedFrame;
     }
 
     public int getStackDepth() {

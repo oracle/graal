@@ -236,12 +236,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -1133,17 +1132,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         return rootNode;
     }
 
-    int readBCI(FrameInstance frameInstance) {
-        try {
-            assert bciSlot != null;
-            return frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(bciSlot);
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public int readBCI(MaterializedFrame frame) {
+    public int readBCI(Frame frame) {
         try {
             assert bciSlot != null;
             return frame.getInt(bciSlot);

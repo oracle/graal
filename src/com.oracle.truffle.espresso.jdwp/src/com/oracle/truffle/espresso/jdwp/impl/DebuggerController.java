@@ -37,9 +37,9 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -653,7 +653,7 @@ public final class DebuggerController implements ContextsListener {
                 // frame instance
                 long codeIndex = -1;
                 try {
-                    codeIndex = context.readBCIFromFrame(root, frameInstance);
+                    codeIndex = context.readBCIFromFrame(root, frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                 } catch (Throwable t) {
                     t.printStackTrace();
                     JDWPLogger.log("Unable to read current BCI from frame in method: %s.%s", JDWPLogger.LogLevel.ALL, klass.getNameAsString(), method.getNameAsString());
@@ -688,7 +688,7 @@ public final class DebuggerController implements ContextsListener {
             RootNode rootNode = rootCallTarget.getRootNode();
             // check if we can read the current bci to validate
             try {
-                context.readBCIFromFrame(rootNode, frameInstance);
+                context.readBCIFromFrame(rootNode, frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
             } catch (Throwable t) {
                 // cannot use this root node for reading bci
                 return null;
@@ -921,7 +921,7 @@ public final class DebuggerController implements ContextsListener {
                 byte typeTag;
                 long codeIndex;
 
-                MaterializedFrame materializedFrame = frame.getRawFrame(context.getLanguageClass());
+                Frame rawFrame = frame.getRawFrame(context.getLanguageClass());
                 RootNode root = frame.getRawNode(context.getLanguageClass()).getRootNode();
                 if (root == null) {
                     // since we can't lookup the root node, we have to
@@ -938,7 +938,7 @@ public final class DebuggerController implements ContextsListener {
 
                     // for bytecode-based languages (Espresso) we can read the precise bci from the
                     // frame instance
-                    codeIndex = context.readBCIFromFrame(root, materializedFrame);
+                    codeIndex = context.readBCIFromFrame(root, rawFrame);
 
                     if (codeIndex == -1) {
                         // fall back to line precision through the source section
@@ -960,7 +960,7 @@ public final class DebuggerController implements ContextsListener {
                         codeIndex = lastLineBCI;
                     }
                 }
-                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, null, materializedFrame, root, instrument.getEnv()));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, null, rawFrame, root, instrument.getEnv()));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

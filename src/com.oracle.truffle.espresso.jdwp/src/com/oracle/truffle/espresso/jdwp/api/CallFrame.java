@@ -23,8 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -42,11 +42,11 @@ public final class CallFrame {
     private final long codeIndex;
     private final long threadId;
     private final FrameInstance frameInstance;
-    private final MaterializedFrame materializedFrame;
+    private final Frame frame;
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, MaterializedFrame materializedFrame, RootNode rootNode,
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Frame frame, RootNode rootNode,
                      TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
@@ -54,7 +54,7 @@ public final class CallFrame {
         this.methodId = methodId;
         this.codeIndex = codeIndex;
         this.frameInstance = frameInstance;
-        this.materializedFrame = materializedFrame;
+        this.frame = frame;
         this.rootNode = rootNode;
         this.env = env;
     }
@@ -79,8 +79,8 @@ public final class CallFrame {
         return threadId;
     }
 
-    public MaterializedFrame getMaterializedFrame() {
-        return materializedFrame != null ? materializedFrame : frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE).materialize();
+    public Frame getFrame(FrameInstance.FrameAccess access) {
+        return frame != null ? frame : frameInstance.getFrame(access);
     }
 
     public RootNode getRootNode() {
@@ -88,12 +88,12 @@ public final class CallFrame {
     }
 
     public Object getThisValue() {
-        Scope scope = getScope();
+        Scope scope = getScope(FrameInstance.FrameAccess.READ_ONLY);
         return scope != null ? scope.getReceiver() : null;
     }
 
     public Object getVariable(String identifier) {
-        Scope scope = getScope();
+        Scope scope = getScope(FrameInstance.FrameAccess.READ_ONLY);
         if (scope == null) {
             return null;
         }
@@ -106,7 +106,7 @@ public final class CallFrame {
     }
 
     public void setVariable(Object value, String identifier) {
-        Scope scope = getScope();
+        Scope scope = getScope(FrameInstance.FrameAccess.READ_WRITE);
         if (scope == null) {
             return;
         }
@@ -117,8 +117,8 @@ public final class CallFrame {
         }
     }
 
-    private Scope getScope() {
-        Iterator<Scope> it = env.findLocalScopes(rootNode, getMaterializedFrame()).iterator();
+    private Scope getScope(FrameInstance.FrameAccess access) {
+        Iterator<Scope> it = env.findLocalScopes(rootNode, getFrame(access)).iterator();
         return it.hasNext() ? it.next() : null;
     }
 }

@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -119,11 +118,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    public int readBCI(FrameInstance frameInstance) {
-        return ((BytecodeNode) getMethodNode()).readBCI(frameInstance);
-    }
-
-    public int readBCI(MaterializedFrame frame) {
+    public int readBCI(Frame frame) {
         return ((BytecodeNode) getMethodNode()).readBCI(frame);
     }
 
@@ -153,13 +148,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         getMonitorStack(frame).enter(monitor);
     }
 
-    private MonitorStack getMonitorStack(VirtualFrame frame) {
+    private MonitorStack getMonitorStack(Frame frame) {
         Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
     }
 
-    public StaticObject[] getMonitorsOnFrame(VirtualFrame frame) {
+    public StaticObject[] getMonitorsOnFrame(Frame frame) {
         MonitorStack monitorStack = getMonitorStack(frame);
         return monitorStack != null ? monitorStack.getMonitors() : StaticObject.EMPTY_ARRAY;
     }

@@ -567,7 +567,7 @@ public final class InterpreterToVM implements ContextAccess {
                                 if (!c.checkThrowableInit(method)) {
                                     int bci = -1; // unknown
                                     if (espressoNode.isBytecodeNode()) {
-                                        bci = espressoNode.readBCI(frameInstance);
+                                        bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                                     } else if (method.isNative()) {
                                         bci = -2; // native
                                     }

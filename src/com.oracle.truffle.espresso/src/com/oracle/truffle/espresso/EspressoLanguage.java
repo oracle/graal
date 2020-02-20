@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso;
 import java.util.Collections;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -164,11 +163,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else if (espressoNode instanceof BytecodeNode) {
             BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
             try {
-                if (frame instanceof MaterializedFrame) {
-                    currentBci = bytecodeNode.readBCI((MaterializedFrame) frame);
-                } else {
-                    currentBci = bytecodeNode.readBCI(frame.materialize());
-                }
+                currentBci = bytecodeNode.readBCI(frame);
             } catch (Throwable t) {
                 // fall back to entry of method then
                 currentBci = 0;
