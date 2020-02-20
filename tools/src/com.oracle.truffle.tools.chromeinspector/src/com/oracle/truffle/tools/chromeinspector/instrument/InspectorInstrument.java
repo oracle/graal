@@ -32,7 +32,10 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -389,7 +392,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             InetSocketAddress socketAddress = hostAndPort.createSocket();
             PrintWriter info = new PrintWriter(env.err(), true);
             if (pathOrNull == null || pathOrNull.isEmpty()) {
-                wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
+                wsspath = "/" + generateSecureToken();
             } else {
                 String head = pathOrNull.startsWith("/") ? "" : "/";
                 wsspath = head + pathOrNull;
@@ -484,6 +487,24 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (disposeBinding.get()) {
                     execEnter.get().dispose();
                 }
+            }
+        }
+
+        private static String generateSecureToken() throws IOException {
+            final byte[] tokenRaw = generateSecureRawToken();
+            // base64url (see https://tools.ietf.org/html/rfc4648 ) without padding
+            // For a fixed-length token, there is no ambiguity in paddingless
+            return Base64.getEncoder().encodeToString(tokenRaw).replace('/', '_').replace('+', '-').replace("=", "");
+        }
+
+        private static byte[] generateSecureRawToken() throws IOException {
+            try {
+                // 256 bits of entropy ought to be enough for everybody
+                final byte[] tokenRaw = new byte[32];
+                SecureRandom.getInstanceStrong().nextBytes(tokenRaw);
+                return tokenRaw;
+            } catch (NoSuchAlgorithmException e) {
+                throw new IOException(e);
             }
         }
 
