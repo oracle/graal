@@ -174,9 +174,6 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
         EconomicMap<String, OptionDescriptor> descriptors = EconomicMap.create();
         for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
-            if (!OptionDescriptorsFilter.shouldIncludeDescriptors(optionsClass)) {
-                continue;
-            }
             if (!Modifier.isAbstract(optionsClass.getModifiers()) && !OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
                 try {
                     for (OptionDescriptor d : optionsClass.getDeclaredConstructor().newInstance()) {
