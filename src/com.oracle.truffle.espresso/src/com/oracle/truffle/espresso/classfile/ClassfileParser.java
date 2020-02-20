@@ -739,10 +739,8 @@ public final class ClassfileParser {
 
     private SourceDebugExtensionAttribute parseSourceDebugExtensionAttribute(Symbol<Name> name, int attributeLength) {
         assert Name.SourceDebugExtension.equals(name);
-        byte[] debugExBytes = new byte[attributeLength];
-        for (int i = 0; i < attributeLength; i++) {
-            debugExBytes[i] = (byte) stream.readU1();
-        }
+        byte[] debugExBytes = stream.readByteArray(attributeLength);
+
         String debugExtension = null;
         try {
             debugExtension = ModifiedUtf8.toJavaString(debugExBytes);
