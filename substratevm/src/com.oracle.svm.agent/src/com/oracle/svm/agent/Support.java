@@ -50,10 +50,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jni.nativeapi.JNIValue;
 
 public final class Support {
 
@@ -345,8 +345,7 @@ public final class Support {
 
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
-            JNIObjectHandle clazzName = Support.jniFunctions().<JNIFunctionPointerTypes.CallObjectMethod0FunctionPointer> getCallObjectMethod()
-                            .invoke(env, clazz, Support.handles().javaLangClassGetName);
+            JNIObjectHandle clazzName = callObjectMethod(env, clazz, Support.handles().javaLangClassGetName);
             String result = Support.fromJniString(env, clazzName);
             if (result == null || clearException(env)) {
                 result = forNullNameOrException;
@@ -400,6 +399,107 @@ public final class Support {
             return true;
         }
         return false;
+    }
+
+    /*
+     * We use the Call*A functions that take a jvalue* for the Java arguments because that doesn't
+     * require that calling conventions for a varargs call are the same as those for a regular call
+     * (e.g. macOS on AArch), and doesn't require that smaller-than-word types can be passed as
+     * words, instead using the known layout of the jvalue union.
+     */
+
+    public static JNIObjectHandle callObjectMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
+        return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, nullPointer());
+    }
+
+    public static JNIObjectHandle callObjectMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.setObject(l0);
+        return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callObjectMethodLL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1) {
+        JNIValue args = StackValue.get(2, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.setObject(l0);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1) {
+        JNIValue args = StackValue.get(2, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodLIL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0, int i1, JNIObjectHandle l2) {
+        JNIValue args = StackValue.get(3, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setInt(i1);
+        args.addressOf(2).setObject(l2);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2) {
+        JNIValue args = StackValue.get(3, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        args.addressOf(2).setObject(l2);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodLLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method,
+                    JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, JNIObjectHandle l3) {
+
+        JNIValue args = StackValue.get(4, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        args.addressOf(2).setObject(l2);
+        args.addressOf(3).setObject(l3);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethodLLLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method,
+                    JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, JNIObjectHandle l3, JNIObjectHandle l4) {
+
+        JNIValue args = StackValue.get(5, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        args.addressOf(2).setObject(l2);
+        args.addressOf(3).setObject(l3);
+        args.addressOf(4).setObject(l4);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static boolean callBooleanMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
+        return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, nullPointer());
+    }
+
+    public static long callLongMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallLongMethodA().invoke(env, obj, method, args);
+    }
+
+    public static long callLongMethodLL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1) {
+        JNIValue args = StackValue.get(2, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        return jniFunctions().getCallLongMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle newObjectLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2) {
+        JNIValue args = StackValue.get(3, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        args.addressOf(1).setObject(l1);
+        args.addressOf(2).setObject(l2);
+        return jniFunctions().getNewObjectA().invoke(env, clazz, ctor, args);
     }
 
     public static void checkNoException(JNIEnvironment localEnv) {
