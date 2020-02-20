@@ -61,8 +61,10 @@ import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPoly
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -167,6 +169,7 @@ public final class EngineData {
         this.profilingEnabled = getPolyglotOptionValue(options, Profiling);
         this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
         this.compilationFailureAction = computeCompilationFailureAction(options);
+        validateOptions();
     }
 
     private static ExceptionAction computeCompilationFailureAction(OptionValues options) {
@@ -184,6 +187,22 @@ public final class EngineData {
             action = ExceptionAction.ExitVM;
         }
         return action;
+    }
+
+    private void validateOptions() {
+        if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
+            GraalTruffleRuntime.getRuntime().log("WARNING: The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
+        }
+        for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
+            if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
+                String optionName = descriptor.getName();
+                String deprecationMessage = descriptor.getDeprecationMessage();
+                if (deprecationMessage.isEmpty()) {
+                    deprecationMessage = "Will be removed with no replacement.";
+                }
+                GraalTruffleRuntime.getRuntime().log(String.format("WARNING: The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
+            }
+        }
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {

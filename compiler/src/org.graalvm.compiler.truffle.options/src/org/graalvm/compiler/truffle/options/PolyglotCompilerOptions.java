@@ -122,6 +122,11 @@ public final class PolyglotCompilerOptions {
         Throw,
 
         /**
+         * Retry compilation with extra diagnostics enabled.
+         */
+        Diagnose,
+
+        /**
          * Exit the VM process.
          */
         ExitVM;
@@ -131,6 +136,7 @@ public final class PolyglotCompilerOptions {
                         "    Silent - Print nothing to the console.%n" +
                         "     Print - Print the exception to the console.%n" +
                         "     Throw - Throw the exception to caller.%n" +
+                        "  Diagnose - Retry compilation with extra diagnostics enabled.%n" +
                         "    ExitVM - Exit the VM process.";
     }
 
@@ -238,16 +244,16 @@ public final class PolyglotCompilerOptions {
 
     // Failed compilation behavior
 
-    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL)
+    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'")
     public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
 
-    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Throw'")
     public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
 
-    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM'")
     public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
 
-    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM' 'engine.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>'")
     public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)

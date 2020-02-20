@@ -571,8 +571,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean maybeWaitForTask(CancellableCompileTask task) {
-        boolean allowBackgroundCompilation = engine.compilationFailureAction != ExceptionAction.Throw;
-        boolean mayBeAsynchronous = allowBackgroundCompilation && engine.backgroundCompilation;
+        boolean mayBeAsynchronous = engine.backgroundCompilation;
         runtime().finishCompilation(this, task, mayBeAsynchronous);
         // not async compile and compilation successful
         return !mayBeAsynchronous && isValid();

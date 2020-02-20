@@ -32,6 +32,7 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 
 import java.io.PrintStream;
@@ -619,7 +620,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         protected ExceptionAction lookupAction(OptionValues compilerOptions, Throwable cause) {
             // Respect current action if it has been explicitly set.
             if (!(cause instanceof BailoutException) || ((BailoutException) cause).isPermanent()) {
-                if (TruffleCompilerOptions.areTruffleCompilationExceptionsFatal(options)) {
+                if (TruffleCompilerOptions.areTruffleCompilationExceptionsFatal(options) ||
+                                TruffleCompilerOptions.getPolyglotOptionValue(options, CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.Diagnose) {
                     // Get more info for Truffle compilation exceptions
                     // that will cause the VM to exit.
                     return Diagnose;

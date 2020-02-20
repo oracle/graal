@@ -730,9 +730,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     } finally {
                         if (debug != null) {
                             /*
-                             * The graph dumping code of Graal might leave inlining dump groups open, in
-                             * case there are more graphs coming. Close these groups at the end of the
-                             * compilation.
+                             * The graph dumping code of Graal might leave inlining dump groups
+                             * open, in case there are more graphs coming. Close these groups at the
+                             * end of the compilation.
                              */
                             debug.closeDebugChannels();
                         }
