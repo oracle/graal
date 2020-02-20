@@ -213,11 +213,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public Path[] getCCInputFiles(Path tempDirectory, String imageName) {
-        return new Path[]{tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix())};
-    }
-
-    @Override
     public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
         return StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false)
                         .filter(ObjectFile.Symbol::isGlobal)

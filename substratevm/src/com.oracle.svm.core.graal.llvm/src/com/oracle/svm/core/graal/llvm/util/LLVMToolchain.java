@@ -92,7 +92,7 @@ public class LLVMToolchain {
         return runtimeDir.resolve("lib").resolve("llvm").resolve("bin");
     }
 
-    public static class RunFailureException extends Exception {
+    public static final class RunFailureException extends Exception {
         private int status;
         private String output;
 

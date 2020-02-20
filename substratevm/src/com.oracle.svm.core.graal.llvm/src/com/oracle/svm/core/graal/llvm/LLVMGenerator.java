@@ -821,7 +821,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return newTypes;
     }
 
-    static final String JNI_WRAPPER_BASE_NAME = "__llvm_jni_wrapper_";
+    public static final String JNI_WRAPPER_BASE_NAME = "__llvm_jni_wrapper_";
 
     /*
      * Calling a native function from Java code requires filling the JavaFrameAnchor with the return
