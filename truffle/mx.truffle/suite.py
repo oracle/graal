@@ -565,6 +565,12 @@ suite = {
             "ldlibs" : ["-ldl"],
           },
         },
+        "linux" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror"],

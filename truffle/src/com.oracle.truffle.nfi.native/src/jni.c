@@ -141,6 +141,11 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     initializeFlag(env, NFIContext, context, "RTLD_LAZY", RTLD_LAZY);
     initializeFlag(env, NFIContext, context, "RTLD_NOW", RTLD_NOW);
 #endif
+    
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    initializeFlag(env, NFIContext, context, "ISOLATED_NAMESPACE", ISOLATED_NAMESPACE);
+    ret->NFIContext_isolatedNamespaceId = (*env)->GetFieldID(env, NFIContext, "isolatedNamespaceId", "J");
+#endif
 
     initialize_intrinsics(ret);
 

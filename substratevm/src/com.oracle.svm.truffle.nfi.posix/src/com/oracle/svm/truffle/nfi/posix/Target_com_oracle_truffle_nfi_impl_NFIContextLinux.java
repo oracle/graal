@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <trufflenfi.h>
+package com.oracle.svm.truffle.nfi.posix;
 
-#include "common.h"
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-static TruffleContext *ctx;
-static double (*globalCallback)(double x);
-static int globalStaticState;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
-EXPORT void initializeGlobalContext(TruffleEnv *env) {
-    ctx = env->getTruffleContext();
-}
+@Platforms(Platform.LINUX.class)
+@TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_NFIContextLinux {
 
-EXPORT TruffleObject registerGlobalCallback(double (*callback)(double)) {
-    TruffleEnv *env = ctx->getTruffleEnv();
-    globalCallback = callback;
-    TruffleObject callbackObj = env->getClosureObject(callback);
-    return env->releaseAndReturn(callbackObj);
-}
+    // Checkstyle: stop
+    @Alias volatile long isolatedNamespaceId;
 
-EXPORT double testGlobalCallback(double arg) {
-    return globalCallback(arg);
-}
+    @Alias @InjectAccessors(IsolatedAccessor.class) int ISOLATED_NAMESPACE;
 
-EXPORT int getAndSet(int newValue) {
-    int oldValue = globalStaticState;
-    globalStaticState = newValue;
-    return oldValue;
+    static class IsolatedAccessor {
+        static int getISOLATED_NAMESPACE(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContextLinux ctx) {
+            return PosixTruffleNFISupport.ISOLATED_NAMESPACE_FLAG;
+        }
+    }
+    // Checkstyle: resume
 }

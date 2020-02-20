@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.nfi.test;
 
-#if !defined(_WIN32)
-#include <dlfcn.h>
-#endif
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
-#include <errno.h>
-#include "internal.h"
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-#if defined(__linux__)
-#define ERRNO_LOCATION __errno_location
-#elif defined(__APPLE__) && defined(__MACH__)
-#define ERRNO_LOCATION __error
-#elif defined(__sun) && defined(__SVR4)
-#define ERRNO_LOCATION ___errno
-#endif
+public class IsolatedNamespaceTest extends NFITest {
 
+    private static TruffleObject isolatedTestLibrary; // test library is loaded 'again' in the
+                                                      // isolated namespace
 
-#define STRINGIFY_IMPL(x) #x
-#define STRINGIFY(x) STRINGIFY_IMPL(x)
-
-
-void initialize_intrinsics(struct __TruffleContextInternal *context) {
-#ifdef ERRNO_LOCATION
-    context->__pthreads_errno_location = ERRNO_LOCATION;
-    context->__libc_errno_location = dlsym(RTLD_NEXT, STRINGIFY(ERRNO_LOCATION));
-#elif defined(_WIN32)
-    context->__libc_errno_location = _errno;
-#else
-#warning not intrinsifying __errno_location on this platform
-    context->__pthreads_errno_location = NULL;
-    context->__libc_errno_location = NULL;
-#endif
-}
-
-static int *__errno_mirror_location() {
-    return &errnoMirror;
-}
-
-
-void *check_intrinsify(struct __TruffleContextInternal *context, void *orig) {
-    if (orig == NULL) {
-        return NULL;
+    @BeforeClass
+    public static void loadIsolatedTestLibrary() {
+        try {
+            isolatedTestLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.test.lib") + "'");
+        } catch (IllegalArgumentException iea) {
+            Assume.assumeNoException("Cannot load test library in isolated namespace", iea);
+        }
     }
 
-    if (orig == context->__libc_errno_location
-#if !defined(_WIN32)
-        || orig == context->__pthreads_errno_location
-#endif
-        ) {
-        return __errno_mirror_location;
+    @Test
+    public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+        // getAndSet mutates some static state, this test ensures that the static state is
+        // effectively isolated.
+        TruffleObject getAndSet = lookupAndBind(testLibrary, "getAndSet", "(sint32) : sint32");
+        TruffleObject isolatedGetAndSet = lookupAndBind(isolatedTestLibrary, "getAndSet", "(sint32) : sint32");
+        UNCACHED_INTEROP.execute(getAndSet, 123);
+        UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
+        Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(getAndSet, 321));
+        Assert.assertEquals(456, (int) UNCACHED_INTEROP.execute(isolatedGetAndSet, 654));
     }
-
-    return orig;
 }

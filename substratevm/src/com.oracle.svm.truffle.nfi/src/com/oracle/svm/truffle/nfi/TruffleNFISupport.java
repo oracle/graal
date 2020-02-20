@@ -207,6 +207,12 @@ public abstract class TruffleNFISupport {
         return truffleNFISupport.lookupImpl(nativeContext, library, name);
     }
 
+    protected static Target_com_oracle_truffle_nfi_impl_NFIContext getContext(long nativeContext) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        NativeAPI.NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
+        return truffleNFISupport.resolveContextHandle(ctx.contextHandle());
+    }
+
     /**
      * Context for calling from native code into Java code. On entry, the native {@code errno} value
      * is stored in {@link ErrnoMirror}. When leaving the context, the {@link ErrnoMirror} value is
