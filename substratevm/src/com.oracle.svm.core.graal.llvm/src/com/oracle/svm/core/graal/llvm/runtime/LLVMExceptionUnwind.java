@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.llvm.runtime;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.core.common.NumUtil;
@@ -43,15 +42,21 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @CContext(LLVMDirectives.class)
-public class LLVMPersonalityFunction {
+public class LLVMExceptionUnwind {
 
     /*
      * Exception handling using libunwind happens using the following steps:
@@ -106,6 +111,13 @@ public class LLVMPersonalityFunction {
         }
     }
 
+    @Uninterruptible(reason = "Called before Java state is restored")
+    public static Throwable retrieveException() {
+        Throwable exception = ExceptionUnwind.currentException.get();
+        ExceptionUnwind.currentException.set(null);
+        return exception;
+    }
+
     private static class IncludeForLLVMOnly implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -113,17 +125,18 @@ public class LLVMPersonalityFunction {
         }
     }
 
-    public static Method getPersonalityFunction() {
+    public static ResolvedJavaMethod getPersonalityStub(MetaAccessProvider metaAccess) {
         try {
-            return LLVMPersonalityFunction.class.getMethod("personality", int.class, int.class, IsolateThread.class, _Unwind_Exception.class, _Unwind_Context.class);
+            return ((UniverseMetaAccess) metaAccess).getUniverse().lookup(CEntryPointCallStubSupport.singleton()
+                            .getStubForMethod(LLVMExceptionUnwind.class.getMethod("personality", int.class, int.class, IsolateThread.class, _Unwind_Exception.class, _Unwind_Context.class)));
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere();
         }
     }
 
-    public static Method getRetrieveExceptionFunction() {
+    public static ResolvedJavaMethod getRetrieveExceptionMethod(MetaAccessProvider metaAccess) {
         try {
-            return LLVMPersonalityFunction.class.getMethod("retrieveException");
+            return metaAccess.lookupJavaMethod(LLVMExceptionUnwind.class.getMethod("retrieveException"));
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere();
         }
@@ -134,13 +147,6 @@ public class LLVMPersonalityFunction {
         exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
         exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
         raiseException(exceptionStructure);
-    }
-
-    @Uninterruptible(reason = "Called before Java state is restored")
-    public static Throwable retrieveException() {
-        Throwable exception = ExceptionUnwind.currentException.get();
-        ExceptionUnwind.currentException.set(null);
-        return exception;
     }
 
     // Allow methods with non-standard names: Checkstyle: stop

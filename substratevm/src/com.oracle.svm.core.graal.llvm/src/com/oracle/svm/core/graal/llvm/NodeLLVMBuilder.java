@@ -93,9 +93,10 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator.SpecialRegister;
+import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering.LLVMAddressValue;
+import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMAddressValue;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
@@ -116,13 +117,11 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuilder {
     private final LLVMGenerator gen;
-    private final StructuredGraph graph;
     private final LLVMIRBuilder builder;
     private final RuntimeConfiguration runtimeConfiguration;
     private final DebugInfoBuilder debugInfoBuilder;
@@ -134,7 +133,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen, RuntimeConfiguration runtimeConfiguration) {
         this.gen = gen;
-        this.graph = graph;
         this.builder = gen.getBuilder();
         this.runtimeConfiguration = runtimeConfiguration;
         this.debugInfoBuilder = new SubstrateDebugInfoBuilder(this, graph.getDebug());
@@ -145,7 +143,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         }
     }
 
-    private void setCompilationResultMethod(CompilationResult result, StructuredGraph graph) {
+    private static void setCompilationResultMethod(CompilationResult result, StructuredGraph graph) {
         Assumptions assumptions = graph.getAssumptions();
         if (assumptions != null && !assumptions.isEmpty()) {
             result.setAssumptions(assumptions.toArray());
@@ -290,10 +288,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     void finish() {
         cGlobals.forEach((symbolName, reference) -> gen.getCompilationResult().recordDataPatchWithNote(0, reference, symbolName));
-
-        if (graph.method().format("%H.%n").contains("IsolateLeaveStub.JNIFunctions_NewStringUTF")) {
-            graph.getDebug().forceDump(graph, "");
-        }
     }
 
     /* Control flow nodes */
@@ -332,9 +326,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
             LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
-            safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
             if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
-                builder.buildStore(safepointCount, safepointCounterAddr);
+                safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
+                builder.buildStore(safepointCount, builder.buildBitcast(safepointCounterAddr, builder.pointerType(builder.intType())));
             }
             return builder.buildICmp(Condition.LE, safepointCount, builder.constantInt(0));
         }
@@ -502,13 +496,13 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
         LLVMValueRef lastSPAddr = builder.buildGEP(anchor, builder.constantInt(runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
-        builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), lastSPAddr);
+        builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             LLVMValueRef threadLocalArea = gen.getSpecialRegister(SpecialRegister.ThreadPointer);
             LLVMValueRef statusIndex = builder.constantInt(runtimeConfiguration.getVMThreadStatusOffset());
             LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
-            builder.buildStore(builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget)), statusAddress);
+            builder.buildStore(builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget)), builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())));
         }
 
         LLVMValueRef wrapper = gen.createJNIWrapper(callee, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset());
@@ -551,7 +545,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     public void emitReadExceptionObject(ValueNode node) {
         builder.buildLandingPad();
 
-        LLVMValueRef retrieveExceptionFunction = gen.getFunction(LLVMFeature.getRetrieveExceptionMethod());
+        LLVMValueRef retrieveExceptionFunction = gen.getFunction(LLVMExceptionUnwind.getRetrieveExceptionMethod(gen.getMetaAccess()));
         LLVMValueRef[] arguments = gen.getCallArguments(new LLVMValueRef[0], SubstrateCallingConventionType.JavaCall, null);
         LLVMValueRef exception = builder.buildCall(retrieveExceptionFunction, arguments);
         setResult(node, exception);

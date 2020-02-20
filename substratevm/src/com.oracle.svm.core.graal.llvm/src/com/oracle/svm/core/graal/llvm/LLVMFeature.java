@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -50,7 +51,7 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
-import com.oracle.svm.core.graal.llvm.runtime.LLVMPersonalityFunction;
+import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
@@ -60,27 +61,19 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
-import com.oracle.svm.hosted.meta.HostedMethod;
 
+/*
+ * This feature enables the LLVM backend of Native Image. It does so by registering the backend,
+ * lowerings, code cache and exception handling mechanism required to emit LLVM bitcode
+ * from Graal graphs, and compile this bitcode into machine code.
+ */
 @AutomaticFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class LLVMFeature implements Feature, GraalFeature {
-
-    private static HostedMethod personalityStub;
-    private static HostedMethod retrieveExceptionMethod;
-
-    static HostedMethod getPersonalityStub() {
-        return personalityStub;
-    }
-
-    static HostedMethod getRetrieveExceptionMethod() {
-        return retrieveExceptionMethod;
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -115,7 +108,7 @@ public class LLVMFeature implements Feature, GraalFeature {
         ImageSingletons.add(ExceptionUnwind.class, new ExceptionUnwind() {
             @Override
             protected void customUnwindException(Pointer callerSP) {
-                LLVMPersonalityFunction.raiseException();
+                LLVMExceptionUnwind.raiseException();
             }
         });
 
@@ -127,15 +120,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsCompiled(LLVMPersonalityFunction.getRetrieveExceptionFunction());
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
-        personalityStub = accessImpl.getUniverse().lookup(CEntryPointCallStubSupport.singleton()
-                .getStubForMethod(LLVMPersonalityFunction.getPersonalityFunction()));
-        retrieveExceptionMethod = accessImpl.getMetaAccess().lookupJavaMethod(LLVMPersonalityFunction.getRetrieveExceptionFunction());
+        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()));
     }
 
     @Override

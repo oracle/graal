@@ -30,7 +30,17 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
-public class LLVMHelperFunctions {
+/*
+ * These helper functions are used to hide the specific lowerings of some instructions
+ * into LLVM bitcode to the statepoint emission pass. This may be needed for two reasons:
+ * 
+ * 1. The pass doesn't support creating tracked object from these instructions. This is the case for the
+ * inttoptr instruction, for example.
+ * 2. The lowering includes treating a pointer to a Java object as an untracked pointer temporarily.
+ * In this case, the helper function encapsulates the operation to prevent the untracked value from being moved
+ * across a function call, which would prevent the statepoint emission pass from registering it properly.
+ */
+class LLVMHelperFunctions {
     private LLVMIRBuilder builder;
 
     private LLVMValueRef intToObjectFunction;
@@ -52,12 +62,6 @@ public class LLVMHelperFunctions {
         this.builder = new LLVMIRBuilder(primary);
     }
 
-    /* TODO correct (global description)
-     * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
-     * the statepoint emission pass, which tracks live references in the function, doesn't
-     * recognize an address space cast (see pointerType()) as declaring a new reference, but it
-     * does a function return value.
-     */
     LLVMValueRef getIntToObjectFunction(boolean compressed) {
         if (!compressed && intToObjectFunction == null) {
             intToObjectFunction = buildIntToObjectFunction(false);
@@ -67,12 +71,6 @@ public class LLVMHelperFunctions {
         return compressed ? intToCompressedObjectFunction : intToObjectFunction;
     }
 
-    /* TODO correct
-     * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
-     * the statepoint emission pass, which tracks live references in the function, doesn't
-     * recognize an address space cast (see pointerType()) as declaring a new reference, but it
-     * does a function return value.
-     */
     LLVMValueRef getLoadObjectFromUntrackedPointerFunction(boolean compressed) {
         if (!compressed && loadObjectFromUntrackedPointerFunction == null) {
             loadObjectFromUntrackedPointerFunction = buildLoadObjectFromUntrackedPointerFunction(false);
@@ -247,7 +245,7 @@ public class LLVMHelperFunctions {
             compressed = builder.buildShr(compressed, builder.constantInt(shift));
         }
 
-        compressed = builder.buildIntToPtr(compressed, builder.objectType(true));
+        compressed = builder.buildLLVMIntToPtr(compressed, builder.objectType(true));
         builder.buildRet(compressed);
 
         return func;
@@ -277,7 +275,7 @@ public class LLVMHelperFunctions {
             uncompressed = builder.buildSelect(isNull, compressed, uncompressed);
         }
 
-        uncompressed = builder.buildIntToPtr(uncompressed, builder.objectType(false));
+        uncompressed = builder.buildLLVMIntToPtr(uncompressed, builder.objectType(false));
         builder.buildRet(uncompressed);
 
         return func;

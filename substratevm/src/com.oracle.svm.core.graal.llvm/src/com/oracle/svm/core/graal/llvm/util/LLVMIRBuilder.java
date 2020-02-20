@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.llvm.util;
 
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.FALSE;
-import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.NULL;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
@@ -35,11 +34,12 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.core.FrameAccess;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.PointerPointer;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMAttributeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
@@ -98,13 +98,14 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public boolean verifyBitcode() {
-        if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, new BytePointer(NULL)) == TRUE) {
+        if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, new BytePointer((Pointer) null)) == TRUE) {
             LLVM.LLVMDumpModule(module);
             return false;
         }
         return true;
     }
 
+    @Override
     public void close() {
         LLVM.LLVMDisposeBuilder(builder);
         builder = null;
@@ -223,10 +224,6 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMAppendBasicBlockInContext(context, func, name);
     }
 
-    public LLVMBasicBlockRef insertBlock() {
-        return LLVM.LLVMGetInsertBlock(builder);
-    }
-
     public void positionAtStart() {
         LLVMBasicBlockRef firstBlock = LLVM.LLVMGetFirstBasicBlock(function);
         LLVMValueRef firstInstruction = LLVM.LLVMGetFirstInstruction(firstBlock);
@@ -310,11 +307,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMTypeRef wordType() {
-        return integerType(FrameAccess.wordSize());
+        return integerType(FrameAccess.wordSize() * Byte.SIZE);
     }
 
     public static boolean isWordType(LLVMTypeRef type) {
-        return isIntegerType(type) && integerTypeWidth(type) == FrameAccess.wordSize();
+        return isIntegerType(type) && integerTypeWidth(type) == FrameAccess.wordSize() * Byte.SIZE;
     }
 
     public LLVMTypeRef floatType() {
@@ -353,7 +350,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMTypeRef rawPointerType() {
-        return pointerType(byteType(), false, false);
+        return pointerType(byteType());
+    }
+
+    public LLVMTypeRef pointerType(LLVMTypeRef type) {
+        return pointerType(type, false, false);
     }
 
     public LLVMTypeRef pointerType(LLVMTypeRef type, boolean tracked, boolean compressed) {
@@ -657,7 +658,8 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
 
         public enum Type {
-            Output("="), Input("");
+            Output("="),
+            Input("");
 
             private String repr;
 
@@ -969,31 +971,6 @@ public class LLVMIRBuilder implements AutoCloseable {
         return buildIntrinsicOp("pow", a, b);
     }
 
-    /*
-    public LLVMValueRef buildRound(LLVMValueRef a) {
-        LLVMTypeRef type = LLVM.LLVMTypeOf(a);
-        LLVMTypeRef returnType;
-        String intrinsicName;
-        if (isFloatType(type)) {
-            returnType = intType();
-            intrinsicName = "llvm.lround";
-        } else if (isDoubleType(type)) {
-            returnType = longType();
-            intrinsicName = "llvm.llround";
-        } else {
-            throw shouldNotReachHere();
-        }
-
-        intrinsicName = intrinsicName + "." + intrinsicType(returnType) + "." + intrinsicType(type);
-        LLVMTypeRef intrinsicType = functionType(returnType, type);
-        return buildIntrinsicCall(intrinsicName, intrinsicType, a);
-    }
-
-    public LLVMValueRef buildRint(LLVMValueRef a) {
-        return buildIntrinsicOp("round", a);
-    }
-    */
-
     public LLVMValueRef buildCeil(LLVMValueRef a) {
         return buildIntrinsicOp("ceil", a);
     }
@@ -1147,7 +1124,6 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildGEP(builder, base, new PointerPointer<>(indices), indices.length, DEFAULT_INSTR_NAME);
     }
 
-    // TODO move to generator
     public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
         LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
         if (isObjectType(type) && !isObjectType(addressType)) {
@@ -1162,17 +1138,8 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildLoad(builder, address, DEFAULT_INSTR_NAME);
     }
 
-    // TODO move to generator
     public void buildStore(LLVMValueRef value, LLVMValueRef address) {
-        LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
-        LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
-        LLVMValueRef castedValue = value;
-        if (isObjectType(valueType) && !isObjectType(addressType)) {
-            valueType = rawPointerType();
-            castedValue = buildAddrSpaceCast(value, rawPointerType());
-        }
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObjectType(addressType), false));
-        LLVM.LLVMBuildStore(builder, castedValue, castedAddress);
+        LLVM.LLVMBuildStore(builder, value, address);
     }
 
     public LLVMValueRef buildAlloca(LLVMTypeRef type) {

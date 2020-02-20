@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMAddressValue;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -35,6 +34,9 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public class LLVMAddressLowering extends AddressLoweringPhase.AddressLowering {
 
@@ -77,6 +79,26 @@ public class LLVMAddressLowering extends AddressLoweringPhase.AddressLowering {
         public void generate(NodeLIRBuilderTool generator) {
             LIRGeneratorTool gen = generator.getLIRGeneratorTool();
             generator.setResult(this, new LLVMAddressValue(gen.getLIRKind(stamp(NodeView.DEFAULT)), generator.operand(base), generator.operand(index)));
+        }
+    }
+
+    public static class LLVMAddressValue extends Value {
+
+        private final Value base;
+        private final Value index;
+
+        LLVMAddressValue(ValueKind<?> kind, Value base, Value index) {
+            super(kind);
+            this.base = base;
+            this.index = index;
+        }
+
+        public Value getBase() {
+            return base;
+        }
+
+        public Value getIndex() {
+            return index;
         }
     }
 }

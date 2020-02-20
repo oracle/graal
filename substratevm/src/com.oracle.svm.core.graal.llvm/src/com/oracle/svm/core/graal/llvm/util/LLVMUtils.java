@@ -28,7 +28,6 @@ import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -36,7 +35,6 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 
-import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
@@ -47,10 +45,8 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 public class LLVMUtils {
-    public static final int FALSE = 0;
-    public static final int TRUE = 1;
-    public static final Pointer NULL = null;
-    public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
+    static final int FALSE = 0;
+    static final int TRUE = 1;
 
     public interface LLVMValueWrapper {
         LLVMValueRef get();
@@ -93,10 +89,6 @@ public class LLVMUtils {
 
         public LLVMVariable(ValueKind<?> kind) {
             super(kind, id++);
-        }
-
-        LLVMVariable(LLVMTypeRef type) {
-            this(LLVMKind.toLIRKind(type));
         }
 
         public LLVMVariable(LLVMValueRef value) {
@@ -235,7 +227,6 @@ public class LLVMUtils {
                 case LLVM.LLVMFloatTypeKind:
                     return 4;
                 case LLVM.LLVMDoubleTypeKind:
-                    return 8;
                 case LLVM.LLVMPointerTypeKind:
                     return 8;
                 default:
@@ -251,26 +242,6 @@ public class LLVMUtils {
         @Override
         public char getTypeChar() {
             throw unimplemented();
-        }
-    }
-
-    public static class LLVMAddressValue extends Value {
-
-        private final Value base;
-        private final Value index;
-
-        public LLVMAddressValue(ValueKind<?> kind, Value base, Value index) {
-            super(kind);
-            this.base = base;
-            this.index = index;
-        }
-
-        public Value getBase() {
-            return base;
-        }
-
-        public Value getIndex() {
-            return index;
         }
     }
 }

@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.llvm.util.LLVMObjectFileReader;
@@ -200,9 +201,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             compilation.setTargetCode(null, functionSize);
             method.setCodeAddressOffset(offset);
         });
-        stackMapDumper.dumpOffsets(textSectionInfo);
 
         compilations.forEach((method, compilation) -> compilationsByStart.put(method.getCodeAddressOffset(), compilation));
+        stackMapDumper.dumpOffsets(textSectionInfo);
+        stackMapDumper.close();
+
         HostedMethod firstMethod = (HostedMethod) getFirstCompilation().getMethods()[0];
         buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));
     }
@@ -210,12 +213,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         List<String> args = new ArrayList<>();
         if (LLVMOptions.BitcodeOptimizations.getValue()) {
+            /*
+             * This runs LLVM's bitcode optimizations in addition to the Graal optimizations.
+             * Inlining has to be disabled in this case as the functions are already stored in the
+             * image heap and inlining them would produce bogus runtime information for garbage
+             * collection and exception handling.
+             */
             args.add("-disable-inlining");
             args.add("-O2");
         } else {
             /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
-             * are not supported for statepoints.
+             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
+             * not supported for statepoints.
              */
             args.add("-mem2reg");
         }
@@ -229,7 +238,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("opt", basePath, args);
         } catch (RunFailureException e) {
-            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: opt " + String.join(" ", args));
         }
@@ -238,10 +246,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         List<String> args = new ArrayList<>();
         args.add("-relocation-model=pic");
+        /*
+         * Makes sure that unreachable instructions get emitted into the machine code. This prevents
+         * a situation where a call is the last instruction of a function, resulting in its return
+         * address being located in the next function, which causes trouble with runtime information
+         * emission.
+         */
         args.add("--trap-unreachable");
         args.add("-march=" + LLVMTargetSpecific.get().getLLVMArchName());
         args.addAll(LLVMTargetSpecific.get().getLLCAdditionalOptions());
-        args.add("-O2");
+        args.add("-O" + SubstrateOptions.Optimize.getValue());
         args.add("-filetype=obj");
         args.add("-o");
         args.add(outputPath);
@@ -250,7 +264,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("llc", basePath, args);
         } catch (RunFailureException e) {
-            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + e.getStatus() + "\nCommand: llc " + String.join(" ", args));
         }
@@ -258,7 +271,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void llvmLink(DebugContext debug, String outputPath, List<String> inputPaths) {
         List<String> args = new ArrayList<>();
-        args.add("-v");
         args.add("-o");
         args.add(outputPath);
         args.addAll(inputPaths);
@@ -266,7 +278,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runLLVMCommand("llvm-link", basePath, args);
         } catch (RunFailureException e) {
-            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }
@@ -283,7 +294,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             LLVMToolchain.runCommand(basePath, cmd);
         } catch (RunFailureException e) {
-            System.out.println(e.getOutput());
             debug.log("%s", e.getOutput());
             throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + e.getStatus());
         }
@@ -439,6 +449,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         void dumpCallSite(Call call, int actualPcOffset, SubstrateReferenceMap referenceMap);
 
         void endDumpingFunction();
+
+        void close();
     }
 
     private class EnabledStackMapDumper implements StackMapDumper {
@@ -454,8 +466,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         private ThreadLocal<StringBuilder> functionDump = new ThreadLocal<>();
 
+        @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
-            dump("Offsets\n=======\n");
+            dump("\nOffsets\n=======\n");
             textSectionInfo.forEachOffsetRange((startOffset, endOffset) -> {
                 CompilationResult compilationResult = compilationsByStart.get(startOffset);
                 assert startOffset + compilationResult.getTargetCodeSize() == endOffset : compilationResult.getName();
@@ -465,10 +478,12 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             });
         }
 
+        @Override
         public void startDumpingFunctions() {
-            dump("\nPatchpoints\n===========\n");
+            dump("Patchpoints\n===========\n");
         }
 
+        @Override
         public void startDumpingFunction(String methodSymbolName, int id, int totalFrameSize) {
             StringBuilder builder = new StringBuilder();
             builder.append(methodSymbolName);
@@ -480,6 +495,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             functionDump.set(builder);
         }
 
+        @Override
         public void dumpCallSite(Call call, int actualPcOffset, SubstrateReferenceMap referenceMap) {
             StringBuilder builder = functionDump.get();
             builder.append("  [");
@@ -493,8 +509,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             builder.append("\n");
         }
 
+        @Override
         public void endDumpingFunction() {
             dump(functionDump.get().toString());
+        }
+
+        @Override
+        public void close() {
+            try {
+                stackMapDump.close();
+            } catch (IOException e) {
+                throw new GraalError(e);
+            }
         }
 
         private void dump(String str) {
@@ -525,6 +551,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         @Override
         public void endDumpingFunction() {
+        }
+
+        @Override
+        public void close() {
         }
     }
 }

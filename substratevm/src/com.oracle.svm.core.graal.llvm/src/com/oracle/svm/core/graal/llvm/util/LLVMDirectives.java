@@ -22,13 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.llvm.runtime;
+package com.oracle.svm.core.graal.llvm.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 

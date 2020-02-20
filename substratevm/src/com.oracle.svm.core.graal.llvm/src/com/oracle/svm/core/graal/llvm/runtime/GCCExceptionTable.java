@@ -34,7 +34,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.log.Log;
 
-public class GCCExceptionTable {
+class GCCExceptionTable {
 
     enum Encoding {
         ULEB128((byte) 0x1),
@@ -61,15 +61,11 @@ public class GCCExceptionTable {
             if (encodingEncoding < 0 || encodingEncoding >= lookupTable.length) {
                 return null;
             }
-            Encoding encoding = lookupTable[encodingEncoding];
-            if (encoding == null) {
-                return null;
-            }
-            return encoding;
+            return lookupTable[encodingEncoding];
         }
     }
 
-    public static Long getHandlerOffset(Pointer buffer, long pcOffset) {
+    static Long getHandlerOffset(Pointer buffer, long pcOffset) {
         Log log = Log.noopLog();
 
         CIntPointer offset = StackValue.get(Integer.BYTES);
@@ -111,9 +107,7 @@ public class GCCExceptionTable {
             int action = Byte.toUnsignedInt(buffer.readByte(offset.read()));
             offset.write(offset.read() + Byte.BYTES);
             log.string("action: ").unsigned(action).newline();
-            if (action != 0) {
-                assert action == 1;
-            }
+            assert action == 0 || action == 1;
 
             assert offset.read() <= siteTableEnd;
         }

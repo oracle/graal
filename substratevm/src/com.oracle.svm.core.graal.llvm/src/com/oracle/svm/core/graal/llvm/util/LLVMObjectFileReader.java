@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -59,6 +58,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LLVMObjectFileReader {
     private static final String SYMBOL_PREFIX = (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) ? "_" : "";
@@ -83,7 +83,8 @@ public class LLVMObjectFileReader {
         private List<Symbol> symbolInfo = new ArrayList<>();
     }
 
-    private static <SectionInfo, SymbolInfo> LLVMSectionInfo<SectionInfo, SymbolInfo> readSection(Path path, SectionName sectionName, SectionReader<SectionInfo> sectionReader, SymbolReader<SymbolInfo> symbolReader) {
+    private static <SectionInfo, SymbolInfo> LLVMSectionInfo<SectionInfo, SymbolInfo> readSection(Path path, SectionName sectionName, SectionReader<SectionInfo> sectionReader,
+                    SymbolReader<SymbolInfo> symbolReader) {
         byte[] bytes;
         try {
             bytes = Files.readAllBytes(path);
@@ -148,19 +149,20 @@ public class LLVMObjectFileReader {
     }
 
     public LLVMStackMapInfo parseStackMap(Path objectFile) {
-        LLVMSectionInfo<Pointer, Object> sectionInfo = readSection(objectFile, SectionName.LLVM_STACKMAPS, this::readStackMapSection, null);
-        return new LLVMStackMapInfo(sectionInfo.sectionInfo.asByteBuffer());
+        LLVMSectionInfo<LLVMStackMapInfo, Object> sectionInfo = readSection(objectFile, SectionName.LLVM_STACKMAPS, this::readStackMapSection, null);
+        return sectionInfo.sectionInfo;
     }
 
-    private Pointer readStackMapSection(LLVMSectionIteratorRef sectionIterator) {
-        return LLVM.LLVMGetSectionContents(sectionIterator).limit(LLVM.LLVMGetSectionSize(sectionIterator));
+    private LLVMStackMapInfo readStackMapSection(LLVMSectionIteratorRef sectionIterator) {
+        Pointer stackMap = LLVM.LLVMGetSectionContents(sectionIterator).limit(LLVM.LLVMGetSectionSize(sectionIterator));
+        return new LLVMStackMapInfo(stackMap.asByteBuffer());
     }
 
     public void readStackMap(LLVMStackMapInfo info, CompilationResult compilation, ResolvedJavaMethod method, int id) {
         String methodSymbolName = SYMBOL_PREFIX + SubstrateUtil.uniqueShortName(method);
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
-                .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
+                        .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
         int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation());
         compilation.setTotalFrameSize(totalFrameSize);
         stackMapDumper.startDumpingFunction(methodSymbolName, id, totalFrameSize);
@@ -199,7 +201,7 @@ public class LLVMObjectFileReader {
                 offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
                 symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
             }
-            this.sortedMethodOffsets = sortedMethodOffsets(codeSize);
+            this.sortedMethodOffsets = computeSortedMethodOffsets();
         }
 
         public long getCodeSize() {
@@ -225,30 +227,30 @@ public class LLVMObjectFileReader {
 
         public void forEachOffsetRange(OffsetRangeConsumer consumer) {
             for (int i = 0; i < sortedMethodOffsets.size() - 1; ++i) {
-                consumer.apply(i, i + 1);
+                consumer.apply(sortedMethodOffsets.get(i), sortedMethodOffsets.get(i + 1));
             }
         }
 
-        private List<Integer> sortedMethodOffsets(long codeSize) {
-            List<Integer> sortedMethodOffsets = offsetToSymbol.keySet().stream().distinct().sorted().collect(Collectors.toList());
+        private List<Integer> computeSortedMethodOffsets() {
+            List<Integer> sortedOffsets = offsetToSymbol.keySet().stream().distinct().sorted().collect(Collectors.toList());
 
             /*
-             * Functions added by the LLVM backend have to be removed before computing function offsets,
-             * because as they are not linked to a function known to Native Image, keeping them would
-             * create gaps in the CodeInfoTable. Removing these offsets includes them as part of the
-             * previously defined function instead. Stack walking will never see an address belonging to
-             * one of these LLVM functions, as these are executing in native mode, so this will not
-             * cause incorrect queries at runtime.
+             * Functions added by the LLVM backend have to be removed before computing function
+             * offsets, because as they are not linked to a function known to Native Image, keeping
+             * them would create gaps in the CodeInfoTable. Removing these offsets includes them as
+             * part of the previously defined function instead. Stack walking will never see an
+             * address belonging to one of these LLVM functions, as these are executing in native
+             * mode, so this will not cause incorrect queries at runtime.
              */
             symbolToOffset.forEach((symbol, offset) -> {
                 if (symbol.startsWith(SYMBOL_PREFIX + LLVMGenerator.JNI_WRAPPER_BASE_NAME)) {
-                    sortedMethodOffsets.remove(offset);
+                    sortedOffsets.remove(offset);
                 }
             });
 
-            sortedMethodOffsets.add(NumUtil.safeToInt(codeSize));
+            sortedOffsets.add(NumUtil.safeToInt(codeSize));
 
-            return sortedMethodOffsets;
+            return sortedOffsets;
         }
     }
 }

@@ -49,9 +49,9 @@ public class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<Loa
         graph.replaceFixedWithFixed(node, readRegNode);
 
         /*
-         * When libunwind has found an exception handler, it jumps directly to it from native
-         * code. We therefore need the CFunctionEpilogueNode to restore the Java state before we
-         * handle the exception.
+         * When libunwind has found an exception handler, it jumps directly to it from native code.
+         * We therefore need the CFunctionEpilogueNode to restore the Java state before we handle
+         * the exception.
          */
         CFunctionEpilogueNode cFunctionEpilogueNode = new CFunctionEpilogueNode(VMThreads.StatusSupport.STATUS_IN_NATIVE);
         graph.add(cFunctionEpilogueNode);

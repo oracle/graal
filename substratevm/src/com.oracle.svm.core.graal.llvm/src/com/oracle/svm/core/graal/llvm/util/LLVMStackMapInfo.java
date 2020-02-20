@@ -38,7 +38,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
 
 public class LLVMStackMapInfo {
-    private StackMap stackMap;
+    public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
 
     static class StackMap {
         byte version;
@@ -99,8 +99,8 @@ public class LLVMStackMapInfo {
      * Stack map format specification available at
      * https://llvm.org/docs/StackMaps.html#stack-map-format
      */
-    public LLVMStackMapInfo(ByteBuffer buffer) {
-        stackMap = new StackMap();
+    LLVMStackMapInfo(ByteBuffer buffer) {
+        StackMap stackMap = new StackMap();
 
         int offset = 0;
 
@@ -213,7 +213,7 @@ public class LLVMStackMapInfo {
             function.records[rec] = record;
 
             if (patchpointToFunction.containsKey(record.patchpointID)) {
-                assert record.patchpointID == LLVMUtils.DEFAULT_PATCHPOINT_ID || patchpointToFunction.get(record.patchpointID) == function;
+                assert record.patchpointID == DEFAULT_PATCHPOINT_ID || patchpointToFunction.get(record.patchpointID) == function;
             }
             patchpointToFunction.put(record.patchpointID, function);
             patchpointsByID.computeIfAbsent(record.patchpointID, v -> new HashSet<>()).add(record);
@@ -223,7 +223,7 @@ public class LLVMStackMapInfo {
     private Map<Long, Function> patchpointToFunction = new HashMap<>();
     private Map<Long, Set<Record>> patchpointsByID = new HashMap<>();
 
-    public long getFunctionStackSize(long startPatchpointID) {
+    long getFunctionStackSize(long startPatchpointID) {
         assert patchpointToFunction.containsKey(startPatchpointID);
         return patchpointToFunction.get(startPatchpointID).stackSize;
     }
@@ -233,7 +233,7 @@ public class LLVMStackMapInfo {
         return patchpointToFunction.get(startPatchpointID).address;
     }
 
-    public int[] getPatchpointOffsets(long patchpointID) {
+    int[] getPatchpointOffsets(long patchpointID) {
         if (patchpointsByID.containsKey(patchpointID)) {
             return patchpointsByID.get(patchpointID).stream().mapToInt(r -> r.instructionOffset).toArray();
         }
@@ -248,7 +248,7 @@ public class LLVMStackMapInfo {
         void accept(int derivedOffset, int baseOffset, boolean compressed);
     }
 
-    public void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
+    void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
         Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
                         .findFirst().orElseThrow(VMError::shouldNotReachHere).locations;
         assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
