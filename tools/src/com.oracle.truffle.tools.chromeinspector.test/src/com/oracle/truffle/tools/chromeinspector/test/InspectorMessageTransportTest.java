@@ -49,7 +49,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 public class InspectorMessageTransportTest {
 
     private static final String PORT = "54367";
-    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Fa-f\\-]+");
+    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Za-z_\\-]+");
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":5,\"method\":\"Runtime.enable\"}",
                     "{\"id\":6,\"method\":\"Debugger.enable\"}",
