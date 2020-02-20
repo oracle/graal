@@ -102,7 +102,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
     @Before
     public void addListener() {
-        setupContext("engine.CompileOnly", "DisableCompilationsForThisTest",
+        setupContext("engine.Compilation", "false",
                         "engine.SplittingGrowthLimit", "2.0",
                         "engine.SplittingMaxNumberOfSplitNodes", "1000");
         listener = new SplitCountingListener();
