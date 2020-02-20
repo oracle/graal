@@ -280,6 +280,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
     }
 
+    /**
+     * True when the function parameter has an LLVM byval attribute attached to it. This usually is
+     * the case for value parameters (e.g. struct Point p) which the compiler decides to pass
+     * through a pointer instead (by creating a copy sometime between the caller and the callee and
+     * passing a pointer to that copy). In bitcode the copy's pointer is then tagged with a byval
+     * attribute.
+     */
     private static boolean functionParameterHasByValueAttribute(FunctionParameter parameter) {
         if (parameter.getParameterAttribute() != null) {
             for (Attribute a : parameter.getParameterAttribute().getAttributes()) {
@@ -293,6 +300,16 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     private static final Long[] EMPTY_LONGS_ARRAY = {};
 
+    /**
+     * Create an expression node that, when executed, will provide an address where the respective
+     * argument should either be copied from or copied into. This is important when passing struct
+     * arguments by value, this node uses getelementptr to infer the location from the source types
+     * into the destination frame slot.
+     *
+     * @param baseAddress Base address from which to calculate the offsets.
+     * @param sourceType Type to index into.
+     * @param indices List of indices to reach a member or element from the base address.
+     **/
     private LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type sourceType, List<Long> indices) {
         LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.size()];
 
@@ -315,6 +332,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return nestedGEPs;
     }
 
+    /**
+     * This method, along with
+     * {@link LazyToTruffleConverterImpl#copyStructArgumentsToFrame}
+     * , are visiting (potentially nested) structs and arrays that are passed byval. This one just
+     * copies the list of visited "indices" so far.
+     *
+     * @param initializers The accumulator where copy statements are going to be inserted.
+     * @param indices List of indices to reach this member or element from the toplevel object.
+     * @param i Current member or element's index.
+     * @param elementType The current member or element's type.
+     */
     private void elementOrMemberHelper(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, FrameSlot slot, int argIndex, PointerType topLevelPointerType, List<Long> indices, long i,
                     Type elementType) {
         indices.add(i);
@@ -322,6 +350,19 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         indices.remove(indices.size() - 1);
     }
 
+    /**
+     * The recursive cases go over the elements (for arrays) and over the members (for structs). The
+     * base case is for everything else ("primitives"), where cascades of getelementptrs are created
+     * for reading from the source and writing into the target frame slot. The cascades of
+     * getelementptr nodes are created by the calls to
+     * {@link LazyToTruffleConverterImpl#getTargetAddress} and then
+     * used to load or store from the source and into the destination respectively.
+     *
+     * @param initializers The accumulator where copy statements are going to be inserted.
+     * @param slot Target frame slot.
+     * @param currentType Current member (for structs) or element (for arrays) type.
+     * @param indices List of indices to reach this member or element from the toplevel object.
+     */
     private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, FrameSlot slot, int argIndex, PointerType topLevelPointerType, Type currentType,
                     List<Long> indices) {
         if (currentType instanceof StructureType) {
@@ -338,6 +379,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         } else {
             LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), topLevelPointerType.getPointeeType(), indices);
+            /* In case the source is a varargs list (va_list), we need to create a node that would unpack it if it is, and do nothing if it isn't. */
             LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
             LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
             LLVMExpressionNode sourceLoadNode = CommonNodeFactory.createLoad(currentType, sourceAddress);
@@ -346,6 +388,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
     }
 
+    /**
+     * Copies arguments to the current frame, handling normal "primitives" and byval pointers (e.g.
+     * for structs).
+     */
     private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
         NodeFactory nodeFactory = runtime.getNodeFactory();
         List<FunctionParameter> parameters = method.getParameters();
