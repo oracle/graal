@@ -1184,10 +1184,10 @@ public abstract class TruffleLanguage<C> {
     /**
      * Wraps the value to provide language specific information for primitive and foreign values.
      * This method is only invoked for values that are not associated with the current
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a
-     * high-level this method is supposed to wrap the value and add augmentation to look like a
-     * value of the current language. The result value of an implementation of this method may do
-     * the following:
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a high
+     * level, this method is supposed to wrap the value and add augmentation to look like a value of
+     * the current language. The result value of an implementation of this method may do the
+     * following:
      * <ul>
      * <li>Return the current language as their associated
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
@@ -1195,7 +1195,7 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display string}
      * for primitive and foreign values.
      * <li>Return a language specific
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject}
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject} for
      * primitive or foreign values.
      * <li>Add members to the object that would be implicitly be available for all objects. For
      * example, any JavaScript object is expected to have a prototype member. Foreign objects, even
