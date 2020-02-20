@@ -338,11 +338,11 @@ public @interface ExportLibrary {
      * instance. If this assumption is violated then an {@link AssertionError} is thrown. If the
      * transition limit is set then the accepts condition is allowed to transition from
      * <code>true</code> to <code>false</code> for a library created for a receiver instance. The
-     * limit expression specified specifies how many fallback library instances should be created
-     * until the library is dispatching to uncached cases of the library. By default accepts
-     * transitions are not allowed. Note this option is only relevant if you use a custom accepts
-     * implementation in the export. If the receiver transitions in parallel then there are no
-     * guarantees provided. The library caller is responsible to provide proper synchronization.
+     * limit expression specifies how many fallback library instances should be created until the
+     * library is dispatching to uncached cases of the library. By default accepts transitions are
+     * not allowed. Note this option is only relevant if you use a custom accepts implementation in
+     * the export. If the receiver transitions in parallel then there are no guarantees provided.
+     * The library caller is responsible to provide proper synchronization.
      * <p>
      * This feature is useful to implement runtime value representations that dynamically transition
      * from one state to the next. With arrays, a common example is the access strategy that changes
@@ -356,9 +356,9 @@ public @interface ExportLibrary {
      * <p>
      * <b>Performance note:</b> If any number of transitions is enabled, the accepts guard of this
      * library effectively needs to be repeated on every message invocation of this export. It is
-     * therefore recommended to keep set this flag <code>false</code> for performance reasons, if
-     * possible. It is also recommended to double check that the duplicated accepts guard for every
-     * message is eliminated in the compiler graphs after Partial evaluation.
+     * therefore recommended to not set this property for performance reasons, if possible. It is
+     * also recommended to double check that the duplicated accepts guard for every message is
+     * eliminated in the compiler graphs after Partial evaluation.
      *
      * @see Library#accepts(Object)
      * @since 20.1
