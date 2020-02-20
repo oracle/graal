@@ -101,7 +101,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
             LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
             LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
             LLVMValueRef methodId = generator.buildInlineGetRegister(methodIdArg.getRegister().name);
-            LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId, builder.longType()));
+            LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
             jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         } else {
             LLVMValueRef methodBase = generator.buildInlineGetRegister(methodIdArg.getRegister().name);

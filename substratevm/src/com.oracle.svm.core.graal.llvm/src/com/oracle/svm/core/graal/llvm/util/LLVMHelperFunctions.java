@@ -145,7 +145,7 @@ public class LLVMHelperFunctions {
 
     private LLVMValueRef buildIntToObjectFunction(boolean compressed) {
         String funcName = compressed ? INT_TO_COMPRESSED_OBJECT_FUNCTION_NAME : INT_TO_OBJECT_FUNCTION_NAME;
-        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(compressed), builder.longType()));
+        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(compressed), builder.wordType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
         builder.setFunctionAttribute(func, Attribute.AlwaysInline);
         builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
@@ -193,7 +193,7 @@ public class LLVMHelperFunctions {
         builder.positionAtEnd(block);
         LLVMValueRef address = LLVMIRBuilder.getParam(func, 0);
         LLVMValueRef value = LLVMIRBuilder.getParam(func, 1);
-        LLVMValueRef castedValue = builder.buildPtrToInt(value, builder.longType());
+        LLVMValueRef castedValue = builder.buildPtrToInt(value);
         LLVMValueRef ret = builder.buildLLVMAtomicXchg(address, castedValue);
         ret = builder.buildLLVMIntToPtr(ret, builder.objectType(compressed));
         builder.buildRet(ret);
@@ -227,14 +227,14 @@ public class LLVMHelperFunctions {
 
     private LLVMValueRef buildCompressFunction(boolean nonNull, int shift) {
         String funcName = COMPRESS_FUNCTION_BASE_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
-        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(true), builder.objectType(false), builder.longType()));
+        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(true), builder.objectType(false), builder.wordType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
         builder.setFunctionAttribute(func, Attribute.AlwaysInline);
         builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
-        LLVMValueRef uncompressed = builder.buildPtrToInt(LLVMIRBuilder.getParam(func, 0), builder.longType());
+        LLVMValueRef uncompressed = builder.buildPtrToInt(LLVMIRBuilder.getParam(func, 0));
         LLVMValueRef heapBase = LLVMIRBuilder.getParam(func, 1);
         LLVMValueRef compressed = builder.buildSub(uncompressed, heapBase);
 
@@ -257,14 +257,14 @@ public class LLVMHelperFunctions {
 
     private LLVMValueRef buildUncompressFunction(boolean nonNull, int shift) {
         String funcName = UNCOMPRESS_FUNCTION_BASE_NAME + (nonNull ? "_nonNull" : "") + "_" + shift;
-        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(false), builder.objectType(true), builder.longType()));
+        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(builder.objectType(false), builder.objectType(true), builder.wordType()));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
         builder.setFunctionAttribute(func, Attribute.AlwaysInline);
         builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
 
         LLVMBasicBlockRef block = builder.appendBasicBlock(func, "main");
         builder.positionAtEnd(block);
-        LLVMValueRef compressed = builder.buildPtrToInt(LLVMIRBuilder.getParam(func, 0), builder.longType());
+        LLVMValueRef compressed = builder.buildPtrToInt(LLVMIRBuilder.getParam(func, 0));
         LLVMValueRef heapBase = LLVMIRBuilder.getParam(func, 1);
 
         if (shift != 0) {

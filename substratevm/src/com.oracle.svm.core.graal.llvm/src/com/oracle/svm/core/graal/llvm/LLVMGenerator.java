@@ -76,6 +76,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -422,7 +423,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (!isEntryPoint(method) && SpecialRegister.count() > 0) {
             newParameterTypes = new LLVMTypeRef[SpecialRegister.count() + parameterTypes.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
-                newParameterTypes[reg.index] = canModifySpecialRegisters(method) ? builder.pointerType(builder.longType(), false, false) : builder.longType();
+                newParameterTypes[reg.index] = canModifySpecialRegisters(method) ? builder.pointerType(builder.wordType(), false, false) : builder.wordType();
             }
             System.arraycopy(parameterTypes, 0, newParameterTypes, SpecialRegister.count(), parameterTypes.length);
         }
@@ -556,10 +557,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMTypeRef destType = ((LLVMKind) dst.getPlatformKind()).get();
 
         /* Floating word cast */
-        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isLongType(sourceType)) {
+        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isWordType(sourceType)) {
             source = builder.buildIntToPtr(source, destType);
-        } else if (LLVMIRBuilder.isLongType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
-            source = builder.buildPtrToInt(source, destType);
+        } else if (LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
+            source = builder.buildPtrToInt(source);
         }
         ((LLVMVariable) dst).set(source);
     }
@@ -698,7 +699,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public Variable load(Value value) {
-        LLVMValueRef load = builder.buildPtrToInt(getVal(value), builder.longType());
+        LLVMValueRef load = builder.buildPtrToInt(getVal(value));
         return new LLVMVariable(load);
     }
 
@@ -722,7 +723,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public VirtualStackSlot allocateStackSlots(int slots) {
         builder.positionAtStart();
-        LLVMValueRef alloca = builder.buildArrayAlloca(builder.longType(), slots);
+        LLVMValueRef alloca = builder.buildArrayAlloca(builder.wordType(), slots);
         builder.positionAtEnd(getBlockEnd(currentBlock));
 
         return new LLVMStackSlot(alloca);
@@ -731,7 +732,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public Variable emitAddress(AllocatableValue stackslot) {
         if (stackslot instanceof LLVMStackSlot) {
-            return new LLVMVariable(builder.buildPtrToInt(getVal(stackslot), builder.longType()));
+            return new LLVMVariable(builder.buildPtrToInt(getVal(stackslot)));
         }
         throw shouldNotReachHere("Unknown address type");
     }
@@ -743,21 +744,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         for (SpecialRegister reg : SpecialRegister.registers()) {
-            stackSlots[reg.index] = builder.buildAlloca(builder.longType());
+            stackSlots[reg.index] = builder.buildAlloca(builder.wordType());
         }
     }
 
     @Override
     public Value emitReadCallerStackPointer(Stamp wordStamp) {
         LLVMValueRef basePointer = builder.buildFrameAddress(builder.constantInt(0));
-        LLVMValueRef callerSP = builder.buildAdd(builder.buildPtrToInt(basePointer, builder.longType()), builder.constantLong(16));
+        LLVMValueRef callerSP = builder.buildAdd(builder.buildPtrToInt(basePointer), builder.constantLong(16));
         return new LLVMVariable(callerSP);
     }
 
     @Override
     public Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
         LLVMValueRef returnAddress = builder.buildReturnAddress(builder.constantInt(0));
-        return new LLVMVariable(builder.buildPtrToInt(returnAddress, builder.longType()));
+        return new LLVMVariable(builder.buildPtrToInt(returnAddress));
     }
 
     /* Control flow */
@@ -814,7 +815,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (!((SubstrateCallingConventionType) callType).nativeABI && SpecialRegister.count() > 0) {
             newTypes = new LLVMTypeRef[SpecialRegister.count() + types.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
-                newTypes[reg.index] = builder.longType();
+                newTypes[reg.index] = builder.wordType();
             }
             System.arraycopy(types, 0, newTypes, SpecialRegister.count(), types.length);
         }
@@ -879,7 +880,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             if (javaKind == JavaKind.Int) {
                 assert LLVMIRBuilder.isIntegerType(typeOf(retVal));
                 retVal = arithmetic.emitIntegerConvert(retVal, builder.intType());
-            } else if (returnsEnum && javaKind == JavaKind.Long) {
+            } else if (returnsEnum && javaKind == FrameAccess.getWordKind()) {
                 /*
                  * An enum value is represented by a long in the function body, but is returned as
                  * an object (CEnum values are returned as an int)
@@ -946,7 +947,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMValueRef specialRegister;
         if (isEntryPoint || canModifySpecialRegisters) {
             LLVMValueRef specialRegisterPointer = getSpecialRegisterPointer(register);
-            specialRegister = builder.buildLoad(specialRegisterPointer, builder.longType());
+            specialRegister = builder.buildLoad(specialRegisterPointer, builder.wordType());
         } else {
             specialRegister = builder.getFunctionParam(register.index);
         }
@@ -975,10 +976,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                  * therefore doesn't need the actual value of its special registers.
                  */
                 assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
-                specialRegisterArg = builder.constantNull(builder.pointerType(builder.longType(), false, false));
+                specialRegisterArg = builder.constantNull(builder.pointerType(builder.wordType(), false, false));
             }
         } else if (isEntryPoint || canModifySpecialRegisters) {
-            specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(register), builder.longType());
+            specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(register), builder.wordType());
         } else {
             specialRegisterArg = getSpecialRegister(register);
         }

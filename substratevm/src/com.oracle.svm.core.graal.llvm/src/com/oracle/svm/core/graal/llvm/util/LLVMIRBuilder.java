@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.core.FrameAccess;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 
@@ -306,6 +307,14 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public static int integerTypeWidth(LLVMTypeRef intType) {
         return LLVM.LLVMGetIntTypeWidth(intType);
+    }
+
+    public LLVMTypeRef wordType() {
+        return integerType(FrameAccess.wordSize());
+    }
+
+    public static boolean isWordType(LLVMTypeRef type) {
+        return isIntegerType(type) && integerTypeWidth(type) == FrameAccess.wordSize();
     }
 
     public LLVMTypeRef floatType() {
@@ -585,8 +594,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMValueRef buildReadRegister(LLVMValueRef register) {
-        LLVMTypeRef readRegisterType = functionType(longType(), metadataType());
-        return buildIntrinsicCall("llvm.read_register.i64", readRegisterType, register);
+        LLVMTypeRef readRegisterType = functionType(wordType(), metadataType());
+        return buildIntrinsicCall("llvm.read_register." + intrinsicType(wordType()), readRegisterType, register);
     }
 
     private LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {
@@ -1096,8 +1105,8 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildIntToPtr(builder, value, type, DEFAULT_INSTR_NAME);
     }
 
-    public LLVMValueRef buildPtrToInt(LLVMValueRef value, LLVMTypeRef type) {
-        return LLVM.LLVMBuildPtrToInt(builder, value, type, DEFAULT_INSTR_NAME);
+    public LLVMValueRef buildPtrToInt(LLVMValueRef value) {
+        return LLVM.LLVMBuildPtrToInt(builder, value, wordType(), DEFAULT_INSTR_NAME);
     }
 
     public LLVMValueRef buildFPToSI(LLVMValueRef value, LLVMTypeRef type) {

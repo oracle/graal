@@ -584,7 +584,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             cGlobals.put(symbolName, reference);
         }
 
-        setResult(node, builder.buildPtrToInt(builder.getExternalSymbol(symbolName), builder.longType()));
+        setResult(node, builder.buildPtrToInt(builder.getExternalSymbol(symbolName)));
     }
 
     @Override
@@ -691,7 +691,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             Value index = addressValue.getIndex();
 
             LLVMTypeRef baseType = LLVMIRBuilder.typeOf(base);
-            if (LLVMIRBuilder.isIntegerType(baseType) && LLVMIRBuilder.integerTypeWidth(baseType) == JavaKind.Long.getBitCount()) {
+            if (LLVMIRBuilder.isWordType(baseType)) {
                 base = builder.buildIntToPtr(base, builder.rawPointerType());
             } else if (LLVMIRBuilder.isObjectType(baseType)) {
                 typeOverride = true;

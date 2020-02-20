@@ -178,7 +178,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getWordKind() {
-            return LIRKind.value(new LLVMKind(builder.longType()));
+            return LIRKind.value(new LLVMKind(builder.wordType()));
         }
 
         @Override
