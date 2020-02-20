@@ -953,6 +953,12 @@ public final class DebuggerController implements ContextsListener {
                             codeIndex = 0;
                         }
                     }
+                    // check if current bci is higher than the first index on the last line,
+                    // in which case we must report the last line index instead
+                    long lastLineBCI = method.getBCIFromLine(method.getLastLine());
+                    if (codeIndex > lastLineBCI) {
+                        codeIndex = lastLineBCI;
+                    }
                 }
                 list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, null, materializedFrame, root, instrument.getEnv()));
                 frameCount++;
