@@ -56,7 +56,6 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -621,15 +620,15 @@ public final class JDWPContextImpl implements JDWPContext {
         List<MonitorStackInfo> result = new ArrayList<>();
         int stackDepth = 0;
         for (CallFrame callFrame : callFrames) {
-            BytecodeNode bytecodeNode = getBytecodeNode(callFrame.getRootNode());
-            if (bytecodeNode != null) {
-                if (!bytecodeNode.usesMonitors()) {
-                    continue;
-                }
-                BytecodeNode.MonitorStack monitorStack = bytecodeNode.getMonitorStack(callFrame.getMaterializedFrame());
-                for (StaticObject monitor : monitorStack.getMonitors()) {
-                    if (monitor != null) {
-                        result.add(new MonitorStackInfo(monitor, callFrame.getMaterializedFrame(), stackDepth));
+            RootNode rootNode = callFrame.getRootNode();
+            if (rootNode instanceof EspressoRootNode) {
+                EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+                if (espressoRootNode.usesMonitors()) {
+                    StaticObject[] monitors = espressoRootNode.getMonitorsOnFrame(callFrame.getMaterializedFrame());
+                    for (StaticObject monitor : monitors) {
+                        if (monitor != null) {
+                            result.add(new MonitorStackInfo(monitor, callFrame.getMaterializedFrame(), stackDepth));
+                        }
                     }
                 }
             }
@@ -652,16 +651,6 @@ public final class JDWPContextImpl implements JDWPContext {
         }
         eventListener.forceEarlyReturn(returnValue);
         return true;
-    }
-
-    public static BytecodeNode getBytecodeNode(RootNode rootNode) {
-        if (rootNode instanceof EspressoRootNode) {
-            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
-            if (espressoRootNode.isBytecodeNode()) {
-                return espressoRootNode.getBytecodeNode();
-            }
-        }
-        return null;
     }
 
     @Override

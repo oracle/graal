@@ -24,17 +24,23 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+
+import java.util.Arrays;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -45,9 +51,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     // must not be of type EspressoMethodNode as it might be wrapped by instrumentation
     @Child protected EspressoInstrumentableNode methodNode;
 
-    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+    private final FrameSlot monitorSlot;
+
+    private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
+
+    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode, boolean usesMonitors) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
+        this.monitorSlot = usesMonitors ? frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object) : null;
     }
 
     public final Method getMethod() {
@@ -67,11 +78,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     public final String toString() {
         return getName();
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return methodNode.execute(frame);
     }
 
     @Override
@@ -121,10 +127,53 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return ((BytecodeNode) getMethodNode()).readBCI(frame);
     }
 
+    public boolean usesMonitors() {
+        return monitorSlot != null;
+    }
+
+    void initMonitorStack(VirtualFrame frame) {
+        frame.setObject(monitorSlot, new MonitorStack());
+    }
+
+    void monitorExit(VirtualFrame frame, StaticObject monitor) {
+        InterpreterToVM.monitorExit(monitor);
+        unregisterMonitor(frame, monitor);
+    }
+
+    void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).exit(monitor, this);
+    }
+
+    void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+        InterpreterToVM.monitorEnter(monitor);
+        registerMonitor(frame, monitor);
+    }
+
+    private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).enter(monitor);
+    }
+
+    private MonitorStack getMonitorStack(VirtualFrame frame) {
+        Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
+        assert frameResult instanceof MonitorStack;
+        return (MonitorStack) frameResult;
+    }
+
+    public StaticObject[] getMonitorsOnFrame(VirtualFrame frame) {
+        MonitorStack monitorStack = getMonitorStack(frame);
+        return monitorStack != null ? monitorStack.getMonitors() : StaticObject.EMPTY_ARRAY;
+    }
+
+    public void abortMonitor(VirtualFrame frame) {
+        if (usesMonitors()) {
+            getMonitorStack(frame).abort();
+        }
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
-            super(frameDescriptor, methodNode);
+            super(frameDescriptor, methodNode, true);
         }
 
         @Override
@@ -138,26 +187,16 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             // monitor accesses until Espresso has its own monitor handling.
             //
             // synchronized (monitor) {
-            if (isBytecodeNode()) {
-                BytecodeNode bytecodeNode = getBytecodeNode();
-                bytecodeNode.methodMonitorEnter(frame, monitor);
-            } else {
-                // TODO(Gregersen) - register monitors on frames for non-bytecode methods
-                InterpreterToVM.monitorEnter(monitor);
-            }
+            initMonitorStack(frame);
+            monitorEnter(frame, monitor);
             Object result;
             try {
                 result = methodNode.execute(frame);
             } finally {
-                if (isBytecodeNode()) {
-                    // force early return has already released the monitor on the frame, so don't
-                    // do an unbalanced monitor exit here
-                    if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
-                        getBytecodeNode().monitorExit(frame, monitor);
-                    }
-                } else {
-                    // TODO(Gregersen) - exit monitors on frames for non-bytecode methods
-                    InterpreterToVM.monitorExit(monitor);
+                // force early return has already released the monitor on the frame, so don't
+                // do an unbalanced monitor exit here
+                if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
+                    monitorExit(frame, monitor);
                 }
             }
             return result;
@@ -167,12 +206,64 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     static final class Default extends EspressoRootNode {
 
         Default(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
-            super(frameDescriptor, methodNode);
+            super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (usesMonitors()) {
+                initMonitorStack(frame);
+            }
             return methodNode.execute(frame);
+        }
+    }
+
+    private static final class MonitorStack {
+        private static final int DEFAULT_CAPACITY = 4;
+
+        private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
+        private int top = 0;
+        private int capacity = DEFAULT_CAPACITY;
+
+        private void enter(StaticObject monitor) {
+            if (top >= capacity) {
+                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+            }
+            monitors[top++] = monitor;
+        }
+
+        private void exit(StaticObject monitor, EspressoRootNode node) {
+            if (top > 0 && monitor == monitors[top - 1]) {
+                // Balanced locking: simply pop.
+                monitors[--top] = null;
+            } else {
+                node.unbalancedMonitorProfile.enter();
+                // Unbalanced locking: do the linear search.
+                int i = top - 1;
+                for (; i >= 0; i--) {
+                    if (monitors[i] == monitor) {
+                        System.arraycopy(monitors, i + 1, monitors, i, top - 1 - i);
+                        monitors[--top] = null;
+                        return;
+                    }
+                }
+                // monitor not found. Not against the specs.
+            }
+        }
+
+        private void abort() {
+            for (int i = 0; i < top; i++) {
+                StaticObject monitor = monitors[i];
+                try {
+                    InterpreterToVM.monitorExit(monitor);
+                } catch (Throwable e) {
+                    /* ignore */
+                }
+            }
+        }
+
+        private StaticObject[] getMonitors() {
+            return monitors;
         }
     }
 }
