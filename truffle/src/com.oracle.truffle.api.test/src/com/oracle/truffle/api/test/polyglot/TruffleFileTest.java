@@ -233,7 +233,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
         Path langHomePath = cwdPath.getParent().resolve("home");
-        System.setProperty(String.format("%s.home", ProxyLanguage.ID), langHomePath.toString());
+        System.setProperty(String.format("org.graalvm.language.%s.home", ProxyLanguage.ID), langHomePath.toString());
         TruffleFile file = languageEnv.getInternalTruffleFile("../home");
         file.exists();  // Language home should be accessible
         file.resolve("file").exists();  // File in language home should be accessible

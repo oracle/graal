@@ -84,15 +84,32 @@ public final class GraalVMLocator extends TruffleLocator
             setLanguageHomeProperty(languageHome.getKey(), languageHome.getValue());
         }
         for (Map.Entry<String, Path> toolHome : homeFinder.getToolHomes().entrySet()) {
-            setLanguageHomeProperty(toolHome.getKey(), toolHome.getValue());
+            setToolHomeProperty(toolHome.getKey(), toolHome.getValue());
         }
     }
 
     private static void setLanguageHomeProperty(String languageId, Path languageLocation) {
         if (Files.isDirectory(languageLocation)) {
-            final String homeFolderKey = languageId + ".home";
+            final String homeFolderKey = "org.graalvm.language." + languageId + ".home";
             if (System.getProperty(homeFolderKey) == null) {
                 System.setProperty(homeFolderKey, languageLocation.toString());
+            }
+            final String legacyHomeFolderKey = languageId + ".home";
+            if (System.getProperty(legacyHomeFolderKey) == null) {
+                System.setProperty(legacyHomeFolderKey, languageLocation.toString());
+            }
+        }
+    }
+
+    private static void setToolHomeProperty(String toolId, Path toolLocation) {
+        if (Files.isDirectory(toolLocation)) {
+            final String homeFolderKey = "org.graalvm.tool." + toolId + ".home";
+            if (System.getProperty(homeFolderKey) == null) {
+                System.setProperty(homeFolderKey, toolLocation.toString());
+            }
+            final String legacyHomeFolderKey = toolId + ".home";
+            if (System.getProperty(legacyHomeFolderKey) == null) {
+                System.setProperty(legacyHomeFolderKey, toolLocation.toString());
             }
         }
     }

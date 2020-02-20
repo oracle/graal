@@ -111,12 +111,6 @@ public class Driver {
     }
 
     public Path getSulongHome() {
-        // TODO (GR-18389): Unify system properties and HomeFinder
-        String property = System.getProperty("llvm.home");
-        if (property != null) {
-            return Paths.get(property);
-        }
-
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;
