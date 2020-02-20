@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.nodes.ValueNode;
+import com.oracle.svm.hosted.FeatureImpl;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -48,6 +49,11 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -58,6 +64,10 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
 
     private NativeLibraries nativeLibraries;
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
+    private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
+        accessImpl.getNativeLibraries().addLibrary("-framework CoreServices", false);
+    });
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
@@ -166,6 +176,29 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         if (isWindows()) {
             /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
+        }
+        if (isDarwin()) {
+            List<Method> darwinMethods = Arrays.asList(
+                            method(a, "apple.security.KeychainStore", "_scanKeychain"),
+                            method(a, "apple.security.KeychainStore", "_releaseKeychainItemRef", long.class),
+                            method(a, "apple.security.KeychainStore", "_addItemToKeychain", String.class, boolean.class, byte[].class, char[].class),
+                            method(a, "apple.security.KeychainStore", "_removeItemFromKeychain", long.class),
+                            method(a, "apple.security.KeychainStore", "_getEncodedKeyData", long.class, char[].class));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /*
+                 * JNI method implementations depending on CoreService are present in the following
+                 * jdk classes sun.nio.fs.MacOXFileSystemProvider (9+),
+                 * sun.net.spi.DefaultProxySelector (9+)
+                 */
+                ArrayList<Method> methods = new ArrayList<>(darwinMethods);
+                methods.addAll(Arrays.asList(method(a, "sun.nio.fs.MacOSXFileSystemProvider", "getFileTypeDetector"),
+                                method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class),
+                                method(a, "sun.net.spi.DefaultProxySelector", "init")));
+
+                a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
+            } else {
+                a.registerReachabilityHandler(CORESERVICES_LINKER, darwinMethods.toArray(new Object[]{}));
+            }
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
