@@ -274,12 +274,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  add_jdk_base=False,
                  base_dir=None,
                  path=None,
-                 with_polyglot_launcher=False,
                  with_lib_polyglot=False,
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components
-        self.with_polyglot_launcher = with_polyglot_launcher
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -502,15 +500,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if _src_jdk_version == 8 and any(comp.jvmci_parent_jars for comp in registered_graalvm_components(stage1)):
                 _add(layout, '<jre_base>/lib/jvmci/parentClassLoader.classpath', 'dependency:{}'.format(GraalVmJvmciParentClasspath.project_name()))
 
-            # Add Polyglot launcher
-            if with_polyglot_launcher:
-                polyglot_launcher_project = get_polyglot_launcher_project()
-                if not stage1:
-                    _add(layout, "<jre_base>/bin/<exe:polyglot>", "dependency:" + polyglot_launcher_project.name)
-                    if _src_jdk_version == 8:
-                        _add_link("<jdk_base>/bin/", "<jre_base>/bin/" + mx.exe_suffix('polyglot'))
-                _add_native_image_macro(polyglot_launcher_project.native_image_config)
-
             # Add libpolyglot library
             if with_lib_polyglot:
                 lib_polyglot_project = get_lib_polyglot_project()
@@ -626,7 +615,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
-                if with_polyglot_launcher and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
+                if 'poly' in _components_set(stage1) and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_library_config.jar_distributions)
@@ -779,7 +768,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
     def __init__(self, base_name, theLicense=None, stage1=False, **kw_args):
         self.base_name = base_name
 
-        name, base_dir, self.vm_config_name, with_lib_polyglot, with_polyglot_launcher = _get_graalvm_configuration(base_name, stage1)
+        name, base_dir, self.vm_config_name, with_lib_polyglot = _get_graalvm_configuration(base_name, stage1)
 
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
@@ -794,7 +783,6 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             add_jdk_base=True,
             base_dir=base_dir,
             path=None,
-            with_polyglot_launcher=with_polyglot_launcher,
             with_lib_polyglot=with_lib_polyglot,
             stage1=stage1,
             **kw_args)
@@ -811,13 +799,6 @@ def _components_set(stage1):
         with_lib_polyglot = True
     else:
         with_lib_polyglot = False
-    if _with_polyglot_launcher_project():
-        with_polyglot_launcher = True
-        components_set.add('poly')
-        if not stage1 and _force_bash_launchers(get_polyglot_launcher_project().native_image_config):
-            components_set.add('bpolyglot')
-    else:
-        with_polyglot_launcher = False
     if stage1:
         components_set.add('stage1')
     else:
@@ -830,7 +811,7 @@ def _components_set(stage1):
                     components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
     if mx.get_opts().no_licenses:
         components_set.add('nolic')
-    return components_set, with_lib_polyglot, with_polyglot_launcher
+    return components_set, with_lib_polyglot
 
 
 _graal_vm_configs_cache = {}
@@ -839,7 +820,7 @@ _graal_vm_configs_cache = {}
 def _get_graalvm_configuration(base_name, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
-        components_set, with_lib_polyglot, with_polyglot_launcher = _components_set(stage1)
+        components_set, with_lib_polyglot = _components_set(stage1)
 
         # Use custom distribution name and base dir for registered vm configurations
         vm_dist_name = None
@@ -866,7 +847,7 @@ def _get_graalvm_configuration(base_name, stage1=False):
         name = name.upper()
         base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
-        _graal_vm_configs_cache[key] = name, base_dir, vm_config_name, with_lib_polyglot, with_polyglot_launcher
+        _graal_vm_configs_cache[key] = name, base_dir, vm_config_name, with_lib_polyglot
     return _graal_vm_configs_cache[key]
 
 
@@ -1597,7 +1578,7 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
             yield e
             if single:
                 return
-        if self.get_containing_graalvm().with_polyglot_launcher:
+        if 'poly' in _components_set(self.stage1):
             out = self.polyglot_config_output_file()
             yield out, basename(out)
 
@@ -1637,7 +1618,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         return self._polyglot_config_contents
 
     def with_polyglot_config(self):
-        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and self.subject.get_containing_graalvm().with_polyglot_launcher
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and 'poly' in _components_set(self.subject.stage1)
 
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
@@ -2094,7 +2075,7 @@ _vm_suite = 'uninitialized'
 _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
-_polyglot_launcher_project = 'uninitialized'
+# _polyglot_launcher_project = 'uninitialized'
 
 
 def _platform_classpath(cp_entries):
@@ -2102,7 +2083,7 @@ def _platform_classpath(cp_entries):
 
 
 def get_stage1_graalvm_distribution_name():
-    name, _, _, _, _ = _get_graalvm_configuration('GraalVM', True)
+    name, _, _, _ = _get_graalvm_configuration('GraalVM', True)
     return name
 
 
@@ -2185,32 +2166,28 @@ def get_lib_polyglot_project():
     return _lib_polyglot_project
 
 
-def get_polyglot_launcher_project():
-    """:rtype: GraalVmPolyglotLauncher"""
-    global _polyglot_launcher_project
-    if _polyglot_launcher_project == 'uninitialized':
-        if _with_polyglot_launcher_project():
-            _polyglot_launcher_project = GraalVmPolyglotLauncher(
-                component=None,
-                deps=[],
-                launcherConfig={
-                    "build_args": [
-                        "-H:-ParseRuntimeOptions",
-                        "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
-                        "--tool:all",
-                    ],
-                    "jar_distributions": [
-                        "sdk:LAUNCHER_COMMON",
-                    ],
-                    "main_class": "org.graalvm.launcher.PolyglotLauncher",
-                    "destination": "<exe:polyglot>",
-                    "is_sdk_launcher": True,
-                    "is_polyglot": True,
-                }
-            )
-        else:
-            _polyglot_launcher_project = None
-    return _polyglot_launcher_project
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Polyglot Launcher',
+    short_name='poly',
+    license_files=[],
+    third_party_license_files=[],
+    dir_name='polyglot',
+    launcher_configs=[mx_sdk_vm.LauncherConfig(
+        destination='bin/<exe:polyglot>',
+        jar_distributions=['sdk:LAUNCHER_COMMON'],
+        main_class='org.graalvm.launcher.PolyglotLauncher',
+        build_args=[
+            '-H:-ParseRuntimeOptions',
+            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--tool:all',
+        ],
+        is_main_launcher=True,
+        default_symlinks=True,
+        is_sdk_launcher=True,
+        is_polyglot=True,
+    )],
+))
 
 
 _native_image_configs = {}
@@ -2335,13 +2312,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(lib_polyglot_project)
             assert with_svm
             register_project(GraalVmNativeProperties(None, lib_polyglot_project.native_image_config))
-
-        polyglot_launcher_project = get_polyglot_launcher_project()
-        if polyglot_launcher_project:
-            needs_stage1 = True
-            register_project(polyglot_launcher_project)
-            if with_svm:
-                register_project(GraalVmNativeProperties(None, polyglot_launcher_project.native_image_config))
 
         if _src_jdk_version == 8 and jvmci_parent_jars:
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
