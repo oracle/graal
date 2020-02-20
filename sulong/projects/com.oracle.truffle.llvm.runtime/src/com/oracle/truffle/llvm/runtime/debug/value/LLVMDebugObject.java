@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -155,7 +155,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             String targetString;
             if (target instanceof LLVMFunctionDescriptor) {
                 final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) target;
-                targetString = "LLVM function " + function.getName();
+                targetString = "LLVM function " + function.getLLVMFunction().getName();
 
             } else {
                 targetString = "<managed pointer>";

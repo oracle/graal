@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.others;
+package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+/**
+ * Exception accessing symbols with invalid index.
+ */
+public final class LLVMIllegalSymbolIndexException extends LLVMException {
 
-public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
+    private static final long serialVersionUID = 1L;
 
-    public abstract void execute(LLVMPointer pointer, LLVMGlobal descriptor);
+    public LLVMIllegalSymbolIndexException(String message) {
+        super(null, message);
+    }
 
-    @SuppressWarnings("unused")
-    @Specialization
-    void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
-        synchronized (globals) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            try {
-                int index = descriptor.getIndex();
-                globals[index] = new AssumedValue<>("LLVMGlobal." + descriptor.getName(), pointer);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global write is inconsistent.");
-            }
-        }
+    @Override
+    public boolean isSyntaxError() {
+        return true;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -164,8 +164,8 @@ public class LLVMForeignCallNode extends RootNode {
         this.getStack = LLVMGetStackNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
         this.callNode.forceInlining();
-        this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getType().getReturnType());
-        this.packArguments = PackForeignArgumentsNodeGen.create(function.getType().getArgumentTypes(), interopType);
+        this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getLLVMFunction().getType().getReturnType());
+        this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType().getArgumentTypes(), interopType);
     }
 
     @Override
@@ -204,7 +204,7 @@ public class LLVMForeignCallNode extends RootNode {
         if (function.isLLVMIRFunction()) {
             return function.getLLVMIRFunctionSlowPath();
         } else if (function.isIntrinsicFunctionSlowPath()) {
-            return function.getIntrinsicSlowPath().cachedCallTarget(function.getType());
+            return function.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + function.getFunction());

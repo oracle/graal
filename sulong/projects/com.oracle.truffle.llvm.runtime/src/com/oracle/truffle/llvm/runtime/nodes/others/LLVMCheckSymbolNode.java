@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,30 +34,48 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
+public abstract class LLVMCheckSymbolNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer value, LLVMGlobal descriptor);
+    public abstract boolean execute(LLVMSymbol descriptor);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "alias.isAlias()")
+    boolean doCheckAlias(LLVMAlias alias,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        LLVMSymbol target = alias.getTarget();
+        do {
+            target = ((LLVMAlias) target).getTarget();
+        } while (target.isAlias());
+        return doCheck(target, context);
+    }
 
     @SuppressWarnings("unused")
     @Specialization
-    void doReplacee(LLVMPointer value, LLVMGlobal descriptor,
+    boolean doCheck(LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
-        synchronized (globals) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            try {
-                int index = descriptor.getIndex();
-                globals[index].set(value);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global replace is inconsistent.");
+        CompilerAsserts.partialEvaluationConstant(symbol);
+
+        if (symbol.hasValidIndexAndID()) {
+            int bitcodeID = symbol.getBitcodeID(false);
+            if (context.symbolTableExists(bitcodeID)) {
+                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
+                int index = symbol.getSymbolIndex(false);
+                AssumedValue<LLVMPointer> pointer = symbols[index];
+                if (pointer == null) {
+                    return false;
+                }
+                return pointer.get() != null;
             }
         }
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 }

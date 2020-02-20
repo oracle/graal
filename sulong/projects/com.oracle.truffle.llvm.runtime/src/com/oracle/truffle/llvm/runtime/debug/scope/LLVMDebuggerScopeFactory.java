@@ -108,9 +108,9 @@ public final class LLVMDebuggerScopeFactory {
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
                 final LLVMGlobal global = symbol.asGlobalVariable();
-                int id = global.getID();
-                int index = global.getIndex();
-                AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+                int id = global.getBitcodeID(false);
+                int index = global.getSymbolIndex(false);
+                AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
                 final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
@@ -122,10 +122,10 @@ public final class LLVMDebuggerScopeFactory {
     private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            if (global.isAvailable()) {
-                int id = global.getID();
-                int index = global.getIndex();
-                AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+            if (global.hasValidIndexAndID()) {
+                int id = global.getBitcodeID(false);
+                int index = global.getSymbolIndex(false);
+                AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
                 final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,54 +27,65 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.UnresolvedFunction;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public final class FunctionDeclaration extends FunctionSymbol implements Constant {
+public final class LLVMFunction extends LLVMSymbol {
 
-    public FunctionDeclaration(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr, int index) {
-        super(type, name, linkage, paramAttr, index);
+    private final FunctionType type;
+    private final Function function;
+
+    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
+        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex);
     }
 
-    public FunctionDeclaration(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr, int index) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr, index);
+    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
+        super(name, library, bitcodeID, symbolIndex);
+        this.type = type;
+        this.function = function;
     }
 
-    @Override
-    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    public FunctionType getType() {
+        return type;
     }
 
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        return String.format("%s %s ;", getType(), getName());
+    public Function getFunction() {
+        return function;
     }
 
     @Override
-    public boolean isExported() {
+    public boolean isDefined() {
+        return !(getFunction() instanceof UnresolvedFunction);
+    }
+
+    @Override
+    public boolean isFunction() {
         return true;
     }
 
     @Override
-    public boolean isOverridable() {
-        return true;
+    public boolean isGlobalVariable() {
+        return false;
     }
 
     @Override
-    public boolean isExternal() {
-        return true;
+    public boolean isAlias() {
+        return false;
     }
+
+    @Override
+    public LLVMFunction asFunction() {
+        return this;
+    }
+
+    @Override
+    public LLVMGlobal asGlobalVariable() {
+        throw new IllegalStateException("Function " + getName() + " is not a global variable.");
+    }
+
 }

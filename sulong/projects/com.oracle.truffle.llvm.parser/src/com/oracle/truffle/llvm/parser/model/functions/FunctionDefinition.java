@@ -64,13 +64,13 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
 
-    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
-        super(type, name, linkage, paramAttr);
+    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
+        super(type, name, linkage, paramAttr, index);
         this.visibility = visibility;
     }
 
-    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr);
+    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr, index);
     }
 
     @Override

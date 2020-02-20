@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,20 +30,23 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
+public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
-    protected final LLVMGlobal descriptor;
+    protected final LLVMSymbol descriptor;
 
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
+    public LLVMAccessSymbolNode(LLVMSymbol descriptor) {
         this.descriptor = descriptor;
     }
 
@@ -52,19 +55,42 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
         return getShortString("descriptor");
     }
 
-    public LLVMGlobal getDescriptor() {
+    public LLVMSymbol getDescriptor() {
         return descriptor;
     }
 
-    public abstract boolean execute();
+    public abstract LLVMPointer execute();
 
     @SuppressWarnings("unused")
-    @Specialization
-    Object doAccess(
+    @Specialization(guards = {"descriptor.isAlias()"})
+    LLVMPointer doAliasAccess(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
-        int index = descriptor.getIndex();
-        return globals[index].get();
+        LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
+        do {
+            target = ((LLVMAlias) target).getTarget();
+        } while (target.isAlias());
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
+        int index = target.getSymbolIndex(false);
+        return symbols[index].get();
+    }
+
+    @Specialization
+    LLVMPointer doFallback(
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        if (descriptor.hasValidIndexAndID()) {
+            int bitcodeID = descriptor.getBitcodeID(false);
+            if (context.symbolTableExists(bitcodeID)) {
+                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
+                int index = descriptor.getSymbolIndex(false);
+                AssumedValue<LLVMPointer> symbol = symbols[index];
+                if (symbol != null) {
+                    return symbol.get();
+                }
+            }
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", descriptor.getKind(), descriptor.getName()));
     }
 }

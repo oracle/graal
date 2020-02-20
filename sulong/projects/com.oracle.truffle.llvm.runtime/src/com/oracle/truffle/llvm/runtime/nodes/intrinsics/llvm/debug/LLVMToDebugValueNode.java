@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -221,8 +221,8 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
         LLVMContext context = value.getContext();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
-        int index = global.getIndex();
+        AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(global.getBitcodeID(false));
+        int index = global.getSymbolIndex(false);
         Object target = globals[index].get();
 
         if (LLVMManagedPointer.isInstance(target)) {
