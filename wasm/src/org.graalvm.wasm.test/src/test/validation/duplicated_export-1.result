@@ -1,0 +1,1 @@
+parserFailure All export names must be different, but '_main' is exported twice.
