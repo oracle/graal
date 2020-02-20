@@ -24,33 +24,29 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.Field;
+
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-
-import java.lang.reflect.Field;
 
 public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
     protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-
+    static final Object[] noArguments = {};
     protected SplitCountingListener listener;
 
     protected static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
@@ -100,30 +96,6 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         }
     }
 
-    @Before
-    public void addListener() {
-        setupContext("engine.Compilation", "false",
-                        "engine.SplittingGrowthLimit", "2.0",
-                        "engine.SplittingMaxNumberOfSplitNodes", "1000");
-        listener = new SplitCountingListener();
-        runtime.addListener(listener);
-    }
-
-    @After
-    public void removeListener() {
-        runtime.removeListener(listener);
-    }
-
-    static class SplitCountingListener implements GraalTruffleRuntimeListener {
-
-        int splitCount = 0;
-
-        @Override
-        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-            splitCount++;
-        }
-    }
-
     protected static Object reflectivelyGetField(Object o, String fieldName) throws NoSuchFieldException, IllegalAccessException {
         Field fallbackEngineDataField = null;
         Class<?> cls = o.getClass();
@@ -160,15 +132,35 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         fallbackEngineDataField.set(o, value);
     }
 
-    static final Object[] noArguments = {};
-
     protected static void createDummyTargetsToBoostGrowingSplitLimit() {
         for (int i = 0; i < 10; i++) {
             runtime.createCallTarget(new DummyRootNode());
         }
     }
 
-    protected static int DUMMYROOTNODECOUNT = NodeUtil.countNodes(new DummyRootNode());
+    @Before
+    public void addListener() {
+        setupContext("engine.Compilation", "false",
+                        "engine.SplittingGrowthLimit", "2.0",
+                        "engine.SplittingMaxNumberOfSplitNodes", "1000");
+        listener = new SplitCountingListener();
+        runtime.addListener(listener);
+    }
+
+    @After
+    public void removeListener() {
+        runtime.removeListener(listener);
+    }
+
+    static class SplitCountingListener implements GraalTruffleRuntimeListener {
+
+        int splitCount = 0;
+
+        @Override
+        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
+            splitCount++;
+        }
+    }
 
     static class DummyRootNode extends RootNode {
 
@@ -179,13 +171,13 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
             }
         };
 
+        protected DummyRootNode() {
+            super(null);
+        }
+
         @Override
         public boolean isCloningAllowed() {
             return true;
-        }
-
-        protected DummyRootNode() {
-            super(null);
         }
 
         @Override
