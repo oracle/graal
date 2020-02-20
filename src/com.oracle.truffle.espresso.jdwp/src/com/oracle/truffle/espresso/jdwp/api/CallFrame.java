@@ -47,7 +47,7 @@ public final class CallFrame {
     private final TruffleInstrument.Env env;
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Frame frame, RootNode rootNode,
-                     TruffleInstrument.Env env) {
+                    TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
