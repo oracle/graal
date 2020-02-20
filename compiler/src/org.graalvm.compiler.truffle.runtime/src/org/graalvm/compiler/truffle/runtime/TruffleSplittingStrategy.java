@@ -80,14 +80,29 @@ final class TruffleSplittingStrategy {
         if (!callTarget.isNeedsSplit()) {
             return false;
         }
-        if (!canSplit(engine, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH) ||
-                        engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
+        if (!canSplit(engine, call)) {
+            maybeTraceFail(engine, call,  "Split not possible.");
+            return false;
+        }
+        if (isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
+            maybeTraceFail(engine, call,  "Recursive split.");
+            return false;
+        }
+        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
+            maybeTraceFail(engine, call,  "Not enough budget. " + engine.splitCount + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splitLimit);
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > engine.splittingMaxCalleeSize) {
+            maybeTraceFail(engine, call,  "Target too big.");
             return false;
         }
         return true;
+    }
+
+    private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, String message) {
+        if (engine.traceFailedSplits) {
+           GraalTruffleRuntime.getRuntime().logEvent(0, "Needs split failed to split: " + message, call.toString(), new HashMap<>());
+        }
     }
 
     static void forceSplitting(OptimizedDirectCallNode call) {

@@ -23,10 +23,8 @@ import com.oracle.truffle.api.object.ObjectType;
 
 public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
-    public static final ObjectType SINGLETON = new SplittingObjectType();
-
     private static DynamicObject newInstance() {
-        return Layout.createLayout().createShape(SINGLETON).newInstance();
+        return Layout.createLayout().createShape(new SplittingObjectType()).newInstance();
     }
 
     @Before
