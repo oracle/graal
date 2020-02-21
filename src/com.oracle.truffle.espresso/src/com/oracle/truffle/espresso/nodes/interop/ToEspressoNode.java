@@ -60,140 +60,50 @@ abstract class ToEspressoNode extends Node {
         return toEspresso;
     }
 
-    static boolean isBoolean(Symbol<Type> type) {
-        return Type._boolean.equals(type);
-    }
-
-    static boolean isByte(Symbol<Type> type) {
-        return Type._byte.equals(type);
-    }
-
-    static boolean isChar(Symbol<Type> type) {
-        return Type._char.equals(type);
-    }
-
-    static boolean isShort(Symbol<Type> type) {
-        return Type._short.equals(type);
-    }
-
-    static boolean isInt(Symbol<Type> type) {
-        return Type._int.equals(type);
-    }
-
-    static boolean isFloat(Symbol<Type> type) {
-        return Type._float.equals(type);
-    }
-
-    static boolean isLong(Symbol<Type> type) {
-        return Type._long.equals(type);
-    }
-
-    static boolean isDouble(Symbol<Type> type) {
-        return Type._double.equals(type);
-    }
-
-    @Specialization(guards = "isByte(primitiveKlass.getType())", limit = "LIMIT")
-    byte doByte(Object value,
+    @Specialization(guards = "cachedKlass == primitiveKlass", limit = "8" /* void is impossible */)
+    Object doPrimitive(Object value,
                     PrimitiveKlass primitiveKlass,
                     @CachedLibrary("value") InteropLibrary interop,
+                    @Cached("primitiveKlass") PrimitiveKlass cachedKlass,
                     @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInByte(value)) {
-            return interop.asByte(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isShort(primitiveKlass.getType())", limit = "LIMIT")
-    short doShort(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInShort(value)) {
-            return interop.asShort(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isInt(primitiveKlass.getType())", limit = "LIMIT")
-    int doInt(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInInt(value)) {
-            return interop.asInt(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isFloat(primitiveKlass.getType())", limit = "LIMIT")
-    float doFloat(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInFloat(value)) {
-            return interop.asFloat(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isDouble(primitiveKlass.getType())", limit = "LIMIT")
-    double doDouble(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInDouble(value)) {
-            return interop.asDouble(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isLong(primitiveKlass.getType())", limit = "LIMIT")
-    long doLong(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isNumber(value) && interop.fitsInLong(value)) {
-            return interop.asLong(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isBoolean(primitiveKlass.getType())", limit = "LIMIT")
-    boolean doBoolean(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isBoolean(value)) {
-            return interop.asBoolean(value);
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
-    }
-
-    @Specialization(guards = "isChar(primitiveKlass.getType())", limit = "LIMIT")
-    char doChar(Object value,
-                    PrimitiveKlass primitiveKlass,
-                    @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException, UnsupportedTypeException {
-        assert primitiveKlass != null;
-        if (interop.isString(value)) {
-            String str = interop.asString(value);
-            if (str.length() == 1) {
-                return str.charAt(0);
+        Symbol<Type> type = cachedKlass.getType();
+        if (Type._int.equals(type)) {
+            if (interop.fitsInInt(value)) {
+                return interop.asInt(value);
+            }
+        } else if (Type._float.equals(type)) {
+            if (interop.fitsInFloat(value)) {
+                return interop.asFloat(value);
+            }
+        } else if (Type._double.equals(type)) {
+            if (interop.fitsInDouble(value)) {
+                return interop.asDouble(value);
+            }
+        } else if (Type._long.equals(type)) {
+            if (interop.fitsInLong(value)) {
+                return interop.asLong(value);
+            }
+        } else if (Type._boolean.equals(type)) {
+            if (interop.isBoolean(value)) {
+                return interop.asBoolean(value);
+            }
+        } else if (Type._byte.equals(type)) {
+            if (interop.fitsInByte(value)) {
+                return interop.asByte(value);
+            }
+        } else if (Type._short.equals(type)) {
+            if (interop.fitsInShort(value)) {
+                return interop.asShort(value);
+            }
+        } else if (Type._char.equals(type)) {
+            if (interop.isString(value)) {
+                String str = interop.asString(value);
+                if (str.length() == 1) {
+                    return str.charAt(0);
+                }
             }
         }
+        exceptionProfile.enter();
         throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
     }
 
