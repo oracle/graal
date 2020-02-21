@@ -1243,10 +1243,10 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if the receiver originates from a language, else
-     * <code>false</code>. Primitive values or other shared interop value representations that are
-     * not associated with a language may return <code>false</code>. Values that originate from a
-     * language should return <code>true</code>. Returns <code>false</code> by default.
+     * Returns <code>true</code> if the receiver originates from a language, else <code>false</code>
+     * . Primitive values or other shared interop value representations that are not associated with
+     * a language may return <code>false</code>. Values that originate from a language should return
+     * <code>true</code>. Returns <code>false</code> by default.
      * <p>
      * The associated language allows tools to identify the original language of a value. If an
      * instrument requests a

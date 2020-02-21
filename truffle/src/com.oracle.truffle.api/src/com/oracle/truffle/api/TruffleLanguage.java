@@ -1218,8 +1218,8 @@ public abstract class TruffleLanguage<C> {
      * the current language as their associated language. With the default view wrapper all interop
      * library messages will be forwarded to the delegate value, except the messages for
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobjects} and
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
-     * strings}.
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display strings}
+     * .
      * <p>
      * This following example shows a simplified language view. For a full implementation including
      * an example of metaobjects can be found in the Truffle examples language "SimpleLanguage".
