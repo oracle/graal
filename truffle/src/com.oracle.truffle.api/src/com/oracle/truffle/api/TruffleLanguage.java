@@ -1197,9 +1197,9 @@ public abstract class TruffleLanguage<C> {
      * <li>Return a language specific
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject} for
      * primitive or foreign values.
-     * <li>Add members to the object that would be implicitly be available for all objects. For
-     * example, any JavaScript object is expected to have a prototype member. Foreign objects, even
-     * if do not have such a member, are interpreted as if they have.
+     * <li>Add members to the object that would implicitly be available for objects. For example,
+     * any JavaScript object is expected to have an implicit __proto__ member. Foreign objects, even
+     * if they do not have such a member, are interpreted as if they have.
      * </ul>
      * <p>
      * The default implementation returns <code>null</code>. If <code>null</code> is returned then

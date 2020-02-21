@@ -172,9 +172,9 @@ public final class Value {
     /**
      * Returns <code>true</code> if the value represents a metaobject. Metaobjects may be values
      * that naturally occur in a language or they may be returned by {@link #getMetaObject()}. A
-     * metaobject represents a description of the object, reveals its kind and its features. Some
-     * information that a metaobject might define includes the base object's type, interface, class,
-     * methods, attributes, etc. Returns <code>false</code> by default.
+     * metaobject represents a description of the object, reveals its kind and its features. Returns
+     * <code>false</code> by default. Metaobjects are often also {@link #canInstantiate()
+     * instantiable}, but not necessarily.
      * <p>
      * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
      * In JavaScript any function instance is a metaobject. For example, the metaobject of a
@@ -481,8 +481,10 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if the value can be instantiated. This indicates that the
-     * {@link #newInstance(Object...)} can be used with this value.
+     * {@link #newInstance(Object...)} can be used with this value. If a value is instantiable it is
+     * often also a {@link #isMetaObject()}, but this is not a requirement.
      *
+     * @see #isMetaObject()
      * @since 19.0
      */
     public boolean canInstantiate() {

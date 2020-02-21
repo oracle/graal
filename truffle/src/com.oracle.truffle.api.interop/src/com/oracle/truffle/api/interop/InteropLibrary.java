@@ -244,12 +244,13 @@ public abstract class InteropLibrary extends Library {
     // Instantiable Messages
     /**
      * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
-     * <code>false</code>. Contructors or metaobjects are typical examples of instantiable values.
-     * Invoking this message does not cause any observable side-effects. Note that receiver values
-     * which are {@link #isExecutable(Object) executable} might also be
-     * {@link #isInstantiable(Object) instantiable}.
+     * <code>false</code>. Contructors or {@link #isMetaObject(Object) metaobjects} are typical
+     * examples of instantiable values. Invoking this message does not cause any observable
+     * side-effects. Note that receiver values which are {@link #isExecutable(Object) executable}
+     * might also be {@link #isInstantiable(Object) instantiable}.
      *
      * @see #instantiate(Object, Object...)
+     * @see #isMetaObject(Object)
      * @since 19.0
      */
     @Abstract(ifExported = "instantiate")
@@ -1410,9 +1411,8 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
      * values that naturally occur in a language or they may be returned by
      * {@link #getMetaObject(Object)}. A metaobject represents a description of the object, reveals
-     * it's kind and it's features. Some information thametaobjectject might define includes the
-     * base object's type, interface, class, methods, attributes, etc. Returns <code>false</code> by
-     * default.
+     * it's kind and it's features. If a receiver is a metaobject it is often also
+     * {@link #isInstantiable(Object) instantiable}, but this is not a requirement.
      * <p>
      * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
      * In JavaScript any function instance is a metaobject. For example, the metaobject of a

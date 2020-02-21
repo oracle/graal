@@ -190,10 +190,10 @@ public abstract class DebugValue {
 
     /**
      * Get the scope where this value is declared in. It returns a non-null value for local
-     * variables declared on a stack. It's <code>null<code> for object properties and other heap
+     * variables declared on a stack. It's <code>null</code> for object properties and other heap
      * values.
      *
-     * &#64;return the scope, or <code>null</code> when this value does not belong into any scope.
+     * @return the scope, or <code>null</code> when this value does not belong into any scope.
      *
      * @since 0.26
      */
@@ -369,7 +369,7 @@ public abstract class DebugValue {
         if (language == null) {
             return value;
         } else {
-            return getDebugger().getEnv().getLanguageView(resolveLanguage(), value);
+            return getDebugger().getEnv().getLanguageView(language, value);
         }
     }
 
