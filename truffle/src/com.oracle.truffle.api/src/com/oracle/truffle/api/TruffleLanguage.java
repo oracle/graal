@@ -1182,35 +1182,45 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Wraps the value to provide language specific information for primitive and foreign values.
-     * This method is only invoked for values that are not associated with the current
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. On a high
-     * level, this method is supposed to wrap the value and add augmentation to look like a value of
-     * the current language. The result value of an implementation of this method may do the
-     * following:
+     * Wraps the value to provide language-specific information for primitive and foreign values.
+     * Foreign values should be enhanced to look like the most generic object type of the language.
+     * The wrapper needs to introduce any "virtual" methods and properties that are commonly used in
+     * language constructs and in algorithms that are written to work on this generic object type.
+     * The wrapper may add or remove existing interop traits, but it is not allowed to change the
+     * {@link com.oracle.truffle.api.interop.InteropLibrary interop type}. For example, it is not
+     * allowed to change the type from number to string. If the behavior of an existing trait is
+     * modified then all writes on the mapper need to be forwarded to the underlying object, apart
+     * from the virtual members. Writes to the virtual members should be persisted in the wrapper if
+     * this is the behavior of the object type that is being mapped to.
+     * <p>
+     * Every language view wrapper must return the current language as their associated
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. An
+     * {@link AssertionError} is thrown when a language view is requested if this contract is
+     * violated.
+     * <p>
+     * Example modifications language view wrappers may perform:
      * <ul>
-     * <li>Return the current language as their associated
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
      * <li>Provide a language specific
      * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display string}
      * for primitive and foreign values.
      * <li>Return a language specific
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject} for
      * primitive or foreign values.
-     * <li>Add members to the object that would implicitly be available for objects. For example,
-     * any JavaScript object is expected to have an implicit __proto__ member. Foreign objects, even
-     * if they do not have such a member, are interpreted as if they have.
+     * <li>Add virtual members to the object for the view. For example, any JavaScript object is
+     * expected to have an implicit __proto__ member. Foreign objects, even if they do not have such
+     * a member, are interpreted as if they have.
+     * <li>There are languages where all scalar values are also vectors. In such a case the array
+     * element trait may be added using the language wrapper to such values.
      * </ul>
      * <p>
      * The default implementation returns <code>null</code>. If <code>null</code> is returned then
      * the default language view will be used. The default language view wraps the value and returns
-     * the current language as their associated language. In the default view all interop library
-     * messages will be forwarded to the delegate value, except the messages for
+     * the current language as their associated language. With the default view wrapper all interop
+     * library messages will be forwarded to the delegate value, except the messages for
      * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobjects} and
      * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
      * strings}.
      * <p>
-     *
      * This following example shows a simplified language view. For a full implementation including
      * an example of metaobjects can be found in the Truffle examples language "SimpleLanguage".
      *
@@ -1281,7 +1291,6 @@ public abstract class TruffleLanguage<C> {
      *         }
      *     }
      * }
-     *
      * </pre>
      *
      * @param context the current context.
