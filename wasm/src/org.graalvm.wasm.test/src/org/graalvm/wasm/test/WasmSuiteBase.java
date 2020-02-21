@@ -304,8 +304,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
-        if (data.expectedErrorMessage() == null)
+        if (data.expectedErrorMessage() == null) {
             throw e;
+        }
         Assert.assertEquals("Unexpected error message.", data.expectedErrorMessage(), e.getMessage());
         Assert.assertEquals("Unexpected error phase (should not have been thrown during the running phase).", data.expectedErrorTime(), phase);
     }
