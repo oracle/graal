@@ -78,7 +78,7 @@ suite = {
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
-            "checkPackagePrefix": False, # java.lang.ref.PublicFinalReference
+            "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -168,7 +168,7 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
             ],
-            "overlayTarget" : "com.oracle.truffle.espresso.test",
+            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
         },
 
