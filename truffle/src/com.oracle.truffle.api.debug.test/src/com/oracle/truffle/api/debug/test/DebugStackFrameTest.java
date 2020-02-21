@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.junit.Test;
 
@@ -418,13 +419,13 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
-                assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                assertNotNull(frame.getRawFrame(ProxyLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
                 for (int d = depth; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
-                    assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                    assertNotNull(frame.getRawFrame(ProxyLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 }
                 assertFalse(stackFrames.hasNext());
             });
@@ -443,13 +444,13 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
-                assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                assertNull(frame.getRawFrame(InstrumentationTestLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
                 for (int d = depth; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
-                    assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                    assertNull(frame.getRawFrame(InstrumentationTestLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 }
                 assertFalse(stackFrames.hasNext());
             });
