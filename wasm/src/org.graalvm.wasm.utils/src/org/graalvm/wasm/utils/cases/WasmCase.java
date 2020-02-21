@@ -120,7 +120,7 @@ public abstract class WasmCase {
         return new WasmCaseData((Value result, String output) -> Assert.assertDoubleEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
     }
 
-    public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorPhase phase) {
+    public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorType phase) {
         return new WasmCaseData(expectedErrorMessage.trim(), phase);
     }
 
@@ -193,14 +193,11 @@ public abstract class WasmCase {
             case "double":
                 caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
                 break;
-            case "parserFailure":
-                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorPhase.Parsing);
-                break;
-            case "linkerFailure":
-                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorPhase.Linking);
+            case "validationFailure":
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Validation);
                 break;
             case "exception":
-                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorPhase.Running);
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Runtime);
                 break;
             default:
                 Assert.fail(String.format("Unknown type in result specification: %s", resultType));

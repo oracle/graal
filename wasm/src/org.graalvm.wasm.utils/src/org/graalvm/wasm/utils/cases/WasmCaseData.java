@@ -47,25 +47,32 @@ import java.util.function.BiConsumer;
 public class WasmCaseData {
     BiConsumer<Value, String> resultValidator;
     String expectedErrorMessage;
+    ErrorType expectedErrorType;
 
-    ErrorPhase expectedErrorPhase;
-
-    public enum ErrorPhase {
-        Parsing,
-        Linking,
-        Running,
+    public enum ErrorType {
+        /**
+         * A validation error type implies that subsequent test iterations do not need to be
+         * executed if an error is thrown. It might happen either during compilation time or running
+         * time.
+         */
+        Validation,
+        /**
+         * A runtime error type will check that the error is throw on every iteration of the test.
+         * It might only happen during running time.
+         */
+        Runtime,
     }
 
     WasmCaseData(BiConsumer<Value, String> resultValidator) {
         this.resultValidator = resultValidator;
         this.expectedErrorMessage = null;
-        this.expectedErrorPhase = null;
+        this.expectedErrorType = null;
     }
 
-    WasmCaseData(String expectedErrorMessage, ErrorPhase expectedErrorPhase) {
+    WasmCaseData(String expectedErrorMessage, ErrorType expectedErrorType) {
         this.resultValidator = null;
         this.expectedErrorMessage = expectedErrorMessage;
-        this.expectedErrorPhase = expectedErrorPhase;
+        this.expectedErrorType = expectedErrorType;
     }
 
     public BiConsumer<Value, String> resultValidator() {
@@ -76,7 +83,7 @@ public class WasmCaseData {
         return expectedErrorMessage;
     }
 
-    public ErrorPhase expectedErrorTime() {
-        return expectedErrorPhase;
+    public ErrorType expectedErrorTime() {
+        return expectedErrorType;
     }
 }

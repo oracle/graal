@@ -138,7 +138,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     context.eval(source);
                 }
             } catch (PolyglotException e) {
-                validateThrown(testCase.data(), WasmCaseData.ErrorPhase.Parsing, e);
+                validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
             }
 
@@ -188,7 +188,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 } catch (PolyglotException e) {
                     // We cannot label the tests with polyglot errors, because they might
                     // semantically be return values of the test.
-                    validateThrown(testCase.data(), WasmCaseData.ErrorPhase.Running, e);
+                    if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
+                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
+                        return;
+                    }
+                    validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
                 } catch (Throwable t) {
                     final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
                     e.setStackTrace(new StackTraceElement[0]);
@@ -299,7 +303,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
     }
 
-    private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorPhase phase, PolyglotException e) throws PolyglotException {
+    private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
         if (data.expectedErrorMessage() == null)
             throw e;
         Assert.assertEquals("Unexpected error message.", data.expectedErrorMessage(), e.getMessage());

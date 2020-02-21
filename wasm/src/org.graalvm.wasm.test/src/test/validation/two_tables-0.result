@@ -1,1 +1,1 @@
-parserFailure org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module.: should be less or equal: 2 > 1
+validationFailure org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module.: should be less or equal: 2 > 1
