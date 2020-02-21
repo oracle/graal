@@ -157,6 +157,10 @@ mx_gate.add_gate_runner(_suite, gate_body)
 
 
 def registered_graalvm_components(stage1=False):
+    """
+    :type stage1: bool
+    :rtype: list[mx_sdk_vm.GraalVmComponent]
+    """
     if stage1 not in _registered_graalvm_components:
         components_include_list = _components_include_list()
         if components_include_list is None:
@@ -2043,7 +2047,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type graalvm: GraalVmLayoutDistribution
         """
         other_comp_names = []
-        if _get_svm_support().is_supported() and _get_launcher_configs(component):
+        if _get_svm_support().is_supported() and (_get_launcher_configs(component) or _get_library_configs(component) or any(_get_launcher_configs(get_component(c)) or _get_library_configs(get_component(c)) for c in component.standalone_dependencies)):
             if 'svm' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
@@ -2051,7 +2055,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         self.main_comp_dir_name = component.dir_name
 
-        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
+        name = '_'.join([component.installable_id, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
@@ -2175,12 +2179,18 @@ _native_image_configs = {}
 
 
 def _get_launcher_configs(component):
-    """ :rtype : list[mx_sdk.LauncherConfig]"""
+    """
+    :type component: mx_sdk_vm.GraalVmComponent
+    :rtype : list[mx_sdk_vm.LauncherConfig]
+    """
     return _get_native_image_configs(component, 'launcher_configs')
 
 
 def _get_library_configs(component):
-    """ :rtype : list[mx_sdk.LibraryConfig]"""
+    """
+    :type component: mx_sdk_vm.GraalVmComponent
+    :rtype : list[mx_sdk_vm.LibraryConfig]
+    """
     return _get_native_image_configs(component, 'library_configs')
 
 
@@ -2261,7 +2271,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_project(GraalVmNativeProperties(component, library_config))
                 if not _skip_libraries(library_config.destination):
                     needs_stage1 = True
-        # The JS components have issues ATM since they share the same directory
         if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
 
@@ -2275,9 +2284,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Create standalones
     for components in installables.values():
         main_component = _get_main_component(components)
-        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(main_component):
+        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) \
+                and (len(main_component.launcher_configs) == 0 or has_svm_launcher(main_component)) \
+                and (len(main_component.library_configs) == 0 or not _has_skipped_libraries(main_component)):
             dependencies = main_component.standalone_dependencies.keys()
-            missing_dependencies = [dep for dep in dependencies if not has_component(dep)]
+            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep))]
             if missing_dependencies:
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
@@ -2691,7 +2702,7 @@ def _force_bash_launchers(launcher):
 
 def _skip_libraries(library):
     """
-    :type library: str | mx_sdk.AbstractNativeImageConfig
+    :type library: str | mx_sdk.LibraryConfig
     """
     if isinstance(library, mx_sdk.AbstractNativeImageConfig):
         library = library.destination
@@ -2725,6 +2736,14 @@ def _has_forced_launchers(component):
     """:type component: mx_sdk.GraalVmComponent"""
     for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config):
+            return True
+    return False
+
+
+def _has_skipped_libraries(component):
+    """:type component: mx_sdk.GraalVmComponent"""
+    for library_config in _get_library_configs(component):
+        if _skip_libraries(library_config):
             return True
     return False
 
