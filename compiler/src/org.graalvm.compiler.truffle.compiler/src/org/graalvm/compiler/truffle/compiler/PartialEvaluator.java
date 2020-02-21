@@ -953,7 +953,7 @@ public abstract class PartialEvaluator {
                 throw new AssertionError("Performance warning detected and is fatal.");
             }
             if (!Collections.disjoint(getWarnings(), getPolyglotOptionValue(options, TreatPerformanceWarningsAsErrors))) {
-                throw new AssertionError("Performance warning detected and is treated as an compilation error.");
+                throw new AssertionError("Performance warning detected and is treated as a compilation error.");
             }
         }
 

@@ -67,6 +67,16 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Test
+    public void testDefault() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertFalse(hasBailout(log));
+            Assert.assertFalse(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier);
+    }
+
+    @Test
     public void testPermanentBailoutSilent() throws Exception {
         Consumer<Path> verifier = (log) -> {
             Assert.assertFalse(hasBailout(log));
@@ -74,7 +84,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier,
-                        "engine.CompilationExceptionsArePrinted", "false",
                         "engine.CompilationFailureAction", "Silent");
     }
 
@@ -181,13 +190,26 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     @Test
     public void testNonPermanentBailoutPerfWarningsAsErrorsDefaultAction() throws Exception {
         Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
+            Assert.assertFalse(hasBailout(log));
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
         executeForked(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
                         "engine.TreatPerformanceWarningsAsErrors", "bailout");
+    }
+
+    @Test
+    public void testNonPermanentBailoutPerfWarningsAsErrorsPrintAction() throws Exception {
+        Consumer<Path> verifier = (log) -> {
+            Assert.assertTrue(hasBailout(log));
+            Assert.assertFalse(hasExit(log));
+            Assert.assertFalse(hasOptFailedException(log));
+        };
+        executeForked(verifier, ExceptionActionTest::createConstantNode,
+                        new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.callRoot:Bailout"},
+                        "engine.TreatPerformanceWarningsAsErrors", "bailout",
+                        "engine.CompilationFailureAction", "Print");
     }
 
     @Test

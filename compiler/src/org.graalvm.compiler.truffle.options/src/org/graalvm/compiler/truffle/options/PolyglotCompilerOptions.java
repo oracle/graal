@@ -101,7 +101,8 @@ public final class PolyglotCompilerOptions {
 
     /**
      * Actions to take upon an exception being raised during Truffle compilation. The actions are
-     * with respect to what the user sees on the console.
+     * with respect to what the user sees on the console. The enum constants and order are the same
+     * as defined in {@code org.graalvm.compiler.core.CompilationWrapper.ExceptionAction}.
      *
      * The actions are in ascending order of verbosity.
      */
@@ -245,7 +246,7 @@ public final class PolyglotCompilerOptions {
     // Failed compilation behavior
 
     @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'")
-    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
+    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(false);
 
     @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Throw'")
     public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
