@@ -165,7 +165,7 @@ def registered_graalvm_components(stage1=False):
         excluded = _excluded_components()
         components_to_build = []
 
-        libpoly_build_args = ['-R:-TruffleBackgroundCompilation'] if 'LIBPOLYGLOT_DISABLE_BACKGROUND_COMPILATION'in os.environ else []
+        libpoly_build_args = []
         libpoly_jar_dependencies = []
         libpoly_build_dependencies = []
         libpoly_has_entrypoints = []
