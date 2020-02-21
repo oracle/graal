@@ -2074,23 +2074,23 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             comp = get_component(dependency_name, fatalIfMissing=True)
             home_paths[comp.installable_id] = base_dir + dependency_path
 
-        def is_jar_distribution(comp, source):
-            return source['source_type'] == 'dependency' and source['dependency'] in comp.jar_distributions + comp.boot_jars
-
         def add_files_from_component(comp, path_prefix, excluded_paths):
-            component_base_dir = graalvm.path_substitutions.substitute(_get_component_type_base(comp))
-            support_dir_pattern = component_base_dir + comp.dir_name + '/'
             launcher_configs = _get_launcher_configs(comp)
+            library_configs = _get_library_configs(comp)
 
-            for path, source in graalvm._walk_layout():
-                if support_dir_pattern == support_dir_pattern and source['source_type'] == 'dependency' and source['path'] == 'polyglot.config':
-                    continue
-                if path.startswith(support_dir_pattern):
-                    path_from_home = path.split(support_dir_pattern, 1)[1]
-                    # take only the distributions that are not JAR distributions
-                    if not is_jar_distribution(comp, source) and path_from_home not in excluded_paths:
-                        new_path = path_prefix + path_from_home
-                        layout.setdefault(new_path, []).append(source)
+            for support_dist in comp.support_distributions:
+                layout.setdefault(path_prefix, []).append({
+                    'source_type': 'extracted-dependency',
+                    'dependency': support_dist,
+                    'exclude': ['native-image.properties'],
+                    'path': None,
+                })
+
+            for launcher_config in launcher_configs:
+                layout.setdefault(path_prefix + launcher_config.destination, []).append('dependency:{}'.format(GraalVmLauncher.launcher_project_name(launcher_config, stage1=False)))
+
+            for library_config in library_configs:
+                layout.setdefault(path_prefix + library_config.destination, []).append('dependency:{}'.format(GraalVmLibrary.project_name(library_config)))
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination
