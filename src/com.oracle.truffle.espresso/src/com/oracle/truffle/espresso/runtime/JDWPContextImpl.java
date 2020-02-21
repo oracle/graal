@@ -31,7 +31,6 @@ import java.util.List;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -592,7 +591,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait;
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null);
     }
 
     @Override
@@ -613,7 +612,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (rootNode instanceof EspressoRootNode) {
                 EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
                 if (espressoRootNode.usesMonitors()) {
-                    StaticObject[] monitors = espressoRootNode.getMonitorsOnFrame(callFrame.getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                    StaticObject[] monitors = espressoRootNode.getMonitorsOnFrame(callFrame.getFrame());
                     for (StaticObject monitor : monitors) {
                         if (monitor != null) {
                             result.add(new MonitorStackInfo(monitor, stackDepth));

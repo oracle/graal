@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -41,19 +40,17 @@ public final class CallFrame {
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
-    private final FrameInstance frameInstance;
     private final Frame frame;
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Frame frame, RootNode rootNode,
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Frame frame, RootNode rootNode,
                     TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
         this.codeIndex = codeIndex;
-        this.frameInstance = frameInstance;
         this.frame = frame;
         this.rootNode = rootNode;
         this.env = env;
@@ -79,8 +76,8 @@ public final class CallFrame {
         return threadId;
     }
 
-    public Frame getFrame(FrameInstance.FrameAccess access) {
-        return frame != null ? frame : frameInstance.getFrame(access);
+    public Frame getFrame() {
+        return frame;
     }
 
     public RootNode getRootNode() {
@@ -88,12 +85,12 @@ public final class CallFrame {
     }
 
     public Object getThisValue() {
-        Scope scope = getScope(FrameInstance.FrameAccess.READ_ONLY);
+        Scope scope = getScope();
         return scope != null ? scope.getReceiver() : null;
     }
 
     public Object getVariable(String identifier) {
-        Scope scope = getScope(FrameInstance.FrameAccess.READ_ONLY);
+        Scope scope = getScope();
         if (scope == null) {
             return null;
         }
@@ -106,7 +103,7 @@ public final class CallFrame {
     }
 
     public void setVariable(Object value, String identifier) {
-        Scope scope = getScope(FrameInstance.FrameAccess.READ_WRITE);
+        Scope scope = getScope();
         if (scope == null) {
             return;
         }
@@ -117,8 +114,8 @@ public final class CallFrame {
         }
     }
 
-    private Scope getScope(FrameInstance.FrameAccess access) {
-        Iterator<Scope> it = env.findLocalScopes(rootNode, getFrame(access)).iterator();
+    private Scope getScope() {
+        Iterator<Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
         return it.hasNext() ? it.next() : null;
     }
 }

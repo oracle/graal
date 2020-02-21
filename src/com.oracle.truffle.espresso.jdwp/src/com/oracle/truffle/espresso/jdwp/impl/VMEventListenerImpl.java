@@ -749,6 +749,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object currentThread = context.asGuestThread(Thread.currentThread());
         // remove contended monitor from the thread
         currentContendedMonitor.remove(currentThread);
+        debuggerController.cancelBlockingCallFrames(currentThread);
 
         if (monitorWaitedRequests.isEmpty()) {
             return;
@@ -809,6 +810,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         SuspendedInfo info = debuggerController.getSuspendedInfo(guestThread);
         final CallFrame topFrame = info != null ? info.getStackFrames()[0] : debuggerController.captureCallFramesBeforeBlocking(guestThread)[0];
+        debuggerController.cancelBlockingCallFrames(guestThread);
 
         if (monitorContendedEnteredRequests.isEmpty()) {
             return;
