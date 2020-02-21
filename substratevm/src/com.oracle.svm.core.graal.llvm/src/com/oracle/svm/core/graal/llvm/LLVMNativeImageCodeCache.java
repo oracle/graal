@@ -521,7 +521,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status);
+                throw new GraalError("LLVM compilation failed for command " + String.join(" ", cmd)+
+                                     " on input " + getFunctionName(inputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
