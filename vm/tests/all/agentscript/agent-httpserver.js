@@ -22,7 +22,13 @@ srv.listen(function nowPerformTheTesting() {
             });
             resp.on('end', () => {
                 console.log(`client: reply for ${url} request: ${data}`);
-                if (i >= testCount / 2) {
+                let prefix = data.startsWith('OK#');
+                let cnt = Number.parseInt(data.substring(3));
+                if (!prefix || Number.isNaN(cnt)) {
+                    console.log(`client: unexpected reply: ${data}`);
+                    process.exit(2);
+                }
+                if (cnt >= testCount / 2) {
                     console.log('client: Testing OK. Exiting.');
                     process.exit(0);
                 }
