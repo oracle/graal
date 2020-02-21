@@ -48,7 +48,7 @@ public final class DynamicHubSupport {
         this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getReferenceMapEncoding() {
         return NonmovableArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
     }

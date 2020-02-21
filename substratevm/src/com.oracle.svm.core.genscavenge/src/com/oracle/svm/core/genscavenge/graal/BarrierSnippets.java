@@ -101,8 +101,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
         // The object needs a write-barrier. Is it aligned or unaligned?
-        final boolean unaligned = ObjectHeaderImpl.isHeapObjectUnaligned(objectHeader);
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, !unaligned)) {
+        final boolean aligned = ObjectHeaderImpl.isAlignedHeaderUnsafe(objectHeader);
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, aligned)) {
             // Next most likely (?): aligned objects.
             counters().postWriteBarrierAligned.inc();
             AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(fixedObject, verifyOnly);

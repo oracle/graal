@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.util;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.config.ConfigurationValues;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Provides low-level read access to a {@link NonmovableArray} array of bytes for signed and
@@ -37,9 +41,14 @@ import com.oracle.svm.core.c.NonmovableArrays;
  */
 public class NonmovableByteArrayReader {
 
-    private static Pointer pointerTo(NonmovableArray<Byte> data, long byteIndex) {
+    public static Pointer pointerTo(NonmovableArray<Byte> data, long byteIndex) {
+        if (SubstrateUtil.HOSTED) {
+            throw VMError.shouldNotReachHere("Returns a raw pointer and therefore must not be called at image build time.");
+        }
         assert byteIndex >= 0 && NumUtil.safeToInt(byteIndex) < NonmovableArrays.lengthOf(data);
-        return NonmovableArrays.addressOf(data, NumUtil.safeToInt(byteIndex));
+        Pointer result = ((Pointer) data).add(getByteArrayBaseOffset()).add(NumUtil.safeToInt(byteIndex));
+        assert result.equal(NonmovableArrays.addressOf(data, NumUtil.safeToInt(byteIndex))) : "sanity check that the optimized code above does the right thing";
+        return result;
     }
 
     public static int getS1(NonmovableArray<Byte> data, long byteIndex) {
@@ -82,4 +91,19 @@ public class NonmovableByteArrayReader {
         return getS4(data, byteIndex) & 0xFFFFFFFFL;
     }
 
+    public static long getU4(Pointer position) {
+        return getS4(position) & 0xFFFFFFFFL;
+    }
+
+    public static int getS4(Pointer position) {
+        if (SubstrateUtil.HOSTED) {
+            throw VMError.shouldNotReachHere("Uses a raw pointer and therefore must not be called at image build time.");
+        }
+        return position.readInt(0);
+    }
+
+    @Fold
+    protected static int getByteArrayBaseOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+    }
 }

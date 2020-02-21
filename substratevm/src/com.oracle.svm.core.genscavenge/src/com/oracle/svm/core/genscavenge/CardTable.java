@@ -100,7 +100,7 @@ public final class CardTable {
     }
 
     static boolean isDirtyEntryAtIndex(Pointer table, UnsignedWord index) {
-        VMOperation.guaranteeInProgress("Should only be called from the collector.");
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         return isDirtyEntryAtIndexUnchecked(table, index);
     }
 
@@ -454,24 +454,19 @@ public final class CardTable {
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to zapped header: ").hex(header).string("]").newline();
                 }
                 /* It should *not* be a forwarding pointer. */
-                final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-                if (ohi.isForwardedHeader(header)) {
+                if (ObjectHeaderImpl.isForwardedHeader(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
-                    paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to header: ").hex(header).string(": ").string(ohi.toStringFromHeader(header)).string(
-                                    "]").newline();
+                    paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to header: ").hex(header).string("]").newline();
                 }
             }
             final Object obj = p.toObject();
             trace.string("  obj: ").object(obj).string(" ").object(obj);
-            final HeapImpl heap = HeapImpl.getHeapImpl();
-            final ObjectHeaderImpl ohi = heap.getObjectHeaderImpl();
-            /* If the object is not a heap object there's nothing to do. */
-            if (ohi.isNonHeapAllocated(obj)) {
+            if (HeapImpl.getHeapImpl().isInImageHeap(obj)) {
                 /* Non-heap objects are not in the young space. */
                 trace.string("  non-heap allocated returns true]").newline();
                 return true;
             }
-            final HeapChunk.Header<?> objChunk = heap.getEnclosingHeapChunk(obj);
+            final HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
             trace.string("  objChunk: ").hex(objChunk);
             if (objChunk.isNull()) {
                 final Log failure = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
@@ -480,7 +475,7 @@ public final class CardTable {
             }
             final Space chunkSpace = objChunk.getSpace();
             trace.string("  chunkSpace: ").object(chunkSpace).string(" ").string(chunkSpace.getName());
-            if (heap.isYoungGeneration(chunkSpace)) {
+            if (chunkSpace.isYoungSpace()) {
                 found = true;
                 if (witnessForDebugging) {
                     Log witness = Log.log().string("[ReferenceToYoungObjectReferenceVisitor.visitObjectReference:").string("  witness").newline();

@@ -51,7 +51,6 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -368,37 +367,8 @@ public final class ThreadLocalAllocation {
         resumeAllocationChunk(regularTLAB.getAddress());
     }
 
-    /** Walk objects in this thread's TLABs. */
-    public static boolean walkObjects(ObjectVisitor visitor) {
-        Descriptor tlab = regularTLAB.getAddress();
-        if (!walkObjects(tlab, visitor)) {
-            return false;
-        }
-        return true;
-    }
-
-    /** Walk the Objects in the TLAB, passing each to a Visitor. */
-    private static boolean walkObjects(Descriptor tlab, ObjectVisitor visitor) {
-        // Visit the Objects in the aligned chunks.
-        AlignedHeapChunk.AlignedHeader aChunk = tlab.getAlignedChunk();
-        while (aChunk.isNonNull()) {
-            if (!AlignedHeapChunk.walkObjectsOfAlignedHeapChunk(aChunk, visitor)) {
-                return false;
-            }
-            aChunk = aChunk.getNext();
-        }
-        // Visit the Objects in the unaligned chunks.
-        UnalignedHeapChunk.UnalignedHeader uChunk = tlab.getUnalignedChunk();
-        while (uChunk.isNonNull()) {
-            if (!UnalignedHeapChunk.walkObjectsOfUnalignedHeapChunk(uChunk, visitor)) {
-                return false;
-            }
-            uChunk = uChunk.getNext();
-        }
-        return true;
-    }
-
     static void retireToSpace(Descriptor tlab, Space space) {
+        assert !space.isOldSpace() : "must not be moved to the old gen - otherwise a remembered set would have to be constructed";
         log().string("[ThreadLocalAllocator.retireToSpace: tlab ").hex(tlab).string(" space ").string(space.getName()).newline();
 
         retireAllocationChunk(tlab);
@@ -414,11 +384,6 @@ public final class ThreadLocalAllocation {
 
             log().string("  aligned chunk ").hex(alignedChunk).newline();
             space.appendAlignedHeapChunk(alignedChunk);
-
-            if (!HeapImpl.getHeapImpl().isYoungGeneration(space)) {
-                log().string("  setting up remembered set for ").hex(alignedChunk).newline();
-                AlignedHeapChunk.constructRememberedSetOfAlignedHeapChunk(alignedChunk);
-            }
 
             alignedChunk = next;
         }

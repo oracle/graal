@@ -57,6 +57,7 @@ import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -76,7 +77,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
 
 //Checkstyle: stop
 import sun.management.Util;
@@ -84,15 +84,19 @@ import sun.management.Util;
 
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
-
+    // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
     final HeapChunkProvider chunkProvider;
+    private final ObjectHeaderImpl objectHeaderImpl;
+    private final GCImpl gcImpl;
+    private final HeapPolicy heapPolicy;
 
-    // Singleton instances, created during image generation.
     private final GenScavengePlatformConfigurationProvider platformConfigurationProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
+    private HeapVerifierImpl heapVerifier;
+    private final StackVerifier stackVerifier;
 
     // Memory walkers for the image heap
     private final ReadOnlyPrimitiveMemoryWalkerAccess readOnlyPrimitiveWalker;
@@ -168,15 +172,27 @@ public class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean isInImageHeap(Object object) {
-        return objectHeaderImpl.isBootImage(object);
+    public boolean isInImageHeap(Object obj) {
+        // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
+        // to pointers. An object that is outside the image heap may be moved by a GC but it will
+        // never be moved into the image heap. So, this is fine.
+        return isInImageHeap(Word.objectToUntrackedPointer(obj));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer pointer) {
-        return imageHeapInfo.isInReadOnlyPrimitivePartition(pointer) || imageHeapInfo.isInReadOnlyReferencePartition(pointer) ||
-                        imageHeapInfo.isInWritablePrimitivePartition(pointer) || imageHeapInfo.isInWritableReferencePartition(pointer);
+        return imageHeapInfo.isInImageHeap(pointer);
+    }
+
+    public boolean isInImageHeapSlow(Object obj) {
+        return isInImageHeapSlow(Word.objectToUntrackedPointer(obj));
+    }
+
+    /** Slow version that is used for verification only. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInImageHeapSlow(Pointer p) {
+        return imageHeapInfo.isInImageHeapSlow(p);
     }
 
     @Override
@@ -211,9 +227,6 @@ public class HeapImpl extends Heap {
         return true;
     }
 
-    /** State: Who handles object headers? */
-    private final ObjectHeaderImpl objectHeaderImpl;
-
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ObjectHeader getObjectHeader() {
@@ -223,9 +236,6 @@ public class HeapImpl extends Heap {
     public ObjectHeaderImpl getObjectHeaderImpl() {
         return objectHeaderImpl;
     }
-
-    /** State: Who handles garbage collection. */
-    private final GCImpl gcImpl;
 
     @Override
     public GC getGC() {
@@ -261,104 +271,40 @@ public class HeapImpl extends Heap {
         return getYoungGeneration().getEden();
     }
 
-    public HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        if (ohi.isAlignedObject(obj)) {
-            return AlignedHeapChunk.getEnclosingAlignedHeapChunk(obj);
-        } else if (ohi.isUnalignedObject(obj)) {
-            return UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(obj);
-        } else {
-            try (Log failure = Log.log().string("[HeapImpl.getEnclosingHeapChunk:")) {
-                failure.string("  obj: ").hex(Word.objectToUntrackedPointer(obj));
-                /* This might not work: */
-                final UnsignedWord header = ObjectHeaderImpl.readHeaderFromObjectCarefully(obj);
-                failure.string("  header: ").hex(header).string("  is neither aligned nor unaligned").newline();
-                /* This really might not work: */
-                failure.string("  obj: ").object(obj).string("]").newline();
-            }
-            throw VMError.shouldNotReachHere();
-        }
-    }
-
-    public Object promoteObject(Object original) {
+    @AlwaysInline("GC performance")
+    public Object promoteObject(Object original, UnsignedWord header) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         Object result;
-        if (!getGCImpl().isCompleteCollection()) {
-            result = getYoungGeneration().promoteObject(original);
+        if (HeapPolicy.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
+            result = getYoungGeneration().promoteObject(original, header);
         } else {
-            result = getOldGeneration().promoteObject(original);
+            result = getOldGeneration().promoteObject(original, header);
         }
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;
     }
 
-    void dirtyCardIfNecessary(Object holderObject, Pointer objRef, Object object) {
-        final Log trace = Log.noopLog().string("[HeapImpl.dirtyCardIfNecessary:");
-        trace.string(" holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
-        trace.string(", objRef: ").hex(objRef);
-        trace.string(", object: ").hex(Word.objectToUntrackedPointer(object)).newline();
-
-        if (holderObject == null || GCImpl.getGCImpl().isCompleteCollection()) {
+    @AlwaysInline("GC performance")
+    void dirtyCardIfNecessary(Object holderObject, Object object) {
+        if (HeapPolicy.getMaxSurvivorSpaces() == 0 || holderObject == null || GCImpl.getGCImpl().isCompleteCollection() || !youngGeneration.contains(object)) {
             return;
         }
 
-        if (!youngGeneration.contains(object)) {
-            return;
-        }
-
-        final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
         if (ObjectHeaderImpl.hasRememberedSet(objectHeader)) {
-            if (ohi.isAlignedObject(holderObject)) {
+            if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(holderObject, false);
-                trace.string("[Dirty card] aligned holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
             } else {
-                assert ohi.isUnalignedObject(holderObject) : "sanity";
+                assert ObjectHeaderImpl.isUnalignedObject(holderObject) : "sanity";
                 UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(holderObject, false);
-                trace.string("[Dirty card] unaligned holderObject: ").hex(Word.objectToUntrackedPointer(holderObject));
             }
         }
     }
 
-    boolean hasSurvivedThisCollection(Object obj) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        if (ohi.isBootImage(obj)) {
-            /* If the object is in the native image heap, then it will survive. */
-            return true;
-        }
-        if (ohi.isHeapAllocated(obj)) {
-            /*
-             * If the object is in the heap, then check if it is in the destination part of the old
-             * generation.
-             */
-            final HeapChunk.Header<?> chunk = getEnclosingHeapChunk(obj);
-            final Space space = chunk.getSpace();
-            return !space.isFrom();
-        }
-        return false;
-    }
-
-    /** State: Who decides the heap policy? */
-    private final HeapPolicy heapPolicy;
-
     public HeapPolicy getHeapPolicy() {
         return HeapImpl.getHeapImpl().heapPolicy;
-    }
-
-    /*
-     * There could be a field in a Space that says what generation it is in, and I could fetch that
-     * field and ask if it is the space of the young generation. But this is not a good place to use
-     * that field, because this.getYoungGeneration().isYoungSpace(space) should compile to a test
-     * against a constant because the YoungGeneration and its Space are allocated during image
-     * build, so the *address* of the young generation space is a runtime constant. Compare that to
-     * asking the Space for its generation: a field fetch and then comparing that against the
-     * constant getYoungGeneration().getSpace(), which is not as good.
-     */
-
-    public boolean isYoungGeneration(Space space) {
-        return getYoungGeneration().isYoungSpace(space);
     }
 
     public YoungGeneration getYoungGeneration() {
@@ -381,9 +327,8 @@ public class HeapImpl extends Heap {
     }
 
     public boolean isPinned(Object instance) {
-        final ObjectHeaderImpl ohi = getObjectHeaderImpl();
         /* The instance is pinned if it is in the image heap. */
-        if (ohi.isBootImage(instance)) {
+        if (isInImageHeap(instance)) {
             return true;
         }
         /* Look down the list of individually pinned objects. */
@@ -540,9 +485,6 @@ public class HeapImpl extends Heap {
      * Verification.
      */
 
-    /** State: The heap verifier. */
-    private HeapVerifierImpl heapVerifier;
-
     HeapVerifier getHeapVerifier() {
         return getHeapVerifierImpl();
     }
@@ -646,14 +588,6 @@ public class HeapImpl extends Heap {
         final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
         return assertHub(hub);
     }
-
-    /** For assertions: Verify that a Space is a valid Space. */
-    public boolean isValidSpace(Space space) {
-        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
-    }
-
-    /** State: The stack verifier. */
-    private final StackVerifier stackVerifier;
 
     /*
      * Methods for java.lang.Runtime.*Memory(), quoting from that JavaDoc.

@@ -102,13 +102,12 @@ public final class GenScavengeAllocationSnippets extends SubstrateAllocationSnip
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
-        return ObjectHeaderImpl.getObjectHeaderImpl().encodeAsObjectHeader(hub, rememberedSet, unaligned);
+        return ObjectHeaderImpl.encodeAsObjectHeader(hub, rememberedSet, unaligned);
     }
 
     @Override
     protected void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        ohi.initializeHeaderOfNewObject(memory, objectHeader);
+        ObjectHeaderImpl.initializeHeaderOfNewObject(memory, objectHeader);
     }
 
     @Override
