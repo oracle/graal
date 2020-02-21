@@ -182,4 +182,11 @@ public interface GraalTruffleRuntimeListener {
         }
         properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
     }
+
+    /**
+     * Determines if a failure is permanent.
+     */
+    static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+        return !bailout || permanentBailout;
+    }
 }
