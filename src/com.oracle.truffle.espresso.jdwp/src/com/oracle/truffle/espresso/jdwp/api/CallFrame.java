@@ -22,28 +22,38 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+
+import java.util.Iterator;
 
 public final class CallFrame {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final byte typeTag;
     private final long classId;
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
-    private final FrameInstance frameInstance;
-    private final Object thisValue;
-    private final Object[] variables;
+    private final Frame frame;
+    private final RootNode rootNode;
+    private final TruffleInstrument.Env env;
 
-    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, FrameInstance frameInstance, Object thisValue, Object[] variables) {
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Frame frame, RootNode rootNode,
+                    TruffleInstrument.Env env) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
         this.codeIndex = codeIndex;
-        this.frameInstance = frameInstance;
-        this.thisValue = thisValue;
-        this.variables = variables;
+        this.frame = frame;
+        this.rootNode = rootNode;
+        this.env = env;
     }
 
     public byte getTypeTag() {
@@ -66,15 +76,46 @@ public final class CallFrame {
         return threadId;
     }
 
-    public FrameInstance getFrameInstance() {
-        return frameInstance;
+    public Frame getFrame() {
+        return frame;
+    }
+
+    public RootNode getRootNode() {
+        return rootNode;
     }
 
     public Object getThisValue() {
-        return thisValue;
+        Scope scope = getScope();
+        return scope != null ? scope.getReceiver() : null;
     }
 
-    public Object[] getVariables() {
-        return variables;
+    public Object getVariable(String identifier) {
+        Scope scope = getScope();
+        if (scope == null) {
+            return null;
+        }
+        try {
+            return INTEROP.readMember(scope.getVariables(), identifier);
+        } catch (Exception e) {
+            JDWPLogger.log("Unable to read member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+            return null;
+        }
+    }
+
+    public void setVariable(Object value, String identifier) {
+        Scope scope = getScope();
+        if (scope == null) {
+            return;
+        }
+        try {
+            INTEROP.writeMember(scope.getVariables(), identifier, value);
+        } catch (Exception e) {
+            JDWPLogger.log("Unable to write member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+        }
+    }
+
+    private Scope getScope() {
+        Iterator<Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
+        return it.hasNext() ? it.next() : null;
     }
 }

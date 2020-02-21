@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import java.nio.file.Path;
@@ -225,10 +226,11 @@ public interface JDWPContext {
     /**
      * Determines if a thread is valid. A valid thread is an active thread.
      *
-     * @param thread
+     * @param guestThread the guest thread
+     * @param checkTerminated include a check if the thread has exited
      * @return true if thread is valid, false otherwise
      */
-    boolean isValidThread(Object thread);
+    boolean isValidThread(Object guestThread, boolean checkTerminated);
 
     /**
      * Determines if the thread group is valid.
@@ -365,16 +367,6 @@ public interface JDWPContext {
     void exit(int exitCode);
 
     /**
-     * This method is called when the VM should hold JDWP events.
-     */
-    void holdEvents();
-
-    /**
-     * This method is called when the VM should release all held JDWP events.
-     */
-    void releaseEvents();
-
-    /**
      * Returns the classpath.
      *
      * @return a list representation of each classpath entry
@@ -403,17 +395,67 @@ public interface JDWPContext {
      * Determines if a caller has more same-line method invocations.
      *
      * @param callerRoot the root node of the caller frame
-     * @param frameInstance the frame instance to read the current bci from
+     * @param frame the frame to read the current bci from
      * @return true if the caller method has further method invocations on the current line
      */
-    boolean moreMethodCallsOnLine(RootNode callerRoot, FrameInstance frameInstance);
+    boolean moreMethodCallsOnLine(RootNode callerRoot, Frame frame);
 
     /**
      * Returns the current BCI or -1 if the BCI cannot be read.
      *
      * @param root the root node, representing the method/function
-     * @param frameInstance the frame instance to read the bci from
+     * @param frame the frame to read the bci from
      * @return the BCI or -1
      */
-    long readBCIFromFrame(RootNode root, FrameInstance frameInstance);
+    long readBCIFromFrame(RootNode root, Frame frame);
+
+    /**
+     * Returns a {@link CallFrame} representation of the location of
+     * {@code Object.wait(long timeout)}.
+     *
+     * @return the {@link CallFrame} that represents the monitor wait method
+     */
+    CallFrame locateObjectWaitFrame();
+
+    /**
+     * Returns the owner thread of an object used as a monitor.
+     *
+     * @param monitor the monitor object
+     * @return the guest language thread object that currently owns the monitor
+     */
+    Object getMonitorOwnerThread(Object monitor);
+
+    /**
+     * Returns all owned guest-language monitor object of the input call frames.
+     *
+     * @param callFrames the current call frames
+     * @return the owned monitor objects
+     */
+    MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames);
+
+    /**
+     * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
+     * no current contended monitor for this thread.
+     *
+     * @param guestThread the guest thread
+     * @return the current contended monitor
+     */
+    Object getCurrentContendedMonitor(Object guestThread);
+
+    /**
+     * Forces an early return on the top-most frame with the given return value. All monitors held
+     * on the current top frame are released before the early return.
+     *
+     * @param returnValue the value to return
+     * @param topFrame the current top frame
+     * @return {@code true} if the early return can be performed or {@code false} otherwise
+     */
+    boolean forceEarlyReturn(Object returnValue, CallFrame topFrame);
+
+    /**
+     * Returns the language class associated with the implementing class of this interface.
+     *
+     * @return the Truffle language class
+     */
+    Class<? extends TruffleLanguage<?>> getLanguageClass();
 }

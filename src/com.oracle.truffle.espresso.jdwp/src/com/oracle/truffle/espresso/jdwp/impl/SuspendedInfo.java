@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 
@@ -40,6 +40,10 @@ public class SuspendedInfo {
         this.stackFrames = stackFrames;
         this.thread = thread;
         this.callerRootNode = callerRootNode;
+    }
+
+    SuspendedInfo(CallFrame[] stackFrames, Object thread) {
+        this(null, stackFrames, thread, null);
     }
 
     public SuspendedEvent getEvent() {
@@ -66,7 +70,7 @@ public class SuspendedInfo {
         return callerRootNode;
     }
 
-    public FrameInstance getCallerFrameInstance() {
-        return stackFrames.length > 1 ? stackFrames[1].getFrameInstance() : null;
+    public Frame getCallerFrame() {
+        return stackFrames.length > 1 ? stackFrames[1].getFrame() : null;
     }
 }

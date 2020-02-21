@@ -65,12 +65,52 @@ public final class EmptyListener implements VMListener {
     }
 
     @Override
-    public void holdEvents() {
+    public void monitorWait(Object monitor, long timeout) {
 
     }
 
     @Override
-    public void releaseEvents() {
+    public void monitorWaited(Object monitor, boolean timedOut) {
+
+    }
+
+    @Override
+    public void onContendedMonitorEnter(Object monitor) {
+
+    }
+
+    @Override
+    public void onContendedMonitorEntered(Object monitor) {
+
+    }
+
+    @Override
+    public Object getCurrentContendedMonitor(Object guestThread) {
+        return null;
+    }
+
+    @Override
+    public Object getEarlyReturnValue() {
+        return null;
+    }
+
+    @Override
+    public Object getAndRemoveEarlyReturnValue() {
+        return null;
+    }
+
+    @Override
+    public void forceEarlyReturn(Object returnValue) {
+
+    }
+
+    @Override
+    public void onMonitorEnter(Object monitor) {
+
+    }
+
+    @Override
+    public void onMonitorExit(Object monitor) {
 
     }
 }

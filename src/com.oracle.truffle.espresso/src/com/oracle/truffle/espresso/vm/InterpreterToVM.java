@@ -214,8 +214,8 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary
     public static void monitorEnter(@Host(Object.class) StaticObject obj) {
         final EspressoLock lock = obj.getLock();
+        EspressoContext context = obj.getKlass().getContext();
         if (!lock.tryLock()) {
-            EspressoContext context = obj.getKlass().getContext();
             Meta meta = context.getMeta();
             StaticObject thread = context.getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
@@ -225,12 +225,15 @@ public final class InterpreterToVM implements ContextAccess {
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
+            context.getJDWPListener().onContendedMonitorEnter(obj);
             lock.lock();
+            context.getJDWPListener().onContendedMonitorEntered(obj);
             if (context.EnableManagement) {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
+        context.getJDWPListener().onMonitorEnter(obj);
     }
 
     @TruffleBoundary
@@ -243,6 +246,7 @@ public final class InterpreterToVM implements ContextAccess {
             throw Meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
         lock.unlock();
+        obj.getKlass().getContext().getJDWPListener().onMonitorExit(obj);
     }
 
     // endregion
@@ -563,7 +567,7 @@ public final class InterpreterToVM implements ContextAccess {
                                 if (!c.checkThrowableInit(method)) {
                                     int bci = -1; // unknown
                                     if (espressoNode.isBytecodeNode()) {
-                                        bci = espressoNode.readBCI(frameInstance);
+                                        bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                                     } else if (method.isNative()) {
                                         bci = -2; // native
                                     }

@@ -450,13 +450,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         }
 
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-                        FrameSlot monitorSlot = null;
-                        if (usesMonitors()) {
-                            monitorSlot = frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object);
-                        }
+
                         // BCI slot is always the latest.
                         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, monitorSlot, bciSlot));
+                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, bciSlot));
 
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
@@ -467,24 +464,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return callTarget;
     }
 
-    private boolean usesMonitors() {
-        if (codeAttribute != null) {
-            if (usesMonitors != -1) {
-                return usesMonitors != 0;
-            }
+    public boolean usesMonitors() {
+        if (usesMonitors != -1) {
+            return usesMonitors != 0;
+        } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            BytecodeStream bs = new BytecodeStream(codeAttribute.getCode());
-            int bci = 0;
-            while (bci < bs.endBCI()) {
-                int opcode = bs.currentBC(bci);
-                if (opcode == MONITORENTER || opcode == MONITOREXIT) {
-                    return (usesMonitors = 1) != 0;
-                }
-                bci = bs.nextBCI(bci);
+            if (isSynchronized()) {
+                return (usesMonitors = 1) != 0;
             }
-            return (usesMonitors = 0) != 0;
+            if (codeAttribute != null) {
+                BytecodeStream bs = new BytecodeStream(codeAttribute.getCode());
+                int bci = 0;
+                while (bci < bs.endBCI()) {
+                    int opcode = bs.currentBC(bci);
+                    if (opcode == MONITORENTER || opcode == MONITOREXIT) {
+                        return (usesMonitors = 1) != 0;
+                    }
+                    bci = bs.nextBCI(bci);
+                }
+                return (usesMonitors = 0) != 0;
+            }
+            return false;
         }
-        return false;
     }
 
     public static FrameDescriptor initFrameDescriptor(int slotCount) {
@@ -913,13 +914,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         assert isMethodHandleIntrinsic();
         Method result = new Method(this, getCodeAttribute().forceSplit());
         FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
-        FrameSlot monitorSlot = null;
-        if (usesMonitors()) {
-            monitorSlot = frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object);
-        }
+
         // BCI slot is always the latest.
         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result, frameDescriptor, monitorSlot, bciSlot));
+        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result, frameDescriptor, bciSlot));
         result.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
 
         return result;
@@ -978,6 +976,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @Override
     public int getFirstLine() {
         return getLineNumberTable().getFirstLine();
+    }
+
+    @Override
+    public int getLastLine() {
+        return getLineNumberTable().getLastLine();
     }
 
     public String getGenericSignatureAsString() {

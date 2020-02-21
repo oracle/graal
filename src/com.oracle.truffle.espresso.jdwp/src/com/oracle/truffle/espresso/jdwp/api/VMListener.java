@@ -72,16 +72,6 @@ public interface VMListener {
     boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
 
     /**
-     * Hold all events until releaseEvents is called.
-     */
-    void holdEvents();
-
-    /**
-     * Send all held events, and stop holding events.
-     */
-    void releaseEvents();
-
-    /**
      * Determines if the method has a method breakpoint set. If true, the caller of this method is
      * expected to enter a probe node to allow for the Truffle Debug API to suspend the execution.
      *
@@ -90,4 +80,83 @@ public interface VMListener {
      * @return true only if the method has a method breakpoint, false otherwise
      */
     boolean hasMethodBreakpoint(MethodRef method, Object returnValue);
+
+    /**
+     * This method should be called when when the monitor wait(timeout) method is invoked in the
+     * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
+     * current thread.
+     * 
+     * @param monitor the monitor object
+     * @param timeout the timeout in ms before the wait will time out
+     */
+    void monitorWait(Object monitor, long timeout);
+
+    /**
+     * This method should be called just after the monitor wait(timeout) method is invoked in the
+     * guest VM. A monitor waited event will then be sent through JDWP, if there was a request for
+     * the current thread.
+     *
+     * @param monitor the monitor object
+     * @param timedOut if the wait timed out or not
+     */
+    void monitorWaited(Object monitor, boolean timedOut);
+
+    /**
+     * Marks a monitor object as a current contending object on the current thread.
+     *
+     * @param monitor the monitor object
+     */
+    void onContendedMonitorEnter(Object monitor);
+
+    /**
+     * Removes a monitor object as a current contending object on the current thread.
+     *
+     * @param monitor the monitor object
+     */
+    void onContendedMonitorEntered(Object monitor);
+
+    /**
+     * Returns the current contended monitor object, or <code>null</code> if the thread is not in
+     * contention on any monitor.
+     *
+     * @param guestThread
+     * @return the current contended monitor object
+     */
+    Object getCurrentContendedMonitor(Object guestThread);
+
+    /**
+     * Returns the value of a force early return value or <code>null</code> if not set.
+     *
+     * @return the return value for a force early return
+     */
+    Object getEarlyReturnValue();
+
+    /**
+     * Returns the value of a force early return value or <code>null</code> if not set. This method
+     * also removes the early return value.
+     *
+     * @return the return value for a force early return
+     */
+    Object getAndRemoveEarlyReturnValue();
+
+    /**
+     * Sets the force early return value.
+     *
+     * @param returnValue the value
+     */
+    void forceEarlyReturn(Object returnValue);
+
+    /**
+     * Callback method when a monitor has been taken.
+     *
+     * @param monitor the monitor
+     */
+    void onMonitorEnter(Object monitor);
+
+    /**
+     * Callback method when a monitor is released.
+     *
+     * @param monitor the monitor object
+     */
+    void onMonitorExit(Object monitor);
 }

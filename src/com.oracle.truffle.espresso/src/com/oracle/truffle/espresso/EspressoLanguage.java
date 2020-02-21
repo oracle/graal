@@ -25,6 +25,10 @@ package com.oracle.truffle.espresso;
 import java.util.Collections;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -158,7 +162,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             scopeNode = statementNode.getBytecodesNode();
         } else if (espressoNode instanceof BytecodeNode) {
             BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
-            currentBci = 0;
+            try {
+                currentBci = bytecodeNode.readBCI(frame);
+            } catch (Throwable t) {
+                // fall back to entry of method then
+                currentBci = 0;
+            }
             method = bytecodeNode.getMethod();
             scopeNode = bytecodeNode;
         } else {
@@ -166,8 +175,41 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
         // construct the current scope with valid local variables information
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
-
-        Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
+        if (liveLocals.length == 0) {
+            // class was compiled without a local variable table
+            // include "this" in method arguments throughout the method
+            int localCount = !method.isStatic() ? 1 : 0;
+            localCount += method.getParameterCount();
+            liveLocals = new Local[localCount];
+            Klass[] parameters = (Klass[]) method.getParameters();
+            if (!method.isStatic()) {
+                // include 'this' and method arguments
+                liveLocals[0] = new Local(utf8Constants.getOrCreate(Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 65536, 0);
+                for (int i = 1; i < localCount; i++) {
+                    Klass param = parameters[i - 1];
+                    Utf8Constant name = utf8Constants.getOrCreate(ByteSequence.create("" + (i - 1)));
+                    Utf8Constant type = utf8Constants.getOrCreate(param.getType());
+                    liveLocals[i] = new Local(name, type, 0, 65536, i);
+                }
+            } else {
+                // only include method arguments
+                for (int i = 0; i < localCount; i++) {
+                    Klass param = parameters[i];
+                    liveLocals[i] = new Local(utf8Constants.getOrCreate(ByteSequence.create("" + (i - 1))), utf8Constants.getOrCreate(param.getType()), 0, 65536, i);
+                }
+            }
+        }
+        Object variables = EspressoScope.createVariables(liveLocals, frame);
+        Object receiver = null;
+        if (!method.isStatic()) {
+            // get the receiver/'this'
+            try {
+                receiver = InteropLibrary.getFactory().getUncached().readMember(variables, "0");
+            } catch (Exception e) {
+                // wasn't able to get 'this'. Defer handling to lookup location
+            }
+        }
+        Scope scope = Scope.newBuilder(SCOPE_NAME, variables).node(scopeNode).receiver("0", receiver).build();
         return Collections.singletonList(scope);
     }
 
@@ -177,6 +219,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         while (currentNode != null && !known) {
             if (currentNode instanceof QuickNode || currentNode instanceof BytecodeNode || currentNode instanceof EspressoStatementNode) {
                 known = true;
+            } else if (currentNode instanceof EspressoRootNode) {
+                EspressoRootNode rootNode = (EspressoRootNode) currentNode;
+                if (rootNode.isBytecodeNode()) {
+                    return rootNode.getBytecodeNode();
+                }
             } else {
                 currentNode = currentNode.getParent();
             }

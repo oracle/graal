@@ -428,7 +428,9 @@ public final class VM extends NativeEnv implements ContextAccess {
                 currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
                 Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
             }
-            self.getLock().await(timeout);
+            context.getJDWPListener().monitorWait(self, timeout);
+            boolean timedOut = !self.getLock().await(timeout);
+            context.getJDWPListener().monitorWaited(self, timedOut);
         } catch (InterruptedException e) {
             Target_java_lang_Thread.setInterrupt(currentThread, false);
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_InterruptedException, e.getMessage());

@@ -302,10 +302,10 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.DISPOSE_OBJECTS.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.HOLD_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.HOLD_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.RELEASE_EVENTS.ID:
-                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.RELEASE_EVENTS.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
@@ -358,6 +358,9 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 case JDWP.ReferenceType.CLASS_OBJECT.ID:
                                     result = JDWP.ReferenceType.CLASS_OBJECT.createReply(packet, context);
+                                    break;
+                                case JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.ID:
+                                    result = JDWP.ReferenceType.SOURCE_DEBUG_EXTENSION.createReply(packet, context);
                                     break;
                                 case JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.ID:
                                     result = JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.createReply(packet, context);
@@ -444,6 +447,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.SET_VALUES.ID:
                                     result = JDWP.ObjectReference.SET_VALUES.createReply(packet, context);
                                     break;
+                                case JDWP.ObjectReference.MONITOR_INFO.ID:
+                                    result = JDWP.ObjectReference.MONITOR_INFO.createReply(packet, controller);
+                                    break;
                                 case JDWP.ObjectReference.INVOKE_METHOD.ID:
                                     result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller);
                                     break;
@@ -493,6 +499,12 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.FRAME_COUNT.ID:
                                     result = JDWP.ThreadReference.FRAME_COUNT.createReply(packet, controller);
                                     break;
+                                case JDWP.ThreadReference.OWNED_MONITORS.ID:
+                                    result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, controller);
+                                    break;
+                                case JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.ID:
+                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, context);
+                                    break;
                                 case JDWP.ThreadReference.STOP.ID:
                                     result = JDWP.ThreadReference.STOP.createReply(packet, context);
                                     break;
@@ -503,10 +515,10 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.ID:
-                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet);
+                                    result = JDWP.ThreadReference.OWNED_MONITORS_STACK_DEPTH_INFO.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
-                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet);
+                                    result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
                             }
                             break;
@@ -581,7 +593,7 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 }
                                 case JDWP.StackFrame.THIS_OBJECT.ID: {
-                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, context);
+                                    result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, controller);
                                     break;
                                 }
                                 default:
