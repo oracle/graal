@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
 ;;
 (module
     (table $table1 1 funcref)
-    (table $table2 1 funcref)
+    (table $table2 (import "some" "table") 1 funcref)
     (func (export "_main") (result i32)
         i32.const 42
     )
