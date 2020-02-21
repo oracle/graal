@@ -1,39 +1,3 @@
-var initTracer = require('jaeger-client').initTracer;
-console.log('server: Jaeger tracer obtained');
-
-// See schema https://github.com/jaegertracing/jaeger-client-node/blob/master/src/configuration.js#L37
-var config = {
-  serviceName: 't-trace-demo',
-  reporter: {
-    // Provide the traces endpoint; this forces the client to connect directly to the Collector and send
-    // spans over HTTP
-    collectorEndpoint: 'http://localhost:14268/api/traces',
-    // Provide username and password if authentication is enabled in the Collector
-    // username: '',
-    // password: '',
-  },
-  sampler: {
-      type : 'const',
-      param : 1
-  }
-};
-var options = {
-  tags: {
-    't-trace-demo.version': '1.1.2',
-  },
-//  metrics: metrics,
-  logger: console,
-  sampler: {
-      type : 'const',
-      param : 1
-  }
-};
-
-function tracerIsReady(tracer) {
-    return tracer;
-}
-
-var tracer = tracerIsReady(initTracer(config, options));
 
 const http = require("http");
 const srv = http.createServer((_, res) => {
