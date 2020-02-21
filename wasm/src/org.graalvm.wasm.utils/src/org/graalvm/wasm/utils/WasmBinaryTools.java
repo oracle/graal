@@ -71,8 +71,9 @@ public class WasmBinaryTools {
                         new String[]{
                                         SystemProperties.WAT_TO_WASM_EXECUTABLE,
                                         input.getPath(),
-                                        "--no-check", // So that wat2wasm agrees to generate invalid
-                                                      // wasm files
+                                        // This option is needed so that wat2wasm agrees to generate
+                                        // invalid wasm files.
+                                        "--no-check",
                                         "-o",
                                         output.getPath(),
                         });
