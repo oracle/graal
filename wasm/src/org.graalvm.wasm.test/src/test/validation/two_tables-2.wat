@@ -39,8 +39,8 @@
 ;; SOFTWARE.
 ;;
 (module
+    (table $table1 (import "some" "table") 1 funcref)
     (table $table2 (import "some" "table") 1 funcref)
-    (table $table1 1 funcref)
     (func (export "_main") (result i32)
         i32.const 42
     )
