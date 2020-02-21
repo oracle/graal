@@ -142,11 +142,8 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             try {
                 if (INTEROP.isMemberReadable(nodeObject, "literal")) {
                     Object result = INTEROP.readMember(nodeObject, "literal");
-                    if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
-                        return EvaluationResult.createResult(result);
-                    } else {
-                        logger.log(Level.FINE, "Literal is no TruffleObject or primitive: {0}", result.getClass());
-                    }
+                    assert result instanceof TruffleObject || InteropUtils.isPrimitive(result);
+                    return EvaluationResult.createResult(result);
                 }
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 logger.warning(e.getMessage());

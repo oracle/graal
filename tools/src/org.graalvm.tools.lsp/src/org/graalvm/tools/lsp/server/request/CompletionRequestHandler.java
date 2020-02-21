@@ -35,6 +35,9 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 
 import org.graalvm.tools.api.lsp.LSPLibrary;
+import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.types.CompletionContext;
 import org.graalvm.tools.lsp.server.types.CompletionItem;
 import org.graalvm.tools.lsp.server.types.CompletionItemKind;
@@ -44,13 +47,8 @@ import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
 import org.graalvm.tools.lsp.server.types.MarkupContent;
 import org.graalvm.tools.lsp.server.types.MarkupKind;
-
-import org.graalvm.tools.lsp.server.ContextAwareExecutor;
-import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.server.LanguageTriggerCharacters;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
-import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.NearestNode;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -361,30 +359,25 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             return false;
         }
 
-        Object boxedObject;
-        Object keys = null;
-        if (InteropUtils.isPrimitive(object)) {
-            // TODO: box the primitive when such API is available
-            logger.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
-            return false;
-        } else {
-            boxedObject = object;
-        }
-        try {
-            keys = INTEROP.getMembers(boxedObject);
-        } catch (UnsupportedMessageException ex) {
-            // No members
+        Object languageView = env.getLanguageView(langInfo, object);
+        Object members = null;
+        if (INTEROP.hasMembers(languageView)) {
+            try {
+                members = INTEROP.getMembers(languageView);
+            } catch (UnsupportedMessageException ex) {
+                // No members
+            }
         }
 
-        if (keys == null || !INTEROP.hasArrayElements(keys)) {
-            logger.fine("No completions found for object: " + boxedObject);
+        if (members == null || !INTEROP.hasArrayElements(members)) {
+            logger.fine("No completions found for object: " + languageView);
             return false;
         }
 
         int counter = 0;
         long size;
         try {
-            size = INTEROP.getArraySize(keys);
+            size = INTEROP.getArraySize(members);
         } catch (UnsupportedMessageException ex) {
             size = 0;
         }
@@ -392,16 +385,16 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             String key;
             Object value;
             try {
-                key = INTEROP.readArrayElement(keys, i).toString();
-                if (INTEROP.isMemberReadable(boxedObject, key)) {
-                    value = INTEROP.readMember(boxedObject, key);
+                key = INTEROP.readArrayElement(members, i).toString();
+                if (INTEROP.isMemberReadable(languageView, key)) {
+                    value = INTEROP.readMember(languageView, key);
                 } else {
                     value = null;
                 }
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
-                logger.log(Level.CONFIG, boxedObject.toString(), t);
+                logger.log(Level.CONFIG, languageView.toString(), t);
                 continue;
             }
             CompletionItem completion = CompletionItem.create(key);
@@ -450,32 +443,38 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return original.replaceAll("__", "\\\\_\\\\_");
     }
 
-    @SuppressWarnings("all") // The parameter langInfo should not be assigned
     String createCompletionDetail(Object obj, LanguageInfo langInfo) {
         String detailText = "";
         if (obj == null) {
             return detailText;
         }
 
-        Object truffleObj;
-        if (InteropUtils.isPrimitive(obj)) {
-            truffleObj = null; // TODO: box the primitive when such API is available
-        } else {
-            truffleObj = (TruffleObject) obj;
-            langInfo = getObjectLanguageInfo(langInfo, obj);
-        }
-
-        if (truffleObj != null && INTEROP.isExecutable(truffleObj)) {
-            String formattedSignature = getFormattedSignature(truffleObj, langInfo);
+        Object view = env.getLanguageView(langInfo, obj);
+        if (INTEROP.isExecutable(view)) {
+            String formattedSignature = getFormattedSignature(view, langInfo);
             detailText = formattedSignature != null ? formattedSignature : "";
         }
 
-        Object metaObject = env.findMetaObject(langInfo, obj);
+        Object metaObject = null;
+        if (INTEROP.hasMetaObject(view)) {
+            try {
+                metaObject = INTEROP.getMetaObject(view);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("Unexpected unsupported message.", e);
+            }
+        }
+
         if (metaObject != null) {
             if (!detailText.isEmpty()) {
                 detailText += " ";
             }
-            detailText += env.toString(langInfo, metaObject);
+            try {
+                detailText += INTEROP.asString(INTEROP.toDisplayString(metaObject));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("Unexpected unsupported message.", e);
+            }
         }
         return detailText;
     }
