@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySig
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 import java.util.Arrays;
@@ -79,14 +80,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region Interop
 
-    private static final String STATIC_TO_CLASS = "class";
+    public static final String STATIC_TO_CLASS = "class";
     private static final String ARRAY = "array";
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
     @ExportMessage
-    boolean isMemberReadable(String member) {
+    final boolean isMemberReadable(String member) {
         if (STATIC_TO_CLASS.equals(member)) {
+            return true;
+        }
+        if (CLASS_TO_STATIC.equals(member)) {
             return true;
         }
         if (getMeta()._void != this && ARRAY.equals(member)) {
@@ -102,9 +106,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    Object readMember(String member) throws UnknownIdentifierException {
+    final Object readMember(String member) throws UnknownIdentifierException {
+        // Klass<T>.class == Class<T>
         if (STATIC_TO_CLASS.equals(member)) {
             return mirror();
+        }
+        // Klass<T>.static == Klass<T>
+        if (CLASS_TO_STATIC.equals(member)) {
+            return this;
         }
         if (getMeta()._void != this && ARRAY.equals(member)) {
             return array();
@@ -119,7 +128,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
+    final boolean isMemberInvocable(String member) {
         for (Method m : getDeclaredMethods()) {
             if (m.isStatic() && m.isPublic() && member.equals(m.getName().toString())) {
                 return true;
@@ -129,7 +138,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    Object invokeMember(String member,
+    final Object invokeMember(String member,
                     Object[] arguments,
                     @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
@@ -142,15 +151,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         throw UnknownIdentifierException.create(member);
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasMembers() {
+    final boolean hasMembers() {
         return true;
     }
 
+    @TruffleBoundary
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         EconomicSet<String> members = EconomicSet.create();
         members.add(STATIC_TO_CLASS);
+        members.add(CLASS_TO_STATIC);
         for (Method m : getDeclaredMethods()) {
             if (m.isStatic() && m.isPublic()) {
                 members.add(m.getName().toString());
