@@ -490,7 +490,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + status);
+                throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + status + "\nCommand: " + String.join(" ", cmd));
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -521,7 +521,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status);
+                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status + "\nCommand: " + String.join(" ", cmd));
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
