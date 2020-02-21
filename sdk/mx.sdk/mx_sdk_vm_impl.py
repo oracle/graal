@@ -680,7 +680,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 else:
                     _svm_library_dest = _component_base
                 _svm_library_dest += _library_config.destination
-                if not stage1:
+                if not stage1 and _get_svm_support().is_supported():
                     source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
                     # add `LibraryConfig.destination` to the layout
                     _add(layout, _svm_library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
@@ -2272,12 +2272,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True
                 if with_svm:
                     register_project(GraalVmNativeProperties(component, launcher_config))
-            for library_config in _get_library_configs(component):
-                register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
-                assert with_svm
-                register_project(GraalVmNativeProperties(component, library_config))
-                if not _skip_libraries(library_config.destination):
-                    needs_stage1 = True
+            if with_svm:
+                for library_config in _get_library_configs(component):
+                    register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
+                    assert with_svm
+                    register_project(GraalVmNativeProperties(component, library_config))
+                    if not _skip_libraries(library_config.destination):
+                        needs_stage1 = True
         if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
 
@@ -2293,9 +2294,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         main_component = _get_main_component(components)
         if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) \
                 and (len(main_component.launcher_configs) == 0 or has_svm_launcher(main_component)) \
-                and (len(main_component.library_configs) == 0 or not _has_skipped_libraries(main_component)):
+                and (len(main_component.library_configs) == 0 or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))):
             dependencies = main_component.standalone_dependencies.keys()
-            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep))]
+            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (len(get_component(dep).library_configs) and not _get_svm_support().is_supported() )]
             if missing_dependencies:
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
