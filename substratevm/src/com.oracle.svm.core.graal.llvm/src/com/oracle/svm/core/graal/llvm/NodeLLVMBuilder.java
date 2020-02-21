@@ -539,7 +539,25 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void emitForeignCall(ForeignCall i) {
-        throw unimplemented();
+        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(i.getDescriptor());
+        LIRFrameState state = state(i);
+        Value[] args = i.operands(this);
+
+        Value result = null;
+        if (i instanceof ForeignCallNode) {
+            result = gen.emitForeignCall(linkage, state, args);
+        } else if (i instanceof ForeignCallWithExceptionNode) {
+            ForeignCallWithExceptionNode foreignCallWithExceptionNode = (ForeignCallWithExceptionNode) i;
+            LLVMBasicBlockRef successor = gen.getBlock(foreignCallWithExceptionNode.next());
+            LLVMBasicBlockRef handler = gen.getBlock(foreignCallWithExceptionNode.exceptionEdge());
+            result = gen.emitForeignCall(linkage, state, successor, handler, args);
+        } else {
+            throw shouldNotReachHere();
+        }
+
+        if (result != null) {
+            setResult(i.asNode(), result);
+        }
     }
 
     private LLVMValueRef emitCall(Invoke invoke, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
