@@ -299,7 +299,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         launcher_args = [
             '--experimental-options',
             '--engine.InliningNodeBudget=10000',
-            '--engine.CompilationExceptionsAreFatal',
+            '--engine.CompilationFailureAction=ExitVM',
         ]
         return launcher_args + args
 
