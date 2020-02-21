@@ -872,7 +872,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     node.addError(importAnnotation, importClassesValue, "The specified static import class '%s' is not visible.",
                                     getQualifiedName(importClass));
                 }
-                elements.addAll(importVisibleStaticMembers(node.getTemplateType(), importClassElement, false));
+                elements.addAll(importVisibleStaticMembersImpl(node.getTemplateType(), importClassElement, false));
             }
         }
     }
@@ -908,13 +908,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final Map<ImportsKey, List<Element>> importCache = ProcessorContext.getInstance().getCacheMap(ImportsKey.class);
 
     @SuppressWarnings("unchecked")
-    private List<Element> importVisibleStaticMembers(TypeElement relativeTo, TypeElement importType, boolean includeConstructors) {
+    private List<Element> importVisibleStaticMembersImpl(TypeElement relativeTo, TypeElement importType, boolean includeConstructors) {
         ImportsKey key = new ImportsKey(relativeTo, importType, includeConstructors);
         List<Element> elements = importCache.get(key);
         if (elements != null) {
             return elements;
         }
 
+        List<Element> members = importVisibleStaticMembers(relativeTo, importType, includeConstructors);
+        importCache.put(key, members);
+        return members;
+    }
+
+    public static List<Element> importVisibleStaticMembers(TypeElement relativeTo, TypeElement importType, boolean includeConstructors) {
+        ProcessorContext context = ProcessorContext.getInstance();
         // hack to reload type is necessary for incremental compiling in eclipse.
         // otherwise methods inside of import guard types are just not found.
         TypeElement importElement = fromTypeMirror(context.reloadType(importType.asType()));
@@ -973,7 +980,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 return superTypes;
             }
         });
-        importCache.put(key, members);
         return members;
     }
 
@@ -2471,7 +2477,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private DSLExpressionResolver importStatics(DSLExpressionResolver resolver, TypeMirror targetType) {
         DSLExpressionResolver localResolver = resolver;
         if (targetType.getKind() == TypeKind.DECLARED) {
-            List<Element> prefixedImports = importVisibleStaticMembers(resolver.getAccessType(), fromTypeMirror(targetType), true);
+            List<Element> prefixedImports = importVisibleStaticMembersImpl(resolver.getAccessType(), fromTypeMirror(targetType), true);
             localResolver = localResolver.copy(prefixedImports);
         }
         return localResolver;
