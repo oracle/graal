@@ -1,1 +1,1 @@
-validationFailure All export names must be different, but '_main' is exported twice.
+validation All export names must be different, but '_main' is exported twice.

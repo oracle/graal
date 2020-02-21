@@ -1,1 +1,1 @@
-validationFailure org.graalvm.wasm.exception.WasmException: A table has been already imported in the module.
+validation org.graalvm.wasm.exception.WasmException: A table has been already imported in the module.

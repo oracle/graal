@@ -1,1 +1,1 @@
-validationFailure org.graalvm.wasm.exception.WasmException: Memory has been already imported in the module.
+validation org.graalvm.wasm.exception.WasmException: Memory has been already imported in the module.

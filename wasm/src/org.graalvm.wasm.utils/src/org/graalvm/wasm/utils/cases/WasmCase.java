@@ -193,7 +193,7 @@ public abstract class WasmCase {
             case "double":
                 caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
                 break;
-            case "validationFailure":
+            case "validation":
                 caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Validation);
                 break;
             case "exception":
