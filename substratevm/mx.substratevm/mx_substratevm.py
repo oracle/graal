@@ -1121,9 +1121,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
     ],
-    polyglot_lib_build_dependencies=[
-        "substratevm:POLYGLOT_NATIVE_API_HEADERS"
-    ],
     has_polyglot_lib_entrypoints=True,
 ))
 
