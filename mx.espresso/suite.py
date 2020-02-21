@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.251.0",
+    "mxversion": "5.252.3",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "15c75b205ba81f3cbf91c7c577d61ba306107c87",
+                "version": "ed8d3bc15fa008bd970747d32cc0a6bb344d7290",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -78,7 +78,7 @@ suite = {
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
-            "checkPackagePrefix": False, # java.lang.ref.PublicFinalReference
+            "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -155,7 +155,9 @@ suite = {
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
-            "javaCompliance": "1.8+",
+            # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
+            # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
+            "javaCompliance": "8",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -166,7 +168,7 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
             ],
-            "overlayTarget" : "com.oracle.truffle.espresso.test",
+            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
         },
 
