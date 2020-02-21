@@ -2010,14 +2010,21 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         for component_ in extra_components:
             launcher_configs += _get_launcher_configs(component_)
 
+        library_configs = list(_get_library_configs(component))
+        for component_ in extra_components:
+            library_configs += _get_library_configs(component_)
+
         other_involved_components = []
-        if self.main_component.short_name not in ('svm', 'svmee') and _get_svm_support().is_supported() and launcher_configs:
+        if self.main_component.short_name not in ('svm', 'svmee') and _get_svm_support().is_supported() and (launcher_configs or library_configs):
             other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.installable_id.replace('-', '_').upper())
         for launcher_config in launcher_configs:
             if _force_bash_launchers(launcher_config):
                 name += '_B' + basename(launcher_config.destination).upper()
+        for library_config in library_configs:
+            if _skip_libraries(library_config):
+                name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         name += '_JAVA{}'.format(_src_jdk_version)
