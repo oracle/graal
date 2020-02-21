@@ -76,5 +76,5 @@ public class HeapPolicyOptions {
     public static final RuntimeOptionKey<Long> UserRequestedGCThreshold = new RuntimeOptionKey<>(16L * 1024L * 1024L);
 
     @Option(help = "Maximum value for survivor space") //
-    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(4);
+    public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
 }
