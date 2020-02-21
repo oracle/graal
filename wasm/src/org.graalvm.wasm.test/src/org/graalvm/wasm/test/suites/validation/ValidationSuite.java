@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils.cases;
 
-import org.graalvm.polyglot.Value;
+package org.graalvm.wasm.test.suites.validation;
 
-import java.util.function.BiConsumer;
+import java.io.IOException;
 
-public class WasmCaseData {
-    BiConsumer<Value, String> resultValidator;
-    String expectedErrorMessage;
-    ErrorType expectedErrorType;
+import org.junit.Test;
 
-    public enum ErrorType {
-        /**
-         * A validation error type implies that subsequent test iterations do not need to be
-         * executed if an error is thrown. It might happen either during compilation time or running
-         * time.
-         */
-        Validation,
-        /**
-         * A runtime error type will check that the error is throw on every iteration of the test.
-         * It might only happen during running time.
-         */
-        Runtime,
+import org.graalvm.wasm.test.WasmSuiteBase;
+
+public class ValidationSuite extends WasmSuiteBase {
+    @Override
+    protected String testResource() {
+        return "validation";
     }
 
-    WasmCaseData(BiConsumer<Value, String> resultValidator) {
-        this.resultValidator = resultValidator;
-        this.expectedErrorMessage = null;
-        this.expectedErrorType = null;
-    }
-
-    WasmCaseData(String expectedErrorMessage, ErrorType expectedErrorType) {
-        this.resultValidator = null;
-        this.expectedErrorMessage = expectedErrorMessage;
-        this.expectedErrorType = expectedErrorType;
-    }
-
-    public BiConsumer<Value, String> resultValidator() {
-        return resultValidator;
-    }
-
-    public String expectedErrorMessage() {
-        return expectedErrorMessage;
-    }
-
-    public ErrorType expectedErrorTime() {
-        return expectedErrorType;
+    @Override
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

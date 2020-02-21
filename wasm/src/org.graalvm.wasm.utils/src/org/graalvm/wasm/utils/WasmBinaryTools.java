@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,9 @@ public class WasmBinaryTools {
                         new String[]{
                                         SystemProperties.WAT_TO_WASM_EXECUTABLE,
                                         input.getPath(),
+                                        // This option is needed so that wat2wasm agrees to generate
+                                        // invalid wasm files.
+                                        "--no-check",
                                         "-o",
                                         output.getPath(),
                         });

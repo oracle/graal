@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,8 +120,8 @@ public abstract class WasmCase {
         return new WasmCaseData((Value result, String output) -> Assert.assertDoubleEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
     }
 
-    public static WasmCaseData expectedThrows(String expectedErrorMessage) {
-        return new WasmCaseData(expectedErrorMessage);
+    public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorType phase) {
+        return new WasmCaseData(expectedErrorMessage.trim(), phase);
     }
 
     public static Collection<WasmCase> collectFileCases(String type, String resource) throws IOException {
@@ -193,8 +193,11 @@ public abstract class WasmCase {
             case "double":
                 caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
                 break;
+            case "validation":
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Validation);
+                break;
             case "exception":
-                caseData = WasmCase.expectedThrows(resultValue);
+                caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Runtime);
                 break;
             default:
                 Assert.fail(String.format("Unknown type in result specification: %s", resultType));
