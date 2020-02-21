@@ -1,3 +1,13 @@
+# Version 20.1.0
+
+Changes:
+
+* Module initialization order is now only based on the dependencies recorded in the
+  ELF/Mach-O file instead of looking at imported symbols. Consequently, the order
+  plain bitcode files are initialized might change since they do not allow recording
+  dependencies. If the initialization order is important, the suggested approach to
+  use ELF/Mach-O files. The [Toolchain](docs/TOOLCHAIN.md) can help creating those.
+
 # Version 20.0.0
 
 Changes:
