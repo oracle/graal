@@ -30,18 +30,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-/**
- * Tests the initialization order in the presents of symlinks. libD is a symlink to libA.
- * This test ensures that we 1) do not initialize libA twice, and 2) that we initialize the
- * libraries in the right order (A, C, B).
- *
- * <pre>
- *   main --> libD ---[symlink]---v
- *    | `----------------------> libA
- *    `-----> libB --> libC ------^
- * </pre>
- */
-int main() {
-  printf("Main\n");
-  return 0;
+__attribute__((constructor)) static void beginA(void) {
+  printf("ctor a\n");
 }

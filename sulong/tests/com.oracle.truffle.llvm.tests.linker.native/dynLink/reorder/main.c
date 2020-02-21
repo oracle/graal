@@ -31,14 +31,10 @@
 #include <stdio.h>
 
 /**
- * Tests the initialization order in the presents of symlinks. libD is a symlink to libA.
- * This test ensures that we 1) do not initialize libA twice, and 2) that we initialize the
- * libraries in the right order (A, C, B).
- *
+ * Tests the initialization order.
  * <pre>
- *   main --> libD ---[symlink]---v
- *    | `----------------------> libA
- *    `-----> libB --> libC ------^
+ *   main ---> libB --> libC ------v
+ *    `------------------------> libA
  * </pre>
  */
 int main() {

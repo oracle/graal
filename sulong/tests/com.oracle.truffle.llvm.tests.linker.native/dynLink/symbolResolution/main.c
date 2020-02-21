@@ -30,15 +30,30 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static void myprint_main_1(char *str) {
+  printf("main print 1: %s", str);
+}
+
+static void myprint_main_2(char *str) {
+  printf("main print 2: %s", str);
+}
+
+void (*myprint)(char *) = myprint_main_1;
+
+__attribute__((constructor)) static void beginMain(void) {
+  myprint("ctor Main\n");
+  myprint = myprint_main_2;
+  myprint("ctor Main\n");
+}
+
 /**
- * Tests the initialization order in the presents of symlinks. libD is a symlink to libA.
- * This test ensures that we 1) do not initialize libA twice, and 2) that we initialize the
- * libraries in the right order (A, C, B).
- *
+ * Tests that the symbol initialization, symbol resolution and module initialization happens in the right order.
+ * All libraries use the `myprint` function for printing. Modules marked with * define `myprint`, modules with $
+ * override `myprint` in their constructor.
  * <pre>
- *   main --> libD ---[symlink]---v
- *    | `----------------------> libA
- *    `-----> libB --> libC ------^
+ *   main*$ -----------------------v
+ *    | `----------------------> libA$
+ *    `-----> libB* --> libC*$ ----^
  * </pre>
  */
 int main() {

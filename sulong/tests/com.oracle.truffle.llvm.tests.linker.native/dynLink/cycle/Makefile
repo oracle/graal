@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,27 +29,25 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: reload/ref.bc
+default: dynLink/cycle/ref.bc
 
-reload/libA$(SO_EXT): reload/a.c reload/Makefile
+# fake libB without dependecy to produce a cycle
+fake/libB$(SO_EXT): dynLink/cycle/b.c dynLink/cycle/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-reload/libB$(SO_EXT): reload/b.c reload/Makefile reload/libC$(SO_EXT)
+dynLink/cycle/libA$(SO_EXT): dynLink/cycle/a.c dynLink/cycle/Makefile fake/libB$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Lreload -lC -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Lfake -lB -o $@ $<
 
-reload/libC$(SO_EXT): reload/c.c reload/Makefile reload/libA$(SO_EXT)
+dynLink/cycle/libB$(SO_EXT): dynLink/cycle/b.c dynLink/cycle/Makefile dynLink/cycle/libC$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN)/../reload -Lreload -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -lC -o $@ $<
 
-reload/libD$(SO_EXT): reload/libA$(SO_EXT) reload/Makefile
-	@rm -rf $@
-	$(QUIETLY) ln -s $(notdir $<) $@
-
-reload/ref.out: reload/main.c reload/Makefile reload/libA$(SO_EXT) reload/libB$(SO_EXT) reload/libD$(SO_EXT)
+dynLink/cycle/libC$(SO_EXT): dynLink/cycle/c.c dynLink/cycle/Makefile dynLink/cycle/libA$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lB -lD -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -Lfake -lA -o $@ $<
 
-%.bc: %.out
-	$(QUIETLY) cp $< $@
+dynLink/cycle/ref.out: dynLink/cycle/main.c dynLink/cycle/Makefile dynLink/cycle/libA$(SO_EXT) dynLink/cycle/libB$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -lA -lB -o $@ $<

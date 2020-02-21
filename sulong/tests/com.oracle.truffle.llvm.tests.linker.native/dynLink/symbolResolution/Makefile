@@ -29,27 +29,26 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: reload/ref.bc
+ifeq ($(OS), darwin)
+# symbol resolution on darwin is not fully implemented [GR-21379]
+else
 
-reload/libA$(SO_EXT): reload/a.c reload/Makefile
+default: dynLink/symbolResolution/ref.bc
+
+dynLink/symbolResolution/libA$(SO_EXT): dynLink/symbolResolution/a.c dynLink/symbolResolution/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-reload/libB$(SO_EXT): reload/b.c reload/Makefile reload/libC$(SO_EXT)
+dynLink/symbolResolution/libB$(SO_EXT): dynLink/symbolResolution/b.c dynLink/symbolResolution/Makefile dynLink/symbolResolution/libC$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Lreload -lC -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/symbolResolution -lC -o $@ $<
 
-reload/libC$(SO_EXT): reload/c.c reload/Makefile reload/libA$(SO_EXT)
+dynLink/symbolResolution/libC$(SO_EXT): dynLink/symbolResolution/c.c dynLink/symbolResolution/Makefile dynLink/symbolResolution/libA$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN)/../reload -Lreload -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/symbolResolution -lA -o $@ $<
 
-reload/libD$(SO_EXT): reload/libA$(SO_EXT) reload/Makefile
-	@rm -rf $@
-	$(QUIETLY) ln -s $(notdir $<) $@
-
-reload/ref.out: reload/main.c reload/Makefile reload/libA$(SO_EXT) reload/libB$(SO_EXT) reload/libD$(SO_EXT)
+dynLink/symbolResolution/ref.out: dynLink/symbolResolution/main.c dynLink/symbolResolution/Makefile dynLink/symbolResolution/libA$(SO_EXT) dynLink/symbolResolution/libB$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lB -lD -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -LdynLink/symbolResolution -lA -lB -o $@ $<
 
-%.bc: %.out
-	$(QUIETLY) cp $< $@
+endif

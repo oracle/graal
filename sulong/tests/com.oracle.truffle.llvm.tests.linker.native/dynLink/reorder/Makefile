@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,27 +29,20 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: reload/ref.bc
+default: dynLink/reorder/ref.bc
 
-reload/libA$(SO_EXT): reload/a.c reload/Makefile
+dynLink/reorder/libA$(SO_EXT): dynLink/reorder/a.c dynLink/reorder/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-reload/libB$(SO_EXT): reload/b.c reload/Makefile reload/libC$(SO_EXT)
+dynLink/reorder/libB$(SO_EXT): dynLink/reorder/b.c dynLink/reorder/Makefile dynLink/reorder/libC$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Lreload -lC -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lC -o $@ $<
 
-reload/libC$(SO_EXT): reload/c.c reload/Makefile reload/libA$(SO_EXT)
+dynLink/reorder/libC$(SO_EXT): dynLink/reorder/c.c dynLink/reorder/Makefile dynLink/reorder/libA$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN)/../reload -Lreload -lA -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lA -o $@ $<
 
-reload/libD$(SO_EXT): reload/libA$(SO_EXT) reload/Makefile
-	@rm -rf $@
-	$(QUIETLY) ln -s $(notdir $<) $@
-
-reload/ref.out: reload/main.c reload/Makefile reload/libA$(SO_EXT) reload/libB$(SO_EXT) reload/libD$(SO_EXT)
+dynLink/reorder/ref.out: dynLink/reorder/main.c dynLink/reorder/Makefile dynLink/reorder/libA$(SO_EXT) dynLink/reorder/libB$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lB -lD -lA -o $@ $<
-
-%.bc: %.out
-	$(QUIETLY) cp $< $@
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -LdynLink/reorder -lB -lA -o $@ $<

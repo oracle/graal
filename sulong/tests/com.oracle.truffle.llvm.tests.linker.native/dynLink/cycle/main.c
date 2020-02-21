@@ -36,8 +36,8 @@
  * libraries in the right order (A, C, B).
  *
  * <pre>
- *   main --> libD ---[symlink]---v
- *    | `----------------------> libA
+ *   main ------------------------v
+ *    |         v--------------- libA
  *    `-----> libB --> libC ------^
  * </pre>
  */

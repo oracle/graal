@@ -536,6 +536,48 @@ public final class LLVMContext {
             // Disallow loading internal libraries explicitly.
             return null;
         }
+        ExternalLibrary newLib = getExternalLibrary(lib, isNative, reason, locator);
+        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
+        if (existingLib == newLib) {
+            return newLib;
+        }
+        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        return null;
+    }
+
+    public static class AddResult {
+        public final ExternalLibrary library;
+        public final boolean added;
+
+        public AddResult(ExternalLibrary lib, boolean added) {
+            this.library = lib;
+            this.added = added;
+        }
+    }
+
+    /**
+     * @return null if already loaded
+     */
+    public AddResult addExternalLibraryPair(String lib, boolean isNative, Object reason, LibraryLocator locator) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (isInternalLibrary(lib)) {
+            // Disallow loading internal libraries explicitly.
+            return null;
+        }
+        ExternalLibrary newLib = getExternalLibrary(lib, isNative, reason, locator);
+        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
+        if (existingLib == newLib) {
+            return new AddResult(newLib, true);
+        }
+        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        return new AddResult(existingLib, false);
+    }
+
+    private ExternalLibrary getExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
+        if (isInternalLibrary(lib)) {
+            // Disallow loading internal libraries explicitly.
+            throw new AssertionError("loading internal libraries explicitly is not allowed");
+        }
         TruffleFile tf = locator.locate(this, lib, reason);
         ExternalLibrary newLib;
         if (tf == null) {
@@ -546,12 +588,7 @@ public final class LLVMContext {
         } else {
             newLib = ExternalLibrary.external(tf, isNative);
         }
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return newLib;
-        }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
-        return null;
+        return newLib;
     }
 
     /**

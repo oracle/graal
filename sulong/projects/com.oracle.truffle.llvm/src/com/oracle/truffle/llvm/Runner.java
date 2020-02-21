@@ -37,10 +37,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -194,10 +192,10 @@ final class Runner {
         final FrameSlot stackPointerSlot;
         @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
-        final int initContextBefore;
         @Child LLVMStatementNode initContext;
 
         @Children final InitializeSymbolsNode[] initSymbols;
+        @Children final InitializeGlobalNode[] initGlobals;
         @Children final InitializeModuleNode[] initModules;
 
         private LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
@@ -205,19 +203,19 @@ final class Runner {
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
-            this.initContextBefore = order.sulongLibraries.size();
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
 
             int libCount = order.sulongLibraries.size() + order.otherLibraries.size();
             this.initSymbols = new InitializeSymbolsNode[libCount];
+            this.initGlobals = new InitializeGlobalNode[libCount];
             this.initModules = new InitializeModuleNode[libCount];
         }
 
         static LoadModulesNode create(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary, boolean lazyParsing) {
             LoadModulesNode node = new LoadModulesNode(runner, rootFrame, order, sulongLibrary);
             try {
-                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initModules, lazyParsing, true);
-                createNodes(runner, rootFrame, order.otherLibraries, node.initContextBefore, node.initSymbols, node.initModules, lazyParsing, false);
+                createNodes(runner, rootFrame, order.sulongLibraries, 0, node.initSymbols, node.initGlobals, node.initModules, lazyParsing, true);
+                createNodes(runner, rootFrame, order.otherLibraries, order.sulongLibraries.size(), node.initSymbols, node.initGlobals, node.initModules, lazyParsing, false);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -225,11 +223,12 @@ final class Runner {
         }
 
         private static void createNodes(Runner runner, FrameDescriptor rootFrame, List<LLVMParserResult> parserResults, int offset, InitializeSymbolsNode[] initSymbols,
-                        InitializeModuleNode[] initModules, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
+                        InitializeGlobalNode[] initGlobals, InitializeModuleNode[] initModules, boolean lazyParsing, boolean isSulongLibrary) throws TypeOverflowException {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
                 initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), lazyParsing, isSulongLibrary);
-                initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
+                initGlobals[offset + i] = new InitializeGlobalNode(rootFrame, res);
+                initModules[offset + i] = new InitializeModuleNode(runner, res);
             }
         }
 
@@ -248,9 +247,9 @@ final class Runner {
                 LLVMPointer[] roSections = new LLVMPointer[initSymbols.length];
                 doInitSymbols(ctx, shouldInit, roSections);
 
-                doInitModules(frame, ctx, shouldInit, roSections, 0, initContextBefore);
+                doInitGlobals(frame, shouldInit, roSections);
                 initContext.execute(frame);
-                doInitModules(frame, ctx, shouldInit, roSections, initContextBefore, initModules.length);
+                doInitModules(frame, ctx, shouldInit);
                 return sulongLibrary;
             }
         }
@@ -278,10 +277,19 @@ final class Runner {
         }
 
         @ExplodeLoop
-        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit, LLVMPointer[] roSections, int from, int to) {
-            for (int i = from; i < to; i++) {
+        private void doInitGlobals(VirtualFrame frame, BitSet shouldInit, LLVMPointer[] roSections) {
+            for (int i = 0; i < initGlobals.length; i++) {
                 if (shouldInit.get(i)) {
-                    initModules[i].execute(frame, ctx, roSections[i]);
+                    initGlobals[i].execute(frame, roSections[i]);
+                }
+            }
+        }
+
+        @ExplodeLoop
+        private void doInitModules(VirtualFrame frame, LLVMContext ctx, BitSet shouldInit) {
+            for (int i = 0; i < initModules.length; i++) {
+                if (shouldInit.get(i)) {
+                    initModules[i].execute(frame, ctx);
                 }
             }
         }
@@ -457,6 +465,12 @@ final class Runner {
         }
     }
 
+    /**
+     * Allocates global storage for a module and initializes the global table.
+     *
+     * @see InitializeGlobalNode
+     * @see InitializeModuleNode
+     */
     private static final class InitializeSymbolsNode extends LLVMNode {
 
         @Child LLVMAllocateNode allocRoSection;
@@ -843,7 +857,7 @@ final class Runner {
         return parse(parserResults, dependencyQueue, source, lib, source.getBytes());
     }
 
-    private LLVMParserResult parseBinary(List<LLVMParserResult> parserResults, BinaryParserResult binaryParserResult, Source source, ExternalLibrary library) {
+    private LLVMParserResult parseBinary(List<LLVMParserResult> parserResults, BinaryParserResult binaryParserResult, Source source, ExternalLibrary library, ArrayList<ExternalLibrary> dependencies) {
         ModelModule module = new ModelModule();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
         TargetDataLayout layout = module.getTargetDataLayout();
@@ -853,7 +867,7 @@ final class Runner {
         LLVMScope fileScope = new LLVMScope();
         LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory, id.getAndIncrement());
         LLVMParser parser = new LLVMParser(source, runtime);
-        LLVMParserResult parserResult = parser.parse(module, targetDataLayout);
+        LLVMParserResult parserResult = parser.parse(module, targetDataLayout, dependencies);
         parserResults.add(parserResult);
         return parserResult;
     }
@@ -866,13 +880,18 @@ final class Runner {
             context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             List<String> libraries = binaryParserResult.getLibraries();
+            ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
             for (String lib : libraries) {
-                ExternalLibrary dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
-                if (dependency != null) {
-                    dependencyQueue.addLast(dependency);
+                LLVMContext.AddResult result = context.addExternalLibraryPair(lib, true, library, binaryParserResult.getLocator());
+                if (result != null) {
+                    ExternalLibrary dependency = result.library;
+                    dependencies.add(dependency);
+                    if (result.added) {
+                        dependencyQueue.addLast(dependency);
+                    }
                 }
             }
-            return parseBinary(parserResults, binaryParserResult, source, library);
+            return parseBinary(parserResults, binaryParserResult, source, library, dependencies);
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
@@ -970,91 +989,57 @@ final class Runner {
         // someone tries to execute the function
     }
 
-    private InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
-        // Split libraries into Sulong-specific ones and others, so that we can handle the
-        // Sulong-specific ones separately.
-        List<LLVMParserResult> sulongLibs = new ArrayList<>();
-        List<LLVMParserResult> otherLibs = new ArrayList<>();
+    private static InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         List<ExternalLibrary> sulongExternalLibraries = Arrays.asList(defaultLibraries);
+
+        ArrayList<LLVMParserResult> sulongLibs = new ArrayList<>();
+        ArrayList<LLVMParserResult> otherLibs = new ArrayList<>();
+        ArrayList<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
+        EconomicMap<Object, LLVMParserResult> dependencyToParserResult = EconomicMap.create(Equivalence.IDENTITY);
+        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
+        /*
+         * Split libraries into Sulong-specific ones and others, so that we can handle the
+         * Sulong-specific ones separately.
+         */
         for (LLVMParserResult parserResult : parserResults) {
-            if (sulongExternalLibraries.contains(parserResult.getRuntime().getLibrary())) {
+            ExternalLibrary library = parserResult.getRuntime().getLibrary();
+            dependencyToParserResult.put(library, parserResult);
+            if (sulongExternalLibraries.contains(library)) {
                 sulongLibs.add(parserResult);
+                visited.add(parserResult);
             } else {
                 otherLibs.add(parserResult);
             }
         }
 
-        // Typically, the initialization order is very close to the reversed parsing order. So, we
-        // only want to change the order when it is really necessary.
-        List<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
-        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
-        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = computeDependencies(otherLibs);
-        for (int i = otherLibs.size() - 1; i >= 0; i--) {
-            LLVMParserResult parserResult = otherLibs.get(i);
-            if (!visited.contains(parserResult)) {
-                addToInitializationOrder(parserResult, dependencies, otherLibsInitializationOrder, visited);
+        for (LLVMParserResult otherlib : otherLibs) {
+            if (!visited.contains(otherlib)) {
+                addModuleToInitializationOrder(otherlib, otherLibsInitializationOrder, dependencyToParserResult, visited);
+                assert otherLibsInitializationOrder.contains(otherlib);
             }
         }
-
-        assert sulongLibs.size() + otherLibsInitializationOrder.size() == parserResults.size();
+        assert otherLibsInitializationOrder.containsAll(otherLibs);
         return new InitializationOrder(sulongLibs, otherLibsInitializationOrder);
     }
 
-    private static void addToInitializationOrder(LLVMParserResult current, EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies, List<LLVMParserResult> initializationOrder,
+    private static void addModuleToInitializationOrder(LLVMParserResult module, ArrayList<LLVMParserResult> initializationOrder, EconomicMap<Object, LLVMParserResult> dependencyToParserResult,
                     EconomicSet<LLVMParserResult> visited) {
-        visited.add(current);
-        List<LLVMParserResult> currentDependencies = dependencies.get(current);
-        for (LLVMParserResult dependency : currentDependencies) {
-            if (!visited.contains(dependency)) {
-                addToInitializationOrder(dependency, dependencies, initializationOrder, visited);
+        if (visited.contains(module)) {
+            /*
+             * We don't know if the module has already been added to the initialization order list
+             * or if we are still processing its dependencies. In the second case we found a cycle,
+             * which we silently ignore.
+             */
+            return;
+        }
+        visited.add(module);
+        for (ExternalLibrary dep : module.getDependencies()) {
+            LLVMParserResult depLib = dependencyToParserResult.get(dep);
+            if (depLib != null) {
+                addModuleToInitializationOrder(depLib, initializationOrder, dependencyToParserResult, visited);
             }
         }
-        initializationOrder.add(current);
-    }
-
-    private EconomicMap<LLVMParserResult, List<LLVMParserResult>> computeDependencies(List<LLVMParserResult> parserResults) {
-        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = EconomicMap.create(Equivalence.IDENTITY);
-        Map<ExternalLibrary, LLVMParserResult> libsToParserResults = mapLibsToParserResults(parserResults);
-        LLVMScope globalScope = context.getGlobalScope();
-        for (LLVMParserResult parserResult : parserResults) {
-            List<LLVMParserResult> currentDependencies = new ArrayList<>();
-            for (ExternalLibrary lib : getImportedLibraries(globalScope, parserResult)) {
-                // ignore self imports
-                if (!parserResult.getRuntime().getLibrary().equals(lib)) {
-                    LLVMParserResult dependency = libsToParserResults.get(lib);
-                    if (dependency != null) {
-                        currentDependencies.add(dependency);
-                    }
-                }
-            }
-            dependencies.put(parserResult, currentDependencies);
-        }
-        return dependencies;
-    }
-
-    private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
-        EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
-        for (String imported : parserResult.getImportedSymbols()) {
-
-            LLVMSymbol symbol = globalScope.get(imported);
-
-            if (symbol != null) {
-                ExternalLibrary lib = symbol.getLibrary();
-
-                if (lib != null) {
-                    importedLibs.add(lib);
-                }
-            }
-        }
-        return importedLibs;
-    }
-
-    private static Map<ExternalLibrary, LLVMParserResult> mapLibsToParserResults(List<LLVMParserResult> parserResults) {
-        Map<ExternalLibrary, LLVMParserResult> map = new HashMap<>();
-        for (LLVMParserResult parserResult : parserResults) {
-            map.put(parserResult.getRuntime().getLibrary(), parserResult);
-        }
-        return map;
+        initializationOrder.add(module);
     }
 
     private static final class StaticInitsNode extends LLVMStatementNode {
@@ -1074,33 +1059,65 @@ final class Runner {
         }
     }
 
-    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
+    /**
+     * Initializes the memory, allocated by {@link InitializeSymbolsNode}, for a module and protects
+     * the read only section.
+     *
+     * @see InitializeSymbolsNode
+     * @see InitializeModuleNode
+     */
+    private static final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatalayoutNode {
 
-        private final RootCallTarget destructor;
         private final DataLayout dataLayout;
 
         @Child StaticInitsNode globalVarInit;
         @Child LLVMMemoryOpNode protectRoData;
 
-        @Child StaticInitsNode constructor;
-
-        InitializeModuleNode(Runner runner, FrameDescriptor rootFrame, LLVMParserResult parserResult) {
-            this.destructor = runner.createDestructor(parserResult);
+        InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
             this.dataLayout = parserResult.getDataLayout();
 
             this.globalVarInit = Runner.createGlobalVariableInitializer(rootFrame, parserResult);
             this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
-            this.constructor = Runner.createConstructor(parserResult);
         }
 
-        void execute(VirtualFrame frame, LLVMContext ctx, LLVMPointer roDataBase) {
-            if (destructor != null) {
-                ctx.registerDestructorFunctions(destructor);
-            }
+        void execute(VirtualFrame frame, LLVMPointer roDataBase) {
             globalVarInit.execute(frame);
             if (roDataBase != null) {
                 // TODO could be a compile-time check
                 protectRoData.execute(roDataBase);
+            }
+        }
+
+        @Override
+        public DataLayout getDatalayout() {
+            return dataLayout;
+        }
+    }
+
+    /**
+     * Registers the destructor and executes the constructor of a module. This happens after
+     * <emph>all</emph> globals have been initialized by {@link InitializeGlobalNode}.
+     *
+     * @see InitializeSymbolsNode
+     * @see InitializeGlobalNode
+     */
+    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
+
+        private final RootCallTarget destructor;
+        private final DataLayout dataLayout;
+
+        @Child StaticInitsNode constructor;
+
+        InitializeModuleNode(Runner runner, LLVMParserResult parserResult) {
+            this.destructor = runner.createDestructor(parserResult);
+            this.dataLayout = parserResult.getDataLayout();
+
+            this.constructor = Runner.createConstructor(parserResult);
+        }
+
+        void execute(VirtualFrame frame, LLVMContext ctx) {
+            if (destructor != null) {
+                ctx.registerDestructorFunctions(destructor);
             }
             constructor.execute(frame);
         }

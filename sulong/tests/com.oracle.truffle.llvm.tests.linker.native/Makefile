@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -46,12 +46,10 @@ default:
 ifeq ($(OS), darwin)
 SO_EXT=.dylib
 ORIGIN_TOKEN='@loader_path'
-SO_LDFLAGS=-Wl,-install_name,@rpath/$(notdir $@)
+SO_LDFLAGS=-Wl,-install_name,@rpath/$(notdir $@) -Wl,-undefined,suppress -Wl,-flat_namespace
 else
 SO_EXT=.so
 ORIGIN_TOKEN='$$ORIGIN'
 endif
 
-include $(SRC_DIR)/linker/Makefile
-include $(SRC_DIR)/rpath/Makefile
-include $(SRC_DIR)/reload/Makefile
+include $(SRC_DIR)/*/Makefile
