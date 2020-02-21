@@ -430,7 +430,7 @@ public abstract class Source {
      */
     public final int getLength() {
         if (hasCharacters()) {
-            return getTextMap().length();
+            return getCharacters().length();
         } else if (hasBytes()) {
             return getBytes().length();
         } else {
