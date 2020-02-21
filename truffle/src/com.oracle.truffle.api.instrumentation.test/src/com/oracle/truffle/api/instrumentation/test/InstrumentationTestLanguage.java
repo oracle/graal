@@ -2166,6 +2166,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
+        @TruffleBoundary
         boolean hasSourceLocation() {
             if (delegate instanceof Integer || delegate instanceof Long) {
                 return true;
@@ -2201,6 +2202,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return true;
         }
 
+        @TruffleBoundary
         private String getTypeName() {
             if (delegate instanceof Integer || delegate instanceof Long) {
                 return "Integer";
