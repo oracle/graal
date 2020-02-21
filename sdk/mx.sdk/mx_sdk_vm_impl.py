@@ -180,7 +180,6 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
-
                     if not stage1:
                         libpoly_build_args.extend(component.polyglot_lib_build_args)
                         libpoly_jar_dependencies.extend(component.polyglot_lib_jar_dependencies)
@@ -192,31 +191,58 @@ def registered_graalvm_components(stage1=False):
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
 
-        if not stage1 and libpoly_has_entrypoints:
-            libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
-                suite=_suite,
-                name='Polyglot Library',
-                short_name='libpoly',
-                license_files=[],
-                third_party_license_files=[],
-                dir_name='polyglot',
-                library_configs=[mx_sdk_vm.LibraryConfig(
-                    destination='<lib:polyglot>',
-                    jar_distributions=libpoly_jar_dependencies,
-                    build_args=[
-                           '-H:+IncludeAllTimeZones',
-                           '-Dgraalvm.libpolyglot=true',
-                           '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
-                           '--tool:all',
-                       ] + libpoly_build_args,
-                    is_polyglot=True,
-                )],
-            )
-            mx_sdk_vm.register_graalvm_component(libpolyglot_component)
-            add_dependencies([libpolyglot_component])
+        if not stage1:
+            if _with_polyglot_launcher_project():
+                polyglot_component = mx_sdk_vm.GraalVmJreComponent(
+                    suite=_suite,
+                    name='Polyglot Launcher',
+                    short_name='poly',
+                    license_files=[],
+                    third_party_license_files=[],
+                    dir_name='polyglot',
+                    launcher_configs=[mx_sdk_vm.LauncherConfig(
+                        destination='bin/<exe:polyglot>',
+                        jar_distributions=['sdk:LAUNCHER_COMMON'],
+                        main_class='org.graalvm.launcher.PolyglotLauncher',
+                        build_args=[
+                            '-H:-ParseRuntimeOptions',
+                            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+                            '--tool:all',
+                        ],
+                        is_main_launcher=True,
+                        default_symlinks=True,
+                        is_sdk_launcher=True,
+                        is_polyglot=True,
+                    )],
+                )
+                mx_sdk_vm.register_graalvm_component(polyglot_component)
+                add_dependencies([polyglot_component])
 
-            if libpoly_build_dependencies:
-                mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
+            if _with_polyglot_lib_project() and libpoly_has_entrypoints:
+                libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
+                    suite=_suite,
+                    name='Polyglot Library',
+                    short_name='libpoly',
+                    license_files=[],
+                    third_party_license_files=[],
+                    dir_name='polyglot',
+                    library_configs=[mx_sdk_vm.LibraryConfig(
+                        destination='<lib:polyglot>',
+                        jar_distributions=libpoly_jar_dependencies,
+                        build_args=[
+                               '-H:+IncludeAllTimeZones',
+                               '-Dgraalvm.libpolyglot=true',
+                               '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
+                               '--tool:all',
+                           ] + libpoly_build_args,
+                        is_polyglot=True,
+                    )],
+                )
+                mx_sdk_vm.register_graalvm_component(libpolyglot_component)
+                add_dependencies([libpolyglot_component])
+
+                if libpoly_build_dependencies:
+                    mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
 
         # If we are going to build native launchers or libraries, i.e., if SubstrateVM is included,
         # we need native-image in stage1 to build them, even if the Native Image component is excluded.
@@ -2143,30 +2169,6 @@ def has_svm_polyglot_lib():
     if not _get_svm_support().is_supported() or not _with_polyglot_lib_project():
         return False
     return any(c.has_polyglot_lib_entrypoints for c in registered_graalvm_components(stage1=False))
-
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='Polyglot Launcher',
-    short_name='poly',
-    license_files=[],
-    third_party_license_files=[],
-    dir_name='polyglot',
-    launcher_configs=[mx_sdk_vm.LauncherConfig(
-        destination='bin/<exe:polyglot>',
-        jar_distributions=['sdk:LAUNCHER_COMMON'],
-        main_class='org.graalvm.launcher.PolyglotLauncher',
-        build_args=[
-            '-H:-ParseRuntimeOptions',
-            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
-            '--tool:all',
-        ],
-        is_main_launcher=True,
-        default_symlinks=True,
-        is_sdk_launcher=True,
-        is_polyglot=True,
-    )],
-))
 
 
 _native_image_configs = {}
