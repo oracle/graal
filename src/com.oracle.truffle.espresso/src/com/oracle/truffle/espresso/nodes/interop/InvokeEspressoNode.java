@@ -43,8 +43,8 @@ public abstract class InvokeEspressoNode extends Node {
 
     public abstract Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
 
-    static ToEspressoNode[] createToEspresso(int argsLength, boolean uncached) {
-        return ToEspressoNode.createToEspresso(argsLength, uncached);
+    static ToEspressoNode[] createToEspresso(int argsLength) {
+        return ToEspressoNode.createToEspresso(argsLength);
     }
 
     static DirectCallNode createDirectCallNode(CallTarget callTarget) {
@@ -55,7 +55,7 @@ public abstract class InvokeEspressoNode extends Node {
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT")
     Object doCached(Method method, Object receiver, Object[] arguments,
                     @Cached("method") Method cachedMethod,
-                    @Cached("createToEspresso(method.getParameterCount(), false)") ToEspressoNode[] toEspressoNodes,
+                    @Cached("createToEspresso(method.getParameterCount())") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getCallTarget())", allowUncached = true) DirectCallNode directCallNode)
                     throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
 

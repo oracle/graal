@@ -50,12 +50,10 @@ abstract class ToEspressoNode extends Node {
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedMessageException, UnsupportedTypeException;
 
-    static ToEspressoNode[] createToEspresso(long argsLength, boolean uncached) {
+    static ToEspressoNode[] createToEspresso(long argsLength) {
         ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
         for (int i = 0; i < argsLength; i++) {
-            toEspresso[i] = uncached
-                            ? ToEspressoNodeGen.getUncached()
-                            : ToEspressoNodeGen.create();
+            toEspresso[i] = ToEspressoNodeGen.create();
         }
         return toEspresso;
     }
@@ -128,7 +126,7 @@ abstract class ToEspressoNode extends Node {
     Object doStringArray(Object value,
                     ArrayKlass stringArrayKlass,
                     @CachedLibrary("value") InteropLibrary interop,
-                    @Cached(value = "createToEspresso(interop.getArraySize(value), false)", uncached = "createToEspresso(interop.getArraySize(value), true)") ToEspressoNode[] toEspressoNodes)
+                    @Cached ToEspressoNode toEspressoNode)
                     throws UnsupportedMessageException, UnsupportedTypeException {
         if (interop.isNull(value)) {
             return StaticObject.NULL;
@@ -143,7 +141,7 @@ abstract class ToEspressoNode extends Node {
                 if (interop.isArrayElementReadable(value, index)) {
                     try {
                         Object elem = interop.readArrayElement(value, index);
-                        return (StaticObject) toEspressoNodes[index].execute(elem, jlString);
+                        return (StaticObject) toEspressoNode.execute(elem, jlString);
                     } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                         rethrow(UnsupportedTypeException.create(new Object[]{value}, stringArrayKlass.getTypeAsString()));
                     } catch (UnsupportedTypeException e) {
