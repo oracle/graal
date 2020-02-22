@@ -47,7 +47,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 public final class LambdaUtils {
-    private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/\\d+");
+    private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/[^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
@@ -113,14 +113,15 @@ public final class LambdaUtils {
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
-        assert lambdaMatcher(lambdaType.getName()).find() : "Stable name should be created only for lambda types.";
+        final String lambdaName = lambdaType.getName();
+        assert lambdaMatcher(lambdaName).find() : "Stable name should be created only for lambda types: " + lambdaName;
 
-        Matcher m = lambdaMatcher(lambdaType.getName());
+        Matcher m = lambdaMatcher(lambdaName);
         StringBuilder sb = new StringBuilder();
         targetMethods.forEach((targetMethod) -> {
             sb.append(targetMethod.format("%H.%n(%P)%R"));
         });
-        return m.replaceFirst("\\$\\$Lambda\\$" + digest(sb.toString()));
+        return m.replaceFirst(Matcher.quoteReplacement("$$Lambda$" + digest(sb.toString()) + ";"));
     }
 
     private static Matcher lambdaMatcher(String value) {
