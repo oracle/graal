@@ -1184,7 +1184,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         graalvm_compiler_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent) and c.graal_compiler]
         jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
-            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
+            jdk_suffix = jdk_suffix + '-' + hashlib.sha1(_encode(','.join(root_module_names))).hexdigest()
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
         if dst_jdk_dir == src_jdk.home:
             # Avoid overwriting source JDK
