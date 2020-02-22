@@ -46,6 +46,7 @@ import mx
 import mx_subst
 import os
 import shutil
+import tempfile
 
 from os.path import join, exists, isfile, isdir, dirname, basename, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -440,6 +441,34 @@ def jdk_enables_jvmci_by_default(jdk):
         setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
     return getattr(jdk, '.enables_jvmci_by_default')
 
+def jdk_has_new_jlink_options(jdk):
+    """
+    Determines if the jlink executable in `jdk` supports the options added by
+    https://bugs.openjdk.java.net/browse/JDK-8232080.
+    """
+    if not hasattr(jdk, '.supports_new_jlink_options'):
+        output = mx.OutputCapture()
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
+        mx.run([jlink_exe, '--list-plugins'], out=output)
+        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
+    return getattr(jdk, '.supports_new_jlink_options')
+
+def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
+    """
+    Determines if the `jdk` suppresses a warning about ThreadPriorityPolicy when it
+    is non-zero if the value is set from the jimage.
+    https://bugs.openjdk.java.net/browse/JDK-8235908.
+    """
+    if not hasattr(jdk, '.omits_ThreadPriorityPolicy_warning'):
+        out = mx.OutputCapture()
+        sink = lambda x: x
+        tmpdir = tempfile.mkdtemp(prefix='jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy')
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
+        mx.run([jlink_exe, '--add-options=-XX:ThreadPriorityPolicy=1', '--output=' + join(tmpdir, 'jdk'), '--add-modules=java.base'])
+        mx.run([mx.exe_suffix(join(tmpdir, 'jdk', 'bin', 'java')), '-version'], out=sink, err=out)
+        shutil.rmtree(tmpdir)
+        setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
+    return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
     """
@@ -588,7 +617,6 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
-        jlink_exe = jdk.javac.replace('javac', 'jlink')
         jlink = [jdk.javac.replace('javac', 'jlink')]
 
         if jdk_enables_jvmci_by_default(jdk):
@@ -614,18 +642,20 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
 
-        # https://bugs.openjdk.java.net/browse/JDK-8232080
-        output = mx.OutputCapture()
-        mx.run([jlink_exe, '--list-plugins'], out=output)
-        if '--add-options=' in output.data:
-            assert '--vendor-version=' in output.data
+        if jdk_has_new_jlink_options(jdk):
+            if jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
+                thread_priority_policy_option = ' -XX:ThreadPriorityPolicy=1'
+            else:
+                mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
+                thread_priority_policy_option = ''
+
             if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions -XX:ThreadPriorityPolicy=1')
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
                 # the JDK itself.
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions -XX:ThreadPriorityPolicy=1')
+                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
@@ -636,7 +666,7 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
         #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-        mx.logv('[Creating JDK image]')
+        mx.logv('[Creating JDK image in {}]'.format(dst_jdk_dir))
         mx.run(jlink)
 
         dst_src_zip = join(dst_jdk_dir, 'lib', 'src.zip')
