@@ -247,7 +247,9 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableManagement = new OptionKey<>(true);
 
-    @Option(help = "Enable support for threads (disable for single-threaded implementation)", //
+    @Option(help = "Enable support for threads. " +
+                    "In single-threaded mode, Thread.start is disabled, weak references and finalizers won't be processed. " +
+                    "Lock operations may be optimized away.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(true);
 
