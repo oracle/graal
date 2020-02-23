@@ -997,7 +997,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        java_lang_String_value.set(guestString, StaticObject.wrap(value));
+        java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
         java_lang_String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
@@ -1031,7 +1031,7 @@ public final class Meta implements ContextAccess {
             return hostObject;
         }
         if (hostObject instanceof StaticObject[]) {
-            return StaticObject.wrap((StaticObject[]) hostObject);
+            return StaticObject.wrap((StaticObject[]) hostObject, this);
         }
 
         if (hostObject instanceof Boolean ||

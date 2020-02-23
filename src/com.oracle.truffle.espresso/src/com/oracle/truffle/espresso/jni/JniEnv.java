@@ -1487,7 +1487,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Host(String.class) StaticObject NewString(@Word long unicodePtr, int len) {
-        StaticObject value = StaticObject.wrap(new char[len]);
+        StaticObject value = StaticObject.wrap(new char[len], getMeta());
         SetCharArrayRegion(value, 0, len, unicodePtr);
         StaticObject guestString = getMeta().java_lang_String.allocateInstance();
         getMeta().java_lang_String_value.set(guestString, value);
@@ -1543,7 +1543,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public boolean ExceptionCheck() {
         StaticObject ex = threadLocalPendingException.get();
-        assert !StaticObject.isEspressoNull(ex);
+        assert ex == null || StaticObject.notNull(ex); // ex != null => ex != NULL
         return ex != null;
     }
 

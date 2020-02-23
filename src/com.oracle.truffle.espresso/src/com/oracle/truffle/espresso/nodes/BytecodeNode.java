@@ -397,7 +397,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         int n = 0;
         if (hasReceiver) {
-            assert !StaticObject.isEspressoNull(frameArguments[0]) : "null receiver in init arguments !";
+            assert StaticObject.notNull((StaticObject) frameArguments[0]) : "null receiver in init arguments !";
             setLocalObject(frame, n, (StaticObject) frameArguments[0]);
             n += JavaKind.Object.getSlotCount();
         }

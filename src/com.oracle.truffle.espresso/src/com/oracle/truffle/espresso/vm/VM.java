@@ -1113,7 +1113,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         Klass pdKlass = getMeta().java_security_ProtectionDomain;
         StaticObject pd = pdKlass.allocateInstance();
         getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
-        StaticObject context = StaticObject.wrap(new StaticObject[]{pd});
+        StaticObject context = StaticObject.wrap(new StaticObject[]{pd}, getMeta());
         return createACC(context, false, StaticObject.NULL);
     }
 
@@ -2006,7 +2006,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
-                        stackTrace = StaticObject.wrap(unwrapped);
+                        stackTrace = StaticObject.wrap(unwrapped, meta);
                     }
                 } else {
                     stackTrace = meta.java_lang_StackTraceElement.allocateArray(0);

@@ -563,7 +563,7 @@ public abstract class ConstantPool {
         return constantPool;
     }
 
-    private static boolean existsAt(Object[] patches, int index) {
-        return patches != null && index <= patches.length && !StaticObject.isEspressoNull(patches[index]);
+    private static boolean existsAt(StaticObject[] patches, int index) {
+        return patches != null && 0 <= index && index < patches.length && StaticObject.notNull(patches[index]);
     }
 }
