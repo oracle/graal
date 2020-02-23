@@ -219,7 +219,7 @@ public final class ObjectKlass extends Klass {
     private synchronized void obtainStatics() {
         if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            statics = new StaticObject(this, true);
+            statics = StaticObject.createStatics(this);
         }
     }
 

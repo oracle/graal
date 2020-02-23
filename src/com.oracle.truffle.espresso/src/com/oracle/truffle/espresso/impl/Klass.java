@@ -162,7 +162,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private synchronized void mirrorCreate() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = new StaticObject(getMeta().java_lang_Class, this);
+            this.mirrorCache = StaticObject.createClass(this);
         }
     }
 

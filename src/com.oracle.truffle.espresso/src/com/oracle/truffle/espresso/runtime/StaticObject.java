@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -119,7 +118,9 @@ public final class StaticObject implements TruffleObject {
         return l;
     }
 
-    // Only non-primitive fields are stored in this
+    private final Klass klass; // != PrimitiveKlass
+
+    // Only non-primitive fields are stored here.
     private final Object fields;
 
     /**
@@ -128,64 +129,49 @@ public final class StaticObject implements TruffleObject {
      * example), which would require reading 16 bytes and concatenating them, call Unsafe which can
      * directly read a long.
      */
-    // Note: For the time being, Graal does not allow virtualization of byte arrays with access
-    // kinds bigger than a byte.
-    // @see: VirtualizerToolImpl.setVirtualEntry
     private final byte[] primitiveFields;
 
-    public byte[] cloneFields() {
-        return primitiveFields.clone();
-    }
-
-    // Dedicated constructor for VOID and NULL pseudo-singletons
+    // Dedicated constructor for NULL.
     private StaticObject() {
+        assert NULL == null;
         this.klass = null;
         this.fields = null;
         this.primitiveFields = null;
     }
 
-    // Constructor for object copy
-    StaticObject(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
+    // Constructor for object copy.
+    private StaticObject(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
         this.klass = klass;
         this.fields = fields;
         this.primitiveFields = primitiveFields;
     }
 
     // Constructor for regular objects.
-    public StaticObject(ObjectKlass klass) {
-        this(klass, false);
+    private StaticObject(ObjectKlass klass) {
+        assert klass != klass.getMeta().java_lang_Class;
+        this.klass = klass;
+        this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
+        this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
+        initInstanceFields(klass);
     }
 
-    // Constructor for Class objects
-    public StaticObject(ObjectKlass guestClass, Klass thisKlass) {
-        assert thisKlass != null;
-        assert guestClass == guestClass.getMeta().java_lang_Class;
+    // Constructor for Class objects.
+    private StaticObject(Klass klass) {
+        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         this.klass = guestClass;
-        // assert !isStatic || klass.isInitialized(); else {
         int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
         this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
-        initFields(guestClass, false);
-        setHiddenField(thisKlass.getMeta().HIDDEN_MIRROR_KLASS, thisKlass);
+        initInstanceFields(guestClass);
+        setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
     }
 
-    public StaticObject(ObjectKlass klass, boolean isStatic) {
-        assert klass != klass.getMeta().java_lang_Class || isStatic;
+    // Constructor for static fields storage.
+    private StaticObject(ObjectKlass klass, @SuppressWarnings("unused") Void unused) {
         this.klass = klass;
-        // assert !isStatic || klass.isInitialized();
-        if (isStatic) {
-            this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
-            this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
-        } else {
-            this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
-            this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
-        }
-        initFields(klass, isStatic);
-    }
-
-    // Use an explicit method to create array, avoids confusion.
-    public static StaticObject createArray(ArrayKlass klass, Object array) {
-        return new StaticObject(klass, array);
+        this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
+        this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
+        initStaticFields(klass);
     }
 
     /**
@@ -199,7 +185,7 @@ public final class StaticObject implements TruffleObject {
      * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
      * Unsafe operations.
      */
-    public StaticObject(ArrayKlass klass, Object array) {
+    private StaticObject(ArrayKlass klass, Object array) {
         this.klass = klass;
         assert klass.isArray();
         assert array != null;
@@ -209,7 +195,22 @@ public final class StaticObject implements TruffleObject {
         this.primitiveFields = null;
     }
 
-    private final Klass klass;
+    public static StaticObject createNew(ObjectKlass klass) {
+        return new StaticObject(klass);
+    }
+
+    public static StaticObject createClass(Klass klass) {
+        return new StaticObject(klass);
+    }
+
+    public static StaticObject createStatics(ObjectKlass klass) {
+        return new StaticObject(klass, null);
+    }
+
+    // Use an explicit method to create array, avoids confusion.
+    public static StaticObject createArray(ArrayKlass klass, Object array) {
+        return new StaticObject(klass, array);
+    }
 
     public Klass getKlass() {
         return klass;
@@ -223,41 +224,38 @@ public final class StaticObject implements TruffleObject {
         return this == getKlass().getStatics();
     }
 
-    // FIXME(peterssen): Klass does not need to be initialized, just prepared?.
-    public boolean isStatic() {
-        return this == getKlass().getStatics();
-    }
-
     // Shallow copy.
     public StaticObject copy() {
         if (isNull(this)) {
             return NULL;
         }
         if (getKlass().isArray()) {
-            return new StaticObject((ArrayKlass) getKlass(), cloneWrapped());
+            return createArray((ArrayKlass) getKlass(), cloneWrapped());
         } else {
             return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
         }
     }
 
     @ExplodeLoop
-    private void initFields(ObjectKlass thisKlass, boolean isStatic) {
+    private void initInstanceFields(ObjectKlass thisKlass) {
         CompilerAsserts.partialEvaluationConstant(thisKlass);
-        if (isStatic) {
-            for (Field f : thisKlass.getStaticFieldTable()) {
-                assert f.isStatic();
+        for (Field f : thisKlass.getFieldTable()) {
+            assert !f.isStatic();
+            if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
                     setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
                 }
             }
-        } else {
-            for (Field f : thisKlass.getFieldTable()) {
-                assert !f.isStatic();
-                if (!f.isHidden()) {
-                    if (f.getKind() == JavaKind.Object) {
-                        setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
-                    }
-                }
+        }
+    }
+
+    @ExplodeLoop
+    private void initStaticFields(ObjectKlass thisKlass) {
+        CompilerAsserts.partialEvaluationConstant(thisKlass);
+        for (Field f : thisKlass.getStaticFieldTable()) {
+            assert f.isStatic();
+            if (f.getKind() == JavaKind.Object) {
+                setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
             }
         }
     }
