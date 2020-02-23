@@ -230,7 +230,7 @@ public final class StaticObject implements TruffleObject {
             return NULL;
         }
         if (getKlass().isArray()) {
-            return createArray((ArrayKlass) getKlass(), cloneWrapped());
+            return createArray((ArrayKlass) getKlass(), cloneWrappedArray());
         } else {
             return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
         }
@@ -691,7 +691,7 @@ public final class StaticObject implements TruffleObject {
         return Array.getLength(fields);
     }
 
-    private Object cloneWrapped() {
+    private Object cloneWrappedArray() {
         assert isArray();
         if (fields instanceof boolean[]) {
             return this.<boolean[]> unwrap().clone();
@@ -720,80 +720,68 @@ public final class StaticObject implements TruffleObject {
         return this.<StaticObject[]> unwrap().clone();
     }
 
-    public static StaticObject wrap(StaticObject[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta.java_lang_Object_array, array);
+    public static StaticObject wrap(StaticObject[] array, Meta meta) {
+        return createArray(meta.java_lang_Object_array, array);
     }
 
-    public static StaticObject wrap(byte[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._byte_array, array);
+    public static StaticObject wrap(byte[] array, Meta meta) {
+        return createArray(meta._byte_array, array);
     }
 
-    public static StaticObject wrap(boolean[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._boolean_array, array);
-    }
-
-    public static StaticObject wrap(char[] array) {
-        return wrap(array, EspressoLanguage.getCurrentContext().getMeta());
+    public static StaticObject wrap(boolean[] array, Meta meta) {
+        return createArray(meta._boolean_array, array);
     }
 
     public static StaticObject wrap(char[] array, Meta meta) {
-        return new StaticObject(meta._char_array, array);
+        return createArray(meta._char_array, array);
     }
 
-    public static StaticObject wrap(short[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._short_array, array);
+    public static StaticObject wrap(short[] array, Meta meta) {
+        return createArray(meta._short_array, array);
     }
 
-    public static StaticObject wrap(int[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._int_array, array);
+    public static StaticObject wrap(int[] array, Meta meta) {
+        return createArray(meta._int_array, array);
     }
 
-    public static StaticObject wrap(float[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._float_array, array);
+    public static StaticObject wrap(float[] array, Meta meta) {
+        return createArray(meta._float_array, array);
     }
 
-    public static StaticObject wrap(double[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._double_array, array);
+    public static StaticObject wrap(double[] array, Meta meta) {
+        return createArray(meta._double_array, array);
     }
 
-    public static StaticObject wrap(long[] array) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        return new StaticObject(meta._long_array, array);
+    public static StaticObject wrap(long[] array, Meta meta) {
+        return createArray(meta._long_array, array);
     }
 
-    public static StaticObject wrapPrimitiveArray(Object array) {
+    public static StaticObject wrapPrimitiveArray(Object array, Meta meta) {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
-            return wrap((boolean[]) array);
+            return wrap((boolean[]) array, meta);
         }
         if (array instanceof byte[]) {
-            return wrap((byte[]) array);
+            return wrap((byte[]) array, meta);
         }
         if (array instanceof char[]) {
-            return wrap((char[]) array);
+            return wrap((char[]) array, meta);
         }
         if (array instanceof short[]) {
-            return wrap((short[]) array);
+            return wrap((short[]) array, meta);
         }
         if (array instanceof int[]) {
-            return wrap((int[]) array);
+            return wrap((int[]) array, meta);
         }
         if (array instanceof float[]) {
-            return wrap((float[]) array);
+            return wrap((float[]) array, meta);
         }
         if (array instanceof double[]) {
-            return wrap((double[]) array);
+            return wrap((double[]) array, meta);
         }
         if (array instanceof long[]) {
-            return wrap((long[]) array);
+            return wrap((long[]) array, meta);
         }
         throw EspressoError.shouldNotReachHere("Not a primitive array " + array);
     }

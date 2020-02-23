@@ -405,20 +405,20 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
         // the constants for the cpi are loosely defined and no real cpi indices.
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (length < 0) {
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
         // @formatter:off
         switch (jvmPrimitiveType) {
-            case 4  : return StaticObject.wrap(new boolean[length]);
-            case 5  : return StaticObject.wrap(new char[length]);
-            case 6  : return StaticObject.wrap(new float[length]);
-            case 7  : return StaticObject.wrap(new double[length]);
-            case 8  : return StaticObject.wrap(new byte[length]);
-            case 9  : return StaticObject.wrap(new short[length]);
-            case 10 : return StaticObject.wrap(new int[length]);
-            case 11 : return StaticObject.wrap(new long[length]);
+            case 4  : return StaticObject.wrap(new boolean[length], meta);
+            case 5  : return StaticObject.wrap(new char[length], meta);
+            case 6  : return StaticObject.wrap(new float[length], meta);
+            case 7  : return StaticObject.wrap(new double[length], meta);
+            case 8  : return StaticObject.wrap(new byte[length], meta);
+            case 9  : return StaticObject.wrap(new short[length], meta);
+            case 10 : return StaticObject.wrap(new int[length], meta);
+            case 11 : return StaticObject.wrap(new long[length], meta);
             default :
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere();
@@ -476,7 +476,7 @@ public final class InterpreterToVM implements ContextAccess {
                                             : meta.java_lang_InstantiationException);
         }
         klass.safeInitialize();
-        return new StaticObject((ObjectKlass) klass);
+        return StaticObject.createNew((ObjectKlass) klass);
     }
 
     public static int arrayLength(StaticObject arr) {
