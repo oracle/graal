@@ -50,14 +50,6 @@ abstract class ToEspressoNode extends Node {
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedMessageException, UnsupportedTypeException;
 
-    static ToEspressoNode[] createToEspresso(long argsLength) {
-        ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
-        for (int i = 0; i < argsLength; i++) {
-            toEspresso[i] = ToEspressoNodeGen.create();
-        }
-        return toEspresso;
-    }
-
     @Specialization(guards = "cachedKlass == primitiveKlass", limit = "8" /* void is impossible */)
     Object doPrimitive(Object value,
                     PrimitiveKlass primitiveKlass,
