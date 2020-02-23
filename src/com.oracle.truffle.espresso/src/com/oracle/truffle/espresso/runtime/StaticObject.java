@@ -57,6 +57,27 @@ import sun.misc.Unsafe;
 @ExportLibrary(InteropLibrary.class)
 public final class StaticObject implements TruffleObject {
 
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
+
+    public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
+
+    public static final StaticObject NULL = new StaticObject();
+
+    private volatile EspressoLock lock;
+
+    private final Klass klass; // != PrimitiveKlass
+
+    // Stores non-primitive fields only.
+    private final Object fields;
+
+    /**
+     * Stores all primitive types contiguously in a single byte array, without any unused bits
+     * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
+     * example), which would require reading 8 bytes and concatenating them, call Unsafe which can
+     * directly read a long.
+     */
+    private final byte[] primitiveFields;
+
     // region Interop
 
     @ExportMessage
@@ -81,59 +102,9 @@ public final class StaticObject implements TruffleObject {
 
     // endregion Interop
 
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
-
-    public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
-
-    public static final StaticObject NULL = new StaticObject();
-
-    private volatile EspressoLock lock;
-
-    /**
-     * Returns an {@link EspressoLock} instance for use with this {@link StaticObject} instance.
-     *
-     * <p>
-     * The {@link EspressoLock} instance will be unique and cached. Calling this method on
-     * {@link StaticObject#NULL} is an invalid operation.
-     *
-     * <p>
-     * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
-     * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
-     * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
-     */
-    public EspressoLock getLock() {
-        if (isNull(this)) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
-        }
-        EspressoLock l = lock;
-        if (l == null) {
-            synchronized (this) {
-                l = lock;
-                if (l == null) {
-                    lock = l = EspressoLock.create();
-                }
-            }
-        }
-        return l;
-    }
-
-    private final Klass klass; // != PrimitiveKlass
-
-    // Only non-primitive fields are stored here.
-    private final Object fields;
-
-    /**
-     * Stores all primitive types contiguously in a single byte array, without any unused bits
-     * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
-     * example), which would require reading 16 bytes and concatenating them, call Unsafe which can
-     * directly read a long.
-     */
-    private final byte[] primitiveFields;
-
     // Dedicated constructor for NULL.
     private StaticObject() {
-        assert NULL == null;
+        assert NULL == null : "Only meant for StaticObject.NULL";
         this.klass = null;
         this.fields = null;
         this.primitiveFields = null;
@@ -214,6 +185,35 @@ public final class StaticObject implements TruffleObject {
 
     public Klass getKlass() {
         return klass;
+    }
+
+    /**
+     * Returns an {@link EspressoLock} instance for use with this {@link StaticObject} instance.
+     *
+     * <p>
+     * The {@link EspressoLock} instance will be unique and cached. Calling this method on
+     * {@link StaticObject#NULL} is an invalid operation.
+     *
+     * <p>
+     * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
+     * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
+     * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
+     */
+    public EspressoLock getLock() {
+        if (isNull(this)) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
+        }
+        EspressoLock l = lock;
+        if (l == null) {
+            synchronized (this) {
+                l = lock;
+                if (l == null) {
+                    lock = l = EspressoLock.create();
+                }
+            }
+        }
+        return l;
     }
 
     public static boolean notNull(StaticObject object) {
