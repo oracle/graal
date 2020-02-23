@@ -163,6 +163,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public static StaticObject createNew(ObjectKlass klass) {
+        assert !klass.isAbstract() && !klass.isInterface();
         return new StaticObject(klass);
     }
 
@@ -176,6 +177,9 @@ public final class StaticObject implements TruffleObject {
 
     // Use an explicit method to create array, avoids confusion.
     public static StaticObject createArray(ArrayKlass klass, Object array) {
+        assert array != null;
+        assert !(array instanceof StaticObject);
+        assert array.getClass().isArray();
         return new StaticObject(klass, array);
     }
 
