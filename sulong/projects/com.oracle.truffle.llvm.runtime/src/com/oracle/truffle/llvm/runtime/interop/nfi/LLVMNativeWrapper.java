@@ -43,6 +43,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -62,7 +63,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
     private final LLVMFunctionDescriptor function;
 
     public LLVMNativeWrapper(LLVMFunctionDescriptor function) {
-        assert function.isLLVMIRFunction() || function.isIntrinsicFunctionSlowPath();
+        assert function.getFunctionCode().isLLVMIRFunction() || function.getFunctionCode().isIntrinsicFunctionSlowPath();
         this.function = function;
     }
 
@@ -120,10 +121,11 @@ public final class LLVMNativeWrapper implements TruffleObject {
 
         DirectCallNode createCallNode(LLVMFunctionDescriptor function) {
             CallTarget callTarget;
-            if (function.isLLVMIRFunction()) {
-                callTarget = function.getLLVMIRFunctionSlowPath();
-            } else if (function.isIntrinsicFunctionSlowPath()) {
-                callTarget = function.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
+            LLVMFunctionCode functionCode = function.getFunctionCode();
+            if (functionCode.isLLVMIRFunction()) {
+                callTarget = functionCode.getLLVMIRFunctionSlowPath();
+            } else if (functionCode.isIntrinsicFunctionSlowPath()) {
+                callTarget = functionCode.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
             } else {
                 throw new IllegalStateException("unexpected function: " + function.toString());
             }

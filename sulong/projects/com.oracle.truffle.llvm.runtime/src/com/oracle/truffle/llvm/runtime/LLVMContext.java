@@ -65,8 +65,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.UnresolvedFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -233,7 +233,7 @@ public final class LLVMContext {
 
             LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
             LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
-            RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunctionSlowPath();
+            RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
 
@@ -289,7 +289,7 @@ public final class LLVMContext {
             LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), LLVMSymbol.MISCFUNCTION_ID,
                             LLVMSymbol.getMiscSymbolIndex());
             LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
-            functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
+            functionDescriptor.getFunctionCode().define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
             registerSymbolTable(0, new AssumedValue[5]);
             AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
             symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
@@ -419,7 +419,7 @@ public final class LLVMContext {
                 LLVMPointer pointer = functions[index].get();
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
-                    RootCallTarget disposeContext = functionDescriptor.getLLVMIRFunctionSlowPath();
+                    RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
                     try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
                         disposeContext.call(stackPointer);
                     }

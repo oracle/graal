@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -201,13 +202,14 @@ public class LLVMForeignCallNode extends RootNode {
     }
 
     static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        if (function.isLLVMIRFunction()) {
-            return function.getLLVMIRFunctionSlowPath();
-        } else if (function.isIntrinsicFunctionSlowPath()) {
-            return function.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
+        LLVMFunctionCode functionCode = function.getFunctionCode();
+        if (functionCode.isLLVMIRFunction()) {
+            return functionCode.getLLVMIRFunctionSlowPath();
+        } else if (functionCode.isIntrinsicFunctionSlowPath()) {
+            return functionCode.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("native function not supported at this point: " + function.getFunction());
+            throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());
         }
     }
 

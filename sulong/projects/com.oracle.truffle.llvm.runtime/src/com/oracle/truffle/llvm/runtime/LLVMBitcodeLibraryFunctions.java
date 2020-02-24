@@ -43,7 +43,7 @@ public final class LLVMBitcodeLibraryFunctions {
         protected LibraryFunctionNode(LLVMContext context, String name) {
             LLVMFunction function = context.getGlobalScope().getFunction(name);
             LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
-            callNode = DirectCallNode.create(descriptor.getLLVMIRFunctionSlowPath());
+            callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
         }
 
         protected Object execute(Object... args) {

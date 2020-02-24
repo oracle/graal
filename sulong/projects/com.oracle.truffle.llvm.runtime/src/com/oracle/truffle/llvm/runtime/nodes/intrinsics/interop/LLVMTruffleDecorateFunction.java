@@ -48,8 +48,8 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
@@ -108,8 +108,8 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
         protected NativeDecoratedRoot(TruffleLanguage<?> language, LLVMFunctionDescriptor func, LLVMFunctionDescriptor wrapper) {
             super(language);
-            this.funcCallNode = Truffle.getRuntime().createDirectCallNode(func.getLLVMIRFunctionSlowPath());
-            this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getLLVMIRFunctionSlowPath());
+            this.funcCallNode = Truffle.getRuntime().createDirectCallNode(func.getFunctionCode().getLLVMIRFunctionSlowPath());
+            this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getFunctionCode().getLLVMIRFunctionSlowPath());
             this.funcCallNode.cloneCallTarget();
             this.wrapperCallNode.cloneCallTarget();
             this.funcCallNode.forceInlining();
@@ -141,7 +141,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
             super(language);
             this.funcCallNode = LLVMDispatchNodeGen.create(type);
             this.func = func;
-            this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getLLVMIRFunctionSlowPath());
+            this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getFunctionCode().getLLVMIRFunctionSlowPath());
             this.wrapperCallNode.cloneCallTarget();
         }
 
