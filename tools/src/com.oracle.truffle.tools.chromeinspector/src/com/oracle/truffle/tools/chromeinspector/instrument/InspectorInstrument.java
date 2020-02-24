@@ -185,7 +185,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Hide internal errors that can occur as a result of debugger inspection. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> HideErrors = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. This path should be unpredictable, because it also works as a token. Even if you are behind a firewall, an attacker might try to connect to the debugger from a webpage opened " +
+                    "in your browser. (default: randomly generated)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
     @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.INTERNAL) //
