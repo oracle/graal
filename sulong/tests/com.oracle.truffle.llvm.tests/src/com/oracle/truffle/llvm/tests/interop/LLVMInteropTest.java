@@ -995,8 +995,8 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test073() {
-        try (Runner runner = new Runner("interop073")) {
+    public void testPolyglotGetArg() {
+        try (Runner runner = new Runner("polyglotGetArg")) {
             Assert.assertEquals(42, runner.run());
         }
     }
