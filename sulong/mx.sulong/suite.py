@@ -990,6 +990,7 @@ suite = {
         "linker",
         "rpath",
         "reload",
+        "interop",
       ],
       "testProject" : True,
       "defaultBuild" : False,
