@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.charset.RangesBuffer;
@@ -72,6 +73,11 @@ public class CaseFoldTable {
 
     public static void applyCaseFold(RangesAccumulator<IntRangesBuffer> codePointSet, CaseFoldingAlgorithm algorithm) {
         getTable(algorithm).applyCaseFold(codePointSet);
+    }
+
+    @TruffleBoundary
+    public static boolean equalsIgnoreCase(int codePointA, int codePointB, CaseFoldingAlgorithm algorithm) {
+        return getTable(algorithm).equalsIgnoreCase(codePointA, codePointB);
     }
 
     private static CodePointSet rangeSet(int... ranges) {
@@ -143,6 +149,39 @@ public class CaseFoldTable {
                         codePointSet.addRange(loAL, hiAL);
                     }
                     break;
+                default:
+                    throw new IllegalStateException();
+            }
+        }
+
+        boolean equalsIgnoreCase(int codePointA, int codePointB) {
+            if (codePointA == codePointB) {
+                return true;
+            }
+            int search = binarySearch(codePointA);
+            if (binarySearchExactMatch(search, codePointA, codePointA)) {
+                return equalsIgnoreCase(search, codePointA, codePointB);
+            }
+            int firstIntersection = binarySearchGetFirstIntersecting(search, codePointA, codePointA);
+            if (binarySearchNoIntersectingFound(firstIntersection) || rightOf(firstIntersection, codePointA, codePointA)) {
+                return false;
+            }
+            assert intersects(firstIntersection, codePointA, codePointA);
+            return equalsIgnoreCase(firstIntersection, codePointA, codePointB);
+        }
+
+        private boolean equalsIgnoreCase(int tblEntryIndex, int codePointA, int codePointB) {
+            switch (ranges[tblEntryIndex * 4 + 2]) {
+                case INTEGER_OFFSET:
+                    int delta = ranges[tblEntryIndex * 4 + 3];
+                    return codePointA + delta == codePointB;
+                case DIRECT_MAPPING:
+                    CodePointSet set = CHARACTER_SET_TABLE[ranges[tblEntryIndex * 4 + 3]];
+                    return set.contains(codePointB);
+                case ALTERNATING_UL:
+                    return ((codePointA - 1) ^ 1) + 1 == codePointB;
+                case ALTERNATING_AL:
+                    return (codePointA ^ 1) == codePointB;
                 default:
                     throw new IllegalStateException();
             }

@@ -326,7 +326,7 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns {@code true} if a given binary search result is equals to the range in list {@code o}
+     * Returns {@code true} if a given binary search result is equal to the range in list {@code o}
      * at index {@code ib}.
      *
      * @param searchResult the result of a call to {@link #binarySearch(int)} with

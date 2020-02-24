@@ -235,7 +235,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
             for (int j = i + 2; j < i + stackFrameSize - 1; j++) {
                 System.out.print(String.format("%2d, ", stack()[j]));
             }
-            System.out.println(String.format("%2d]", stack()[i + stackFrameSize - 1]));
+            System.out.println(String.format("%2d ]", stack()[i + stackFrameSize - 1]));
         }
     }
 
