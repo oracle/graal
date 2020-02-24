@@ -76,7 +76,7 @@ public class BinaryParser extends BinaryStreamParser {
     private static final int MAGIC = 0x6d736100;
     private static final int VERSION = 0x00000001;
     // Java indices cannot be bigger than 2^31 - 1.
-    private static final long TABLE_MAX_PAGES = Integer.MAX_VALUE;
+    private static final long TABLE_MAX_SIZE = Integer.MAX_VALUE;
     private static final long MEMORY_MAX_PAGES = 1 << 16;
 
     private WasmLanguage language;
@@ -1284,7 +1284,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int[] readTableLimits() {
-        return readLimits(TABLE_MAX_PAGES, "initial table size", "max table size");
+        return readLimits(TABLE_MAX_SIZE, "initial table size", "max table size");
     }
 
     private int[] readMemoryLimits() {
