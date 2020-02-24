@@ -88,6 +88,17 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         testSplitsDirectCallsHelper(callTarget, first, second);
     }
 
+    @Test
+    public void testExportedMessageWithExcludedSpecialisation() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(
+                                        LibrarySplittingStrategyTestFactory.SplitReadPropertyNodeGen.create(
+                                                        new ReturnsFirstArgumentNode(), new ReturnsSecondArgumentNode())));
+        Object[] first = new Object[]{newInstance(), SplittingObjectType.ReadMember.CACHED_NAME};
+        Object[] second = new Object[]{newInstance(), "b"};
+        testDoesNotSplitDirectCallHelper(callTarget, first, second);
+    }
+
     @NodeChild
     abstract static class CachesLibOnValueNode extends SplittingTestNode {
         @Specialization(limit = "3")
@@ -144,6 +155,15 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         @GenerateUncached
         @ReportPolymorphism
         abstract static class ReadMember {
+
+            static String CACHED_NAME = "cached";
+
+            @Specialization(guards = "name == CACHED_NAME")
+            @ReportPolymorphism.Exclude
+            static Object readStaticCached(DynamicObject receiver, @SuppressWarnings("unused") String name,
+                            @SuppressWarnings("unused") @Cached("name") String cachedName) {
+                return receiver;
+            }
 
             @Specialization(limit = "3", guards = "name == cachedName")
             static Object readCached(DynamicObject receiver, @SuppressWarnings("unused") String name,

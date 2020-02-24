@@ -123,7 +123,8 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 }
             });
         }
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite,
+                        !isAnnotatedWithReportPolymorphismExclude(method));
 
         if (method.getMethod() != null) {
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
@@ -150,5 +151,13 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         }
 
         return specialization;
+    }
+
+    private boolean isAnnotatedWithReportPolymorphismExclude(TemplateMethod method) {
+        final ExecutableElement executableElement = method.getMethod();
+        if (executableElement != null) {
+            return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
+        }
+        return false;
     }
 }
