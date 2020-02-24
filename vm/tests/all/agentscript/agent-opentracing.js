@@ -1,6 +1,6 @@
 /* global agent */
 
-let initializeAgent = function (tracer) {
+let initializeTracer = function (tracer) {
     var counter = 0;
 
     agent.on('enter', function(ctx, frame) {
@@ -40,13 +40,51 @@ let initializeAgent = function (tracer) {
     console.log('agent: ready');
 };
 
-// register on a call to function tracerIsReady(tracer)
-// that has to be defined by the application and called
-// to give us a tracer to use in the agent
-agent.on('enter', (ctx, frame) => {
-    initializeAgent(frame.tracer);
-}, {
-    roots: true,
-    rootNameFilter: (name) => name === 'tracerIsReady'
-});
+let initializeAgent = function (require) {
+    let http = require("http");
+    console.log(`${typeof http.createServer} http.createServer is available to the agent`);
+
+    var initTracer = require('jaeger-client').initTracer;
+    console.log('server: Jaeger tracer obtained');
+
+// See schema https://github.com/jaegertracing/jaeger-client-node/blob/master/src/configuration.js#L37
+    var config = {
+        serviceName: 't-trace-demo',
+        reporter: {
+            // Provide the traces endpoint; this forces the client to connect directly to the Collector and send
+            // spans over HTTP
+            collectorEndpoint: 'http://localhost:14268/api/traces',
+            // Provide username and password if authentication is enabled in the Collector
+            // username: '',
+            // password: '',
+        },
+        sampler: {
+            type: 'const',
+            param: 1
+        }
+    };
+    var options = {
+        tags: {
+            't-trace-demo.version': '1.1.2',
+        },
+//  metrics: metrics,
+        logger: console,
+        sampler: {
+            type: 'const',
+            param: 1
+        }
+    };
+
+    var tracer = initTracer(config, options);
+    initializeTracer(tracer);
+};
+
+let waitForRequire = function (event) {
+  if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
+    agent.off('source', waitForRequire);
+    initializeAgent(process.mainModule.require.bind(process.mainModule));
+  }
+};
+
+agent.on('source', waitForRequire, { roots: true });
 

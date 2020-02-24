@@ -72,7 +72,7 @@ function initializeAgent(agent, require) {
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
     agent.off('source', waitForRequire);
-    initializeAgent(agent, process.mainModule.require);
+    initializeAgent(agent, process.mainModule.require.bind(process.mainModule));
   }
 };
 
