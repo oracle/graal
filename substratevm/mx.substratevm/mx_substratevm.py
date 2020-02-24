@@ -1242,7 +1242,7 @@ if is_musl_building_supported:
         license_files=[],
         third_party_license_files=[],
         dependencies=['svm'],
-        support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT'],
+        support_distributions=['substratevm:JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE'],
         priority=5
     ))
 

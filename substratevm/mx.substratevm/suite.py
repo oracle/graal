@@ -1052,7 +1052,7 @@ suite = {
             },
         },
 
-        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT" : {
+        "JDK11_NATIVE_IMAGE_MUSL_SUPPORT_CE" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "Static JDK11 libraries required for building images with musl",
