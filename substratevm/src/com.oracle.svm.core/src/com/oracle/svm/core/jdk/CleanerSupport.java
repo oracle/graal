@@ -27,15 +27,17 @@ package com.oracle.svm.core.jdk;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.util.VMError;
 
-public class SunMiscSupport {
-    public static void drainCleanerQueue() {
+public class CleanerSupport {
+    public static void drainReferenceQueues() {
         Target_java_lang_ref_ReferenceQueue cleanerQueue = SubstrateUtil.cast(Target_jdk_internal_ref_Cleaner.dummyQueue, Target_java_lang_ref_ReferenceQueue.class);
         processQueue(cleanerQueue);
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
+            // TODO: there can be other cleaners with one additional reference queue each
             Target_java_lang_ref_ReferenceQueue cleanableQueue = SubstrateUtil.cast(Target_jdk_internal_ref_CleanerFactory.cleaner().impl.queue, Target_java_lang_ref_ReferenceQueue.class);
             processQueue(cleanableQueue);
         }

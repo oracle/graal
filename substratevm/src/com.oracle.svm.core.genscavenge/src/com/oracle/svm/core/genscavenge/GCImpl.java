@@ -72,8 +72,8 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -950,7 +950,7 @@ public class GCImpl implements GC {
             return;
         }
 
-        SunMiscSupport.drainCleanerQueue();
+        CleanerSupport.drainReferenceQueues();
         visitWatchersReport();
     }
 

@@ -57,7 +57,7 @@ public final class Target_jdk_internal_ref_Cleaner {
      * Contrary to the comment on {@code sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
      * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
      * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
-     * in {@link SunMiscSupport#drainCleanerQueue()}.
+     * in {@link CleanerSupport#drainReferenceQueues()}.
      * <p>
      * Cleaner instances that do bad things are even worse in SubstrateVM than they are in the
      * HotSpot VM, because they are run on the thread that started a collection.
@@ -78,7 +78,7 @@ public final class Target_jdk_internal_ref_Cleaner {
  * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner that is used in all places that
  * don't want to start an explicit reference cleaner thread. In native-image, we do not spawn a
  * separate thread for the reference processing. Instead, we drain the queue after garbage
- * collections in {@link SunMiscSupport#drainCleanerQueue()}.</li>
+ * collections in {@link CleanerSupport#drainReferenceQueues()}.</li>
  * <li>jdk.internal.ref.Cleaner: this only seems to be used by DirectByteBuffer but at least the
  * handling is the same as on JDK 8.
  * </ul>
