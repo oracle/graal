@@ -1,1 +1,1 @@
-validation org.graalvm.wasm.exception.WasmException: Function type out of bounds: 9999 should be < 128.
+validation org.graalvm.wasm.exception.WasmException: Function type out of bounds: 9999 should be < 1.
