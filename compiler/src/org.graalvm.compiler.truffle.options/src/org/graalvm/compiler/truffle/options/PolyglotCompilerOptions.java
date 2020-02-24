@@ -135,7 +135,7 @@ public final class PolyglotCompilerOptions {
     // Compilation
 
     @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
-            category = OptionCategory.EXPERT)
+            category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.INTERNAL)
