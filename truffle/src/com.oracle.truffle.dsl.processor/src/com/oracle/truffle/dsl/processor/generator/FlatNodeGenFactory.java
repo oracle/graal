@@ -1364,6 +1364,7 @@ public class FlatNodeGenFactory {
 
         CodeTreeBuilder builder = method.createBuilder();
         if (isExecutableInUncached) {
+            builder.tree(GeneratorUtils.createTransferToInterpreter());
             builder.startThrow().startNew(context.getType(AssertionError.class));
             builder.doubleQuote("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters.");
