@@ -86,9 +86,10 @@ import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
@@ -356,7 +357,7 @@ final class Runner {
         @TruffleBoundary
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
-            functionDescriptor.resolveIfLazyLLVMIRFunction();
+            functionDescriptor.getFunctionCode().resolveIfLazyLLVMIRFunction();
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }
@@ -376,7 +377,7 @@ final class Runner {
             LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
 
             if (intrinsicProvider.isIntrinsified(function.getName())) {
-                functionDescriptor.define(intrinsicProvider, nodeFactory);
+                functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
                 return LLVMManagedPointer.create(functionDescriptor);
             }
             throw new IllegalStateException("Failed to allocate intrinsic function " + function.getName());
@@ -829,7 +830,7 @@ final class Runner {
             if (symbol.isFunction()) {
                 LLVMFunction function = symbol.asFunction();
                 LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function);
-                functionDescriptor.define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
+                functionDescriptor.getFunctionCode().define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
 
                 int index = function.getSymbolIndex(false);
                 AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
@@ -910,7 +911,7 @@ final class Runner {
                 LLVMSymbol functionSymbol = globalScope.get(function.getName());
 
                 if (functionSymbol == null) {
-                    functionSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
+                    functionSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionCode.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
                                     function.getIndex());
                     globalScope.register(functionSymbol);
                 } else if (!functionSymbol.isFunction()) {
@@ -968,13 +969,13 @@ final class Runner {
         if (functionDescriptor.getLLVMFunction().getName().startsWith("llvm.")) {
             // llvm intrinsic
         } else if (intrinsicProvider.isIntrinsified(functionDescriptor.getLLVMFunction().getName())) {
-            functionDescriptor.define(intrinsicProvider, nodeFactory);
+            functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
             canBind = true;
             functionKind = "intrinisc";
         } else if (nfiContextExtension != null) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, functionDescriptor.getLLVMFunction().getName());
             if (nativeFunction != null) {
-                functionDescriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+                functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                 canBind = true;
                 functionKind = "native";
             }
@@ -1258,7 +1259,7 @@ final class Runner {
         LLVMFunctionDescriptor startFunctionDescriptor = findStartFunctionDescriptor();
         LLVMFunction mainFunction = findMainFunction(parserResults);
         if (startFunctionDescriptor != null && mainFunction != null) {
-            RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunctionSlowPath();
+            RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             Path applicationPath = mainFunction.getLibrary().getPath();
             RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);

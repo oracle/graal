@@ -48,8 +48,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -152,14 +152,14 @@ public final class LLVMParser {
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
-        LLVMFunction descriptor = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex());
-        runtime.getFileScope().register(descriptor);
+        LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex());
+        runtime.getFileScope().register(llvmFunction);
 
         // handle the global scope
         if (functionSymbol.isExported()) {
             LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(functionSymbol.getName());
             if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
+                runtime.getGlobalScope().register(llvmFunction);
             } else if (exportedDescriptor.isFunction()) {
                 importedSymbols.add(functionSymbol.getName());
             } else {
