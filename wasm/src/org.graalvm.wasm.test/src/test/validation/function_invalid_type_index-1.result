@@ -1,0 +1,1 @@
+validation org.graalvm.wasm.exception.WasmException: Function type out of bounds: 4294967254 should be < 128.

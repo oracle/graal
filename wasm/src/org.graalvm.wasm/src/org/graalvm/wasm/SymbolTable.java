@@ -395,6 +395,9 @@ public class SymbolTable {
 
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
         ensureFunctionsCapacity(numFunctions);
+        if (typeIndex < 0 || typeIndex > typeOffsets.length) {
+            throw new WasmException(String.format("Function type out of bounds: %d should be < %d.", typeIndex & 0xFFFFFFFFL, typeOffsets.length));
+        }
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
         numFunctions++;
