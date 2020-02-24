@@ -219,28 +219,28 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             excludes.append(join(excludes_dir, excludes_file))
     svmbuild = mkdtemp()
     try:
-        with NamedTemporaryFile() as report_file:
-            options = [
-                '--language:{}'.format(language_id),
-                '-H:ClassInitialization=:build_time',
-                '-H:+EnforceMaxRuntimeCompileMethods',
-                '-cp',
-                cp,
-                '--no-server',
-                '-H:-FoldSecurityManagerGetter',
-                '-H:TruffleTCKPermissionsReportFile={}'.format(report_file.name),
-                '-H:Path={}'.format(svmbuild),
-                'com.oracle.svm.truffle.tck.MockMain'
-            ]
-            if excludes:
-                options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
-            native_image(options)
-            if isfile(report_file.name) and getsize(report_file.name) > 0:
-                message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
-                with open(report_file.name, "r") as f:
-                    for line in f.readlines():
-                        message = message + line
-                mx.abort(message)
+        report_file = join(svmbuild, "language_permissions.log")
+        options = [
+            '--language:{}'.format(language_id),
+            '-H:ClassInitialization=:build_time',
+            '-H:+EnforceMaxRuntimeCompileMethods',
+            '-cp',
+            cp,
+            '--no-server',
+            '-H:-FoldSecurityManagerGetter',
+            '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
+            '-H:Path={}'.format(svmbuild),
+            'com.oracle.svm.truffle.tck.MockMain'
+        ]
+        if excludes:
+            options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
+        native_image(options)
+        if isfile(report_file) and getsize(report_file) > 0:
+            message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
+            with open(report_file, "r") as f:
+                for line in f.readlines():
+                    message = message + line
+            mx.abort(message)
     finally:
         mx.rmtree(svmbuild)
 
