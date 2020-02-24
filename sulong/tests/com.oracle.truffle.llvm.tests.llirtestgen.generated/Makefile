@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -53,7 +53,7 @@ $(TIMESTAMP): prelude.ll $(LLIR_TEST_GEN_JAR)
 	$(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
 
 $(GENERATED): $(TIMESTAMP)
-	@echo -n ""
+	@/bin/echo -n ""
 
 .PHONY:
 clean:
