@@ -52,8 +52,10 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 
 /**
- * Our implementation assumes that there is a 1:1 relationship between callable functions and
+ * Our implementation assumes that there is a 1:1:1 relationship between callable functions (
+ * {@link LLVMFunctionCode}), function symbols ({@link LLVMFunction}), and
  * {@link LLVMFunctionDescriptor}s.
+ *
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")

@@ -54,6 +54,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
+/**
+ * {@link LLVMFunctionCode} represents the callable function of a {@link LLVMFunction}.
+ *
+ * A call target is generated when a {@link Function} is resolved.
+ *
+ */
 public class LLVMFunctionCode {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
 

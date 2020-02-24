@@ -110,10 +110,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "functionCode.isLLVMIRFunction()"})
-    protected static Object doDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("cachedFunction.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isLLVMIRFunction()"})
+    protected static Object doDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
+                    @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
                     @Cached("create(functionCode.getLLVMIRFunctionSlowPath())") DirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
             return callNode.call(arguments);
@@ -140,10 +140,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "functionCode.isIntrinsicFunctionSlowPath()"})
-    protected Object doDirectIntrinsic(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("cachedFunction.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isIntrinsicFunctionSlowPath()"})
+    protected Object doDirectIntrinsic(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
+                    @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                    @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode functionCode,
                     @Cached("getIntrinsificationCallNode(functionCode.getIntrinsicSlowPath())") DirectCallNode callNode) {
         try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
             return callNode.call(arguments);

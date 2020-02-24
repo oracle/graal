@@ -201,12 +201,12 @@ public class LLVMForeignCallNode extends RootNode {
         return null;
     }
 
-    static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        LLVMFunctionCode functionCode = function.getFunctionCode();
+    static CallTarget getCallTarget(LLVMFunctionDescriptor descriptor) {
+        LLVMFunctionCode functionCode = descriptor.getFunctionCode();
         if (functionCode.isLLVMIRFunction()) {
             return functionCode.getLLVMIRFunctionSlowPath();
         } else if (functionCode.isIntrinsicFunctionSlowPath()) {
-            return functionCode.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
+            return functionCode.getIntrinsicSlowPath().cachedCallTarget(descriptor.getLLVMFunction().getType());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());

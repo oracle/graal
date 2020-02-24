@@ -152,14 +152,14 @@ public final class LLVMParser {
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
-        LLVMFunction descriptor = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex());
-        runtime.getFileScope().register(descriptor);
+        LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex());
+        runtime.getFileScope().register(llvmFunction);
 
         // handle the global scope
         if (functionSymbol.isExported()) {
             LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(functionSymbol.getName());
             if (exportedDescriptor == null) {
-                runtime.getGlobalScope().register(descriptor);
+                runtime.getGlobalScope().register(llvmFunction);
             } else if (exportedDescriptor.isFunction()) {
                 importedSymbols.add(functionSymbol.getName());
             } else {
