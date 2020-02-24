@@ -47,6 +47,7 @@ import shutil
 import stat
 import tempfile
 import zipfile
+import argparse
 
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
@@ -223,7 +224,9 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         return []
 
     def isWasmBenchmarkVm(self, bmSuiteArgs):
-        jvm_config = bmSuiteArgs[bmSuiteArgs.index("--jvm-config") + 1]
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--jvm-config")
+        jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
         return jvm_config == "node" or jvm_config == "native"
 
     def rules(self, out, benchmarks, bmSuiteArgs):
