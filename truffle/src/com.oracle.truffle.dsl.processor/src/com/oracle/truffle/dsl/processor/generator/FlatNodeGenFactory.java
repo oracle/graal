@@ -1336,7 +1336,7 @@ public class FlatNodeGenFactory {
     }
 
     public CodeExecutableElement createUncached() {
-        SpecializationData fallback = node.getPolymorphicSpecialization();
+        SpecializationData fallback = node.getGenericSpecialization();
         TypeMirror returnType = fallback.getReturnType().getType();
         List<TypeMirror> parameterTypes = new ArrayList<>();
         for (Parameter parameter : fallback.getSignatureParameters()) {
