@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,71 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.library;
+package com.oracle.truffle.api.library.test;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.List;
 
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
+import org.junit.Test;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-public final class LibraryMessage extends MessageContainer {
+@SuppressWarnings("unused")
+public class GR21342Test extends AbstractParametrizedLibraryTest {
 
-    private final LibraryData library;
-    private final String name;
-    private final ExecutableElement executable;
-    private String cacheName;
-    private boolean isAbstract;
-    private final Set<LibraryMessage> abstractIfExported = new LinkedHashSet<>();
-
-    public LibraryMessage(LibraryData library, String name, ExecutableElement executable) {
-        this.library = library;
-        this.name = name;
-        this.executable = executable;
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
     }
 
-    public LibraryData getLibrary() {
-        return library;
+    @GenerateLibrary
+    public abstract static class ThrowsUnexpectedLibrary extends Library {
+
+        public int messageInt(Object receiver) throws UnexpectedResultException {
+            return 42;
+        }
+
     }
 
-    public void setAbstract(boolean isAbstract) {
-        this.isAbstract = isAbstract;
+    @ExportLibrary(ThrowsUnexpectedLibrary.class)
+    public static class ThrowsUnexpectedLibraryReceiver {
+
+        @ExportMessage
+        static int messageInt(ThrowsUnexpectedLibraryReceiver receiver, @Cached("42") int cachedValue) throws UnexpectedResultException {
+            return 42;
+        }
+
     }
 
-    public String getSimpleName() {
-        return library.getMessageElement().getSimpleName().toString() + "." + name;
+    @ExportLibrary(ThrowsUnexpectedLibrary.class)
+    public static class ThrowsUnexpectedLibraryReceiver2 {
+
+        @ExportMessage
+        static class MessageInt {
+
+            @Specialization
+            static int messageInt(ThrowsUnexpectedLibraryReceiver2 receiver, @Cached("42") int cachedValue) throws UnexpectedResultException {
+                return 42;
+            }
+        }
+
     }
 
-    public String getCacheName() {
-        return cacheName;
+    @Test
+    public void test() {
+        // no execution needed. the test tests valid code generation.
     }
-
-    void setCacheName(String cacheName) {
-        this.cacheName = cacheName;
-    }
-
-    public ExecutableElement getExecutable() {
-        return executable;
-    }
-
-    @Override
-    public Element getMessageElement() {
-        return executable;
-    }
-
-    public Set<LibraryMessage> getAbstractIfExported() {
-        return abstractIfExported;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public boolean isAbstract() {
-        return isAbstract || getExecutable().getModifiers().contains(Modifier.ABSTRACT);
-    }
-
 }

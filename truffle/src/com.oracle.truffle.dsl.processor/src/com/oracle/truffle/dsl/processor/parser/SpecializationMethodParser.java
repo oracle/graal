@@ -64,8 +64,11 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 
-    public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
+    private final boolean ignoreUnexpectedResult;
+
+    public SpecializationMethodParser(ProcessorContext context, NodeData operation, boolean ignoreUnexpectedResult) {
         super(context, operation);
+        this.ignoreUnexpectedResult = ignoreUnexpectedResult;
     }
 
     @Override
@@ -102,7 +105,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
                                     types.Specialization.asElement().getSimpleName().toString(), ElementUtils.getQualifiedName(exceptionType));
                 }
-                if (ElementUtils.typeEquals(exceptionType, types.UnexpectedResultException)) {
+                if (!ignoreUnexpectedResult && ElementUtils.typeEquals(exceptionType, types.UnexpectedResultException)) {
                     if (ElementUtils.typeEquals(method.getMethod().getReturnType(), getContext().getType(Object.class))) {
                         method.addError("A specialization with return type 'Object' cannot throw UnexpectedResultException.");
                     }
