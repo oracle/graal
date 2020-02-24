@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private static final int MAGIC = 0x6d736100;
     private static final int VERSION = 0x00000001;
+    // Java indices cannot be bigger than 2^31 - 1.
+    private static final long TABLE_MAX_PAGES = Integer.MAX_VALUE;
+    private static final long MEMORY_MAX_PAGES = 1 << 16;
 
     private WasmLanguage language;
     private WasmModule module;
@@ -196,47 +199,13 @@ public class BinaryParser extends BinaryStreamParser {
                 case ImportIdentifier.TABLE: {
                     byte elemType = readElemType();
                     Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import");
-                    byte limitsPrefix = read1();
-                    switch (limitsPrefix) {
-                        case LimitsPrefix.NO_MAX: {
-                            int initSize = readUnsignedInt32();  // initial size (in number of
-                                                                 // entries)
-                            module.symbolTable().importTable(context, moduleName, memberName, initSize, -1);
-                            break;
-                        }
-                        case LimitsPrefix.WITH_MAX: {
-                            int initSize = readUnsignedInt32();  // initial size (in number of
-                                                                 // entries)
-                            int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                            module.symbolTable().importTable(context, moduleName, memberName, initSize, maxSize);
-                            break;
-                        }
-                        default:
-                            Assert.fail(String.format("Invalid limits prefix for imported table (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
-                    }
+                    int[] limits = readTableLimits();
+                    module.symbolTable().importTable(context, moduleName, memberName, limits[0], limits[1]);
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
-                    byte limitsPrefix = read1();
-                    switch (limitsPrefix) {
-                        case LimitsPrefix.NO_MAX: {
-                            // Read initial size (in number of entries).
-                            int initSize = readUnsignedInt32();
-                            int maxSize = -1;
-                            module.symbolTable().importMemory(context, moduleName, memberName, initSize, maxSize);
-                            break;
-                        }
-                        case LimitsPrefix.WITH_MAX: {
-                            // Read initial size (in number of entries).
-                            int initSize = readUnsignedInt32();
-                            // Read max size (in number of entries).
-                            int maxSize = readUnsignedInt32();
-                            module.symbolTable().importMemory(context, moduleName, memberName, initSize, maxSize);
-                            break;
-                        }
-                        default:
-                            Assert.fail(String.format("Invalid limits prefix for imported memory (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
-                    }
+                    int[] limits = readTableLimits();
+                    module.symbolTable().importMemory(context, moduleName, memberName, limits[0], limits[1]);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -263,60 +232,27 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readTableSection(WasmContext context) {
         int numTables = readVectorLength();
-        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module.");
+        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module");
         // Since in the current version of WebAssembly supports at most one table instance per
         // module.
         // this loop should be executed at most once.
         for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
             byte elemType = readElemType();
             Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table");
-            byte limitsPrefix = readLimitsPrefix();
-            switch (limitsPrefix) {
-                case LimitsPrefix.NO_MAX: {
-                    int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                    module.symbolTable().allocateTable(context, initSize, -1);
-                    break;
-                }
-                case LimitsPrefix.WITH_MAX: {
-                    int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                    int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                    Assert.assertIntLessOrEqual(initSize, maxSize, "Initial table size must be smaller or equal than maximum size");
-                    module.symbolTable().allocateTable(context, initSize, maxSize);
-                    break;
-                }
-                default:
-                    Assert.fail(String.format("Invalid limits prefix for table (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
-            }
+            int[] limits = readTableLimits();
+            module.symbolTable().allocateTable(context, limits[0], limits[1]);
         }
     }
 
     private void readMemorySection(WasmContext context) {
         int numMemories = readVectorLength();
-        Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module.");
+        Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module");
         // Since in the current version of WebAssembly supports at most one table instance per
         // module.
         // this loop should be executed at most once.
         for (int i = 0; i != numMemories; ++i) {
-            byte limitsPrefix = readLimitsPrefix();
-            switch (limitsPrefix) {
-                case LimitsPrefix.NO_MAX: {
-                    // Read initial size (in Wasm pages).
-                    int initSize = readUnsignedInt32();
-                    int maxSize = -1;
-                    module.symbolTable().allocateMemory(context, initSize, maxSize);
-                    break;
-                }
-                case LimitsPrefix.WITH_MAX: {
-                    // Read initial size (in Wasm pages).
-                    int initSize = readUnsignedInt32();
-                    // Read max size (in Wasm pages).
-                    int maxSize = readUnsignedInt32();
-                    module.symbolTable().allocateMemory(context, initSize, maxSize);
-                    break;
-                }
-                default:
-                    Assert.fail(String.format("Invalid limits prefix for memory (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
-            }
+            int[] limits = readMemoryLimits();
+            module.symbolTable().allocateMemory(context, limits[0], limits[1]);
         }
     }
 
@@ -1347,6 +1283,44 @@ public class BinaryParser extends BinaryStreamParser {
         return read1();
     }
 
+    private int[] readTableLimits() {
+        return readLimits(TABLE_MAX_PAGES, "initial table size", "max table size");
+    }
+
+    private int[] readMemoryLimits() {
+        return readLimits(MEMORY_MAX_PAGES, "initial memory size", "max memory size");
+    }
+
+    private int[] readLimits(long k, String minName, String maxName) {
+        byte limitsPrefix = readLimitsPrefix();
+        int[] result = new int[2];
+        switch (limitsPrefix) {
+            case LimitsPrefix.NO_MAX: {
+                result[0] = readUnsignedInt32();
+                result[1] = -1;
+                break;
+            }
+            case LimitsPrefix.WITH_MAX: {
+                result[0] = readUnsignedInt32();
+                result[1] = readUnsignedInt32();
+                break;
+            }
+            default:
+                Assert.fail(String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+        }
+
+        // Convert min and max to longs to avoid checking bounds on overflowed values.
+        long longMin = result[0] & 0xFFFFFFFFL;
+        long longMax = result[1] & 0xFFFFFFFFL;
+        Assert.assertLongLessOrEqual(longMin, k, "Invalid " + minName);
+        if (result[1] != -1) {
+            Assert.assertLongLessOrEqual(longMax, k, "Invalid " + maxName);
+            Assert.assertLongLessOrEqual(longMin, longMax, "Invalid " + minName);
+        }
+
+        return result;
+    }
+
     private byte readLimitsPrefix() {
         return read1();
     }
@@ -1393,33 +1367,11 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.TABLE: {
                         readElemType();
-                        byte limitsPrefix = read1();
-                        switch (limitsPrefix) {
-                            case LimitsPrefix.NO_MAX: {
-                                readUnsignedInt32();
-                                break;
-                            }
-                            case LimitsPrefix.WITH_MAX: {
-                                readUnsignedInt32();
-                                readUnsignedInt32();
-                                break;
-                            }
-                        }
+                        readTableLimits();
                         break;
                     }
                     case ImportIdentifier.MEMORY: {
-                        byte limitsPrefix = read1();
-                        switch (limitsPrefix) {
-                            case LimitsPrefix.NO_MAX: {
-                                readUnsignedInt32();
-                                break;
-                            }
-                            case LimitsPrefix.WITH_MAX: {
-                                readUnsignedInt32();
-                                readUnsignedInt32();
-                                break;
-                            }
-                        }
+                        readMemoryLimits();
                         break;
                     }
                     case ImportIdentifier.GLOBAL: {

@@ -1,0 +1,1 @@
+validation org.graalvm.wasm.exception.BinaryParserException: Invalid initial table size: 2 should be <= 1.

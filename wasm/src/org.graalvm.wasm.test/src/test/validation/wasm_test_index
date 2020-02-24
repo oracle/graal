@@ -9,3 +9,9 @@ duplicated_export-0
 duplicated_export-1
 function_invalid_type_index-0
 function_invalid_type_index-1
+memory_invalid_limits-0
+memory_invalid_limits-1
+memory_invalid_limits-2
+table_invalid_limits-0
+table_invalid_limits-1
+table_invalid_limits-2

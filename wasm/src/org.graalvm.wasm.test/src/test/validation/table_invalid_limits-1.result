@@ -1,0 +1,2 @@
+validation org.graalvm.wasm.exception.BinaryParserException: Invalid max table size: 2147483648 should be <= 2147483647.
+
