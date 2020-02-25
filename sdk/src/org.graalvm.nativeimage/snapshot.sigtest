@@ -294,6 +294,9 @@ meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.func
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
+meth public static boolean setArgumentVectorProgramName(java.lang.String)
+meth public static java.lang.String getArgumentVectorProgramName()
+meth public static int getArgumentVectorBlockSize()
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
@@ -346,6 +349,7 @@ supr java.lang.Object
 CLSS public final org.graalvm.nativeimage.VMRuntime
 meth public static void initialize()
 meth public static void shutdown()
+meth public static boolean dumpHeap(java.io.FileOutputStream,boolean)
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CContext
