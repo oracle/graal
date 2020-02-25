@@ -48,16 +48,16 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-class ReferenceWrapper extends FeebleReference<Object> {
-    protected final Object original;
+class ReferenceWrapper<T> extends FeebleReference<T> {
+    protected final Target_java_lang_ref_Reference<T> original;
 
-    protected ReferenceWrapper(Object referent, final FeebleReferenceList<Object> list, Object original) {
+    protected ReferenceWrapper(T referent, final Target_java_lang_ref_ReferenceQueue<? super T> list, Target_java_lang_ref_Reference<T> original) {
         super(referent, list);
         this.original = original;
     }
 
-    protected static Object unwrap(FeebleReference<?> wrapper) {
-        return (wrapper == null ? null : ((ReferenceWrapper) wrapper).original);
+    protected static <T> Target_java_lang_ref_Reference<T> unwrap(FeebleReference<T> wrapper) {
+        return (wrapper == null ? null : ((ReferenceWrapper<T>) wrapper).original);
     }
 }
 
@@ -90,10 +90,10 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
 
 @TargetClass(java.lang.ref.Reference.class)
 @Substitute
-final class Target_java_lang_ref_Reference {
+final class Target_java_lang_ref_Reference<T> {
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    protected final ReferenceWrapper feeble;
+    protected final ReferenceWrapper<T> feeble;
 
     /**
      * References that are in the native image are actually strong references, since we do not GC
@@ -101,21 +101,21 @@ final class Target_java_lang_ref_Reference {
      * generation is not possible, we store the strong reference in a separate field.
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class)//
-    protected final Object bootImageStrongValue;
+    protected final T bootImageStrongValue;
 
     @Substitute
-    protected Target_java_lang_ref_Reference(Object referent) {
+    protected Target_java_lang_ref_Reference(T referent) {
         this(referent, null);
     }
 
     @Substitute
-    protected Target_java_lang_ref_Reference(Object referent, Target_java_lang_ref_ReferenceQueue queue) {
-        this.feeble = new ReferenceWrapper(referent, queue == null ? null : queue.feeble, this);
+    protected Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
+        this.feeble = new ReferenceWrapper<>(referent, queue, this);
         this.bootImageStrongValue = null;
     }
 
     @Substitute
-    public Object get() {
+    public T get() {
         if (feeble != null) {
             return feeble.get();
         } else {
@@ -133,7 +133,7 @@ final class Target_java_lang_ref_Reference {
     @Substitute
     public boolean enqueue() {
         if (feeble != null) {
-            final FeebleReferenceList<Object> frList = feeble.getList();
+            final Target_java_lang_ref_ReferenceQueue<? super T> frList = feeble.getList();
             if (frList != null) {
                 return frList.push(feeble);
             }

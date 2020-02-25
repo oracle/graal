@@ -35,7 +35,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.FeebleReference;
-import com.oracle.svm.core.heap.FeebleReferenceList;
+import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -259,7 +259,7 @@ public class DiscoverableReferenceProcessing {
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 trace.string("  broadcasting").newline();
                 /* Notify anyone blocked waiting for FeebleReferences to be available. */
-                FeebleReferenceList.signalWaiters();
+                Target_java_lang_ref_ReferenceQueue.signalWaiters();
             }
             trace.string("]").newline();
         }
@@ -267,7 +267,7 @@ public class DiscoverableReferenceProcessing {
         private static <T> void processReference(FeebleReference<T> fr, Log trace) {
             trace.string("  fr: ").object(fr).newline();
             if (fr.hasList()) {
-                final FeebleReferenceList<? super T> frList = fr.getList();
+                final Target_java_lang_ref_ReferenceQueue<? super T> frList = fr.getList();
                 if (frList != null) {
                     trace.string("  frList: ").object(frList).newline();
                     frList.push(fr);

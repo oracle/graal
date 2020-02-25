@@ -67,8 +67,8 @@ import sun.misc.Unsafe;
  *
  * On top of this, I think you could build PhantomReference and WeakReference classes by adding a
  * getReferent() method that returned the referent as an Object. See {@linkplain FeebleReference}
- * and {@linkplain FeebleReferenceList}. Reference classes that subsequently promote their referent
- * (SoftReference and FinalReference) would be more complicated.
+ * and {@linkplain Target_java_lang_ref_ReferenceQueue}. Reference classes that subsequently promote
+ * their referent (SoftReference and FinalReference) would be more complicated.
  *
  * All the state that is needed to build lists, etc., is allocated in the DiscoverableReference
  * instances, because space can not be allocated for lists during a collection.
@@ -142,7 +142,7 @@ public class FeebleReference<T> {
     @SuppressWarnings("unused") //
     private FeebleReference<?> nextDiscovered;
 
-    public static <T> FeebleReference<T> factory(final T referent, final FeebleReferenceList<? super T> list) {
+    public static <T> FeebleReference<T> factory(final T referent, final Target_java_lang_ref_ReferenceQueue<? super T> list) {
         return new FeebleReference<>(referent, list);
     }
 
@@ -162,12 +162,12 @@ public class FeebleReference<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public FeebleReferenceList<? super T> getList() {
+    public Target_java_lang_ref_ReferenceQueue<? super T> getList() {
         return list.get();
     }
 
     /** Clears the list, returning the previous value, which might be null. */
-    public FeebleReferenceList<? super T> clearList() {
+    public Target_java_lang_ref_ReferenceQueue<? super T> clearList() {
         return list.getAndSet(null);
     }
 
@@ -186,18 +186,18 @@ public class FeebleReference<T> {
         nextInList = this;
     }
 
-    protected FeebleReference(T referent, FeebleReferenceList<? super T> list) {
+    protected FeebleReference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> list) {
         /* Allocate the AtomicReference for the constructor before I become uninterruptible. */
         this(referent, new AtomicReference<>(list));
     }
 
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
-    private FeebleReference(T referent, AtomicReference<FeebleReferenceList<? super T>> list) {
+    private FeebleReference(T referent, AtomicReference<Target_java_lang_ref_ReferenceQueue<? super T>> list) {
         this.rawReferent = referent;
         this.nextDiscovered = null;
         this.isDiscovered = false;
         this.list = list;
-        FeebleReferenceList.clean(this);
+        Target_java_lang_ref_ReferenceQueue.clean(this);
         this.initialized = true;
     }
 
@@ -205,7 +205,7 @@ public class FeebleReference<T> {
      * The list to which this FeebleReference is added when the referent is unreachable. This is
      * initialized and then becomes null when the FeebleReference is put on its list.
      */
-    private final AtomicReference<FeebleReferenceList<? super T>> list;
+    private final AtomicReference<Target_java_lang_ref_ReferenceQueue<? super T>> list;
 
     /**
      * The next element in the FeebleReferenceList or null if this FeebleReference is not on a list.

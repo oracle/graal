@@ -58,7 +58,7 @@ import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.FeebleReferenceList;
+import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -537,7 +537,7 @@ public abstract class JavaThreads {
     protected abstract void yield();
 
     protected static void interruptVMCondVars() {
-        FeebleReferenceList.interruptWaiters();
+        Target_java_lang_ref_ReferenceQueue.interruptWaiters();
     }
 
     static StackTraceElement[] getStackTrace(Thread thread) {
