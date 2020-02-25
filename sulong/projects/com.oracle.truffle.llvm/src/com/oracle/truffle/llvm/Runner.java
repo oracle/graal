@@ -852,8 +852,9 @@ final class Runner {
         return parse(source, lib, source.getBytes(), parseContext);
     }
 
-    private LLVMParserResult parseBinary(BinaryParserResult binaryParserResult, Source source, ExternalLibrary library) {
+    private LLVMParserResult parseBinary(BinaryParserResult binaryParserResult, ExternalLibrary library) {
         ModelModule module = new ModelModule();
+        Source source = binaryParserResult.getSource();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
@@ -883,7 +884,7 @@ final class Runner {
                     }
                 }
             }
-            LLVMParserResult parserResult = parseBinary(binaryParserResult, source, library);
+            LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
             parserResult.setDependencies(dependencies);
             parseContext.parserResultsAdd(parserResult);
             return parserResult;
