@@ -96,6 +96,7 @@ import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -655,29 +656,38 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             llvmOperand = new LLVMVariable(builder.constantNull(((LLVMKind) operand.getPlatformKind()).get()));
         } else if (operand instanceof LLVMAddressValue) {
             LLVMAddressValue addressValue = (LLVMAddressValue) operand;
-            LLVMValueRef base = LLVMUtils.getVal(addressValue.getBase());
+            Value wrappedBase = addressValue.getBase();
             Value index = addressValue.getIndex();
 
-            LLVMTypeRef baseType = LLVMIRBuilder.typeOf(base);
-            if (LLVMIRBuilder.isWordType(baseType)) {
-                base = builder.buildIntToPtr(base, builder.rawPointerType());
-            } else if (LLVMIRBuilder.isObjectType(baseType)) {
-                typeOverride = true;
+            if (wrappedBase instanceof LLVMPendingSpecialRegisterRead) {
+                LLVMPendingSpecialRegisterRead pendingRead = (LLVMPendingSpecialRegisterRead) wrappedBase;
+                if (index != null && index != Value.ILLEGAL) {
+                    pendingRead = new LLVMPendingSpecialRegisterRead(pendingRead, LLVMUtils.getVal(addressValue.getIndex()));
+                }
+                llvmOperand = pendingRead;
             } else {
-                throw shouldNotReachHere(LLVMUtils.dumpValues("unsupported base for address", base));
-            }
+                LLVMValueRef base = LLVMUtils.getVal(wrappedBase);
+                LLVMTypeRef baseType = LLVMIRBuilder.typeOf(base);
+                if (LLVMIRBuilder.isWordType(baseType)) {
+                    base = builder.buildIntToPtr(base, builder.rawPointerType());
+                } else if (LLVMIRBuilder.isObjectType(baseType)) {
+                    typeOverride = true;
+                } else {
+                    throw shouldNotReachHere(LLVMUtils.dumpValues("unsupported base for address", base));
+                }
 
-            LLVMValueRef intermediate;
-            if (index == null || index == Value.ILLEGAL) {
-                intermediate = base;
-            } else {
-                intermediate = builder.buildGEP(base, LLVMUtils.getVal(index));
-            }
+                LLVMValueRef intermediate;
+                if (index == null || index == Value.ILLEGAL) {
+                    intermediate = base;
+                } else {
+                    intermediate = builder.buildGEP(base, LLVMUtils.getVal(index));
+                }
 
-            llvmOperand = new LLVMVariable(intermediate);
+                llvmOperand = new LLVMVariable(intermediate);
+            }
         } else if (operand instanceof RegisterValue) {
             RegisterValue registerValue = (RegisterValue) operand;
-            llvmOperand = (LLVMVariable) gen.emitReadRegister(registerValue.getRegister(), registerValue.getValueKind());
+            llvmOperand = (LLVMValueWrapper) gen.emitReadRegister(registerValue.getRegister(), registerValue.getValueKind());
         } else {
             throw shouldNotReachHere("unknown operand: " + operand.toString());
         }
@@ -685,7 +695,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         assert typeOverride || LLVMIRBuilder.compatibleTypes(getLLVMType(node), LLVMIRBuilder.typeOf(llvmOperand.get())) : LLVMUtils.dumpValues(
                         "value type doesn't match node stamp (" + node.stamp(NodeView.DEFAULT).toString() + ")", llvmOperand.get());
 
-        gen.getDebugInfoPrinter().setValueName(llvmOperand.get(), node);
+        gen.getDebugInfoPrinter().setValueName(llvmOperand, node);
         valueMap.put(node, llvmOperand);
         return operand;
     }

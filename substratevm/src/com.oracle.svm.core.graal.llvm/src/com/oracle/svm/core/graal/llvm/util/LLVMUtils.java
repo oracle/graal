@@ -35,6 +35,8 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 
+import com.oracle.svm.core.graal.llvm.LLVMGenerator;
+import com.oracle.svm.core.graal.llvm.LLVMGenerator.SpecialRegister;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
@@ -136,6 +138,42 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             return value;
+        }
+    }
+
+    /*
+     * Due to the fact that the LLVM backend handles reading special registers in methods that can
+     * modify them as a stack slot load instead of a direct register access, a
+     * ReadRegisterFloatingNode may get hoisted above where the thread pointer gets stored in the
+     * stack slot, and getting the contents of the stack slot at that point will return an incorrect
+     * value. Wrapping this read prevents this by delaying reading the value of the special register
+     * until when it's actually needed.
+     */
+    public static class LLVMPendingSpecialRegisterRead extends LLVMVariable implements LLVMValueWrapper {
+        private final LLVMGenerator gen;
+        private final SpecialRegister reg;
+        private final LLVMValueRef offset;
+
+        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg) {
+            this(gen, reg, null);
+        }
+
+        public LLVMPendingSpecialRegisterRead(LLVMPendingSpecialRegisterRead pendingRead, LLVMValueRef offset) {
+            this(pendingRead.gen, pendingRead.reg, offset);
+        }
+
+        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg, LLVMValueRef offset) {
+            super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
+            this.gen = gen;
+            this.reg = reg;
+            this.offset = offset;
+        }
+
+        @Override
+        public LLVMValueRef get() {
+            LLVMIRBuilder builder = gen.getBuilder();
+            LLVMValueRef register = gen.getSpecialRegister(reg);
+            return offset == null ? register : builder.buildGEP(builder.buildIntToPtr(register, builder.rawPointerType()), offset);
         }
     }
 

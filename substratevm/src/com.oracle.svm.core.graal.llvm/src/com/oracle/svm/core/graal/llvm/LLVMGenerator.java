@@ -99,6 +99,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMConstant;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMStackSlot;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
@@ -698,8 +699,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public Variable emitReadRegister(Register register, ValueKind<?> kind) {
         LLVMValueRef value;
         if (register.equals(getRegisterConfig().getThreadRegister())) {
+            if (isEntryPoint || canModifySpecialRegisters) {
+                return new LLVMPendingSpecialRegisterRead(this, SpecialRegister.ThreadPointer);
+            }
             value = getSpecialRegister(SpecialRegister.ThreadPointer);
         } else if (register.equals(getRegisterConfig().getHeapBaseRegister())) {
+            if (isEntryPoint || canModifySpecialRegisters) {
+                return new LLVMPendingSpecialRegisterRead(this, SpecialRegister.HeapBase);
+            }
             value = getSpecialRegister(SpecialRegister.HeapBase);
         } else if (register.equals(getRegisterConfig().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(getRegisterConfig().getFrameRegister().name));
@@ -712,11 +719,11 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
         if (dst.equals(getRegisterConfig().getThreadRegister())) {
-            assert isEntryPoint || canModifySpecialRegisters;
+            VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
             builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.ThreadPointer));
             return;
         } else if (dst.equals(getRegisterConfig().getHeapBaseRegister())) {
-            assert isEntryPoint || canModifySpecialRegisters;
+            VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
             builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.HeapBase));
             return;
         }
@@ -997,7 +1004,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /* Special registers */
 
-    LLVMValueRef getSpecialRegister(SpecialRegister register) {
+    public LLVMValueRef getSpecialRegister(SpecialRegister register) {
         LLVMValueRef specialRegister;
         if (isEntryPoint || canModifySpecialRegisters) {
             LLVMValueRef specialRegisterPointer = getSpecialRegisterPointer(register);
@@ -1047,7 +1054,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      * methods, these hold the values of these registers in stack slots, which get passed to callees
      * that can potentially modify them and hold the updated version of the "register" upon return.
      */
-    enum SpecialRegister {
+    public enum SpecialRegister {
         ThreadPointer(SubstrateOptions.MultiThreaded.getValue()),
         HeapBase(SubstrateOptions.SpawnIsolates.getValue());
 
@@ -1644,9 +1651,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
         }
 
-        void setValueName(LLVMValueRef value, ValueNode node) {
+        void setValueName(LLVMValueWrapper value, ValueNode node) {
             if (debugLevel >= DebugLevel.Node.level && node.getStackKind() != JavaKind.Void) {
-                builder.setValueName(value, node.toString());
+                builder.setValueName(value.get(), node.toString());
             }
         }
 
