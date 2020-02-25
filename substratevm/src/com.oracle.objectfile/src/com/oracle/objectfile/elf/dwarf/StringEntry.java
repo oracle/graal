@@ -48,7 +48,7 @@ public class StringEntry {
 
     public int getOffset() {
         /*
-         * offset must be set before this can be fetched
+         * Offset must be set before this can be fetched
          */
         assert offset >= 0;
         return offset;

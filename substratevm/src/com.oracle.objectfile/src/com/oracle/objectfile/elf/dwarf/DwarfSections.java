@@ -27,12 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfoProvider;
-// import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugDataInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
-// import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfoProvider;
 import com.oracle.objectfile.elf.ELFMachine;
 
 import java.nio.ByteOrder;
@@ -337,8 +332,7 @@ public class DwarfSections {
          */
         uniqueDebugString("");
 
-        DebugCodeInfoProvider codeInfoProvider = debugInfoProvider.codeInfoProvider();
-        for (DebugCodeInfo debugCodeInfo : codeInfoProvider) {
+        debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> {
             /*
              * primary file name and full method name need to be written to the debug_str section
              */
@@ -359,7 +353,7 @@ public class DwarfSections {
              * create an infoSection entry for the method
              */
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
-            for (DebugLineInfo debugLineInfo : debugCodeInfo.lineInfoProvider()) {
+            debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
                 Path filePathAtLine = debugLineInfo.filePath();
                 // switch '$' in class names for '.'
@@ -374,8 +368,8 @@ public class DwarfSections {
                  */
                 Range subRange = new Range(fileNameAtLine, filePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
                 addSubRange(primaryRange, subRange);
-            }
-        }
+            });
+        });
         /*
          * DebugDataInfoProvider dataInfoProvider = debugInfoProvider.dataInfoProvider();
          * for (DebugDataInfo debugDataInfo : dataInfoProvider) {
