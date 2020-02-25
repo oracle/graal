@@ -46,12 +46,12 @@ public class JDKSourceCache extends SourceCache {
         String javaHome = System.getProperty(JAVA_HOME_PROP);
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
-        Path srcZipPath = null;
-        String javaSpecversion =  System.getProperty(JAVA_SPEC_VERSION_PROP);
-        if (javaSpecversion.equals("1.8")) {
+        Path srcZipPath;
+        String javaSpecVersion =  System.getProperty(JAVA_SPEC_VERSION_PROP);
+        if (javaSpecVersion.equals("1.8")) {
             srcZipPath = javaHomePath.resolve("src.zip");
         } else {
-            assert javaSpecversion.matches("[1-9][0-9]");
+            assert javaSpecVersion.matches("[1-9][0-9]");
             srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
         }
         if (srcZipPath.toFile().exists()) {
