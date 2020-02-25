@@ -883,7 +883,7 @@ final class Runner {
             List<String> libraries = binaryParserResult.getLibraries();
             ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
             for (String lib : libraries) {
-                LLVMContext.AddResult result = context.addExternalLibraryPair(lib, true, library, binaryParserResult.getLocator());
+                LLVMContext.LibraryAddResult result = context.addOrGetExternalLibrary(lib, true, library, binaryParserResult.getLocator());
                 if (result != null) {
                     ExternalLibrary dependency = result.library;
                     dependencies.add(dependency);
