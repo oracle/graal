@@ -28,14 +28,14 @@ import java.lang.ref.Reference;
 
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
-import com.oracle.svm.core.heap.DiscoverableReference;
+import com.oracle.svm.core.heap.FeebleReference;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
-    public final ResolvedJavaField discoverableReferenceFieldRawReferent = findField(lookupType(DiscoverableReference.class), "rawReferent");
+    public final ResolvedJavaField discoverableReferenceFieldRawReferent = findField(lookupType(FeebleReference.class), "rawReferent");
     public final ResolvedJavaField referenceFieldBootImageStrongValue = findField(lookupType(Reference.class), "bootImageStrongValue");
     public final ResolvedJavaField referenceFieldFeeble = findField(lookupType(Reference.class), "feeble");
 

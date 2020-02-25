@@ -94,7 +94,7 @@ public final class FeebleReferenceList<T> {
         if (clearedList != null) {
             /* I won the race. */
             assert clearedList == this : "Pushing to the wrong list.";
-            assert !fr.isEnlisted() : "Pushing a FeebleReference that is already on a list.";
+            assert !fr.isOnList() : "Pushing a FeebleReference that is already on a list.";
             for (; /* return */;) {
                 final FeebleReference<? extends T> sampleHead = getHead();
                 fr.listPrepend(sampleHead);

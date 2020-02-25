@@ -31,7 +31,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
-import com.oracle.svm.core.heap.DiscoverableReference;
+import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -430,8 +430,8 @@ public class HeapVerifierImpl implements HeapVerifier {
     private static boolean verifyDiscoverableReference(Object object) {
         boolean result = true;
         Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
-        if (obj instanceof DiscoverableReference) {
-            final DiscoverableReference dr = (DiscoverableReference) obj;
+        if (obj instanceof FeebleReference) {
+            final FeebleReference<?> dr = (FeebleReference<?>) obj;
             result = DiscoverableReferenceProcessing.verify(dr);
         }
         return result;

@@ -146,7 +146,7 @@ final class Target_java_lang_ref_Reference {
     @Substitute
     public boolean isEnqueued() {
         if (feeble != null) {
-            return feeble.isEnlisted();
+            return feeble.isOnList();
         }
         return false;
     }

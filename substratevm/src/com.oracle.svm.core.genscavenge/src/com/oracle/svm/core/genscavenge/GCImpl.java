@@ -66,7 +66,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CollectionWatcher;
-import com.oracle.svm.core.heap.DiscoverableReference;
+import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -1059,13 +1059,13 @@ public class GCImpl implements GC {
         policy = newPolicy;
     }
 
-    private DiscoverableReference discoveredReferenceList = null;
+    private FeebleReference<?> discoveredReferenceList = null;
 
-    DiscoverableReference getDiscoveredReferenceList() {
+    FeebleReference<?> getDiscoveredReferenceList() {
         return discoveredReferenceList;
     }
 
-    void setDiscoveredReferenceList(DiscoverableReference newList) {
+    void setDiscoveredReferenceList(FeebleReference<?> newList) {
         discoveredReferenceList = newList;
     }
 

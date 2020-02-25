@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 
-import com.oracle.svm.core.heap.DiscoverableReference;
+import com.oracle.svm.core.heap.FeebleReference;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,7 +65,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
             }
         });
 
-        InvocationPlugins.Registration r1 = new InvocationPlugins.Registration(plugins, DiscoverableReference.class);
+        InvocationPlugins.Registration r1 = new InvocationPlugins.Registration(plugins, FeebleReference.class);
         r1.register1("getReferentObject", InvocationPlugin.Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
