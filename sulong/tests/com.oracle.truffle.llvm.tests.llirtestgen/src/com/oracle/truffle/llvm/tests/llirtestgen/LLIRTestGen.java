@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,6 +68,28 @@ public class LLIRTestGen {
         boolean isFloat();
 
         String toName();
+    }
+
+    enum Architecture {
+        AMD64,
+        AArch64;
+
+        private static Architecture findCurrent() {
+            final String name = System.getProperty("os.arch");
+            if (name.equals("amd64") || name.equals("x86_64")) {
+                return AMD64;
+            }
+            if (name.equals("aarch64")) {
+                return AArch64;
+            }
+            throw new IllegalArgumentException("unknown architecture: " + name);
+        }
+
+        private static final Architecture current = findCurrent();
+
+        public static Architecture getCurrent() {
+            return current;
+        }
     }
 
     private enum ScalarType implements Type {
@@ -758,6 +780,11 @@ public class LLIRTestGen {
                         "fsub_x86_fp80", // Fails with managed sulong
                         "fdiv_x86_fp80"  // Fails with managed sulong
         ));
+        Architecture arch = Architecture.getCurrent();
+        if (arch == Architecture.AArch64) {
+            filenameBlacklist.add("bitcast_x86_fp80");
+        }
+
         filenameBlacklist = filenameBlacklist.stream().map(s -> makeBlacklistFilename(outputDir, s)).collect(Collectors.toSet());
 
         for (Type type : allTypes) {
