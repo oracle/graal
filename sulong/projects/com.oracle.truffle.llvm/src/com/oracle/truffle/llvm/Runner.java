@@ -908,11 +908,15 @@ final class Runner {
             List<String> libraries = binaryParserResult.getLibraries();
             ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
             for (String lib : libraries) {
-                LLVMContext.LibraryAddResult result = context.addOrGetExternalLibrary(lib, true, library, binaryParserResult.getLocator());
-                if (result != null) {
-                    ExternalLibrary dependency = result.library;
+                boolean added = false;
+                ExternalLibrary dependency = context.findExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                if (dependency == null) {
+                    dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                    added = true;
+                }
+                if (dependency != null) {
                     dependencies.add(dependency);
-                    if (result.added) {
+                    if (added) {
                         parseContext.dependencyQueueAddLast(dependency);
                     }
                 }

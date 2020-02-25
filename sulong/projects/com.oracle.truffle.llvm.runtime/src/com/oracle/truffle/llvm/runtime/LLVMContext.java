@@ -549,33 +549,20 @@ public final class LLVMContext {
     }
 
     /**
-     * Helper class to capture an {@link ExternalLibrary} and a flag to indicate whether the library
-     * has been added. If {@link LibraryAddResult#added} is false, the
-     * {@link LibraryAddResult#library} is the existing library.
+     * Finds an already added library. Note that this might return
+     * {@link ExternalLibrary#isInternal() internal libraries}.
+     * 
+     * @return null if not yet loaded
      */
-    public static class LibraryAddResult {
-        public final ExternalLibrary library;
-        public final boolean added;
-
-        public LibraryAddResult(ExternalLibrary lib, boolean added) {
-            this.library = lib;
-            this.added = added;
-        }
-    }
-
-    public LibraryAddResult addOrGetExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
-        CompilerAsserts.neverPartOfCompilation();
+    public ExternalLibrary findExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
+        final ExternalLibrary newLib;
         if (isInternalLibrary(lib)) {
-            // Disallow loading internal libraries explicitly.
-            return null;
+            Path path = locateInternalLibrary(lib);
+            newLib = ExternalLibrary.internal(path, isNative);
+        } else {
+            newLib = createExternalLibrary(lib, isNative, reason, locator);
         }
-        ExternalLibrary newLib = createExternalLibrary(lib, isNative, reason, locator);
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return new LibraryAddResult(newLib, true);
-        }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
-        return new LibraryAddResult(existingLib, false);
+        return getExternalLibrary(newLib);
     }
 
     private ExternalLibrary createExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
@@ -620,6 +607,18 @@ public final class LLVMContext {
             }
         }
         return false;
+    }
+
+    private ExternalLibrary getExternalLibrary(ExternalLibrary externalLib) {
+        synchronized (externalLibrariesLock) {
+            int index = externalLibraries.indexOf(externalLib);
+            if (index >= 0) {
+                ExternalLibrary ret = externalLibraries.get(index);
+                assert ret.equals(externalLib);
+                return ret;
+            }
+            return null;
+        }
     }
 
     private ExternalLibrary getOrAddExternalLibrary(ExternalLibrary externalLib) {
