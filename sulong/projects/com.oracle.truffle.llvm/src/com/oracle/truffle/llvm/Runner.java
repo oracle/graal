@@ -852,7 +852,7 @@ final class Runner {
         return parse(source, lib, source.getBytes(), parseContext);
     }
 
-    private LLVMParserResult parseBinary(BinaryParserResult binaryParserResult, Source source, ExternalLibrary library, ArrayList<ExternalLibrary> dependencies, ParseContext parseContext) {
+    private LLVMParserResult parseBinary(BinaryParserResult binaryParserResult, Source source, ExternalLibrary library) {
         ModelModule module = new ModelModule();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
         TargetDataLayout layout = module.getTargetDataLayout();
@@ -862,9 +862,7 @@ final class Runner {
         LLVMScope fileScope = new LLVMScope();
         LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory, id.getAndIncrement());
         LLVMParser parser = new LLVMParser(source, runtime);
-        LLVMParserResult parserResult = parser.parse(module, targetDataLayout, dependencies);
-        parseContext.parserResultsAdd(parserResult);
-        return parserResult;
+        return parser.parse(module, targetDataLayout);
     }
 
     private LLVMParserResult parse(Source source, ExternalLibrary library, ByteSequence bytes, ParseContext parseContext) {
@@ -885,7 +883,10 @@ final class Runner {
                     }
                 }
             }
-            return parseBinary(binaryParserResult, source, library, dependencies, parseContext);
+            LLVMParserResult parserResult = parseBinary(binaryParserResult, source, library);
+            parserResult.setDependencies(dependencies);
+            parseContext.parserResultsAdd(parserResult);
+            return parserResult;
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {

@@ -72,7 +72,7 @@ public final class LLVMParser {
         this.library = runtime.getLibrary();
     }
 
-    public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout, ArrayList<ExternalLibrary> dependencies) {
+    public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout) {
         List<GlobalVariable> externalGlobals = new ArrayList<>();
         List<GlobalVariable> definedGlobals = new ArrayList<>();
         List<FunctionSymbol> externalFunctions = new ArrayList<>();
@@ -85,7 +85,7 @@ public final class LLVMParser {
 
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, StackManager.createRootFrame(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout);
         createDebugInfo(module, symbolResolver);
-        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, importedSymbols, dependencies, targetDataLayout);
+        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, importedSymbols, targetDataLayout);
     }
 
     private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals, List<String> importedSymbols) {

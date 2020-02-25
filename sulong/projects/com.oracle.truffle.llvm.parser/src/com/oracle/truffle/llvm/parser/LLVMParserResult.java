@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -44,7 +45,7 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
     private final List<String> importedSymbols;
-    private final List<LLVMContext.ExternalLibrary> dependencies;
+    private List<LLVMContext.ExternalLibrary> dependencies;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
 
@@ -54,7 +55,6 @@ public final class LLVMParserResult {
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
                     List<String> importedSymbols,
-                    List<LLVMContext.ExternalLibrary> dependencies,
                     DataLayout dataLayout) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
@@ -62,7 +62,6 @@ public final class LLVMParserResult {
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
         this.importedSymbols = importedSymbols;
-        this.dependencies = dependencies;
         this.dataLayout = dataLayout;
         this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
     }
@@ -106,5 +105,10 @@ public final class LLVMParserResult {
 
     public int getSymbolTableSize() {
         return symbolTableSize;
+    }
+
+    public void setDependencies(ArrayList<LLVMContext.ExternalLibrary> dependencies) {
+        assert this.dependencies == null;
+        this.dependencies = dependencies;
     }
 }
