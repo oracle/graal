@@ -1,0 +1,1 @@
+validation  org.graalvm.wasm.exception.BinaryParserException: Invalid table index: 5 should = 0.

@@ -15,3 +15,4 @@ memory_invalid_limits-2
 table_invalid_limits-0
 table_invalid_limits-1
 table_invalid_limits-2
+element_invalid_table_index
