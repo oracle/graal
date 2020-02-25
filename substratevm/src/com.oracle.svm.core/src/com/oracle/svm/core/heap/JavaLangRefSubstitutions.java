@@ -58,7 +58,7 @@ class ReferenceWrapper extends FeebleReference<Object> {
         this.original = original;
     }
 
-    protected static Object unwrap(FeebleReference<? extends Object> wrapper) {
+    protected static Object unwrap(FeebleReference<?> wrapper) {
         return (wrapper == null ? null : ((ReferenceWrapper) wrapper).original);
     }
 }
@@ -135,7 +135,7 @@ final class Target_java_lang_ref_Reference {
     @Substitute
     public boolean enqueue() {
         if (feeble != null) {
-            final FeebleReferenceList<?> frList = feeble.getList();
+            final FeebleReferenceList<Object> frList = feeble.getList();
             if (frList != null) {
                 return frList.push(feeble);
             }

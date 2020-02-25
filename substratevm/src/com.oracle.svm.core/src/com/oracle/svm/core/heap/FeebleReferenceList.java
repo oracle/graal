@@ -84,7 +84,7 @@ public final class FeebleReferenceList<T> {
      * The race to enqueue other references on the same queue is resolved by the compare-and-set of
      * the sampled head.
      */
-    public boolean push(FeebleReference<?> fr) {
+    public boolean push(FeebleReference<? extends T> fr) {
         /*
          * Clear the list field of the FeebleReference so it can not be pushed again, to avoiding
          * A-B-A problems. Only the winner of the race to clear the list field will push the
@@ -98,7 +98,7 @@ public final class FeebleReferenceList<T> {
             for (; /* return */;) {
                 final FeebleReference<? extends T> sampleHead = getHead();
                 fr.listPrepend(sampleHead);
-                if (compareAndSetHead(sampleHead, FeebleReference.uncheckedNarrow(fr))) {
+                if (compareAndSetHead(sampleHead, fr)) {
                     return true;
                 }
             }
@@ -124,7 +124,8 @@ public final class FeebleReferenceList<T> {
                 result = null;
                 break;
             }
-            FeebleReference<? extends T> sampleNext = sampleHead.listGetNext();
+            @SuppressWarnings("unchecked")
+            FeebleReference<? extends T> sampleNext = (FeebleReference<? extends T>) sampleHead.listGetNext();
             if (compareAndSetHead(sampleHead, sampleNext)) {
                 result = sampleHead;
                 clean(result);

@@ -253,33 +253,8 @@ public class DiscoverableReferenceProcessing {
              * Walk down the discovered references looking for FeebleReferences, and put them on
              * their lists, if any.
              */
-            for (FeebleReference<?> fr = DiscoverableReferenceProcessing.getDiscoveredList(); fr != null; fr = fr.getNextDiscoveredReference()) {
-                trace.string("  fr: ").object(fr).newline();
-                if (fr.hasList()) {
-                    final FeebleReferenceList<?> frList = fr.getList();
-                    if (frList != null) {
-                        trace.string("  frList: ").object(frList).newline();
-                        frList.push(fr);
-                    } else {
-                        trace.string("  frList is null").newline();
-                    }
-                } else {
-                    /*
-                     * GR-14335: The DiscoverableReference should be initialized, but the
-                     * FeebleReference has an `AtomicReference list` field containing `null`, not
-                     * even a list field that points to a `null`. This should not be possible, but I
-                     * see it when the VM crashes. Before crashing the VM print out some values.
-                     */
-                    final Log failureLog = Log.log().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").indent(true);
-                    failureLog.string("  fr: ").object(fr)
-                                    .string("  .referent (should be null): ").hex(fr.getReferentPointer())
-                                    .string("  .isDiscovered (should be true): ").bool(fr.getIsDiscovered())
-                                    .string("  .isInitialized (should be true): ").bool(fr.isInitialized())
-                                    .newline()
-                                    .string("  .hasList (should be true): ").bool(fr.hasList());
-                    failureLog.string("]").indent(false);
-                    throw VMError.shouldNotReachHere("DiscoverableReferenceProcessing.Scatterer.distributeReferences: FeebleReference with null list");
-                }
+            for (FeebleReference<?> dr = DiscoverableReferenceProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscoveredReference()) {
+                processReference(dr, trace);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 trace.string("  broadcasting").newline();
@@ -287,6 +262,35 @@ public class DiscoverableReferenceProcessing {
                 FeebleReferenceList.signalWaiters();
             }
             trace.string("]").newline();
+        }
+
+        private static <T> void processReference(FeebleReference<T> fr, Log trace) {
+            trace.string("  fr: ").object(fr).newline();
+            if (fr.hasList()) {
+                final FeebleReferenceList<? super T> frList = fr.getList();
+                if (frList != null) {
+                    trace.string("  frList: ").object(frList).newline();
+                    frList.push(fr);
+                } else {
+                    trace.string("  frList is null").newline();
+                }
+            } else {
+                /*
+                 * GR-14335: The DiscoverableReference should be initialized, but the
+                 * FeebleReference has an `AtomicReference list` field containing `null`, not even a
+                 * list field that points to a `null`. This should not be possible, but I see it
+                 * when the VM crashes. Before crashing the VM print out some values.
+                 */
+                final Log failureLog = Log.log().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").indent(true);
+                failureLog.string("  fr: ").object(fr)
+                                .string("  .referent (should be null): ").hex(fr.getReferentPointer())
+                                .string("  .isDiscovered (should be true): ").bool(fr.getIsDiscovered())
+                                .string("  .isInitialized (should be true): ").bool(fr.isInitialized())
+                                .newline()
+                                .string("  .hasList (should be true): ").bool(fr.hasList());
+                failureLog.string("]").indent(false);
+                throw VMError.shouldNotReachHere("DiscoverableReferenceProcessing.Scatterer.distributeReferences: FeebleReference with null list");
+            }
         }
     }
 

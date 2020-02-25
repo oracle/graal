@@ -142,7 +142,7 @@ public class FeebleReference<T> {
     @SuppressWarnings("unused") //
     private FeebleReference<?> nextDiscovered;
 
-    public static <T> FeebleReference<T> factory(final T referent, final FeebleReferenceList<T> list) {
+    public static <T> FeebleReference<T> factory(final T referent, final FeebleReferenceList<? super T> list) {
         return new FeebleReference<>(referent, list);
     }
 
@@ -162,40 +162,37 @@ public class FeebleReference<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public FeebleReferenceList<T> getList() {
+    public FeebleReferenceList<? super T> getList() {
         return list.get();
     }
 
     /** Clears the list, returning the previous value, which might be null. */
-    public FeebleReferenceList<T> clearList() {
+    public FeebleReferenceList<? super T> clearList() {
         return list.getAndSet(null);
     }
 
-    /** Follow the next pointer. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    FeebleReference<? extends T> listGetNext() {
+    FeebleReference<?> listGetNext() {
         return (isOnList() ? nextInList : null);
     }
 
-    /** Prepend this element to a list element. */
     void listPrepend(FeebleReference<?> newNext) {
         assert newNext != this : "Creating self-loop.";
-        nextInList = uncheckedNarrow(newNext);
+        nextInList = newNext;
     }
 
-    /** Remove this element from a list. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void listRemove() {
         nextInList = this;
     }
 
-    protected FeebleReference(T referent, FeebleReferenceList<T> list) {
+    protected FeebleReference(T referent, FeebleReferenceList<? super T> list) {
         /* Allocate the AtomicReference for the constructor before I become uninterruptible. */
         this(referent, new AtomicReference<>(list));
     }
 
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
-    private FeebleReference(T referent, AtomicReference<FeebleReferenceList<T>> list) {
+    private FeebleReference(T referent, AtomicReference<FeebleReferenceList<? super T>> list) {
         this.rawReferent = referent;
         this.nextDiscovered = null;
         this.isDiscovered = false;
@@ -204,23 +201,18 @@ public class FeebleReference<T> {
         this.initialized = true;
     }
 
-    @SuppressWarnings("unchecked")
-    static <S> FeebleReference<S> uncheckedNarrow(FeebleReference<?> fr) {
-        return (FeebleReference<S>) fr;
-    }
-
     /**
      * The list to which this FeebleReference is added when the referent is unreachable. This is
      * initialized and then becomes null when the FeebleReference is put on its list.
      */
-    private final AtomicReference<FeebleReferenceList<T>> list;
+    private final AtomicReference<FeebleReferenceList<? super T>> list;
 
     /**
      * The next element in the FeebleReferenceList or null if this FeebleReference is not on a list.
      * <p>
      * If this field points to this instance, then this instance is not on any list.
      */
-    private FeebleReference<? extends T> nextInList;
+    private FeebleReference<?> nextInList;
 
     private final boolean initialized;
 
@@ -299,11 +291,9 @@ public class FeebleReference<T> {
         return Word.objectToUntrackedPointer(this).add(WordFactory.signed(NEXT_DISCOVERED_FIELD_OFFSET));
     }
 
-    /** For testing and debugging. */
     public static final class TestingBackDoor {
 
         private TestingBackDoor() {
-            /* No instances. */
         }
 
         @NeverInline("Prevent the access from moving around")
