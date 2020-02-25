@@ -28,15 +28,12 @@ package com.oracle.svm.hosted.image.sources;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.List;
 
 import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
 public class GraalVMSourceCache extends SourceCache {
