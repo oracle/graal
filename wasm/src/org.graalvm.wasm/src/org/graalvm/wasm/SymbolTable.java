@@ -58,6 +58,7 @@ import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 import static org.graalvm.wasm.TableRegistry.Table;
+import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
  * Contains the symbol information of a module.
@@ -396,7 +397,7 @@ public class SymbolTable {
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
         ensureFunctionsCapacity(numFunctions);
         if (typeIndex < 0 || typeIndex >= typeCount) {
-            throw new WasmException(String.format("Function type out of bounds: %d should be < %d.", typeIndex & 0xFFFFFFFFL, typeCount));
+            throw new WasmException(String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
         }
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;

@@ -1315,9 +1315,9 @@ public class BinaryParser extends BinaryStreamParser {
         }
 
         // Convert min and max to longs to avoid checking bounds on overflowed values.
-        long longMin = out[0] & 0xFFFFFFFFL;
-        long longMax = out[1] & 0xFFFFFFFFL;
         Assert.assertLongLessOrEqual(longMin, k, "Invalid " + minName);
+        long longMin = unsignedInt32ToLong(out[0]);
+        long longMax = unsignedInt32ToLong(out[1]);
         if (out[1] != -1) {
             Assert.assertLongLessOrEqual(longMax, k, "Invalid " + maxName);
             Assert.assertLongLessOrEqual(longMin, longMax, "Invalid " + minName);
