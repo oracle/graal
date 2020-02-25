@@ -137,9 +137,9 @@ public final class DebuggerController implements ContextsListener {
         return options.transport;
     }
 
-    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy) {
+    public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames) {
         JDWPLogger.log("Adding step command request in thread %s with ID %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread), commandRequestId);
-        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy));
+        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames));
     }
 
     /**
@@ -280,6 +280,16 @@ public final class DebuggerController implements ContextsListener {
             susp.getEvent().prepareStepOut(STEP_CONFIG).prepareStepOver(STEP_CONFIG);
         }
         susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
+    }
+
+    public boolean popFrames(Object guestThread, CallFrame frameToPop) {
+        SuspendedInfo susp = suspendedInfos.get(guestThread);
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
+            susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame());
+            setCommandRequestId(guestThread, -1, SuspendStrategy.NONE, true);
+            return true;
+        }
+        return false;
     }
 
     public boolean resume(Object thread, boolean sessionClosed) {
@@ -670,7 +680,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, frame, root, instrument.getEnv()));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, frame, root, instrument.getEnv(), null));
                 return null;
             }
         });
@@ -712,6 +722,11 @@ public final class DebuggerController implements ContextsListener {
             SteppingInfo steppingInfo = commandRequestIds.remove(currentThread);
 
             if (steppingInfo != null) {
+                if (steppingInfo.isPopFrames()) {
+                    // Debug API always call onSuspend after re-enter of a frame after pop frames
+                    // JDWP doesn't expect that, so simply continue
+                    return;
+                }
                 // get the top frame for checking instance filters
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1);
                 if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
@@ -742,7 +757,6 @@ public final class DebuggerController implements ContextsListener {
 
             boolean hit = false;
             for (Breakpoint bp : event.getBreakpoints()) {
-
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
 
@@ -963,7 +977,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, rawFrame, root, instrument.getEnv()));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

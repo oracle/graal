@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -43,9 +44,10 @@ public final class CallFrame {
     private final Frame frame;
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
+    private final DebugStackFrame debugStackFrame;
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Frame frame, RootNode rootNode,
-                    TruffleInstrument.Env env) {
+                    TruffleInstrument.Env env, DebugStackFrame debugStackFrame) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
@@ -54,6 +56,7 @@ public final class CallFrame {
         this.frame = frame;
         this.rootNode = rootNode;
         this.env = env;
+        this.debugStackFrame = debugStackFrame;
     }
 
     public byte getTypeTag() {
@@ -112,6 +115,10 @@ public final class CallFrame {
         } catch (Exception e) {
             JDWPLogger.log("Unable to write member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
         }
+    }
+
+    public DebugStackFrame getDebugStackFrame() {
+        return debugStackFrame;
     }
 
     private Scope getScope() {
