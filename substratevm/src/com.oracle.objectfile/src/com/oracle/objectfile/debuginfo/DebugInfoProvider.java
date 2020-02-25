@@ -28,6 +28,7 @@ package com.oracle.objectfile.debuginfo;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * interfaces used to allow a native image to communicate
@@ -82,10 +83,10 @@ public interface DebugInfoProvider {
          */
         int line();
         /**
-         * @return a provider detailing line numbers
-         * addresses within the compiled method
+         * @return a stream of records detailing line numbers
+         * and addresses within the compiled method
          */
-        DebugLineInfoProvider lineInfoProvider();
+        Stream<DebugLineInfo> lineInfoProvider();
         /**
          * @return a string identifying the method parameters
          */
@@ -190,9 +191,9 @@ public interface DebugInfoProvider {
     interface DebugDataInfoProvider extends Iterable<DebugDataInfo> {
     }
 
-    DebugTypeInfoProvider typeInfoProvider();
+    Stream<DebugTypeInfo> typeInfoProvider();
 
-    DebugCodeInfoProvider codeInfoProvider();
+    Stream<DebugCodeInfo> codeInfoProvider();
 
-    DebugDataInfoProvider dataInfoProvider();
+    Stream<DebugDataInfo> dataInfoProvider();
 }

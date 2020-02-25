@@ -46,13 +46,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -983,61 +983,26 @@ public abstract class NativeBootImage extends AbstractBootImage {
     private class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final NativeImageCodeCache codeCache;
         private final NativeImageHeap heap;
-        private final Iterator<Map.Entry<HostedMethod, CompilationResult>> codeCacheIterator;
-        private final Iterator<Map.Entry<Object, ObjectInfo>> heapIterator;
 
         NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
             super();
             this.codeCache = codeCache;
             this.heap = heap;
-            this.codeCacheIterator = codeCache.compilations.entrySet().iterator();
-            this.heapIterator = heap.objects.entrySet().iterator();
         }
 
         @Override
-        public DebugTypeInfoProvider typeInfoProvider() {
-            return () -> new Iterator<DebugTypeInfo>() {
-                @Override
-                public boolean hasNext() {
-                    return false;
-                }
-
-                @Override
-                public DebugTypeInfo next() {
-                    return null;
-                }
-            };
+        public Stream<DebugTypeInfo> typeInfoProvider() {
+            return Stream.empty();
         }
 
         @Override
-        public DebugCodeInfoProvider codeInfoProvider() {
-            return () -> new Iterator<DebugCodeInfo>() {
-                @Override
-                public boolean hasNext() {
-                    return codeCacheIterator.hasNext();
-                }
-
-                @Override
-                public DebugCodeInfo next() {
-                    Map.Entry<HostedMethod, CompilationResult> entry = codeCacheIterator.next();
-                    return new NativeImageDebugCodeInfo(entry.getKey(), entry.getValue());
-                }
-            };
+        public Stream<DebugCodeInfo> codeInfoProvider() {
+            return codeCache.compilations.entrySet().stream().map(entry -> new NativeImageDebugCodeInfo(entry.getKey(), entry.getValue()));
         }
 
         @Override
-        public DebugDataInfoProvider dataInfoProvider() {
-            return () -> new Iterator<DebugDataInfo>() {
-                @Override
-                public boolean hasNext() {
-                    return false;
-                }
-
-                @Override
-                public DebugDataInfo next() {
-                    return null;
-                }
-            };
+        public Stream<DebugDataInfo> dataInfoProvider() {
+            return Stream.empty();
         }
     }
 
@@ -1129,33 +1094,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
 
         @Override
-        public DebugInfoProvider.DebugLineInfoProvider lineInfoProvider() {
+        public Stream<DebugLineInfo> lineInfoProvider() {
             if (fileName().toString().length() == 0) {
-                return () -> new Iterator<DebugLineInfo>() {
-                    @Override
-                    public boolean hasNext() {
-                        return false;
-                    }
-
-                    @Override
-                    public DebugLineInfo next() {
-                        return null;
-                    }
-                };
+                return Stream.empty();
             }
-            return () -> new Iterator<DebugLineInfo>() {
-                final Iterator<SourceMapping> sourceIterator = compilation.getSourceMappings().iterator();
-
-                @Override
-                public boolean hasNext() {
-                    return sourceIterator.hasNext();
-                }
-
-                @Override
-                public DebugLineInfo next() {
-                    return new NativeImageDebugLineInfo(sourceIterator.next());
-                }
-            };
+            return compilation.getSourceMappings().stream().map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping));
         }
 
         public int getFrameSize() {
