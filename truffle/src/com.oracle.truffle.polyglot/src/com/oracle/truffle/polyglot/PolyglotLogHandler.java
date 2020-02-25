@@ -50,7 +50,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 final class PolyglotLogHandler extends Handler {
 
@@ -179,9 +181,8 @@ final class PolyglotLogHandler extends Handler {
             Object[] copy = parameters;
             if (parameters != null && parameters.length > 0) {
                 copy = new Object[parameters.length];
-                final PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
                 for (int i = 0; i < parameters.length; i++) {
-                    copy[i] = safeValue(parameters[i], context);
+                    copy[i] = safeValue(parameters[i]);
                 }
             }
             super.setParameters(copy);
@@ -249,21 +250,16 @@ final class PolyglotLogHandler extends Handler {
             throw new UnsupportedOperationException("Setting Throwable is not supported.");
         }
 
-        private static Object safeValue(final Object param, final PolyglotContextImpl context) {
+        private static Object safeValue(final Object param) {
             if (param == null || EngineAccessor.EngineImpl.isPrimitive(param)) {
                 return param;
             }
-            if (context != null && param instanceof TruffleObject) {
-                final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context, null, param);
-                final PolyglotLanguageContext displayLanguageContext;
-                if (resolvedLanguage != null) {
-                    displayLanguageContext = context.contexts[resolvedLanguage.index];
-                } else {
-                    displayLanguageContext = context.getHostContext();
-                }
-                return EngineAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
+            try {
+                return InteropLibrary.getFactory().getUncached().asString(InteropLibrary.getFactory().getUncached().toDisplayString(param));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
             }
-            return param.toString();
         }
     }
 

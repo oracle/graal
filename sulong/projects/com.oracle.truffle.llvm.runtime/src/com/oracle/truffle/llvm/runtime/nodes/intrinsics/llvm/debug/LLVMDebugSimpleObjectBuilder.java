@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,6 +60,6 @@ public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
         final LLVMDebugValue valueProvider = getProvider();
-        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
+        return LLVMDebugObject.create(type, 0L, valueProvider, declaration);
     }
 }

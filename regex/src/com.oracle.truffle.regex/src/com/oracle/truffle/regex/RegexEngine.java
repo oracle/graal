@@ -159,7 +159,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public static final class ValidateMethod implements RegexLanguageObject {
+    public static final class ValidateMethod extends AbstractRegexObject {
 
         private static final ValidateMethod INSTANCE = new ValidateMethod();
 

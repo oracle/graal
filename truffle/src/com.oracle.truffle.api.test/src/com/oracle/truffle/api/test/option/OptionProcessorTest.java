@@ -368,11 +368,6 @@ public class OptionProcessorTest {
             return getCurrentContext(OptionTestLang1.class);
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @TruffleInstrument.Registration(id = "optiontestinstr1", services = OptionValues.class)

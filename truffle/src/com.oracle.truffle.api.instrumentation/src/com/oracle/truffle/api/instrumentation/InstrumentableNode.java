@@ -43,9 +43,9 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -407,11 +407,12 @@ class InstrumentableNodeSnippets {
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode
     @GenerateWrapper
-    abstract class SimpleNode extends Node implements InstrumentableNode {
+    abstract static class SimpleNode extends Node
+                    implements InstrumentableNode {
 
         public abstract Object execute(VirtualFrame frame);
 
-        public final boolean isInstrumentable() {
+        public boolean isInstrumentable() {
             return true;
         }
 
@@ -439,7 +440,8 @@ class InstrumentableNodeSnippets {
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode
     @GenerateWrapper
-    abstract class RecommendedNode extends Node implements InstrumentableNode {
+    abstract static class RecommendedNode extends Node
+                    implements InstrumentableNode {
 
         private static final int NO_SOURCE = -1;
 
@@ -486,14 +488,16 @@ class InstrumentableNodeSnippets {
     abstract static class StatementNodeWrapper implements WrapperNode {
 
         @SuppressWarnings("unused")
-        static StatementNodeWrapper create(StatementNode statementNode, ProbeNode probe) {
+        static StatementNodeWrapper create(StatementNode statementNode,
+                        ProbeNode probe) {
             return null;
         }
     }
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode
     @GenerateWrapper
-    abstract class StatementNode extends SimpleNode implements InstrumentableNode {
+    abstract static class StatementNode extends SimpleNode
+                    implements InstrumentableNode {
 
         @Override
         public final Object execute(VirtualFrame frame) {
@@ -523,27 +527,18 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
-    class HaltNodeWrapper implements WrapperNode {
-        HaltNodeWrapper(Node node, ProbeNode probe) {
-
-        }
-
-        public Node getDelegateNode() {
-            return null;
-        }
-
-        public ProbeNode getProbeNode() {
-            return null;
-        }
-    }
-
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
-    class HaltNode extends Node implements InstrumentableNode {
+    static class HaltNode extends Node implements InstrumentableNode {
         private boolean isDebuggerHalt;
 
         public void setDebuggerHalt(boolean isDebuggerHalt) {
             this.isDebuggerHalt = isDebuggerHalt;
+        }
+
+        public Object execute(VirtualFrame frame) {
+            // does nothing;
+            return null;
         }
 
         public boolean isInstrumentable() {
@@ -564,23 +559,10 @@ class InstrumentableNodeSnippets {
     }
     // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
 
-    @SuppressWarnings("unused")
-    class ExpressionNodeWrapper implements WrapperNode {
-        ExpressionNodeWrapper(Node node, ProbeNode probe) {
-        }
-
-        public Node getDelegateNode() {
-            return null;
-        }
-
-        public ProbeNode getProbeNode() {
-            return null;
-        }
-    }
-
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
     @GenerateWrapper
-    abstract class ExpressionNode extends Node implements InstrumentableNode {
+    abstract static class ExpressionNode extends Node
+                    implements InstrumentableNode {
         abstract int execute(VirtualFrame frame);
 
         public boolean isInstrumentable() {

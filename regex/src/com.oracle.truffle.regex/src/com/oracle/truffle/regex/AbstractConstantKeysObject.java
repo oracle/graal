@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.AbstractConstantKeysObjectFactory.ReadCacheNodeG
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class AbstractConstantKeysObject implements RegexLanguageObject {
+public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
 
     public abstract TruffleReadOnlyKeysArray getKeys();
 

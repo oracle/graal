@@ -365,6 +365,8 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         createDelegate.createBuilder().startReturn().startNew(delegateClass.asType()).string("delegateLibrary").end().end();
         genClass.add(createDelegate);
 
+        delegateClass.addOptional(createDelegateCastMethod(model));
+
         for (MessageObjects message : methods) {
             CodeExecutableElement executeImpl = delegateClass.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             removeAbstractModifiers(executeImpl);
@@ -684,6 +686,19 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         castMethod.renameArguments("receiver");
         builder = castMethod.createBuilder();
         builder.startReturn().string("receiver").end();
+        return castMethod;
+    }
+
+    private CodeExecutableElement createDelegateCastMethod(LibraryData library) {
+        if (!library.isDynamicDispatch()) {
+            return null;
+        }
+        CodeTreeBuilder builder;
+        CodeExecutableElement castMethod = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(types.DynamicDispatchLibrary, "cast"));
+        castMethod.getModifiers().remove(Modifier.ABSTRACT);
+        castMethod.renameArguments("receiver");
+        builder = castMethod.createBuilder();
+        builder.startReturn().string("delegateLibrary.cast(receiver)").end();
         return castMethod;
     }
 

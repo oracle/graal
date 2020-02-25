@@ -58,6 +58,7 @@ import com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObj
 import com.oracle.truffle.api.library.test.otherPackage.ErrorOtherPackageBaseObject3;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageBaseObject;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageLibrary;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
 public class ExportSubclassTest extends AbstractLibraryTest {

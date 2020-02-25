@@ -264,11 +264,6 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return true;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return Truffle.getRuntime().createCallTarget(new CustomRoot(this));
         }

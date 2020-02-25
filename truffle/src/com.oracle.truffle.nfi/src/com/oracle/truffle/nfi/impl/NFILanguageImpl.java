@@ -240,8 +240,4 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
-    }
 }

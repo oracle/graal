@@ -98,6 +98,12 @@ public class BuggyLanguageInspectDebugTest {
             }
         }
         testBuggyCalls(new TestDebugBuggyLanguage() {
+
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                return object instanceof MetaObj;
+            }
+
             @Override
             protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
                 if (value instanceof Integer) {

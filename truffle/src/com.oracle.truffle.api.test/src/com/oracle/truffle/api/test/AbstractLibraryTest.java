@@ -38,9 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-public interface RegexLanguageObject extends TruffleObject {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+
+public abstract class AbstractLibraryTest extends AbstractPolyglotTest {
+
+    protected static final <T extends Library> T createCached(Class<T> library, Object receiver) {
+        return adopt(LibraryFactory.resolve(library).create(receiver));
+    }
+
+    protected static final <T extends Library> T createCachedDispatch(Class<T> library, int limit) {
+        return adopt(LibraryFactory.resolve(library).createDispatched(limit));
+    }
+
+    protected static final <T extends Library> T getUncached(Class<T> library, Object receiver) {
+        return LibraryFactory.resolve(library).getUncached(receiver);
+    }
+
+    protected static final <T extends Library> T getUncachedDispatch(Class<T> library) {
+        return LibraryFactory.resolve(library).getUncached();
+    }
+
+    protected static <T extends Node> T adopt(T node) {
+        RootNode root = new RootNode(null) {
+            {
+                insert(node);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        root.adoptChildren();
+        return node;
+    }
+
+    protected static void assertAssertionError(Runnable r) {
+        assertAssertionError(r, null);
+    }
+
+    protected static void assertAssertionError(Runnable r, String message) {
+        try {
+            r.run();
+        } catch (AssertionError e) {
+            if (message != null) {
+                assertEquals(message, e.getMessage());
+            }
+            return;
+        }
+        fail();
+    }
+
 }

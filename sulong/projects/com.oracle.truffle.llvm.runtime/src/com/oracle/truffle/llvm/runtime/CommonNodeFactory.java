@@ -324,7 +324,7 @@ public class CommonNodeFactory {
             return null;
         }
 
-        return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
+        return LLVMDebugObject.create(sourceType, 0L, debugValue, null);
     }
 
     public static LLVMFrameValueAccess createDebugFrameValue(int slot, boolean isDeclaration) {

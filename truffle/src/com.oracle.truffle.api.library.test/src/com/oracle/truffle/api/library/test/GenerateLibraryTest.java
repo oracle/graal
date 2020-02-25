@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings("unused")

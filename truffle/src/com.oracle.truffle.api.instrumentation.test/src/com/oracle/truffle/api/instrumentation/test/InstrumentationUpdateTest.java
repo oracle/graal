@@ -355,11 +355,6 @@ public class InstrumentationUpdateTest {
             return null;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @TruffleInstrument.Registration(id = "InstrumentationUpdateInstrument", services = TruffleInstrument.Env.class)

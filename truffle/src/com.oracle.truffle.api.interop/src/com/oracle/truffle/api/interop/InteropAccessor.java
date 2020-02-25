@@ -105,6 +105,19 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
+        public Object createLegacyMetaObjectWrapper(Object receiver, Object result) {
+            return new LegacyMetaObjectWrapper(receiver, result);
+        }
+
+        @Override
+        public Object unwrapLegacyMetaObjectWrapper(Object receiver) {
+            if (receiver instanceof LegacyMetaObjectWrapper) {
+                return ((LegacyMetaObjectWrapper) receiver).delegate;
+            }
+            return receiver;
+        }
+
+        @Override
         @TruffleBoundary
         public boolean isValidNodeObject(Object obj) {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);

@@ -100,10 +100,18 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     Value hostNull; // effectively final
     PolyglotValue disconnectedHostValue;
 
+    static volatile PolyglotImpl polyglotImpl;
+
     /**
      * Internal method do not use.
      */
     public PolyglotImpl() {
+        assert polyglotImpl == null : "only one instance allowed";
+        polyglotImpl = this;
+    }
+
+    static PolyglotImpl getInstance() {
+        return polyglotImpl;
     }
 
     @Override
@@ -263,15 +271,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue);
     }
 
-    @Override
-    @TruffleBoundary
-    public Value asValue(Object hostValue) {
-        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+    Value asValue(PolyglotContextImpl currentContext, Object hostValue) {
         if (currentContext != null) {
             // if we are currently entered in a context just use it and bind the value to it.
             return currentContext.asValue(hostValue);
         }
-
         /*
          * No entered context. Try to do something reasonable.
          */
@@ -305,6 +309,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             return getAPIAccess().newValue(guestValue, disconnectedHostValue);
         }
+    }
+
+    @Override
+    @TruffleBoundary
+    public Value asValue(Object hostValue) {
+        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+        return asValue(currentContext, hostValue);
     }
 
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
@@ -377,8 +388,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else {
             doRethrowPolyglotVariants(e);
         }
+        if (context == null) {
+            throw new RuntimeException(e);
+        }
 
-        APIAccess access = context.getEngine().impl.getAPIAccess();
+        APIAccess access = getInstance().getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(context, e);
         return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }

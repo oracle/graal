@@ -51,6 +51,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -260,6 +261,11 @@ public class DeadlockTest {
             }
 
             public Object execute(@SuppressWarnings("unused") VirtualFrame frame, CharSequence code) {
+                return toUpper(code);
+            }
+
+            @TruffleBoundary
+            private static String toUpper(CharSequence code) {
                 return code.toString().toUpperCase();
             }
 

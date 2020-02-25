@@ -222,7 +222,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public static final class RegexObjectExecMethod implements RegexLanguageObject {
+    public static final class RegexObjectExecMethod extends AbstractRegexObject {
 
         private final RegexObject regex;
 
@@ -262,6 +262,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                 throw new RuntimeException(e);
             }
         }
+
     }
 
     @ReportPolymorphism

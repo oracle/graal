@@ -210,6 +210,7 @@ public class MultiEngineTest {
                 runEngine(sources[0], "samePath", out, isUp);
             } catch (Throwable thr) {
                 errors.add(thr);
+                isUp.countDown();
             }
         }, sources[0].getName());
         t.start();

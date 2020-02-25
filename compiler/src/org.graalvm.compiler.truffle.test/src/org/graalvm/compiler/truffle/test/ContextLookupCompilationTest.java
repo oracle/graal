@@ -560,11 +560,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return true;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static LanguageContext getCurrentContext() {
             return getCurrentContext(Exclusive.class);
         }
@@ -598,11 +593,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         @SuppressWarnings("deprecation")

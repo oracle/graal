@@ -166,7 +166,6 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.profiles",
-        "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.instrumentation",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -220,6 +219,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.dsl", "com.oracle.truffle.api.utilities"],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
     },
@@ -321,8 +321,9 @@ suite = {
    "com.oracle.truffle.api.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api"],
+      "dependencies" : ["com.oracle.truffle.api.interop"],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
     },

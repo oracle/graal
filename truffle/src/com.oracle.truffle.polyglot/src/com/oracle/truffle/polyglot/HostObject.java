@@ -55,6 +55,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -958,6 +959,141 @@ final class HostObject implements TruffleObject {
             throw ex;
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @ExportMessage
+    String toDisplayString(boolean allowSideEffects) {
+        return toStringImpl(languageContext, this.obj, 0, allowSideEffects);
+    }
+
+    @TruffleBoundary
+    static String toStringImpl(PolyglotLanguageContext context, Object javaObject, int level, boolean allowSideEffects) {
+        try {
+            if (javaObject == null) {
+                return "null";
+            } else if (javaObject.getClass().isArray()) {
+                return arrayToString(context, javaObject, level, allowSideEffects);
+            } else if (javaObject instanceof Class) {
+                return ((Class<?>) javaObject).getTypeName();
+            } else {
+                if (allowSideEffects) {
+                    return Objects.toString(javaObject);
+                } else {
+                    return javaObject.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(javaObject));
+                }
+            }
+        } catch (Throwable t) {
+            throw PolyglotImpl.wrapHostException(context, t);
+        }
+    }
+
+    private static String arrayToString(PolyglotLanguageContext context, Object array, int level, boolean allowSideEffects) {
+        if (array == null) {
+            return "null";
+        }
+        if (level > 0) {
+            // avoid recursions all together
+            return "[...]";
+        }
+        int iMax = Array.getLength(array) - 1;
+        if (iMax == -1) {
+            return "[]";
+        }
+
+        StringBuilder b = new StringBuilder();
+        b.append('[');
+        for (int i = 0;; i++) {
+            Object arrayValue = Array.get(array, i);
+            b.append(toStringImpl(context, arrayValue, level + 1, allowSideEffects));
+            if (i == iMax) {
+                return b.append(']').toString();
+            }
+            b.append(", ");
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() throws UnsupportedMessageException {
+        Object javaObject = this.obj;
+        Class<?> javaType;
+        if (javaObject == null) {
+            javaType = Void.class;
+        } else {
+            javaType = javaObject.getClass();
+        }
+        return HostObject.forClass(javaType, languageContext);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMetaObject() {
+        return isClass();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaQualifiedName() throws UnsupportedMessageException {
+        if (isClass()) {
+            return asClass().getTypeName();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaSimpleName() throws UnsupportedMessageException {
+        if (isClass()) {
+            return asClass().getSimpleName();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMetaInstance(Object other) throws UnsupportedMessageException {
+        if (isClass()) {
+            Class<?> c = asClass();
+            if (HostObject.isInstance(other)) {
+                HostObject otherHost = ((HostObject) other);
+                if (otherHost.isNull()) {
+                    return c == Void.class;
+                } else {
+                    return c.isInstance(otherHost.obj);
+                }
+            } else if (PolyglotProxy.isProxyGuestObject(other)) {
+                PolyglotProxy otherHost = (PolyglotProxy) other;
+                return c.isInstance(otherHost.proxy);
+            } else {
+                boolean canConvert = ToHostNode.canConvert(other, c, c,
+                                ToHostNode.allowsImplementation(languageContext, c),
+                                languageContext, ToHostNode.MAX,
+                                InteropLibrary.getFactory().getUncached(other),
+                                TargetMappingNode.getUncached());
+                return canConvert;
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     boolean isStaticClass() {

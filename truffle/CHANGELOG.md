@@ -21,6 +21,21 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
 * Added [Option.deprecationMessage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#deprecationMessage--) to set the option deprecation reason.
 * `engine.Mode` is now a supported option and no longer experimental.
+* Added new meta-data APIs to `InteropLibrary`:
+	* `has/getLanguage(Object receiver)` to access the original language of an object.
+	* `has/getSourceLocation(Object receiver)` to access the source location of an object (e.g. of function or classes).
+	* `has/toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
+	* `has/getMetaObject(Object receiver)` to access the meta-object of an object.
+	* `isMetaObject(Object receiver)` to find out whether an object is a meta-object (e.g. Java class)
+	* `getMetaQualifiedName(Object receiver)` to get the qualified name of the meta-object
+	* `getMetaSimpleName(Object receiver)` to get the simple name of a the meta-object
+	* `isMetaInstance(Object receiver, Object instance)` to check whether an object is an instance of a meta-object.
+* Added `TruffleLanguage.getLanguageView` that allows to wrap values to add language specific information for primitive and foreign values.
+* Added `TruffleLanguage.getScopedView` that allows to wrap values to add scoping and visibility to language values.
+* Added `TruffleInstrument.Env.getScopedView` and `TruffleInstrument.Env.getLanguageView` to access language and scoped views from instruments.
+* Added `TruffleInstrument.Env.getLanguageInfo` to convert language classes to `LanguageInfo`.
+* Deprecated `TruffleLanguage.findMetaObject`, `TruffleLanguage.findSourceLocation`, `TruffleLanguage.toString` and `TruffleLanguage.isObjectOfLanguage`. Use the new interop APIs and language views as replacement.
+
 
 ## Version 20.0.0
 * Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.

@@ -347,98 +347,15 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     if ("null".equals(valueStr)) {
                         value = new NullObject();
                     } else {
-                        value = new PropertiesMapObject(id, sourceSection);
+                        value = new PropertiesMapObject(this, sourceSection);
                     }
             }
             return value;
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            if (!(object instanceof PropertiesMapObject)) {
-                return false;
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) object;
-            return id.equals(pmo.getLanguageId());
-        }
-
-        @Override
-        protected String toString(Context context, Object value) {
-            if (value instanceof Number) {
-                return "L" + id + ":" + ((Number) value).toString();
-            }
-            if (value instanceof String) {
-                return "L" + id + ":" + value.toString();
-            }
-            if (InteropLibrary.getFactory().getUncached().isNull(value)) {
-                return "null";
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return toString(pmo);
-            } else {
-                return "Object";
-            }
-        }
-
-        private static String toString(PropertiesMapObject pmo) {
-            Iterator<Map.Entry<String, Object>> i = pmo.map.entrySet().iterator();
-            if (!i.hasNext()) {
-                return "{}";
-            }
-            StringBuilder sb = new StringBuilder();
-            sb.append('{');
-            for (;;) {
-                Map.Entry<String, Object> e = i.next();
-                String key = e.getKey();
-                Object value = e.getValue();
-                if (value instanceof PropertiesMapObject) {
-                    if (value == pmo) {
-                        value = "(this Map)";
-                    } else {
-                        value = toString((PropertiesMapObject) value);
-                    }
-                }
-                sb.append(key);
-                sb.append('=');
-                sb.append(value);
-                if (!i.hasNext()) {
-                    return sb.append('}').toString();
-                }
-                sb.append(',').append(' ');
-            }
-        }
-
-        @Override
-        protected Object findMetaObject(Context context, Object value) {
-            if (value instanceof Number) {
-                return "L" + id + ":Number";
-            }
-            if (value instanceof String) {
-                return "L" + id + ":String";
-            }
-            if (InteropLibrary.getFactory().getUncached().isNull(value)) {
-                return "Null";
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return "L" + id + ":Map";
-            } else {
-                return "L" + id + ":Object";
-            }
-        }
-
-        @Override
-        protected SourceSection findSourceLocation(Context context, Object value) {
-            if (!(value instanceof TruffleObject)) {
-                return null;
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return pmo.getSourceSection();
-            } else {
-                return null;
-            }
+        protected Object getLanguageView(Context context, Object value) {
+            return new ValuesLanguageView(value, this);
         }
 
         private static final class BlockNode extends Node {
@@ -615,23 +532,217 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
 
         @ExportLibrary(InteropLibrary.class)
+        static final class ValuesMetaObject implements TruffleObject {
+
+            private final ValuesLanguage language;
+            private final Object original;
+            private final String name;
+
+            ValuesMetaObject(ValuesLanguage language, Object original, String name) {
+                this.language = language;
+                this.original = original;
+                this.name = name;
+            }
+
+            @ExportMessage
+            boolean isMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            Object getMetaQualifiedName() {
+                return name;
+            }
+
+            @ExportMessage
+            Object getMetaSimpleName() {
+                return name;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isMetaInstance(Object instance) {
+                return instance.equals(original);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+                return name;
+            }
+
+        }
+
+        /**
+         * Default implementation for the instrumentation view in {@link TruffleLanguage}. Should be
+         * removed with deprecated methods in {@link TruffleLanguage}.
+         */
+        @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+        @SuppressWarnings("static-method")
+        static final class ValuesLanguageView implements TruffleObject {
+
+            protected final ValuesLanguage language;
+            protected final Object delegate;
+
+            ValuesLanguageView(Object delegate, ValuesLanguage language) {
+                this.delegate = delegate;
+                this.language = language;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            boolean hasSourceLocation() {
+                return false;
+            }
+
+            /*
+             * The test expects that language views never propagate source locations.
+             */
+            @ExportMessage
+            SourceSection getSourceLocation() throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+                if (delegate instanceof Number) {
+                    return "L" + language.id + ":" + ((Number) delegate).toString();
+                }
+                if (delegate instanceof String) {
+                    return "L" + language.id + ":" + delegate.toString();
+                }
+                if (InteropLibrary.getFactory().getUncached().isNull(delegate)) {
+                    return "null";
+                }
+                return "Object";
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            private String getTypeName() {
+                if (delegate instanceof Number) {
+                    return "L" + language.id + ":Number";
+                }
+                if (delegate instanceof String) {
+                    return "L" + language.id + ":String";
+                }
+                if (InteropLibrary.getFactory().getUncached().isNull(delegate)) {
+                    return "Null";
+                }
+                return "L" + language.id + ":Object";
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMetaObject() {
+                return new ValuesMetaObject(language, this, getTypeName());
+            }
+
+        }
+
+        @ExportLibrary(InteropLibrary.class)
         static final class PropertiesMapObject implements TruffleObject {
 
             private final Map<String, Object> map = new LinkedHashMap<>();
-            private final String languageId;
+            protected final ValuesLanguage language;
             private final SourceSection sourceSection;
 
-            private PropertiesMapObject(String languageId, SourceSection sourceSection) {
-                this.languageId = languageId;
+            private PropertiesMapObject(ValuesLanguage language, SourceSection sourceSection) {
+                this.language = language;
                 this.sourceSection = sourceSection;
             }
 
-            public String getLanguageId() {
-                return languageId;
+            SourceSection getSourceSection() {
+                return sourceSection;
             }
 
-            public SourceSection getSourceSection() {
-                return sourceSection;
+            @ExportMessage
+            boolean hasSourceLocation() {
+                return true;
+            }
+
+            @ExportMessage
+            SourceSection getSourceLocation() {
+                return this.sourceSection;
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMetaObject() {
+                return new ValuesMetaObject(language, this, "L" + language.id + ":Map");
+            }
+
+            @SuppressWarnings("static-method")
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            String getLanguageId() {
+                return language.id;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(boolean allowSideEffects) {
+                Iterator<Map.Entry<String, Object>> i = map.entrySet().iterator();
+                if (!i.hasNext()) {
+                    return "{}";
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append('{');
+                for (;;) {
+                    Map.Entry<String, Object> e = i.next();
+                    String key = e.getKey();
+                    Object value = e.getValue();
+                    if (value instanceof PropertiesMapObject) {
+                        if (value == this) {
+                            value = "(this Map)";
+                        } else {
+                            value = ((PropertiesMapObject) value).toDisplayString(allowSideEffects);
+                        }
+                    }
+                    sb.append(key);
+                    sb.append('=');
+                    sb.append(value);
+                    if (!i.hasNext()) {
+                        return sb.append('}').toString();
+                    }
+                    sb.append(',').append(' ');
+                }
             }
 
             @SuppressWarnings("static-method")
@@ -680,6 +791,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     return object;
                 }
             }
+
         }
 
         @ExportLibrary(InteropLibrary.class)
@@ -720,6 +832,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             boolean isArrayElementReadable(long index) {
                 return index >= 0 && index < getArraySize();
             }
+
         }
 
     }

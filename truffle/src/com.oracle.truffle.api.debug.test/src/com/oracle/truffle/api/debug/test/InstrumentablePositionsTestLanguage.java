@@ -123,11 +123,6 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source code = request.getSource();
         TestNode node;

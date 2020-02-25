@@ -125,11 +125,6 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static CachedLanguageTestLanguage getCurrentLanguage() {
             return CachedLanguageTestLanguage.getCurrentLanguage(CachedLanguageTestLanguage.class);
         }
@@ -190,10 +185,6 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     abstract static class CachedLanguageError1Node extends Node {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,7 +76,7 @@ public class DebugExprPointerCastNode extends LLVMExpressionNode implements Memb
             Object llvmPointerValue = llvmPointerObject.getValue();
             Builder builder = CommonNodeFactory.createDebugValueBuilder();
             LLVMDebugValue pointerValue = builder.build(llvmPointerValue);
-            LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourcePointerType, 0L,
+            LLVMDebugObject llvmDebugObject = LLVMDebugObject.create(llvmSourcePointerType, 0L,
                             pointerValue, null);
             return llvmDebugObject;
 

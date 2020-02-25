@@ -36,15 +36,20 @@ import org.graalvm.tools.lsp.server.types.Position;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class SourceUtils {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private SourceUtils() {
         assert false;
@@ -115,11 +120,27 @@ public final class SourceUtils {
     }
 
     public static SourceSection findSourceLocation(TruffleInstrument.Env env, Object object, LanguageInfo defaultLanguageInfo) {
-        LanguageInfo languageInfo = env.findLanguage(object);
-        if (languageInfo == null) {
+        LanguageInfo languageInfo;
+        if (INTEROP.hasLanguage(object)) {
+            try {
+                languageInfo = env.getLanguageInfo(INTEROP.getLanguage(object));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        } else {
             languageInfo = defaultLanguageInfo;
         }
-        return env.findSourceLocation(languageInfo, object);
+        Object view = env.getLanguageView(languageInfo, object);
+        if (INTEROP.hasSourceLocation(view)) {
+            try {
+                return INTEROP.getSourceLocation(view);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+        return null;
     }
 
     public static SourceFix removeLastTextInsertion(TextDocumentSurrogate surrogate, int originalCharacter, TruffleLogger logger) {

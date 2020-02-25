@@ -133,11 +133,6 @@ public class DebuggerRetrievalTest {
             }
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @TruffleInstrument.Registration(id = InstrumentThatNeedsDebugger.ID, name = "Instrument That Needs Debugger")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,7 +63,7 @@ public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccess
                 if (library.isMemberReadable(vars, name)) {
                     Object member = library.readMember(vars, name);
                     LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
-                    Object metaObj = ldv.getMetaObject();
+                    Object metaObj = ldv.resolveMetaObject();
                     DebugExprType type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
                     return Pair.create(member, type);
                 }

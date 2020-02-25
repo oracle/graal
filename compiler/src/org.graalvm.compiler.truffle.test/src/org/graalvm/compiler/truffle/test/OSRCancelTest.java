@@ -119,11 +119,6 @@ public class OSRCancelTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @GenerateWrapper

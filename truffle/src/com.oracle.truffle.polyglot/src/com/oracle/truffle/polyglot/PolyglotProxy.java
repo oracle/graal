@@ -66,6 +66,7 @@ import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -772,6 +773,40 @@ final class PolyglotProxy implements TruffleObject {
             return (Duration) guestToHostCall(library, AS_DURATION, languageContext, proxy);
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+        try {
+            return this.proxy.toString();
+        } catch (Throwable t) {
+            throw PolyglotImpl.wrapHostException(languageContext, t);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        Class<?> javaObject = this.proxy.getClass();
+        return HostObject.forClass(javaObject, languageContext);
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {

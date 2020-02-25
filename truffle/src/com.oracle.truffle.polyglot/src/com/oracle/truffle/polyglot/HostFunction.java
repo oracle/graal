@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -80,6 +82,28 @@ final class HostFunction implements TruffleObject {
         return execute.execute(method, obj, args, languageContext);
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (obj == null) {
+            return "null";
+        }
+        String typeName = obj.getClass().getTypeName();
+        return typeName + "." + method.getName();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof HostFunction) {
@@ -94,11 +118,4 @@ final class HostFunction implements TruffleObject {
         return method.hashCode();
     }
 
-    String getDescription() {
-        if (obj == null) {
-            return "null";
-        }
-        String typeName = obj.getClass().getTypeName();
-        return typeName + "." + method.getName();
-    }
 }

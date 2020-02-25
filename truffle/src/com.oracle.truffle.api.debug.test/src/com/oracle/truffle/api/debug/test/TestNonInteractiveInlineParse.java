@@ -85,11 +85,6 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return Truffle.getRuntime().createCallTarget(new TestRootNode(this, request.getSource()));
         }

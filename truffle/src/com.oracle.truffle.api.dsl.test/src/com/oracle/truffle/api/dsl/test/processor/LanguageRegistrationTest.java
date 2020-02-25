@@ -86,11 +86,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected Object createContext(Env env) {
             throw new UnsupportedOperationException();
         }
@@ -106,11 +101,6 @@ public class LanguageRegistrationTest {
         @Override
         protected CallTarget parse(ParsingRequest env) throws IOException {
             throw new IOException();
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         @Override

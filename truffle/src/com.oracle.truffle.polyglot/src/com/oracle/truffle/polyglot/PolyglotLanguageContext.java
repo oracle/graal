@@ -75,10 +75,14 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.PolyglotLanguageContextFactory.ToGuestValueNodeGen;
 
@@ -954,6 +958,88 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             } else {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public Object getLanguageView(Object receiver) {
+        EngineAccessor.INTEROP.checkInteropType(receiver);
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+        if (lib.hasLanguage(receiver)) {
+            try {
+                if (!this.isCreated()) {
+                    throw new IllegalStateException("Language not yet created. Initialize the language first to request a language view.");
+                }
+                if (lib.getLanguage(receiver) == this.lazy.languageInstance.spi.getClass()) {
+                    return receiver;
+                }
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+        return getLanguageViewNoCheck(receiver);
+    }
+
+    private boolean validLanguageView(Object result) {
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
+        Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
+        try {
+            assert lib.hasLanguage(result) &&
+                            lib.getLanguage(result) == languageClass : String.format("The returned language view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
+                                            "Fix the implementation of %s.getLanguageView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
+        }
+        return true;
+    }
+
+    private boolean validScopedView(Object result) {
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
+        Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
+        try {
+            assert lib.hasLanguage(result) &&
+                            lib.getLanguage(result) == languageClass : String.format("The returned scoped view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
+                                            "Fix the implementation of %s.getScopedView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
+        }
+        return true;
+    }
+
+    public Object getLanguageViewNoCheck(Object receiver) {
+        Object result = EngineAccessor.LANGUAGE.getLanguageView(env, receiver);
+        assert validLanguageView(result);
+        return result;
+    }
+
+    public Object getScopedView(Node location, Frame frame, Object value) {
+        validateLocationAndFrame(language.info, location, frame);
+        Object languageView = getLanguageView(value);
+        Object result = EngineAccessor.LANGUAGE.getScopedView(env, location, frame, languageView);
+        assert validScopedView(result);
+        return result;
+    }
+
+    private static void validateLocationAndFrame(LanguageInfo viewLanguage, Node location, Frame frame) {
+        RootNode rootNode = location.getRootNode();
+        if (rootNode == null) {
+            throw new IllegalArgumentException(String.format("The location '%s' does not have a RootNode.", location));
+        }
+        LanguageInfo nodeLocation = rootNode.getLanguageInfo();
+        if (nodeLocation == null) {
+            throw new IllegalArgumentException(String.format("The location '%s' does not have a language associated.", location));
+        }
+        if (nodeLocation != viewLanguage) {
+            throw new IllegalArgumentException(String.format("The view language '%s' must match the language of the location %s.", viewLanguage, nodeLocation));
+        }
+        if (!EngineAccessor.INSTRUMENT.isInstrumentable(location)) {
+            throw new IllegalArgumentException(String.format("The location '%s' is not instrumentable but must be to request scoped views.", location));
+        }
+        if (!rootNode.getFrameDescriptor().equals(frame.getFrameDescriptor())) {
+            throw new IllegalArgumentException(String.format("The frame provided does not originate from the location. " +
+                            "Expected frame descriptor '%s' but was '%s'.", rootNode.getFrameDescriptor(), frame.getFrameDescriptor()));
         }
     }
 

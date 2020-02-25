@@ -59,11 +59,6 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
     protected DummyLanguageContext createContext(Env env) {
         return new DummyLanguageContext(env);
     }

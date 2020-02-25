@@ -220,11 +220,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
         }

@@ -335,7 +335,7 @@ abstract class ToHostNode extends Node {
     /**
      * See {@link Value#as(Class)} documentation.
      */
-    private static Object convertToObject(Object value, PolyglotLanguageContext languageContext, InteropLibrary interop) {
+    static Object convertToObject(Object value, PolyglotLanguageContext languageContext, InteropLibrary interop) {
         try {
             if (interop.isNull(value)) {
                 return null;

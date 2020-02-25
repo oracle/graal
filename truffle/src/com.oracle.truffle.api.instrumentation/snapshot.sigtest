@@ -354,15 +354,22 @@ meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
 meth public com.oracle.truffle.api.nodes.ExecutableNode parseInline(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
 meth public com.oracle.truffle.api.nodes.LanguageInfo findLanguage(java.lang.Object)
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
 meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
 meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes(java.lang.String)
 meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Object getLanguageView(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.Object getPolyglotBindings()
+meth public java.lang.Object getScopedView(com.oracle.truffle.api.nodes.LanguageInfo,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,java.lang.Object)
 meth public java.lang.String toString(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,?> getExportedSymbols()
  anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
@@ -371,7 +378,7 @@ meth public org.graalvm.options.OptionValues getOptions()
 meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org.graalvm.polyglot.io.MessageEndpoint) throws java.io.IOException,org.graalvm.polyglot.io.MessageTransport$VetoException
 meth public void registerService(java.lang.Object)
 supr java.lang.Object
-hfds err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
+hfds INTEROP,err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
 hcls GuardedExecutableNode,MessageTransportProxy
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider

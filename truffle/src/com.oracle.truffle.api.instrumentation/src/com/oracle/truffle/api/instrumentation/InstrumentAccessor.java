@@ -265,5 +265,10 @@ final class InstrumentAccessor extends Accessor {
             return (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguage);
         }
 
+        @Override
+        public boolean isInstrumentable(Node node) {
+            return InstrumentationHandler.isInstrumentableNode(node);
+        }
+
     }
 }

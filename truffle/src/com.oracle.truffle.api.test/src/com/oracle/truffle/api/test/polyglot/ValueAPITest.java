@@ -56,6 +56,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJEC
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.META;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -287,17 +288,27 @@ public class ValueAPITest {
         assertTrue(context.asValue(new PrivateObject()).getMemberKeys().isEmpty());
 
         for (Object value : HOST_OBJECTS) {
-            boolean functionalInterface = value instanceof Supplier || value instanceof Function;
-            boolean instantiable = value instanceof Class && value != Class.class;
-            if (functionalInterface) {
-                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
-            } else if (value instanceof List) {
-                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
-            } else if (instantiable) {
-                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
-            } else {
-                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT);
+            List<Trait> expectedTraits = new ArrayList<>();
+            expectedTraits.add(MEMBERS);
+            expectedTraits.add(HOST_OBJECT);
+
+            if (value instanceof Supplier || value instanceof Function) {
+                expectedTraits.add(EXECUTABLE);
             }
+
+            if (value instanceof List) {
+                expectedTraits.add(ARRAY_ELEMENTS);
+            }
+
+            if (value instanceof Class && value != Class.class) {
+                expectedTraits.add(INSTANTIABLE);
+            }
+
+            if (value instanceof Class) {
+                expectedTraits.add(META);
+            }
+
+            assertValue(context.asValue(value), expectedTraits.toArray(new Trait[0]));
         }
     }
 
@@ -1357,7 +1368,7 @@ public class ValueAPITest {
         Value value = context.asValue(new AmbiguousType());
         assertFails(() -> value.getMember("f").execute(1, 2), IllegalArgumentException.class,
                         "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
-                                        "f'(language: Java, type: Bound Method). Multiple applicable overloads found for method name f " +
+                                        "f'(language: Java, type: Unknown). Multiple applicable overloads found for method name f " +
                                         "(candidates: [Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
                                         "f(int,byte)], Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
                                         "f(byte,int)]], arguments: [1 (Integer), 2 (Integer)]) Provided arguments: " +
@@ -1563,6 +1574,11 @@ public class ValueAPITest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(o));
+            }
+
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                return object == o;
             }
 
             @Override
@@ -1817,6 +1833,26 @@ public class ValueAPITest {
         PolyglotException polyglotException = exceptionValue.as(PolyglotException.class);
         assertNotNull(polyglotException);
         assertThat(polyglotException.getMessage(), containsString("expected"));
+    }
+
+    @Test
+    public void testMetaObject() {
+        Value v = context.asValue(OtherInterface0.class);
+        assertTrue(v.isMetaObject());
+        assertEquals(OtherInterface0.class.getTypeName(), v.getMetaQualifiedName());
+        assertEquals(OtherInterface0.class.getSimpleName(), v.getMetaSimpleName());
+        assertTrue(v.isMetaInstance(new OtherInterface0() {
+            @Override
+            public Object execute() {
+                return null;
+            }
+        }));
+        assertFalse(v.isMetaInstance(new OtherInterface1() {
+            @Override
+            public Object execute(Object s) {
+                return null;
+            }
+        }));
     }
 
     @ExportLibrary(InteropLibrary.class)

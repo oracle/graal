@@ -59,7 +59,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
+public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject implements Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
     static {
         assert LLVMNativeMemory.isCommonHandleMemory(SULONG_FUNCTION_POINTER_TAG);

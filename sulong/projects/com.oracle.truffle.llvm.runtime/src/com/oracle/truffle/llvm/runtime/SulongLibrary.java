@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -175,5 +176,23 @@ public final class SulongLibrary implements TruffleObject {
                         @Cached("create()") IndirectCallNode call) {
             return call.call(library.main, args);
         }
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method"})
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "LLVMLibrary:" + getName();
     }
 }

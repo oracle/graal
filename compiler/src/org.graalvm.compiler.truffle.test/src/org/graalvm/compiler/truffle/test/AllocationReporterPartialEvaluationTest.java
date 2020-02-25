@@ -193,11 +193,6 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             return reporter;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @TruffleInstrument.Registration(id = TestAllocationReporter.ID, services = TestAllocationReporter.class)

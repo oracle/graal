@@ -55,25 +55,17 @@ import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
@@ -298,41 +290,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return LLVMPointer.isInstance(object) || object instanceof LLVMInternalTruffleObject || object instanceof SulongLibrary ||
-                        object instanceof LLVMDebuggerValue || object instanceof LLVMInteropType;
-    }
-
-    @Override
-    protected String toString(LLVMContext context, Object value) {
-        if (value instanceof SulongLibrary) {
-            return "LLVMLibrary:" + ((SulongLibrary) value).getName();
-        } else if (isObjectOfLanguage(value)) {
-            // our internal objects have safe toString implementations
-            return value.toString();
-        } else if (value instanceof String || value instanceof Number) {
-            // truffle primitives
-            return value.toString();
-        } else {
-            return "<unknown object>";
-        }
-    }
-
-    @Override
     protected OptionDescriptors getOptionDescriptors() {
         return Configurations.getOptionDescriptors();
-    }
-
-    @Override
-    protected Object findMetaObject(LLVMContext context, Object value) {
-        if (value instanceof LLVMDebuggerValue) {
-            return ((LLVMDebuggerValue) value).getMetaObject();
-        } else if (LLVMPointer.isInstance(value)) {
-            LLVMPointer ptr = LLVMPointer.cast(value);
-            return ptr.getExportType();
-        }
-
-        return super.findMetaObject(context, value);
     }
 
     @Override
@@ -346,20 +305,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
         }
-    }
-
-    @Override
-    protected SourceSection findSourceLocation(LLVMContext context, Object value) {
-        LLVMSourceLocation location = null;
-        if (value instanceof LLVMSourceType) {
-            location = ((LLVMSourceType) value).getLocation();
-        } else if (value instanceof LLVMDebugObject) {
-            location = ((LLVMDebugObject) value).getDeclaration();
-        }
-        if (location != null) {
-            return location.getSourceSection();
-        }
-        return null;
     }
 
     @Override

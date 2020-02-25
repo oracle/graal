@@ -896,9 +896,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @TruffleBoundary
     <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
         PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
-        if (foundLanguage == null && fail) {
-            Set<String> languageNames = classToLanguage.keySet();
-            throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
+        if (foundLanguage == null) {
+            if (languageClass == HostLanguage.class) {
+                return hostLanguage;
+            }
+            if (fail) {
+                Set<String> languageNames = classToLanguage.keySet();
+                throw new IllegalArgumentException("Cannot find language " + languageClass + " among " + languageNames);
+            }
         }
         return foundLanguage;
     }

@@ -47,8 +47,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -190,7 +190,7 @@ public abstract class DebugValue {
 
     /**
      * Get the scope where this value is declared in. It returns a non-null value for local
-     * variables declared on a stack. It's <code>null<code> for object properties and other heap
+     * variables declared on a stack. It's <code>null</code> for object properties and other heap
      * values.
      *
      * @return the scope, or <code>null</code> when this value does not belong into any scope.
@@ -363,6 +363,16 @@ public abstract class DebugValue {
         return language != null && language.getClass() == languageClass ? get() : null;
     }
 
+    final Object getLanguageView() {
+        LanguageInfo language = resolveLanguage();
+        Object value = get();
+        if (language == null) {
+            return value;
+        } else {
+            return getDebugger().getEnv().getLanguageView(language, value);
+        }
+    }
+
     final LanguageInfo resolveLanguage() {
         LanguageInfo languageInfo;
         if (preferredLanguage != null) {
@@ -387,23 +397,15 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return null;
         }
-        Object obj = get();
-        if (obj == null) {
-            return null;
-        }
-        TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo = resolveLanguage();
-        if (languageInfo != null) {
-            try {
-                obj = env.findMetaObject(languageInfo, obj);
-                if (obj != null) {
-                    return new HeapValue(getSession(), languageInfo, null, obj, true);
-                }
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, languageInfo, null, true, null);
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasMetaObject(view)) {
+                return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getMetaObject(view));
             }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
         }
         return null;
     }
@@ -419,23 +421,17 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return null;
         }
-        Object obj = get();
-        if (obj == null) {
-            return null;
-        }
-        TruffleInstrument.Env env = getDebugger().getEnv();
-        LanguageInfo languageInfo = resolveLanguage();
-        if (languageInfo != null) {
-            try {
-                SourceSection location = env.findSourceLocation(languageInfo, obj);
-                return getSession().resolveSection(location);
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, languageInfo, null, true, null);
+        try {
+            Object obj = getLanguageView();
+            if (INTEROP.hasSourceLocation(obj)) {
+                return getSession().resolveSection(INTEROP.getSourceLocation(obj));
+            } else {
+                return null;
             }
-        } else {
-            return null;
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -476,7 +472,7 @@ public abstract class DebugValue {
         }
         try {
             Object retValue = INTEROP.execute(value, args);
-            return new HeapValue(getSession(), null, retValue);
+            return new HeapValue(getSession(), resolveLanguage(), null, retValue);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -502,7 +498,16 @@ public abstract class DebugValue {
         if (obj == null) {
             return null;
         }
-        return getDebugger().getEnv().findLanguage(obj);
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(obj);
+        if (lib.hasLanguage(obj)) {
+            try {
+                return getSession().getDebugger().getEnv().getLanguageInfo(lib.getLanguage(obj));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+        }
+        return null;
     }
 
     /**
@@ -555,21 +560,17 @@ public abstract class DebugValue {
             if (!isReadable()) {
                 throw new IllegalStateException("Value is not readable");
             }
+
             try {
                 if (clazz == String.class) {
                     Object val = get();
-                    String stringValue;
-                    if (isMeta() && val instanceof String) {
-                        stringValue = (String) val;
+                    Object stringValue;
+                    if (INTEROP.isMetaObject(val)) {
+                        stringValue = INTEROP.getMetaQualifiedName(val);
                     } else {
-                        LanguageInfo languageInfo = resolveLanguage();
-                        if (languageInfo == null) {
-                            stringValue = val.toString();
-                        } else {
-                            stringValue = getDebugger().getEnv().toString(languageInfo, val);
-                        }
+                        stringValue = INTEROP.toDisplayString(getLanguageView());
                     }
-                    return clazz.cast(stringValue);
+                    return clazz.cast(INTEROP.asString(stringValue));
                 } else if (clazz == Number.class || clazz == Boolean.class) {
                     return convertToPrimitive(clazz);
                 }
@@ -600,10 +601,6 @@ public abstract class DebugValue {
             }
         }
 
-        protected boolean isMeta() {
-            return false;
-        }
-
         private <T> T convertToPrimitive(Class<T> clazz) {
             Object val = get();
             if (clazz.isInstance(val)) {
@@ -621,7 +618,6 @@ public abstract class DebugValue {
     static class HeapValue extends AbstractDebugValue {
 
         private final String name;
-        private final boolean isMeta;
         private Object value;
 
         HeapValue(DebuggerSession session, String name, Object value) {
@@ -629,19 +625,10 @@ public abstract class DebugValue {
         }
 
         HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value) {
-            this(session, preferredLanguage, name, value, false);
-        }
-
-        HeapValue(DebuggerSession session, LanguageInfo preferredLanguage, String name, Object value, boolean isMeta) {
             super(session, preferredLanguage);
             this.name = name;
-            this.isMeta = isMeta;
             this.value = value;
-        }
-
-        @Override
-        protected boolean isMeta() {
-            return this.isMeta;
+            assert value != null;
         }
 
         @Override
@@ -692,7 +679,7 @@ public abstract class DebugValue {
 
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
-            return new HeapValue(session, language, name, value, isMeta);
+            return new HeapValue(session, language, name, value);
         }
 
     }

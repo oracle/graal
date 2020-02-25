@@ -310,7 +310,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     ExportMessageData exportMessage = exportLib.getExportedMessages().get(message.getName());
 
                     if (exportMessage == null || exportMessage.getResolvedMessage() != message) {
-
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -321,9 +320,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 }
                             }
                         } else {
-                            isAbstract = true;
+                            isAbstract = !exportLib.hasExportDelegation();
                         }
-
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
                         }

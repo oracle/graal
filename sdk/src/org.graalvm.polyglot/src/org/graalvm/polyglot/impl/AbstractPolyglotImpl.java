@@ -734,6 +734,16 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract RuntimeException throwException(Object receiver);
+
+        public boolean isMetaObject(Object receiver) {
+            return false;
+        }
+
+        public abstract String getMetaQualifiedName(Object receiver);
+
+        public abstract String getMetaSimpleName(Object receiver);
+
+        public abstract boolean isMetaInstance(Object receiver, Object instance);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

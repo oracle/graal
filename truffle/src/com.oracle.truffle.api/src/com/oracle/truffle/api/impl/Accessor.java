@@ -61,7 +61,9 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
@@ -96,8 +98,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.options.OptionKey;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -208,6 +208,10 @@ public abstract class Accessor {
         public abstract Object createDefaultNodeObject(Node node);
 
         public abstract boolean isValidNodeObject(Object obj);
+
+        public abstract Object createLegacyMetaObjectWrapper(Object receiver, Object result);
+
+        public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
     }
 
     public abstract static class EngineSupport {
@@ -246,7 +250,7 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
-        public abstract LanguageInfo getObjectLanguage(Object obj);
+        public abstract Env getLegacyLanguageEnv(Object obj, boolean nullForHost);
 
         public abstract ContextReference<Object> getCurrentContextReference(Object polyglotLanguage);
 
@@ -422,6 +426,14 @@ public abstract class Accessor {
         public abstract String getReinitializedPath(TruffleFile truffleFile);
 
         public abstract URI getReinitializedURI(TruffleFile truffleFile);
+
+        public abstract LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass);
+
+        public abstract <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value);
+
+        public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
+
+        public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
     }
 
     public abstract static class LanguageSupport {
@@ -459,9 +471,15 @@ public abstract class Accessor {
 
         public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
 
-        public abstract Object findMetaObject(Env env, Object value);
+        public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
 
-        public abstract SourceSection findSourceLocation(Env env, Object value);
+        public abstract Object legacyFindMetaObject(Env env, Object value);
+
+        public abstract <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value);
+
+        public abstract SourceSection legacyFindSourceLocation(Env env, Object value);
+
+        public abstract <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value);
 
         public abstract boolean isObjectOfLanguage(Env env, Object value);
 
@@ -539,6 +557,11 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
         public abstract Path getPath(TruffleFile truffleFile);
+
+        public abstract Object getScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
+
+        public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -610,6 +633,8 @@ public abstract class Accessor {
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
+
+        public abstract boolean isInstrumentable(Node node);
 
     }
 

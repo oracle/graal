@@ -31,11 +31,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
@@ -209,8 +211,16 @@ public final class RemoteObject {
         return new RemoteObject(type, null, className, description);
     }
 
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     public static RemoteObject createNullObject(TruffleInstrument.Env env, LanguageInfo language) {
-        String nullStr = env.toString(language, NullObject.INSTANCE);
+        String nullStr;
+        try {
+            nullStr = INTEROP.asString(INTEROP.toDisplayString(env.getLanguageView(language, NullObject.INSTANCE)));
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
+        }
         return new RemoteObject("object", "null", null, nullStr);
     }
 

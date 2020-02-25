@@ -96,7 +96,7 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
                         try {
                             Object signature = LSP_INTEROP.getSignature(result);
                             LanguageInfo langInfo = surrogate.getLanguageInfo();
-                            String label = env.toString(langInfo, signature);
+                            String label = INTEROP.asString(INTEROP.toDisplayString(env.getLanguageView(langInfo, signature)));
                             SignatureInformation info = SignatureInformation.create(label, null);
                             if (signature instanceof TruffleObject) {
                                 if (INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {

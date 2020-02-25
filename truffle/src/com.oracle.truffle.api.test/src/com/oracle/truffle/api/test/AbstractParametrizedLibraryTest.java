@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.library.test;
+package com.oracle.truffle.api.test;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -55,6 +55,7 @@ public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTes
         UNCACHED,
         DISPATCHED_CACHED,
         DISPATCHED_UNCACHED;
+
         public boolean isDispatched() {
             return this == DISPATCHED_CACHED || this == DISPATCHED_UNCACHED;
         }
@@ -71,11 +72,11 @@ public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTes
         LibraryFactory<T> lib = LibraryFactory.resolve(library);
         switch (run) {
             case CACHED:
-                return adopt(lib.create(receiver));
+                return adoptNode(lib.create(receiver)).get();
             case UNCACHED:
                 return lib.getUncached(receiver);
             case DISPATCHED_CACHED:
-                return adopt(lib.createDispatched(2));
+                return adoptNode(lib.createDispatched(2)).get();
             case DISPATCHED_UNCACHED:
                 return lib.getUncached();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,9 +39,12 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -50,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -73,10 +77,49 @@ public abstract class LLVMInteropType implements TruffleObject {
         return new Array(this, size, length);
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMetaObject() {
+        return true;
+    }
+
+    @ExportMessage(name = "getMetaSimpleName")
+    @ExportMessage(name = "getMetaQualifiedName")
+    @TruffleBoundary
+    Object getMetaSimpleName() {
+        return toString();
+    }
+
+    @ExportMessage
+    boolean isMetaInstance(Object instance) {
+        if (LLVMPointer.isInstance(instance)) {
+            return LLVMPointer.cast(instance).getExportType() == this;
+        }
+        return false;
+    }
+
     @Override
     @TruffleBoundary
     public final String toString() {
         return toString(EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE));
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    final boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method"})
+    final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
     }
 
     protected abstract String toString(EconomicSet<LLVMInteropType> visited);

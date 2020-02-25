@@ -64,12 +64,21 @@ public class ExportMessageData extends MessageContainer {
     private NodeData specializedNode;
 
     private boolean overriden;
+    private boolean abstractImpl;
 
     ExportMessageData(ExportsLibrary exports, LibraryMessage resolvedMessage, Element element, AnnotationMirror annotation) {
         this.exports = exports;
         this.resolvedMessage = resolvedMessage;
         this.element = element;
         this.annotation = annotation;
+    }
+
+    public boolean isAbstract() {
+        return abstractImpl;
+    }
+
+    public void setAbstract(boolean abstractImpl) {
+        this.abstractImpl = abstractImpl;
     }
 
     public void setOverriden(boolean overriden) {

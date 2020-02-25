@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -75,7 +75,7 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
         }
         try {
             LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) executedPointerNode;
-            Object metaObj = llvmDebuggerValue.getMetaObject();
+            Object metaObj = llvmDebuggerValue.resolveMetaObject();
             DebugExprType pointerType = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
             if (!pointerType.isPointer()) {
                 throw DebugExprException.create(this, llvmDebuggerValue + " is no pointer");
@@ -87,7 +87,7 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
             Object llvmPointerValue = llvmPointerObject.getValue();
             Builder builder = CommonNodeFactory.createDebugDeclarationBuilder();
             LLVMDebugValue dereferencedValue = builder.build(llvmPointerValue);
-            LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourceType, 0L,
+            LLVMDebugObject llvmDebugObject = LLVMDebugObject.create(llvmSourceType, 0L,
                             dereferencedValue, null);
             DebugExprType type = pointerType.getInnerType();
             return Pair.create(type.parse(llvmDebugObject), type);

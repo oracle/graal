@@ -60,11 +60,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = getCurrentContext();
         final String moduleName = request.getSource().getName();

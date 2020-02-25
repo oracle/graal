@@ -89,9 +89,4 @@ public class SourceAPITestLanguage extends TruffleLanguage<LanguageContext> {
         return langContext;
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
 }

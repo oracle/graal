@@ -141,11 +141,6 @@ public class TestFramesRootTag extends AbstractDebugTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             CharSequence code = request.getSource().getCharacters();
             int length = code.length();

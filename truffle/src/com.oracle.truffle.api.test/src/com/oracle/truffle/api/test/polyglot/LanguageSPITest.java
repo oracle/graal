@@ -82,6 +82,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -102,7 +103,6 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -118,6 +118,12 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageCont
 public class LanguageSPITest {
 
     static LanguageContext langContext;
+
+    @After
+    public void cleanup() {
+        langContext = null;
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+    }
 
     @Test
     public void testContextClose() {
@@ -1729,44 +1735,6 @@ public class LanguageSPITest {
     }
 
     @Test
-    public void testPolyglotBindingsPreserveLanguage() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        Object bindings = lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
-                        try {
-                            boundary(bindings);
-                        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                            throw new AssertionError(e);
-                        }
-                        return bindings;
-                    }
-
-                    @CompilerDirectives.TruffleBoundary
-                    private void boundary(Object bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-                        InteropLibrary.getFactory().getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
-                    }
-                });
-            }
-
-            @Override
-            protected String toString(LanguageContext context, Object value) {
-                if (value.equals("convertOnToString")) {
-                    return "myStringToString";
-                }
-                return super.toString(context, value);
-            }
-        });
-        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
-        c.eval(ProxyLanguage.ID, "");
-
-        assertEquals("Make sure language specific toString was invoked.", "myStringToString", c.getPolyglotBindings().getMember("exportedValue").toString());
-    }
-
-    @Test
     public void testFindSourceLocation() {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
@@ -2041,11 +2009,6 @@ public class LanguageSPITest {
         @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         interface LanguageSPITestLanguageService1 {

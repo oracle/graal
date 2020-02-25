@@ -168,7 +168,7 @@ hfds hash,library,libraryClass,parameterCount,parameterTypes,qualifiedName,retur
 
 CLSS public abstract com.oracle.truffle.api.library.ReflectionLibrary
 cons protected init()
-meth public abstract !varargs java.lang.Object send(java.lang.Object,com.oracle.truffle.api.library.Message,java.lang.Object[]) throws java.lang.Exception
+meth public !varargs java.lang.Object send(java.lang.Object,com.oracle.truffle.api.library.Message,java.lang.Object[]) throws java.lang.Exception
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.library.ReflectionLibrary> getFactory()
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY

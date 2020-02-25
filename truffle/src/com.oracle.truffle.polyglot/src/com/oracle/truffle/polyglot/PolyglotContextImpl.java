@@ -701,7 +701,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         synchronized (this) {
             if (this.polyglotBindings == null) {
                 this.polyglotBindings = new ConcurrentHashMap<>();
-                this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(getHostContext()));
+                PolyglotBindings bindings = new PolyglotBindings(getHostContext());
+                this.polyglotHostBindings = getAPIAccess().newValue(bindings, new PolyglotBindingsValue(getHostContext(), bindings));
             }
         }
     }

@@ -128,14 +128,9 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         return Collections.emptySet();
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof RegexLanguageObject;
-    }
-
     /**
      * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
-     * parallel access to all {@link RegexLanguageObject}s. Parallel access to
+     * parallel access to all {@link AbstractRegexObject}s. Parallel access to
      * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
      * execution of code, but no wrong results.
      *

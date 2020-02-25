@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -114,4 +114,5 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver) {
         return receiver;
     }
+
 }

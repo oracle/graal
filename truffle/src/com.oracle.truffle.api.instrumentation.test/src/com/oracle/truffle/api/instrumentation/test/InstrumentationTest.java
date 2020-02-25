@@ -103,6 +103,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -391,11 +392,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     return base.execute(frame);
                 }
             });
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
     }
@@ -927,7 +923,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 Object receiver = frameScope.getReceiver();
                 if (receiver != null) {
                     assertEquals("THIS", frameScope.getReceiverName());
-                    receiverObjects.add(env.toString(rootNode.getLanguageInfo(), receiver));
+                    try {
+                        receiverObjects.add(InteropLibrary.getFactory().getUncached().asString(
+                                        InteropLibrary.getFactory().getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new AssertionError(e);
+                    }
                 } else {
                     receiverObjects.add(null);
                 }
@@ -1471,11 +1473,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     return base.execute(frame);
                 }
             });
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
     }

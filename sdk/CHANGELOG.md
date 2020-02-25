@@ -9,6 +9,9 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `TreatPerformanceWarningsAsErrors` engine option which deprecates the `PerformanceWarningsAreFatal` option. To replace the `PerformanceWarningsAreFatal` option use the `TreatPerformanceWarningsAsErrors` with `CompilationFailureAction` set to `ExitVM`.
 * Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
 * Added [OptionDescriptor.getDeprecationMessage](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.html#getDeprecationMessage--) returning the option deprecation reason. Added [OptionDescriptor.Builder.deprecationMessage()](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.Builder.html#deprecationMessage-java.lang.String-) to set the option deprecation reason.
+* Added `Value.isMetaObject()`, `Value.getMetaQualifiedName()`, `Value.getMetaSimpleName()` and `Value.isMetaInstance(Object)` to allow language agnostic access to meta-objects like classes or types.  
+* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name. 
+
 
 ## Version 20.0.0
 * The deprecated `graalvm.home` and `graalvm.version` system properties have been removed, use the [HomeFinder](https://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html) instead.

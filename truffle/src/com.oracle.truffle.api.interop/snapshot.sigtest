@@ -27,9 +27,12 @@ meth public boolean fitsInInt(java.lang.Object)
 meth public boolean fitsInLong(java.lang.Object)
 meth public boolean fitsInShort(java.lang.Object)
 meth public boolean hasArrayElements(java.lang.Object)
+meth public boolean hasLanguage(java.lang.Object)
 meth public boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMemberWriteSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMembers(java.lang.Object)
+meth public boolean hasMetaObject(java.lang.Object)
+meth public boolean hasSourceLocation(java.lang.Object)
 meth public boolean isArrayElementInsertable(java.lang.Object,long)
 meth public boolean isArrayElementModifiable(java.lang.Object,long)
 meth public boolean isArrayElementReadable(java.lang.Object,long)
@@ -46,6 +49,8 @@ meth public boolean isMemberInvocable(java.lang.Object,java.lang.String)
 meth public boolean isMemberModifiable(java.lang.Object,java.lang.String)
 meth public boolean isMemberReadable(java.lang.Object,java.lang.String)
 meth public boolean isMemberRemovable(java.lang.Object,java.lang.String)
+meth public boolean isMetaInstance(java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public boolean isMetaObject(java.lang.Object)
 meth public boolean isNull(java.lang.Object)
 meth public boolean isNumber(java.lang.Object)
 meth public boolean isPointer(java.lang.Object)
@@ -53,6 +58,7 @@ meth public boolean isString(java.lang.Object)
 meth public boolean isTime(java.lang.Object)
 meth public boolean isTimeZone(java.lang.Object)
 meth public byte asByte(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public com.oracle.truffle.api.source.SourceSection getSourceLocation(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public double asDouble(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public final boolean isArrayElementExisting(java.lang.Object,long)
 meth public final boolean isArrayElementWritable(java.lang.Object,long)
@@ -60,11 +66,17 @@ meth public final boolean isInstant(java.lang.Object)
 meth public final boolean isMemberExisting(java.lang.Object,java.lang.String)
 meth public final boolean isMemberWritable(java.lang.Object,java.lang.String)
 meth public final java.lang.Object getMembers(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public final java.lang.Object toDisplayString(java.lang.Object)
 meth public float asFloat(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public int asInt(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object toDisplayString(java.lang.Object,boolean)
 meth public java.lang.RuntimeException throwException(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.String asString(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.time.Duration asDuration(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException

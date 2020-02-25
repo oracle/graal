@@ -1662,11 +1662,6 @@ public class ContextPreInitializationTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
             Class<? extends TruffleLanguage<CountingContext>> languageClass = getClass();

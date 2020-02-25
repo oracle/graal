@@ -897,11 +897,6 @@ class NodeSnippets {
             protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
                 return null;
             }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return false;
-            }
         }
 
         // @formatter:off

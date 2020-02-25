@@ -88,7 +88,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * </ol>
  */
 @ExportLibrary(InteropLibrary.class)
-public class RegexEngineBuilder implements RegexLanguageObject {
+public final class RegexEngineBuilder extends AbstractRegexObject {
 
     private final RegexLanguage language;
 
@@ -101,6 +101,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public boolean isExecutable() {
         return true;
     }
@@ -136,4 +137,5 @@ public class RegexEngineBuilder implements RegexLanguageObject {
             return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
         }
     }
+
 }

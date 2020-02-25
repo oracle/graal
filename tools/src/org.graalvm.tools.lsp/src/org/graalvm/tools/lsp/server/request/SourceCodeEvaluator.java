@@ -32,10 +32,10 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 
-import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
@@ -142,11 +142,8 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             try {
                 if (INTEROP.isMemberReadable(nodeObject, "literal")) {
                     Object result = INTEROP.readMember(nodeObject, "literal");
-                    if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
-                        return EvaluationResult.createResult(result);
-                    } else {
-                        logger.log(Level.FINE, "Literal is no TruffleObject or primitive: {0}", result.getClass());
-                    }
+                    assert result instanceof TruffleObject || InteropUtils.isPrimitive(result);
+                    return EvaluationResult.createResult(result);
                 }
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 logger.warning(e.getMessage());
@@ -290,11 +287,19 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                                     @TruffleBoundary
                                     private void logOnInputValue(EventContext inputContext, int inputIndex, Object inputValue) {
                                         indent.setLength(indent.length() - 2);
+                                        Object view = env.getLanguageView(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(), inputValue);
+                                        String metaObject;
+                                        try {
+                                            metaObject = INTEROP.hasMetaObject(view) ? INTEROP.asString(INTEROP.toDisplayString(INTEROP.getMetaObject(view))) : null;
+                                        } catch (UnsupportedMessageException e) {
+                                            CompilerDirectives.transferToInterpreter();
+                                            throw new AssertionError(e);
+                                        }
                                         logger.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
                                                         new Object[]{indent, inputIndex, inputContext.getInstrumentedNode().getClass().getSimpleName(),
                                                                         sourceSectionFormat(context.getInstrumentedSourceSection()),
                                                                         sourceSectionFormat(inputContext.getInstrumentedSourceSection()), inputValue,
-                                                                        env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(), inputValue)});
+                                                                        metaObject});
                                         indent.append("  ");
                                     }
                                 };
