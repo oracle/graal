@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+/**
+ * This interface allows to expose SubstrateVM specific functionality via
+ * {@code java.lang.Compiler.command(Object)}. Use
+ * {@link RuntimeSupport#addCommandPlugin(CompilerCommandPlugin)} to register a new command binding.
+ */
+public interface CompilerCommandPlugin {
 
-@AutomaticFeature
-public class RuntimeFeature implements Feature {
+    /**
+     * Gets the name of this plugin. By convention, the name should resemble a fully qualified
+     * method signature.
+     */
+    String name();
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        RuntimeSupport.initializeRuntimeSupport();
-        ImageSingletons.add(VMRuntimeSupport.class, RuntimeSupport.getRuntimeSupport());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().sortCommandPlugins();
-    }
+    /**
+     * Exercises the functionality represented by this plugin.
+     */
+    Object apply(Object[] args);
 }
