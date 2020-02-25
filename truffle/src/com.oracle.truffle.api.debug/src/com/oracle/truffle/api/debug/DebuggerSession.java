@@ -1393,10 +1393,7 @@ public final class DebuggerSession implements Closeable {
         @Override
         protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
             if (stepping.get() && hasExpressionElement) {
-                SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
-                if (steppingStrategy != null && steppingStrategy.isCollectingInputValues()) {
-                    saveInputValue(frame, inputIndex, inputValue);
-                }
+                saveInputValue(frame, inputIndex, inputValue);
             }
         }
 
