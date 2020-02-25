@@ -1294,7 +1294,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if the receiver value has a metaobject associated. The metaobject
-     * represents a description of the object, reveals it's kind and it's features. Some information
+     * represents a description of the object, reveals its kind and its features. Some information
      * that a metaobject might define includes the base object's type, interface, class, methods,
      * attributes, etc. Should return <code>false</code> when no metaobject is known for this type.
      * Returns <code>false</code> by default.
@@ -1330,7 +1330,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns the metaobject that is associated with this value. The metaobject represents a
-     * description of the object, reveals it's kind and it's features. Some information that a
+     * description of the object, reveals its kind and its features. Some information that a
      * metaobject might define includes the base object's type, interface, class, methods,
      * attributes, etc. When no metaobject is known for this type. Throws
      * {@link UnsupportedMessageException} by default.
@@ -1367,10 +1367,10 @@ public abstract class InteropLibrary extends Library {
     /**
      * Converts the receiver to a human readable {@link #isString(Object) string}. Each language may
      * have special formating conventions - even primitive values may not follow the traditional
-     * Java formating rules. The format of the returned string is intended to be interpreted by
-     * humans not machines and should therefore not be relied upon by machines. By default the
-     * receiver class name and its {@link System#identityHashCode(Object) identity hash code} is
-     * used as string representation.
+     * Java rules. The format of the returned string is intended to be interpreted by humans not
+     * machines and should therefore not be relied upon by machines. By default the receiver class
+     * name and its {@link System#identityHashCode(Object) identity hash code} is used as string
+     * representation.
      * <p>
      * String representations for primitive values or values of other languages may be provided
      * using {@link TruffleLanguage#getLanguageView(Object, Object) language views}. It is common
@@ -1411,7 +1411,7 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>true</code> if the receiver value represents a metaobject. Metaobjects may be
      * values that naturally occur in a language or they may be returned by
      * {@link #getMetaObject(Object)}. A metaobject represents a description of the object, reveals
-     * it's kind and it's features. If a receiver is a metaobject it is often also
+     * its kind and its features. If a receiver is a metaobject it is often also
      * {@link #isInstantiable(Object) instantiable}, but this is not a requirement.
      * <p>
      * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.

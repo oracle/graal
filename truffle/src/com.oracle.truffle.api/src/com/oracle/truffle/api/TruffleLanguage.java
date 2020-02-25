@@ -1240,7 +1240,7 @@ public abstract class TruffleLanguage<C> {
      *     }
      *
      *     &#64;ExportMessage
-     *     Class<? extends TruffleLanguage<?>> getLanguage() {
+     *     Class&lt;? extends TruffleLanguage&lt;?&gt;&gt; getLanguage() {
      *         return MyLanguage.class;
      *     }
      *
