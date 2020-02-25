@@ -83,8 +83,7 @@ public final class OptionValuesImpl implements OptionValues {
     @Override
     @TruffleBoundary
     public <T> void set(OptionKey<T> optionKey, T value) {
-        assert contains(optionKey);
-        values.put(optionKey, maskNull(value));
+        throw new UnsupportedOperationException("OptionValues#set() is no longer supported");
     }
 
     @Override
