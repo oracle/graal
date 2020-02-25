@@ -64,6 +64,24 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.sl.SLLanguage;
 
+/**
+ * This class defines operations that can be performed on SL Objects. While we could define all
+ * these operations as individual AST nodes, We opted to define those operations by using
+ * {@link com.oracle.truffle.api.library.Library a Truffle library}, or more concretely the
+ * {@link InteropLibrary}. This has several advantages, but the primary one is that it allows SL
+ * objects to be used in the interoperability message protocol, i.e. It allows other languages and
+ * tools to operate on SL objects without necessarily knowing they are SL objects.
+ * 
+ * SL Objects are essentially instances of {@link DynamicObject} (objects whose members can be
+ * dynamically added and removed). Our {@link SLObjectType} class thus extends {@link ObjectType} an
+ * extensible object type descriptor for {@link DynamicObject}s. We also annotate the class with
+ * {@link ExportLibrary} with value {@link InteropLibrary InteropLibrary.class} and receiverType
+ * {@link DynamicObject DynamicObject.class}. This essentially ensures that the build system and
+ * runtime know that this class specifies the interop messages (i.e. operations) that SL can do on
+ * {@link DynamicObject} instances.
+ *
+ * {@see ExportLibrary} {@see ExportMessage} {@see InteropLibrary}
+ */
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public final class SLObjectType extends ObjectType {
 
@@ -126,7 +144,6 @@ public final class SLObjectType extends ObjectType {
 
     @ExportMessage
     @SuppressWarnings("unused")
-    @ReportPolymorphism
     static class GetMembers {
 
         @Specialization(guards = "receiver.getShape() == cachedShape")
@@ -210,8 +227,19 @@ public final class SLObjectType extends ObjectType {
         }
     }
 
+    /**
+     * Since reading a member is potentially expensive (results in a truffle boundary call) if the
+     * node turns megamorphic (i.e. cache limit is exceeded) we annotate it with
+     * {@ReportPolymorphism}. This ensures that the runtime is notified when this node turns
+     * polymorphic. This, in turn, may, under certain conditions, cause the runtime to attempt to
+     * make node monomorphic again by duplicating the entire AST containing that node and
+     * specialising it for a particular call site.
+     *
+     * {@see ReportPolymorphism}
+     */
     @GenerateUncached
     @ExportMessage
+    @ReportPolymorphism
     abstract static class ReadMember {
 
         /**
@@ -266,8 +294,19 @@ public final class SLObjectType extends ObjectType {
         }
     }
 
+    /**
+     * Since writing a member is potentially expensive (results in a truffle boundary call) if the
+     * node turns megamorphic (i.e. cache limit is exceeded) we annotate it with
+     * {@ReportPolymorphism}. This ensures that the runtime is notified when this node turns
+     * polymorphic. This, in turn, may, under certain conditions, cause the runtime to attempt to
+     * make node monomorphic again by duplicating the entire AST containing that node and
+     * specialising it for a particular call site.
+     *
+     * {@see ReportPolymorphism}
+     */
     @GenerateUncached
     @ExportMessage
+    @ReportPolymorphism
     abstract static class WriteMember {
 
         /**
