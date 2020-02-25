@@ -539,7 +539,7 @@ public final class LLVMContext {
             // Disallow loading internal libraries explicitly.
             return null;
         }
-        ExternalLibrary newLib = getExternalLibrary(lib, isNative, reason, locator);
+        ExternalLibrary newLib = createExternalLibrary(lib, isNative, reason, locator);
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
         if (existingLib == newLib) {
             return newLib;
@@ -569,7 +569,7 @@ public final class LLVMContext {
             // Disallow loading internal libraries explicitly.
             return null;
         }
-        ExternalLibrary newLib = getExternalLibrary(lib, isNative, reason, locator);
+        ExternalLibrary newLib = createExternalLibrary(lib, isNative, reason, locator);
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
         if (existingLib == newLib) {
             return new LibraryAddResult(newLib, true);
@@ -578,7 +578,7 @@ public final class LLVMContext {
         return new LibraryAddResult(existingLib, false);
     }
 
-    private ExternalLibrary getExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
+    private ExternalLibrary createExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
         if (isInternalLibrary(lib)) {
             // Disallow loading internal libraries explicitly.
             throw new AssertionError("loading internal libraries explicitly is not allowed");
