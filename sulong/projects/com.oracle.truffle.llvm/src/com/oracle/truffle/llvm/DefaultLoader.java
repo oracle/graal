@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,18 +47,17 @@ public final class DefaultLoader extends Loader {
 
     private synchronized void parseDefaultDependencies(Runner runner) {
         if (cachedDefaultDependencies == null) {
-            ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
-            cachedSulongLibraries = runner.parseDefaultLibraries(parserResults);
-            parserResults.trimToSize();
-            cachedDefaultDependencies = Collections.unmodifiableList(parserResults);
+            ParseContext parseContext = ParseContext.create();
+            cachedSulongLibraries = runner.parseDefaultLibraries(parseContext);
+            cachedDefaultDependencies = parseContext.getParserResults();
         }
     }
 
-    ExternalLibrary[] getDefaultDependencies(Runner runner, List<LLVMParserResult> parserResults) {
+    ExternalLibrary[] getDefaultDependencies(Runner runner, ParseContext parseContext) {
         if (cachedDefaultDependencies == null) {
             parseDefaultDependencies(runner);
         }
-        parserResults.addAll(cachedDefaultDependencies);
+        parseContext.parserResultsAddAll(cachedDefaultDependencies);
         return cachedSulongLibraries;
     }
 
