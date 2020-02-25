@@ -145,6 +145,7 @@ suite = {
       "javaProperties" : {
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
         "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
+        "sulongtest.projectRoot" : "<path:com.oracle.truffle.llvm>/../",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
