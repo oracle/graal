@@ -1,1 +1,1 @@
-validation org.graalvm.wasm.exception.BinaryParserException: Invalid initial memory size: 2147483648 should be <= 65536.
+validation org.graalvm.wasm.exception.BinaryParserException: Invalid initial memory size, must be less than upper bound: 2147483648 should be <= 65536.
