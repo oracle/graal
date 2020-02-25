@@ -432,7 +432,9 @@ public class SymbolTable {
     }
 
     public WasmFunction function(int funcIndex) {
-        assert 0 <= funcIndex && funcIndex <= numFunctions() - 1;
+        if (funcIndex < 0 || funcIndex >= numFunctions()) {
+            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions()));
+        }
         return functions[funcIndex];
     }
 

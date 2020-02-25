@@ -72,9 +72,9 @@ This file lists where and how each validation rule from the WebAssembly is imple
 
 - *The element type `elemtype` must be `funcref`.*
 
-  Validated in: `BinaryParser.readTableSection` and `BinaryParser.readImportSection`.
+	Validated in: `BinaryParser.readTableSection` and `BinaryParser.readImportSection`.
   
-  Tests: TODO.
+	Tests: TODO.
   
 - *The expression `expr` must be valid with result type `[i32]`.*:
 
@@ -86,7 +86,9 @@ This file lists where and how each validation rule from the WebAssembly is imple
 	
 - *For each `y` in `y*`, the function `C.funcs[y]` must be defined in the context.*
 
-	Validated in: `
+	Validated in: `SymbolTable.function`.
+
+	Tests: `element_invalid_function_index`.
 
 
 TODO: 3.4.6-3.4.10

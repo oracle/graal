@@ -1,0 +1,1 @@
+validation org.graalvm.wasm.exception.WasmException: Function index out of bounds: 3 should be < 3.
