@@ -2519,7 +2519,7 @@ final class JDWP {
                 int slots = input.readInt();
                 reply.writeInt(slots);
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2569,7 +2569,7 @@ final class JDWP {
                 long frameId = input.readLong();
                 int slots = input.readInt();
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2608,7 +2608,7 @@ final class JDWP {
                 }
                 long frameId = input.readLong();
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2640,7 +2640,7 @@ final class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 Object thread = verifyThread(input.readLong(), reply, controller.getContext(), true);
-                CallFrame frame = verifyClassFrame(input.readLong(), reply, controller.getContext());
+                CallFrame frame = verifyCallFrame(input.readLong(), reply, controller.getContext());
 
                 if (thread == null || frame == null) {
                     return new CommandResult(reply);
@@ -2982,7 +2982,7 @@ final class JDWP {
         return classLoader;
     }
 
-    private static CallFrame verifyClassFrame(long frameId, PacketStream reply, JDWPContext context) {
+    private static CallFrame verifyCallFrame(long frameId, PacketStream reply, JDWPContext context) {
         Object frame = context.getIds().fromId((int) frameId);
         if (!(frame instanceof CallFrame)) {
             reply.errorCode(ErrorCodes.INVALID_FRAMEID);
