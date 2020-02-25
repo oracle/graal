@@ -66,11 +66,11 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CollectionWatcher;
-import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -1059,13 +1059,13 @@ public class GCImpl implements GC {
         policy = newPolicy;
     }
 
-    private FeebleReference<?> discoveredReferenceList = null;
+    private Target_java_lang_ref_Reference<?> discoveredReferenceList = null;
 
-    FeebleReference<?> getDiscoveredReferenceList() {
+    Target_java_lang_ref_Reference<?> getDiscoveredReferenceList() {
         return discoveredReferenceList;
     }
 
-    void setDiscoveredReferenceList(FeebleReference<?> newList) {
+    void setDiscoveredReferenceList(Target_java_lang_ref_Reference<?> newList) {
         discoveredReferenceList = newList;
     }
 

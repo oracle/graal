@@ -52,20 +52,23 @@ public class CleanerSupport {
                     if (entry == null) {
                         return;
                     }
-
-                    if (entry instanceof Target_jdk_internal_ref_Cleaner) {
-                        Target_jdk_internal_ref_Cleaner cleaner = (Target_jdk_internal_ref_Cleaner) entry;
-                        cleaner.clean();
-                    } else if (JavaVersionUtil.JAVA_SPEC > 8 && entry instanceof Target_java_lang_ref_Cleaner_Cleanable) {
-                        Target_java_lang_ref_Cleaner_Cleanable cleaner = (Target_java_lang_ref_Cleaner_Cleanable) entry;
-                        cleaner.clean();
-                    } else {
-                        VMError.shouldNotReachHere("Unexpected type: " + entry.getClass().getName());
-                    }
+                    processObject(entry);
                 }
             } finally {
                 ThreadingSupportImpl.resumeRecurringCallback();
             }
+        }
+    }
+
+    private static void processObject(Object entry) {
+        if (entry instanceof Target_jdk_internal_ref_Cleaner) {
+            Target_jdk_internal_ref_Cleaner cleaner = (Target_jdk_internal_ref_Cleaner) entry;
+            cleaner.clean();
+        } else if (JavaVersionUtil.JAVA_SPEC > 8 && entry instanceof Target_java_lang_ref_Cleaner_Cleanable) {
+            Target_java_lang_ref_Cleaner_Cleanable cleaner = (Target_java_lang_ref_Cleaner_Cleanable) entry;
+            cleaner.clean();
+        } else {
+            VMError.shouldNotReachHere("Unexpected type: " + entry.getClass().getName());
         }
     }
 }

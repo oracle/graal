@@ -28,6 +28,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.ref.WeakReference;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
@@ -46,7 +47,6 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
-import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -281,7 +281,7 @@ public final class DeoptimizedFrame {
     }
 
     private final long sourceEncodedFrameSize;
-    private final FeebleReference<SubstrateInstalledCode> sourceInstalledCode;
+    private final WeakReference<SubstrateInstalledCode> sourceInstalledCode;
     private final VirtualFrame topFrame;
     private final Deoptimizer.TargetContent targetContent;
     private final PinnedObject pin;
@@ -293,7 +293,7 @@ public final class DeoptimizedFrame {
         this.sourceEncodedFrameSize = sourceEncodedFrameSize;
         this.topFrame = topFrame;
         this.targetContent = targetContent;
-        this.sourceInstalledCode = sourceInstalledCode == null ? null : FeebleReference.factory(sourceInstalledCode, null);
+        this.sourceInstalledCode = sourceInstalledCode == null ? null : new WeakReference<>(sourceInstalledCode);
         this.sourcePC = sourcePC;
         this.pin = PinnedObject.create(this);
         StringBuilderLog sbl = new StringBuilderLog();

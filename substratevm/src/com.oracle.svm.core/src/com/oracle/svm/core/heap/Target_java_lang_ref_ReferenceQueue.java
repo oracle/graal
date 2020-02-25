@@ -58,7 +58,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
     private static final InterruptedException preallocatedInterruptedException = new InterruptedException();
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = UninterruptibleUtils.AtomicReference.class) //
-    private final UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> listHead;
+    private final UninterruptibleUtils.AtomicReference<Target_java_lang_ref_Reference<? extends T>> listHead;
 
     @Substitute
     public Target_java_lang_ref_ReferenceQueue() {
@@ -66,20 +66,20 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
     }
 
     @Substitute
-    public Object poll() {
-        return ReferenceWrapper.unwrap(pop());
+    public Target_java_lang_ref_Reference<? extends T> poll() {
+        return pop();
     }
 
     @Substitute
-    public Object remove() throws InterruptedException {
+    public Target_java_lang_ref_Reference<? extends T> remove() throws InterruptedException {
         VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove() inside a VMOperation could block the VM operation thread and cause a deadlock.");
-        return ReferenceWrapper.unwrap(remove0());
+        return remove0();
     }
 
     @Substitute
-    public Object remove(long timeoutMillis) throws InterruptedException {
+    public Target_java_lang_ref_Reference<? extends T> remove(long timeoutMillis) throws InterruptedException {
         VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove(long) inside a VMOperation could block the VM operation thread and cause a deadlock.");
-        return ReferenceWrapper.unwrap(remove0(timeoutMillis));
+        return remove0(timeoutMillis);
     }
 
     public boolean isEmpty() {
@@ -98,7 +98,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
      * The race to enqueue other references on the same queue is resolved by the compare-and-set of
      * the sampled head.
      */
-    public boolean push(FeebleReference<? extends T> fr) {
+    public boolean push(Target_java_lang_ref_Reference<? extends T> fr) {
         /*
          * Clear the list field of the FeebleReference so it can not be pushed again, to avoiding
          * A-B-A problems. Only the winner of the race to clear the list field will push the
@@ -108,9 +108,9 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
         if (clearedList != null) {
             /* I won the race. */
             assert clearedList == this : "Pushing to the wrong list.";
-            assert !fr.isOnList() : "Pushing a FeebleReference that is already on a list.";
+            assert !fr.isOnList() : "Pushing a Reference that is already enqueued.";
             for (; /* return */;) {
-                final FeebleReference<? extends T> sampleHead = getHead();
+                final Target_java_lang_ref_Reference<? extends T> sampleHead = getHead();
                 fr.listPrepend(sampleHead);
                 if (compareAndSetHead(sampleHead, fr)) {
                     return true;
@@ -130,16 +130,16 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
      * method is uninterruptible.
      */
     @Uninterruptible(reason = "List is pushed to during collections.")
-    public FeebleReference<? extends T> pop() {
-        final FeebleReference<? extends T> result;
+    public Target_java_lang_ref_Reference<? extends T> pop() {
+        final Target_java_lang_ref_Reference<? extends T> result;
         for (; /* break */;) {
-            FeebleReference<? extends T> sampleHead = getHead();
+            Target_java_lang_ref_Reference<? extends T> sampleHead = getHead();
             if (sampleHead == null) {
                 result = null;
                 break;
             }
             @SuppressWarnings("unchecked")
-            FeebleReference<? extends T> sampleNext = (FeebleReference<? extends T>) sampleHead.listGetNext();
+            Target_java_lang_ref_Reference<? extends T> sampleNext = (Target_java_lang_ref_Reference<? extends T>) sampleHead.listGetNext();
             if (compareAndSetHead(sampleHead, sampleNext)) {
                 result = sampleHead;
                 clean(result);
@@ -153,12 +153,12 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
      * Removes the next reference object in this queue, blocking until either one becomes available
      * or the given timeout period expires.
      */
-    public FeebleReference<? extends T> remove0(long timeoutMillis) throws IllegalArgumentException, InterruptedException {
+    public Target_java_lang_ref_Reference<? extends T> remove0(long timeoutMillis) throws IllegalArgumentException, InterruptedException {
         /* Sanity check argument. */
         if (timeoutMillis < 0L) {
             throw new IllegalArgumentException("FeebleReferenceList.remove: Negative timeout.");
         }
-        FeebleReference<? extends T> result;
+        Target_java_lang_ref_Reference<? extends T> result;
         if (SubstrateOptions.MultiThreaded.getValue()) {
             /*
              * This method blocks, so it can not run inside a VMOperation. Also, trying to grab the
@@ -176,12 +176,12 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
         return result;
     }
 
-    private FeebleReference<? extends T> popWithBlocking(long timeoutNanos) throws InterruptedException {
+    private Target_java_lang_ref_Reference<? extends T> popWithBlocking(long timeoutNanos) throws InterruptedException {
         long remainingNanos = timeoutNanos;
         for (; /* break */;) {
 
             /* Check if we can pop an element from the queue and return it. */
-            FeebleReference<? extends T> result = pop();
+            Target_java_lang_ref_Reference<? extends T> result = pop();
             if (result != null) {
                 return result;
             }
@@ -220,7 +220,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
         }
     }
 
-    public FeebleReference<? extends T> remove0() throws InterruptedException {
+    public Target_java_lang_ref_Reference<? extends T> remove0() throws InterruptedException {
         return remove0(0L);
     }
 
@@ -229,12 +229,12 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
      */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private FeebleReference<? extends T> getHead() {
+    private Target_java_lang_ref_Reference<? extends T> getHead() {
         return listHead.get();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean compareAndSetHead(FeebleReference<? extends T> expect, FeebleReference<? extends T> update) {
+    private boolean compareAndSetHead(Target_java_lang_ref_Reference<? extends T> expect, Target_java_lang_ref_Reference<? extends T> update) {
         return listHead.compareAndSet(expect, update);
     }
 
@@ -368,7 +368,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
 
     /** Clean the list state that is kept in a FeebleReference. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void clean(FeebleReference<?> fr) {
+    protected static void clean(Target_java_lang_ref_Reference<?> fr) {
         fr.listRemove();
     }
 }

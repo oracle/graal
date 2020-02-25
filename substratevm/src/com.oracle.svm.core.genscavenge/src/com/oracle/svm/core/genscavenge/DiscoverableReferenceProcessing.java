@@ -27,14 +27,17 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import java.lang.ref.Reference;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.heap.FeebleReference;
+import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -49,14 +52,14 @@ public class DiscoverableReferenceProcessing {
     public static void discoverDiscoverableReference(Object object) {
         final Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
         /* TODO: What's the cost of this type test, since it will be a concrete subtype? */
-        if (probability(SLOW_PATH_PROBABILITY, obj instanceof FeebleReference)) {
+        if (probability(SLOW_PATH_PROBABILITY, obj instanceof Target_java_lang_ref_Reference)) {
             handleDiscoverableReference(obj);
         }
     }
 
     private static void handleDiscoverableReference(final Object obj) {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.handleDiscoverableReference:");
-        final FeebleReference<?> dr = (FeebleReference<?>) obj;
+        final Log trace = Log.noopLog().string("[DiscoverableReference.discoverDiscoverableReference:");
+        final Target_java_lang_ref_Reference<?> dr = (Target_java_lang_ref_Reference<?>) obj;
         trace.string("  dr: ").object(dr);
         /*
          * If the DiscoverableReference has been allocated but not initialized, do not do anything
@@ -66,7 +69,7 @@ public class DiscoverableReferenceProcessing {
         if (dr.isInitialized()) {
             /* Add this DiscoverableReference to the discovered list. */
             if (trace.isEnabled()) {
-                trace.string("  referent: ").hex(FeebleReference.TestingBackDoor.getReferentPointer(dr));
+                trace.string("  referent: ").hex(Target_java_lang_ref_Reference.TestingBackDoor.getReferentPointer(SubstrateUtil.cast(dr, Reference.class)));
             }
             addToDiscoveredReferences(dr);
         } else {
@@ -76,7 +79,7 @@ public class DiscoverableReferenceProcessing {
     }
 
     /** The first element of the discovered list, or null. */
-    public static FeebleReference<?> getDiscoveredList() {
+    public static Target_java_lang_ref_Reference<?> getDiscoveredList() {
         return HeapImpl.getHeapImpl().getGCImpl().getDiscoveredReferenceList();
     }
 
@@ -87,7 +90,7 @@ public class DiscoverableReferenceProcessing {
          * It's not enough to just set the discovered list to null. I also have to clean all the
          * entries from the discovered references from last time.
          */
-        for (FeebleReference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
+        for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
             trace.string("  current: ").object(current).string("  referent: ").hex(current.getReferentPointer()).newline();
             current.cleanDiscovered();
         }
@@ -95,7 +98,7 @@ public class DiscoverableReferenceProcessing {
         trace.string("]");
     }
 
-    private static void addToDiscoveredReferences(FeebleReference<?> dr) {
+    private static void addToDiscoveredReferences(Target_java_lang_ref_Reference<?> dr) {
         final Log trace = Log.noopLog().string("[DiscoverableReference.addToDiscoveredReferences:").string("  this: ").object(dr).string("  referent: ").hex(dr.getReferentPointer());
         if (dr.getIsDiscovered()) {
             /*
@@ -115,8 +118,8 @@ public class DiscoverableReferenceProcessing {
     static void processDiscoveredReferences() {
         final Log trace = Log.noopLog().string("[DiscoverableReference.processDiscoveredReferences: ").string("  discoveredList: ").object(getDiscoveredList()).newline();
         /* Start a new list. */
-        FeebleReference<?> newList = null;
-        for (FeebleReference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
+        Target_java_lang_ref_Reference<?> newList = null;
+        for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
             trace.string("  [current: ").object(current).string("  referent before: ").hex(current.getReferentPointer()).string("]").newline();
             /*
              * The referent *has not* been processed as a grey reference, so I have to be careful
@@ -141,7 +144,7 @@ public class DiscoverableReferenceProcessing {
      *
      * Returns true if the referent will survive the collection, false otherwise.
      */
-    private static boolean processReferent(FeebleReference<?> dr) {
+    private static boolean processReferent(Target_java_lang_ref_Reference<?> dr) {
         final Log trace = Log.noopLog().string("[DiscoverableReference.processReferent:").string("  this: ").object(dr);
         final Pointer refPointer = dr.getReferentPointer();
         if (refPointer.isNull()) {
@@ -175,7 +178,7 @@ public class DiscoverableReferenceProcessing {
          * static analysis must see that the field can be null. This means that we get a write
          * barrier for this store.
          */
-        dr.clear();
+        dr.doClear();
         return false;
     }
 
@@ -187,8 +190,8 @@ public class DiscoverableReferenceProcessing {
     }
 
     /** Pop the first element off the discovered references list. */
-    private static FeebleReference<?> popDiscoveredReference() {
-        final FeebleReference<?> result = getDiscoveredList();
+    private static Target_java_lang_ref_Reference<?> popDiscoveredReference() {
+        final Target_java_lang_ref_Reference<?> result = getDiscoveredList();
         if (result != null) {
             setDiscoveredList(result.getNextDiscoveredReference());
             result.cleanDiscovered();
@@ -197,11 +200,11 @@ public class DiscoverableReferenceProcessing {
     }
 
     /** Write access to the discovered list: The whole list. */
-    private static void setDiscoveredList(FeebleReference<?> value) {
+    private static void setDiscoveredList(Target_java_lang_ref_Reference<?> value) {
         HeapImpl.getHeapImpl().getGCImpl().setDiscoveredReferenceList(value);
     }
 
-    public static boolean verify(FeebleReference<?> dr) {
+    public static boolean verify(Target_java_lang_ref_Reference<?> dr) {
         final Pointer refPointer = dr.getReferentPointer();
         final int refClassification = HeapVerifierImpl.classifyPointer(refPointer);
         if (refClassification < 0) {
@@ -253,7 +256,7 @@ public class DiscoverableReferenceProcessing {
              * Walk down the discovered references looking for FeebleReferences, and put them on
              * their lists, if any.
              */
-            for (FeebleReference<?> dr = DiscoverableReferenceProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscoveredReference()) {
+            for (Target_java_lang_ref_Reference<?> dr = DiscoverableReferenceProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscoveredReference()) {
                 processReference(dr, trace);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -264,7 +267,7 @@ public class DiscoverableReferenceProcessing {
             trace.string("]").newline();
         }
 
-        private static <T> void processReference(FeebleReference<T> fr, Log trace) {
+        private static <T> void processReference(Target_java_lang_ref_Reference<T> fr, Log trace) {
             trace.string("  fr: ").object(fr).newline();
             if (fr.hasList()) {
                 final Target_java_lang_ref_ReferenceQueue<? super T> frList = fr.getList();
@@ -276,10 +279,10 @@ public class DiscoverableReferenceProcessing {
                 }
             } else {
                 /*
-                 * GR-14335: The DiscoverableReference should be initialized, but the
-                 * FeebleReference has an `AtomicReference list` field containing `null`, not even a
-                 * list field that points to a `null`. This should not be possible, but I see it
-                 * when the VM crashes. Before crashing the VM print out some values.
+                 * GR-14335: The DiscoverableReference should be initialized, but the Reference has
+                 * an `AtomicReference list` field containing `null`, not even a list field that
+                 * points to a `null`. This should not be possible, but I see it when the VM
+                 * crashes. Before crashing the VM print out some values.
                  */
                 final Log failureLog = Log.log().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").indent(true);
                 failureLog.string("  fr: ").object(fr)
@@ -289,7 +292,7 @@ public class DiscoverableReferenceProcessing {
                                 .newline()
                                 .string("  .hasList (should be true): ").bool(fr.hasList());
                 failureLog.string("]").indent(false);
-                throw VMError.shouldNotReachHere("DiscoverableReferenceProcessing.Scatterer.distributeReferences: FeebleReference with null list");
+                throw VMError.shouldNotReachHere("DiscoverableReferenceProcessing.Scatterer.distributeReferences: Reference with null list");
             }
         }
     }
