@@ -197,7 +197,7 @@ public class JavaMainWrapper {
      * @return maximum length of C chars that can be stored in the program argument part of the
      *         contiguous memory block without writing into the environment variables part.
      */
-    public static long getCRuntimeArgumentBlockLength() {
+    public static int getCRuntimeArgumentBlockLength() {
         VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
 
         CCharPointer firstArgPos = argv.read(0);
@@ -209,10 +209,12 @@ public class JavaMainWrapper {
             // Determine maximum C string length that can be stored in the program argument part
             argvLength = WordFactory.unsigned(lastArgPos.rawValue()).add(lastArgLength).subtract(WordFactory.unsigned(firstArgPos.rawValue()));
         }
-        return argvLength.rawValue();
+        return Math.toIntExact(argvLength.rawValue());
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
+        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
+
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -238,6 +240,8 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
+        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
+
         return CTypeConversion.toJavaString(argv.read(0));
     }
 }

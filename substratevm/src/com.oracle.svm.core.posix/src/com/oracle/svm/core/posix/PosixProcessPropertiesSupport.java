@@ -35,17 +35,17 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
 
-public abstract class PosixProcessPropertiesSupport implements ProcessPropertiesSupport {
+public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
     @Override
     public long getProcessID() {

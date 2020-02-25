@@ -66,4 +66,17 @@ public interface ProcessPropertiesSupport {
     int waitForProcessExit(long processID);
 
     void exec(Path executable, String[] args);
+
+    default int getArgumentVectorBlockSize() {
+        throw new UnsupportedOperationException();
+    }
+
+    default String getArgumentVectorProgramName() {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    default boolean setArgumentVectorProgramName(String name) {
+        throw new UnsupportedOperationException();
+    }
 }
