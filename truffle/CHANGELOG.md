@@ -20,6 +20,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TreatPerformanceWarningsAsErrors` engine option which deprecates the `PerformanceWarningsAreFatal` option. To replace the `PerformanceWarningsAreFatal` option use the `TreatPerformanceWarningsAsErrors` with `CompilationFailureAction` set to `ExitVM`.
 * Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
 * Added [Option.deprecationMessage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#deprecationMessage--) to set the option deprecation reason.
+* `engine.Mode` is now a supported option and no longer experimental.
 
 ## Version 20.0.0
 * Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
