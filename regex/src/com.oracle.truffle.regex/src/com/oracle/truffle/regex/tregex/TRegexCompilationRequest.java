@@ -178,9 +178,9 @@ public final class TRegexCompilationRequest {
         TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
                         : new TRegexExecutorNode[pureNFA.getLookArounds().size()];
         for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
-            lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getLookArounds().get(i), lookAroundExecutors);
+            lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getLookArounds().get(i), lookAroundExecutors, compilationBuffer);
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer);
     }
 
     @TruffleBoundary

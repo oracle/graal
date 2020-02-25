@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
@@ -58,7 +59,7 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
     private final GroupBoundaries groupBoundaries;
     private final boolean caretGuard;
     private final boolean dollarGuard;
-    private final QuantifierGuard[] quantifierGuards;
+    @CompilationFinal(dimensions = 1) private final QuantifierGuard[] quantifierGuards;
 
     public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, QuantifierGuard[] quantifierGuards) {
         this.id = id;

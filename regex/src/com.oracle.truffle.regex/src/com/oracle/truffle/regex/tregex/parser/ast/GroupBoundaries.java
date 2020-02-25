@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
@@ -247,6 +248,7 @@ public class GroupBoundaries implements JsonConvertible {
         }
     }
 
+    @ExplodeLoop
     public void apply(int[] array, int offset, int index) {
         for (byte i : clearArray) {
             array[offset + Byte.toUnsignedInt(i)] = -1;

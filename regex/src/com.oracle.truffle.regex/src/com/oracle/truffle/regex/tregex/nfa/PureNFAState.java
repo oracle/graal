@@ -74,10 +74,11 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     public static final byte KIND_BACK_REFERENCE = 3;
     public static final byte KIND_EMPTY_MATCH = 4;
 
+    private static final byte FLAG_IS_LOOK_AROUND_NEGATED = 1 << N_FLAGS;
+
     private final short astNodeId;
     private final short extraId;
     private final byte kind;
-    private final boolean lookAroundNegated;
     private final CodePointSet charSet;
     private Set<PureNFA> lookBehindEntries;
 
@@ -87,7 +88,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         this.kind = getKind(t);
         this.extraId = isLookAround() ? t.asLookAroundAssertion().getSubTreeId() : isBackReference() ? (short) t.asBackReference().getGroupNr() : -1;
         this.charSet = isCharacterClass() ? t.asCharacterClass().getCharSet() : null;
-        this.lookAroundNegated = isLookAround() && t.asLookAroundAssertion().isNegated();
+        setLookAroundNegated(isLookAround() && t.asLookAroundAssertion().isNegated());
     }
 
     public short getAstNodeId() {
@@ -133,7 +134,11 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     }
 
     public boolean isLookAroundNegated() {
-        return lookAroundNegated;
+        return getFlag(FLAG_IS_LOOK_AROUND_NEGATED);
+    }
+
+    public void setLookAroundNegated(boolean value) {
+        setFlag(FLAG_IS_LOOK_AROUND_NEGATED, value);
     }
 
     public boolean isLookAhead(RegexAST ast) {

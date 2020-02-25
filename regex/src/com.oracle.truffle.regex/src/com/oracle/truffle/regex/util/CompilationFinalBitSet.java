@@ -77,10 +77,14 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         return bs;
     }
 
+    public static long[] createBitSetArray(int nbits) {
+        return new long[wordIndex(nbits - 1) + 1];
+    }
+
     @CompilationFinal(dimensions = 1) private long[] words;
 
     public CompilationFinalBitSet(int nbits) {
-        this.words = new long[wordIndex(nbits - 1) + 1];
+        this.words = createBitSetArray(nbits);
     }
 
     public CompilationFinalBitSet(long[] words) {

@@ -45,6 +45,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * Contains the stack used by {@link TRegexBacktrackingNFAExecutorNode}. One stack frame represents
@@ -77,15 +78,18 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private final Stack stack;
     private int sp;
     private final int[] result;
+    private final long[] transitionBitSet;
     private int lastResultSp = -1;
 
-    public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers) {
-        this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers) * 4]), 0);
+    public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int maxNTransitions) {
+        this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers) * 4]), 0,
+                        CompilationFinalBitSet.createBitSetArray(maxNTransitions));
         setIndex(fromIndex);
         Arrays.fill(stack(), sp + 2, sp + 2 + nCaptureGroups * 2, -1);
     }
 
-    private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase) {
+    private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, Stack stack, int stackBase,
+                    long[] transitionBitSet) {
         super(input, fromIndex, maxIndex, index);
         this.stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers);
         this.nQuantifiers = nQuantifiers;
@@ -94,6 +98,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         this.stackBase = stackBase;
         this.sp = stackBase;
         this.result = new int[nCaptureGroups * 2];
+        this.transitionBitSet = transitionBitSet;
     }
 
     private int[] stack() {
@@ -116,7 +121,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private TRegexBacktrackingNFAExecutorLocals newSubLocals() {
-        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifiers, nZeroWidthQuantifiers, stack, sp + stackFrameSize);
+        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifiers, nZeroWidthQuantifiers, stack, sp + stackFrameSize,
+                        transitionBitSet);
     }
 
     public void apply(PureNFATransition t) {
@@ -128,10 +134,23 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void dupFrame() {
-        if (stack().length < sp + (stackFrameSize * 2)) {
-            stack.stack = Arrays.copyOf(stack(), stack().length * 2);
+        dupFrame(1);
+    }
+
+    public void dupFrame(int n) {
+        int minSize = sp + (stackFrameSize * (n + 1));
+        if (stack().length < minSize) {
+            int newLength = stack().length << 1;
+            while (newLength < minSize) {
+                newLength <<= 1;
+            }
+            stack.stack = Arrays.copyOf(stack(), newLength);
         }
-        System.arraycopy(stack(), sp, stack(), sp + stackFrameSize, stackFrameSize);
+        int targetFrame = sp;
+        for (int i = 0; i < n; i++) {
+            targetFrame += stackFrameSize;
+            System.arraycopy(stack(), sp, stack(), targetFrame, stackFrameSize);
+        }
     }
 
     public void pushResult(PureNFATransition t) {
@@ -226,6 +245,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public void setZeroWidthQuantifierGuardIndex(int index) {
         assert 0 <= index && index < nZeroWidthQuantifiers;
         stack()[sp + 2 + result.length + nQuantifiers + index] = getIndex();
+    }
+
+    public long[] getTransitionBitSet() {
+        return transitionBitSet;
     }
 
     @TruffleBoundary
