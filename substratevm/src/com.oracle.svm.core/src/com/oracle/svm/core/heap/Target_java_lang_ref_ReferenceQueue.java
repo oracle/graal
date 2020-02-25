@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.ref.Reference;
-
-import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -34,7 +31,7 @@ import com.oracle.svm.core.thread.VMOperation;
 
 @TargetClass(java.lang.ref.ReferenceQueue.class)
 @Substitute
-final class Target_java_lang_ref_ReferenceQueue {
+public final class Target_java_lang_ref_ReferenceQueue {
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = FeebleReferenceList.class)//
     protected final FeebleReferenceList<Object> feeble;
@@ -60,9 +57,6 @@ final class Target_java_lang_ref_ReferenceQueue {
         VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove(long) inside a VMOperation could block the VM operation thread and cause a deadlock.");
         return ReferenceWrapper.unwrap(feeble.remove(timeoutMillis));
     }
-
-    @KeepOriginal
-    native boolean enqueue(Reference<?> r);
 
     public boolean isEmpty() {
         return feeble.isEmpty();
