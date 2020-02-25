@@ -280,13 +280,7 @@ public abstract class SourceCache {
      * @throws IOException if there is some error in resolving the path
      */
     private boolean checkSourcePath(Path sourcePath) throws IOException {
-        DirectoryStream<Path> stream = Files.newDirectoryStream(sourcePath.getParent());
-        for (Path path : stream) {
-            if (path.equals(sourcePath)) {
-                return true;
-            }
-        }
-        return false;
+        return Files.isRegularFile(sourcePath);
     }
     /**
      * ensure the directory hierarchy for a path exists

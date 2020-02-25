@@ -100,54 +100,16 @@ public class GraalVMSourceCache extends SourceCache {
      * @return true if a
      */
     private boolean filterSrcRoot(Path root) {
-        // we are only interested in source roots
-        // that potentially contain GraalVM code
         String separator = root.getFileSystem().getSeparator();
 
-        LinkedList<Path> toTest = new LinkedList<>();
-        LinkedList<Path> toBeMatched = new LinkedList<>();
-        /* build a list of GraalVM Paths to look for */
+        /* if any of the graal paths exist accept this root */
         for (String prefix : GRAALVM_SRC_PACKAGE_PREFIXES) {
             String subDir = prefix.replaceAll("\\.", separator);
-            toBeMatched.add(root.resolve(subDir));
-        }
-        /* start by checking immediate subdirs of root */
-        try {
-            addSubDirs(root, toTest);
-        } catch (IOException e) {
-            // hmm, ignore this root then
-            return false;
-        }
-
-        return searchDirectories(toTest, toBeMatched);
-
-    }
-    private void addSubDirs(Path parent, LinkedList<Path> toSearch) throws IOException {
-        DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent);
-        for (Path dir : directoryStream) {
-            toSearch.addLast(dir);
-        }
-    }
-    private boolean searchDirectories(LinkedList<Path> toTest, LinkedList<Path> toBeMatched) {
-        try {
-            while (!toTest.isEmpty()) {
-                Path next = toTest.pop();
-                for (Path p : toBeMatched) {
-                    if (p.equals(next)) {
-                        /* yes, the full monty! */
-                        return true;
-                    } else if (p.startsWith(next)) {
-                        /* this may lead where we want to go -- check subdirs */
-                        addSubDirs(next, toTest);
-                        /* other matches are disjoint so we can break */
-                        break;
-                    }
-                }
+            if (Files.isDirectory(root.resolve(subDir))) {
+                return true;
             }
-        } catch (IOException e) {
-            /* ignore the exception and also skip the jar */
         }
-        /* nope, no useful dirs under this root */
+
         return false;
     }
 }
