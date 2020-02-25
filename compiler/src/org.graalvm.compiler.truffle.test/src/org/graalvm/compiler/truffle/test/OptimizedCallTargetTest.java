@@ -507,8 +507,9 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testNoArgumentTypeSpeculation() {
-        setupContext("engine.CompileImmediately", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.ArgumentTypeSpeculation",
-                        Boolean.FALSE.toString());
+        setupContext("engine.CompileImmediately", Boolean.TRUE.toString(), "engine.CompilationFailureAction", "Throw",
+                        "engine.BackgroundCompilation", Boolean.FALSE.toString(),
+                        "engine.ArgumentTypeSpeculation", Boolean.FALSE.toString());
         CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
         OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
         for (int i = 0; i < 3; i++) {

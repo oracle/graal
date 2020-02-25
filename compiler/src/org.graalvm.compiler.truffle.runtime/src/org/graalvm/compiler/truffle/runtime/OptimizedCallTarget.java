@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -570,9 +571,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean maybeWaitForTask(CancellableCompileTask task) {
-        boolean allowBackgroundCompilation = !engine.performanceWarningsAreFatal &&
-                        !engine.compilationExceptionsAreThrown;
-        boolean mayBeAsynchronous = allowBackgroundCompilation && engine.backgroundCompilation;
+        boolean mayBeAsynchronous = engine.backgroundCompilation;
         runtime().finishCompilation(this, task, mayBeAsynchronous);
         // not async compile and compilation successful
         return !mayBeAsynchronous && isValid();
@@ -683,28 +682,40 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
-        if (bailout && !permanentBailout) {
+        ExceptionAction action;
+        if (bailout && !permanentBailout && !TruffleDebugOptions.bailoutsAsErrors(engine.engineOptions)) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
              * example class redefinition during code installation. As opposed to permanent
              * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
              * failure state.
              */
+            action = TruffleDebugOptions.verboseBailouts(engine.engineOptions) ? ExceptionAction.Print : ExceptionAction.Silent;
         } else {
             compilationFailed = true;
-            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown)) {
-                final InternalError error = new InternalError(reasonAndStackTrace.get());
-                throw new OptimizationFailedException(error, this);
-            }
-
-            boolean truffleCompilationExceptionsAreFatal = engine.compilationExceptionsAreFatal || engine.performanceWarningsAreFatal;
-            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
-                log(reasonAndStackTrace.get());
-                if (truffleCompilationExceptionsAreFatal) {
-                    log("Exiting VM due to " + (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal) ? "TruffleCompilationExceptionsAreFatal"
-                                    : "TrufflePerformanceWarningsAreFatal") + "=true");
-                    System.exit(-1);
+            action = engine.compilationFailureAction;
+        }
+        if (action == ExceptionAction.Throw) {
+            final InternalError error = new InternalError(reasonAndStackTrace.get());
+            throw new OptimizationFailedException(error, this);
+        }
+        if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
+            GraalTruffleRuntime rt = runtime();
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("ASTSize", getNonTrivialNodeCount());
+            rt.logEvent(0, "opt fail", toString(), properties);
+            rt.log(reasonAndStackTrace.get());
+            if (action == ExceptionAction.ExitVM) {
+                String reason;
+                if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
+                    reason = "engine.CompilationFailureAction=ExitVM";
+                } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
+                    reason = "engine.CompilationExceptionsAreFatal=true";
+                } else {
+                    reason = "engine.PerformanceWarningsAreFatal=true";
                 }
+                log(String.format("Exiting VM due to %s", reason));
+                System.exit(-1);
             }
         }
     }

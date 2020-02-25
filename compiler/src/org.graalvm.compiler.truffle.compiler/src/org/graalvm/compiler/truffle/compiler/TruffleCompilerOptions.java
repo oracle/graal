@@ -62,6 +62,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Backg
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
@@ -315,7 +316,8 @@ public final class TruffleCompilerOptions {
          */
         boolean compilationExceptionsAreFatal = getPolyglotOptionValue(options, CompilationExceptionsAreFatal);
         boolean performanceWarningsAreFatal = !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty();
-        return compilationExceptionsAreFatal || performanceWarningsAreFatal;
+        boolean exitVM = getPolyglotOptionValue(options, CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.ExitVM;
+        return compilationExceptionsAreFatal || performanceWarningsAreFatal || exitVM;
     }
 
     /**

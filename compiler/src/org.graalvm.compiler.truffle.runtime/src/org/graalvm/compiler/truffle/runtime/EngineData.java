@@ -28,7 +28,9 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Argum
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
@@ -59,7 +61,10 @@ import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPoly
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -110,9 +115,7 @@ public final class EngineData {
     @CompilationFinal public boolean traceCompilation;
     @CompilationFinal public boolean traceCompilationDetails;
     @CompilationFinal public boolean backgroundCompilation;
-    @CompilationFinal public boolean compilationExceptionsAreThrown;
-    @CompilationFinal public boolean compilationExceptionsAreFatal;
-    @CompilationFinal public boolean performanceWarningsAreFatal;
+    @CompilationFinal public ExceptionAction compilationFailureAction;
     @CompilationFinal public String compileOnly;
     @CompilationFinal public boolean callTargetStatistics;
     @CompilationFinal public boolean callTargetStatisticDetails;
@@ -157,9 +160,6 @@ public final class EngineData {
         this.traceCompilation = getPolyglotOptionValue(options, TraceCompilation);
         this.traceCompilationDetails = getPolyglotOptionValue(options, TraceCompilationDetails);
         this.backgroundCompilation = getPolyglotOptionValue(options, BackgroundCompilation);
-        this.compilationExceptionsAreThrown = getPolyglotOptionValue(options, CompilationExceptionsAreThrown);
-        this.compilationExceptionsAreFatal = getPolyglotOptionValue(options, CompilationExceptionsAreFatal);
-        this.performanceWarningsAreFatal = !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty();
         this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
         this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
@@ -168,6 +168,41 @@ public final class EngineData {
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
         this.profilingEnabled = getPolyglotOptionValue(options, Profiling);
         this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
+        this.compilationFailureAction = computeCompilationFailureAction(options);
+        validateOptions();
+    }
+
+    private static ExceptionAction computeCompilationFailureAction(OptionValues options) {
+        ExceptionAction action = getPolyglotOptionValue(options, CompilationFailureAction);
+        if (action.ordinal() < ExceptionAction.Print.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsArePrinted)) {
+            action = ExceptionAction.Print;
+        }
+        if (action.ordinal() < ExceptionAction.Throw.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsAreThrown)) {
+            action = ExceptionAction.Throw;
+        }
+        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsAreFatal)) {
+            action = ExceptionAction.ExitVM;
+        }
+        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty()) {
+            action = ExceptionAction.ExitVM;
+        }
+        return action;
+    }
+
+    private void validateOptions() {
+        if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
+            GraalTruffleRuntime.getRuntime().log("WARNING: The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
+        }
+        for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
+            if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
+                String optionName = descriptor.getName();
+                String deprecationMessage = descriptor.getDeprecationMessage();
+                if (deprecationMessage.isEmpty()) {
+                    deprecationMessage = "Will be removed with no replacement.";
+                }
+                GraalTruffleRuntime.getRuntime().log(String.format("WARNING: The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
+            }
+        }
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {

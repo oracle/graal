@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.options;
 
-import java.util.function.Function;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -35,9 +33,12 @@ import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.CallTarget;
+
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -70,7 +71,8 @@ public final class PolyglotCompilerOptions {
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
-        VIRTUAL_STORE("store", "Enables virtual store warnings");
+        VIRTUAL_STORE("store", "Enables virtual store warnings"),
+        BAILOUT("bailout", "Enables bailout warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -96,6 +98,60 @@ public final class PolyglotCompilerOptions {
             return kind;
         }
     }
+
+    /**
+     * Actions to take upon an exception being raised during Truffle compilation. The actions are
+     * with respect to what the user sees on the console. The enum constants and order are the same
+     * as defined in {@code org.graalvm.compiler.core.CompilationWrapper.ExceptionAction}.
+     *
+     * The actions are in ascending order of verbosity.
+     */
+    public enum ExceptionAction {
+        /**
+         * Print nothing to the console.
+         */
+        Silent,
+
+        /**
+         * Print a stack trace to the console.
+         */
+        Print,
+
+        /**
+         * Throw the exception to {@link CallTarget} caller.
+         */
+        Throw,
+
+        /**
+         * Retry compilation with extra diagnostics enabled.
+         */
+        Diagnose,
+
+        /**
+         * Exit the VM process.
+         */
+        ExitVM;
+
+        private static final String HELP = "Specifies the action to take when Truffle compilation fails.%n" +
+                        "The accepted values are:%n" +
+                        "    Silent - Print nothing to the console.%n" +
+                        "     Print - Print the exception to the console.%n" +
+                        "     Throw - Throw the exception to caller.%n" +
+                        "  Diagnose - Retry compilation with extra diagnostics enabled.%n" +
+                        "    ExitVM - Exit the VM process.";
+    }
+
+    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction",
+                    new Function<String, ExceptionAction>() {
+                        @Override
+                        public ExceptionAction apply(String s) {
+                            try {
+                                return ExceptionAction.valueOf(s);
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException(ExceptionAction.HELP);
+                            }
+                        }
+                    });
 
     static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
                     new Function<String, Set<PerformanceWarningKind>>() {
@@ -189,17 +245,23 @@ public final class PolyglotCompilerOptions {
 
     // Failed compilation behavior
 
-    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
+    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'")
+    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(false);
 
-    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Throw'")
     public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
 
-    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM'")
     public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
 
-    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM' 'engine.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>'")
     public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
+    @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)
+    public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
+
+    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     // Tracing
 

@@ -114,6 +114,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.Option
 innr public abstract interface static !annotation Group
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean deprecated()
+meth public abstract !hasdefault java.lang.String deprecationMessage()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault org.graalvm.options.OptionStability stability()
 meth public abstract java.lang.String help()
