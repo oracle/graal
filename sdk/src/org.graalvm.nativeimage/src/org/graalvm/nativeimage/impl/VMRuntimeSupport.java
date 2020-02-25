@@ -40,10 +40,15 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 public interface VMRuntimeSupport {
 
     void executeStartupHooks();
 
     void shutdown();
+
+    boolean dumpHeap(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException;
 
 }

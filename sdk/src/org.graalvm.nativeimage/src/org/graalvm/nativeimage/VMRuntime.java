@@ -40,6 +40,9 @@
  */
 package org.graalvm.nativeimage;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 /**
@@ -70,6 +73,16 @@ public final class VMRuntime {
      */
     public static void shutdown() {
         ImageSingletons.lookup(VMRuntimeSupport.class).shutdown();
+    }
+
+    /**
+     * If implemented, a heap dump is generated in hprof binary format. Otherwise
+     * UnsupportedOperationException gets thrown.
+     *
+     * @since 20.1
+     */
+    public static boolean dumpHeap(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException {
+        return ImageSingletons.lookup(VMRuntimeSupport.class).dumpHeap(fileOutputStream, gcBefore);
     }
 
     private VMRuntime() {

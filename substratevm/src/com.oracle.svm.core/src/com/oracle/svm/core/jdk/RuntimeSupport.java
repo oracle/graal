@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,7 +36,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
-public final class RuntimeSupport implements VMRuntimeSupport {
+import com.oracle.svm.core.util.VMError;
+
+public class RuntimeSupport implements VMRuntimeSupport {
 
     /** A list of startup hooks. */
     private AtomicReference<Runnable[]> startupHooks;
@@ -46,7 +50,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     private AtomicReference<Runnable[]> tearDownHooks;
 
     /** A constructor for the singleton instance. */
-    private RuntimeSupport() {
+    protected RuntimeSupport() {
         super();
         startupHooks = new AtomicReference<>();
         shutdownHooks = new AtomicReference<>();
@@ -135,5 +139,10 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     @Override
     public void shutdown() {
         Target_java_lang_Shutdown.shutdown();
+    }
+
+    @Override
+    public boolean dumpHeap(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException {
+        throw VMError.unimplemented("Not available in CE version");
     }
 }

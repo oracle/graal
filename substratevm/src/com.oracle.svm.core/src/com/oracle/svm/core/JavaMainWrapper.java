@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+//Checkstyle: allow reflection
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -56,8 +58,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
-
-//Checkstyle: allow reflection
 
 @InternalVMMethod
 public class JavaMainWrapper {
