@@ -375,10 +375,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(50_000);
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(60_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(50_000);
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(60_000);
 
     // @formatter:on
 
