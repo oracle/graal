@@ -54,7 +54,6 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
-import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
