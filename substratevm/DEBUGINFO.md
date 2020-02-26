@@ -5,7 +5,7 @@ To add debug info to a generated native image add flag
 -H:+GenerateDebugInfo to the native image command line.
 
     $ javac Hello.java
-    $ mx native-image -H:+GenerateDebugInfo Hello
+    $ mx native-image -H:GenerateDebugInfo=1 Hello
 
 The resulting image should contain code (method) debug records in a
 format gdb understands (VS support is still under development).
@@ -88,13 +88,13 @@ name of the associated class to define the directory hierarchy in
 which the source is located (e.g. class org.my.foo.Foo has its
 source file cached as sources/src/org/my/foo/Foo.java).
 
-The lookup scheme for cached pplication sources varies depending upon
+The lookup scheme for cached Application sources varies depending upon
 what is found in each classpath entry. Given a jar file entry like
 /path/to/foo.jar, the corresponding jar /path/to/foo-sources.jar is
 considered as a candidate zip file system from which source files may
 be extracted. When the entry specifies a dir like /path/to/bar/classes
 or /path/to/bar/target/classes then directory /path/to/bar/src is
-considered as a candidate. Finally, the current directory in whcih the
+considered as a candidate. Finally, the current directory in which the
 native image program is being run is also considered as a candidate.
 
 These lookup strategies are only provisional and may need extending in
@@ -131,7 +131,7 @@ sources/src corresponds to the top level package for the classes whose
 sources are being included.
 
 You can also add extra directories to the search path. Note that gdb
-does not understand zip fomrat file systems so any extra entries you
+does not understand zip format file systems so any extra entries you
 add must identify a directory tree containing the relevant
 sources. Once again. top leel entries in the directory added to the
 search path must correspond to the top level package for the classes

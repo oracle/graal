@@ -167,30 +167,6 @@ public interface DebugInfoProvider {
         DebugFrameSizeChange.Type getType();
     }
 
-    /**
-     * convenience interface defining iterator type.
-     */
-    interface DebugTypeInfoProvider extends Iterable<DebugTypeInfo> {
-    }
-
-    /**
-     * convenience interface defining iterator type.
-     */
-    interface DebugCodeInfoProvider extends Iterable<DebugCodeInfo> {
-    }
-
-    /**
-     * convenience interface defining iterator type.
-     */
-    interface DebugLineInfoProvider extends Iterable<DebugLineInfo> {
-    }
-
-    /**
-     * convenience interface defining iterator type.
-     */
-    interface DebugDataInfoProvider extends Iterable<DebugDataInfo> {
-    }
-
     Stream<DebugTypeInfo> typeInfoProvider();
 
     Stream<DebugCodeInfo> codeInfoProvider();
