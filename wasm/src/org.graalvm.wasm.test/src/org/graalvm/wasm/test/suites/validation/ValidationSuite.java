@@ -67,7 +67,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: SymbolTable.allocateFunctionType
                     binaryCase(
                                     "Function: cannot return more than one value",
-                                    "org.graalvm.wasm.exception.WasmException: A function might return at most one result.",
+                                    "org.graalvm.wasm.exception.WasmException: A function can return at most one result.",
                                     "0061 736d 0100 0000 0105 0160 0002 7f03" +
                                                     "0201 000a 0801 0600 412a 412a 0b"),
 
