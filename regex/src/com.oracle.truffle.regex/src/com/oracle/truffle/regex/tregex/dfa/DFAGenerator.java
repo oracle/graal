@@ -721,20 +721,8 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
             }
 
-            // extract the literal from the parser tree
-            CharArrayBuffer literal = compilationBuffer.getCharRangesBuffer1();
-            CharArrayBuffer mask = compilationBuffer.getCharRangesBuffer2();
-            literal.ensureCapacity(literalEnd - literalStart);
-            mask.ensureCapacity(literalEnd - literalStart);
-            boolean hasMask = false;
-            for (int i = literalStart; i < literalEnd; i++) {
-                CharacterClass cc = (CharacterClass) rootSeq.getTerms().get(i);
-                assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
-                cc.extractSingleChar(literal, mask);
-                hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
-            }
             registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode(unanchoredInitialState.getId(),
-                            new short[]{literalLastDFAState.getId()}, new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, prefixMatcher));
+                            new short[]{literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(compilationBuffer), prefixMatcher));
         }
     }
 

@@ -58,6 +58,8 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
@@ -589,6 +591,24 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             sourceSections.put(node, sections);
         }
         return sections;
+    }
+
+    public InnerLiteral extractInnerLiteral(CompilationBuffer compilationBuffer) {
+        assert properties.hasInnerLiteral();
+        int literalEnd = properties.getInnerLiteralEnd();
+        int literalStart = properties.getInnerLiteralStart();
+        CharArrayBuffer literal = compilationBuffer.getCharRangesBuffer1();
+        CharArrayBuffer mask = compilationBuffer.getCharRangesBuffer2();
+        literal.ensureCapacity(literalEnd - literalStart);
+        mask.ensureCapacity(literalEnd - literalStart);
+        boolean hasMask = false;
+        for (int i = literalStart; i < literalEnd; i++) {
+            CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
+            assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
+            cc.extractSingleChar(literal, mask);
+            hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
+        }
+        return new InnerLiteral(new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
     }
 
     @TruffleBoundary

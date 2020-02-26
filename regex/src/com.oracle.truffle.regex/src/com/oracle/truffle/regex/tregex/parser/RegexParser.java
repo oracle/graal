@@ -178,7 +178,7 @@ public final class RegexParser {
     }
 
     private void checkInnerLiteral() {
-        if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().size() != 1) {
+        if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().size() != 1 || flags.isSticky()) {
             return;
         }
         ArrayList<Term> terms = ast.getRoot().getFirstAlternative().getTerms();
@@ -192,7 +192,7 @@ public final class RegexParser {
                     literalStart = i;
                 }
                 literalEnd = i + 1;
-            } else if (literalStart >= 0 || t.hasLoops()) {
+            } else if (literalStart >= 0 || t.hasLoops() || t.hasBackReferences()) {
                 break;
             } else {
                 maxPath = t.getMaxPath();

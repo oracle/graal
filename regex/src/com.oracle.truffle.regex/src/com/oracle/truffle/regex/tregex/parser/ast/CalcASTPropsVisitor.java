@@ -50,10 +50,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
  * <ul>
  * <li>{@link RegexASTNode#getMinPath()}:
  * <ul>
- * <li>The minPath of {@link LookBehindAssertion} and {@link LookAheadAssertion} nodes is the
- * minimum number of CharacterClass nodes that need to be traversed in order to reach the node.</li>
- * <li>The minPath of {@link BackReference}, {@link PositionAssertion} and {@link MatchFound} nodes
- * is undefined (or is always 0). Their minPath is never set by {@link CalcASTPropsVisitor}.</li>
+ * <li>The minPath of {@link BackReference}, {@link PositionAssertion}, {@link LookBehindAssertion}
+ * and {@link LookAheadAssertion} nodes is the minimum number of CharacterClass nodes that need to
+ * be traversed in order to reach the node.</li>
+ * <li>The minPath of {@link MatchFound} nodes is undefined (or is always 0). Their minPath is never
+ * set by {@link CalcASTPropsVisitor}.</li>
  * <li>The minPath of {@link Sequence} and {@link Group} nodes is the minimum number of
  * {@link CharacterClass} nodes that need to be traversed (starting at the AST root) in order to
  * reach the end of the node. The minPath field of {@link Sequence} nodes is used as a mutable
@@ -163,6 +164,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             backReference.getParent().setHasQuantifiers();
             setQuantifierIndex(backReference);
         }
+        backReference.setMinPath(backReference.getParent().getMinPath());
+        backReference.setMaxPath(backReference.getParent().getMaxPath());
     }
 
     @Override
@@ -282,6 +285,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 }
                 break;
         }
+        assertion.setMinPath(assertion.getParent().getMinPath());
+        assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override

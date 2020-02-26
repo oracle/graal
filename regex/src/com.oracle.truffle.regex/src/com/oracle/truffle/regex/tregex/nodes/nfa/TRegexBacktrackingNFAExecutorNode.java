@@ -57,10 +57,12 @@ import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
@@ -81,10 +83,12 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
     private final boolean ignoreCase;
     private final boolean unicode;
     private final boolean loneSurrogates;
+    private final InnerLiteral innerLiteral;
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
     @Children private CharMatcher[] matchers;
 
     @Child InputRegionMatchesNode regionMatchesNode;
+    @Child InputIndexOfStringNode indexOfNode;
 
     public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer) {
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
@@ -97,6 +101,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifierCount().getCount();
         this.lookAroundExecutors = lookAroundExecutors;
+        InnerLiteral literal = null;
         if (nfa == nfaMap.getRoot()) {
             boolean loopback = !nfaMap.getAst().getFlags().isSticky() && !nfaMap.getAst().getRoot().startsWithCaret();
             nfa.setInitialLoopBack(loopback);
@@ -107,7 +112,11 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                                 GroupBoundaries.getEmptyInstance(),
                                 false, false, QuantifierGuard.NO_GUARDS));
             }
+            if (nfaMap.getAst().getProperties().hasInnerLiteral()) {
+                literal = nfaMap.getAst().extractInnerLiteral(compilationBuffer);
+            }
         }
+        this.innerLiteral = literal;
         nfa.materializeGroupBoundaries();
         matchers = new CharMatcher[nfa.getNumberOfStates()];
         int maxTransitions = 0;
@@ -153,6 +162,13 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
+        if (innerLiteral != null) {
+            int indexOfInnerLiteral = findInnerLiteral(locals);
+            if (indexOfInnerLiteral < 0) {
+                return null;
+            }
+            locals.setIndex(Math.max(locals.getFromIndex(), indexOfInnerLiteral - innerLiteral.getMaxPrefixSize()));
+        }
         runMergeExplode(locals, compactString);
         return locals.popResult();
     }
@@ -533,6 +549,14 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             i = inputIncIndex(i);
         }
         return i;
+    }
+
+    private int findInnerLiteral(TRegexBacktrackingNFAExecutorLocals locals) {
+        if (indexOfNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            indexOfNode = InputIndexOfStringNode.create();
+        }
+        return indexOfNode.execute(locals.getInput(), locals.getFromIndex(), locals.getMaxIndex(), innerLiteral.getLiteral(), innerLiteral.getMask());
     }
 
     protected boolean inputAtBegin(TRegexBacktrackingNFAExecutorLocals locals) {
