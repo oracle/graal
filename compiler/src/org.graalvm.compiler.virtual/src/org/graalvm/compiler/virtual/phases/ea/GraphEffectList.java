@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -181,11 +182,29 @@ public final class GraphEffectList extends EffectList {
         });
     }
 
+    public void deleteAndKillExceptionEdge(WithExceptionNode withExceptionNode) {
+        add("delete and kill exception edge", new Effect() {
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                if (withExceptionNode.isAlive()) {
+                    graph.removeSplitPropagate(withExceptionNode, withExceptionNode.next());
+                }
+            }
+
+            @Override
+            public boolean isCfgKill() {
+                return true;
+            }
+        });
+    }
+
     public void killIfBranch(IfNode ifNode, boolean constantCondition) {
         add("kill if branch", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                graph.removeSplitPropagate(ifNode, ifNode.getSuccessor(constantCondition));
+                if (ifNode.isAlive()) {
+                    graph.removeSplitPropagate(ifNode, ifNode.getSuccessor(constantCondition));
+                }
             }
 
             @Override
@@ -196,7 +215,7 @@ public final class GraphEffectList extends EffectList {
     }
 
     public void replaceWithSink(FixedWithNextNode node, ControlSinkNode sink) {
-        add("kill if branch", new Effect() {
+        add("replace with sink", new Effect() {
             @SuppressWarnings("try")
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {

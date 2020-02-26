@@ -150,14 +150,7 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
     }
 
     @Override
-    public void virtualize(VirtualizerTool tool) {
-        /*
-         * This node with an exception edge cannot be virtualized like other ArrayCopy nodes, so do
-         * nothing.
-         *
-         * Note that if the exception edge is not really used, this node will eventually be replaced
-         * with a variant that does not have an exception edge, and then normal virtualization will
-         * apply.
-         */
+    public void deleteThisNode(VirtualizerTool tool) {
+        tool.deleteAndKillExceptionEdge();
     }
 }

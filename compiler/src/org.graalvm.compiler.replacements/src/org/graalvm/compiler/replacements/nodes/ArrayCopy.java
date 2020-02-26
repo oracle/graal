@@ -127,6 +127,14 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
         return false;
     }
 
+    /**
+     * Mark this node for deletion by the virtualizer. Can be overridden to perform other or
+     * additional actions when this node is virtualized.
+     */
+    default void deleteThisNode(VirtualizerTool tool) {
+        tool.delete();
+    }
+
     @Override
     default void virtualize(VirtualizerTool tool) {
         ValueNode sourcePosition = tool.getAlias(getSourcePosition());
@@ -163,7 +171,7 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
                     for (int i = 0; i < len; i++) {
                         tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i));
                     }
-                    tool.delete();
+                    deleteThisNode(tool);
                     DebugContext debug = this.asNode().getDebug();
                     if (debug.isLogEnabled()) {
                         debug.log("virtualized arraycopy(%s, %d, %s, %d, %d)", getSource(), srcPosInt, getDestination(), destPosInt, len);
@@ -185,7 +193,7 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
                         tool.addNode(load);
                         tool.setVirtualEntry(destVirtual, destPosInt + i, load);
                     }
-                    tool.delete();
+                    deleteThisNode(tool);
                 }
             }
         }
