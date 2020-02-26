@@ -49,9 +49,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Nodes (or classes annotated as exported Truffle library messages) annotated with this annotation
- * (and their subclasses) will, if processed by the DSL, automatically
- * {@link Node#reportPolymorphicSpecialize() report polymorphic specializations}.
+ * Enables reporting of polymorphic specializations from this node or exported message to the
+ * runtime.
  *
  * Polymorphic specializations include, but are not limited to, activating another specialization,
  * increasing the number of instances of an active specialization, excluding a specialization, etc.
