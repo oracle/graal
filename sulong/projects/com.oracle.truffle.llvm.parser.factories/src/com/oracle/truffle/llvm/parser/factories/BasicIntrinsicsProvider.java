@@ -156,7 +156,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * library.
  */
 public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
-    private final ExternalLibrary library = ExternalLibrary.internal("SulongIntrinsics", false);
+    private final ExternalLibrary library = ExternalLibrary.internalFromName("SulongIntrinsics", false);
 
     @Override
     public ExternalLibrary getLibrary() {

@@ -508,7 +508,7 @@ public final class LLVMContext {
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
         Path path = locateInternalLibrary(lib);
-        return getOrAddExternalLibrary(ExternalLibrary.internal(path, isNative));
+        return getOrAddExternalLibrary(ExternalLibrary.internalFromPath(path, isNative));
     }
 
     @TruffleBoundary
@@ -558,7 +558,7 @@ public final class LLVMContext {
         final ExternalLibrary newLib;
         if (isInternalLibrary(lib)) {
             Path path = locateInternalLibrary(lib);
-            newLib = ExternalLibrary.internal(path, isNative);
+            newLib = ExternalLibrary.internalFromPath(path, isNative);
         } else {
             newLib = createExternalLibrary(lib, isNative, reason, locator);
         }
@@ -576,9 +576,9 @@ public final class LLVMContext {
             // Unable to locate the library -> will go to native
             Path path = Paths.get(lib);
             LibraryLocator.traceDelegateNative(this, path);
-            newLib = ExternalLibrary.external(path, isNative);
+            newLib = ExternalLibrary.externalFromPath(path, isNative);
         } else {
-            newLib = ExternalLibrary.external(tf, isNative);
+            newLib = ExternalLibrary.externalFromFile(tf, isNative);
         }
         return newLib;
     }
@@ -896,39 +896,37 @@ public final class LLVMContext {
         @CompilationFinal private boolean isNative;
         private final boolean isInternal;
 
-        public static ExternalLibrary external(String name, boolean isNative) {
-            return ExternalLibrary.create(name, isNative, false);
+        public static ExternalLibrary externalFromName(String name, boolean isNative) {
+            return ExternalLibrary.createFromName(name, isNative, false);
         }
 
-        public static ExternalLibrary internal(String name, boolean isNative) {
-            return ExternalLibrary.create(name, isNative, true);
+        public static ExternalLibrary internalFromName(String name, boolean isNative) {
+            return ExternalLibrary.createFromName(name, isNative, true);
         }
 
-        public static ExternalLibrary external(Path path, boolean isNative) {
-            return ExternalLibrary.create(path, isNative, false);
+        public static ExternalLibrary externalFromPath(Path path, boolean isNative) {
+            return ExternalLibrary.createFromPath(path, isNative, false);
         }
 
-        public static ExternalLibrary internal(Path path, boolean isNative) {
-            return ExternalLibrary.create(path, isNative, true);
+        public static ExternalLibrary internalFromPath(Path path, boolean isNative) {
+            return ExternalLibrary.createFromPath(path, isNative, true);
         }
 
-        public static ExternalLibrary external(TruffleFile file, boolean isNative) {
-            return ExternalLibrary.create(file, isNative, false);
+        public static ExternalLibrary externalFromFile(TruffleFile file, boolean isNative) {
+            return ExternalLibrary.createFromFile(file, isNative, false);
         }
 
-        public static ExternalLibrary create(String name, boolean isNative, boolean isInternal) {
-            return new ExternalLibrary(name, null, isNative, isInternal);
+        public static ExternalLibrary createFromName(String name, boolean isNative, boolean isInternal) {
+            return new ExternalLibrary(name, null, isNative, isInternal, null);
         }
 
-        public static ExternalLibrary create(Path path, boolean isNative, boolean isInternal) {
-            return new ExternalLibrary(extractName(path), path, isNative, isInternal);
+        public static ExternalLibrary createFromPath(Path path, boolean isNative, boolean isInternal) {
+            return new ExternalLibrary(extractName(path), path, isNative, isInternal, null);
         }
 
-        public static ExternalLibrary create(TruffleFile file, boolean isNative, boolean isInternal) {
+        public static ExternalLibrary createFromFile(TruffleFile file, boolean isNative, boolean isInternal) {
             Path path = Paths.get(file.getPath());
-            String name = extractName(path);
-            TruffleFile canonicalFile = getCanonicalFile(file);
-            return new ExternalLibrary(name, path, isNative, isInternal, canonicalFile);
+            return new ExternalLibrary(extractName(path), path, isNative, isInternal, getCanonicalFile(file));
         }
 
         private static TruffleFile getCanonicalFile(TruffleFile file) {
@@ -954,10 +952,6 @@ public final class LLVMContext {
                 return nameWithExt.substring(0, lengthWithoutExt);
             }
             return nameWithExt;
-        }
-
-        private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal) {
-            this(name, path, isNative, isInternal, null);
         }
 
         private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal, TruffleFile file) {
