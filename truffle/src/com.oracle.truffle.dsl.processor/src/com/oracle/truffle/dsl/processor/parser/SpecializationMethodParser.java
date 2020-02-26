@@ -94,6 +94,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     private SpecializationData parseSpecialization(TemplateMethod method) {
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         boolean unexpectedResultRewrite = false;
+        boolean annotated = false;
         if (method.getMethod() != null) {
             AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
             List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
@@ -122,9 +123,9 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
                 }
             });
+            annotated = isAnnotatedWithReportPolymorphismExclude(method);
         }
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite,
-                        !isAnnotatedWithReportPolymorphismExclude(method));
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, !annotated);
 
         if (method.getMethod() != null) {
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
@@ -154,10 +155,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     }
 
     private boolean isAnnotatedWithReportPolymorphismExclude(TemplateMethod method) {
-        final ExecutableElement executableElement = method.getMethod();
-        if (executableElement != null) {
-            return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
-        }
-        return false;
+        assert method.getMethod() != null;
+        return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
     }
 }
