@@ -116,9 +116,10 @@ public class InspectorAddressTest {
 
     @Test
     public void testPath() {
-        context = Context.newBuilder().option("inspect.Path", "testPath").err(errorOutput).build();
+        final String testPath = "testPath-" + SecureInspectorPathGenerator.getToken();
+        context = Context.newBuilder().option("inspect.Path", testPath).err(errorOutput).build();
         String[] wsAddress = parseWSAddress(errorOutput.toString());
-        assertAddress("127.0.0.1", "9229", "/testPath", wsAddress);
+        assertAddress("127.0.0.1", "9229", "/" + testPath, wsAddress);
     }
 
     private static String[] parseWSAddress(String out) {
