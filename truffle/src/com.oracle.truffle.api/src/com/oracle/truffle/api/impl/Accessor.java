@@ -170,6 +170,8 @@ public abstract class Accessor {
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
+        public abstract void forceAdoption(Node parent, Node child);
+
     }
 
     public abstract static class SourceSupport {
@@ -469,7 +471,9 @@ public abstract class Accessor {
 
         public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
-        public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
+        public abstract boolean isVisible(Env env, Object value);
+
+        public abstract String legacyToString(Env env, Object obj);
 
         public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
 

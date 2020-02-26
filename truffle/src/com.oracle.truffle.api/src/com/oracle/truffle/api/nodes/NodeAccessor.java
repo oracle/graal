@@ -150,6 +150,11 @@ final class NodeAccessor extends Accessor {
             to.polyglotEngine = from.polyglotEngine;
         }
 
+        @Override
+        public void forceAdoption(Node parent, Node child) {
+            child.setParent(parent);
+        }
+
     }
 
 }

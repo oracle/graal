@@ -585,8 +585,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     continue;
                 }
                 TypeMirror delegateType = delegateVar.asType();
-                TypeMirror exportsReceiverType = lib.getLibrary().getExportsReceiverType();
-                if (!ElementUtils.isAssignable(exportsReceiverType, delegateType)) {
+                TypeMirror exportsReceiverType = lib.getLibrary().getSignatureReceiverType();
+                if (!ElementUtils.isAssignable(delegateType, exportsReceiverType)) {
                     lib.addError(delegateToValue, "The type of export delegation field '%s' is not assignable to the expected type '%s'. " +
                                     "Change the field type to '%s' to resolve this.",
                                     ElementUtils.getSimpleName(receiverClass) + "." + delegateTo,

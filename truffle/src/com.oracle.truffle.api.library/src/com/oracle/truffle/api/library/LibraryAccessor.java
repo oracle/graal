@@ -52,4 +52,8 @@ final class LibraryAccessor extends Accessor {
     static JDKSupport jdkServicesAccessor() {
         return ACCESSOR.jdkSupport();
     }
+
+    static NodeSupport nodeAccessor() {
+        return ACCESSOR.nodeSupport();
+    }
 }
