@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -40,7 +39,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -544,7 +542,7 @@ public final class LLVMContext {
         if (existingLib == newLib) {
             return newLib;
         }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        LibraryLocator.traceAlreadyLoaded(this, existingLib);
         return null;
     }
 
@@ -588,7 +586,7 @@ public final class LLVMContext {
      */
     public ExternalLibrary addExternalLibrary(ExternalLibrary newLib) {
         CompilerAsserts.neverPartOfCompilation();
-        if (isInternalLibrary(newLib.name)) {
+        if (isInternalLibrary(newLib.getName())) {
             // Disallow loading internal libraries explicitly.
             return null;
         }
@@ -596,7 +594,7 @@ public final class LLVMContext {
         if (existingLib == newLib) {
             return newLib;
         }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        LibraryLocator.traceAlreadyLoaded(this, existingLib);
         return null;
     }
 
@@ -885,135 +883,6 @@ public final class LLVMContext {
 
     public LLVMPThreadContext getpThreadContext() {
         return pThreadContext;
-    }
-
-    public static class ExternalLibrary {
-
-        private final String name;
-        private final Path path;
-        private final TruffleFile file;
-
-        @CompilationFinal private boolean isNative;
-        private final boolean isInternal;
-
-        public static ExternalLibrary externalFromName(String name, boolean isNative) {
-            return ExternalLibrary.createFromName(name, isNative, false);
-        }
-
-        public static ExternalLibrary internalFromName(String name, boolean isNative) {
-            return ExternalLibrary.createFromName(name, isNative, true);
-        }
-
-        public static ExternalLibrary externalFromPath(Path path, boolean isNative) {
-            return ExternalLibrary.createFromPath(path, isNative, false);
-        }
-
-        public static ExternalLibrary internalFromPath(Path path, boolean isNative) {
-            return ExternalLibrary.createFromPath(path, isNative, true);
-        }
-
-        public static ExternalLibrary externalFromFile(TruffleFile file, boolean isNative) {
-            return ExternalLibrary.createFromFile(file, isNative, false);
-        }
-
-        public static ExternalLibrary createFromName(String name, boolean isNative, boolean isInternal) {
-            return new ExternalLibrary(name, null, isNative, isInternal, null);
-        }
-
-        public static ExternalLibrary createFromPath(Path path, boolean isNative, boolean isInternal) {
-            return new ExternalLibrary(extractName(path), path, isNative, isInternal, null);
-        }
-
-        public static ExternalLibrary createFromFile(TruffleFile file, boolean isNative, boolean isInternal) {
-            Path path = Paths.get(file.getPath());
-            return new ExternalLibrary(extractName(path), path, isNative, isInternal, getCanonicalFile(file));
-        }
-
-        private static TruffleFile getCanonicalFile(TruffleFile file) {
-            try {
-                return file.getCanonicalFile();
-            } catch (IOException e) {
-                /*
-                 * This should never happen since we've already proven existence of the file, but
-                 * better safe than sorry.
-                 */
-                return file;
-            }
-        }
-
-        private static String extractName(Path path) {
-            Path filename = path.getFileName();
-            if (filename == null) {
-                throw new IllegalArgumentException("Path " + path + " is empty");
-            }
-            String nameWithExt = filename.toString();
-            int lengthWithoutExt = nameWithExt.lastIndexOf(".");
-            if (lengthWithoutExt > 0) {
-                return nameWithExt.substring(0, lengthWithoutExt);
-            }
-            return nameWithExt;
-        }
-
-        private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal, TruffleFile file) {
-            this.name = name;
-            this.path = path;
-            this.isNative = isNative;
-            this.isInternal = isInternal;
-            this.file = file;
-        }
-
-        public boolean hasFile() {
-            return file != null;
-        }
-
-        public TruffleFile getFile() {
-            return file;
-        }
-
-        public Path getPath() {
-            return path;
-        }
-
-        public boolean isNative() {
-            return isNative;
-        }
-
-        public boolean isInternal() {
-            return isInternal;
-        }
-
-        public void setIsNative(boolean isNative) {
-            this.isNative = isNative;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            } else if (obj instanceof ExternalLibrary) {
-                ExternalLibrary other = (ExternalLibrary) obj;
-                if (file != null) {
-                    // If we have a canonical file already, the file is authoritative.
-                    return file.equals(other.file);
-                }
-                return name.equals(other.name) && Objects.equals(path, other.path);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode() ^ Objects.hashCode(path);
-        }
-
-        @Override
-        public String toString() {
-            return path == null ? name : name + " (" + path + ")";
-        }
     }
 
     private static class DynamicLinkChain {
