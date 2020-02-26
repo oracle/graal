@@ -187,6 +187,25 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The `expr` must be constant.
                     // TODO
 
+                    // ## 3.4.7 Start function
+                    // The function `C.funcs[x]` must be defined in the context.
+                    // Validated in: SymbolTable.function
+                    stringCase(
+                                    "Start function: invalid index",
+                                    "org.graalvm.wasm.exception.WasmException: Function index out of bounds: 1 should be < 1.",
+                                    "(start 1)"),
+
+                    // The type of `C.funcs[x]` must be [] → [].
+                    // Validated in SymbolTable.startFunction
+                    stringCase(
+                                    "Start function: returns a value",
+                                    "org.graalvm.wasm.exception.WasmException: Start function cannot return a value.",
+                                    "(start 0) (func (result i32) i32.const 42)"),
+                    stringCase(
+                                    "Start function: takes arguments",
+                                    "org.graalvm.wasm.exception.WasmException: Start function cannot take arguments.",
+                                    "(start 0) (func (param i32))"),
+
                     // The length of `C.tables` must not be larger than 1.
                     // Validated in: BinaryParser.readTableSection
                     stringCase(

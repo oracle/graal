@@ -466,7 +466,14 @@ public class SymbolTable {
         if (startFunctionIndex == -1) {
             return null;
         }
-        return functions[startFunctionIndex];
+        final WasmFunction start = function(startFunctionIndex);
+        if (start.numArguments() != 0) {
+            throw new WasmException("Start function cannot take arguments.");
+        }
+        if (start.returnTypeLength() != 0) {
+            throw new WasmException("Start function cannot return a value.");
+        }
+        return start;
     }
 
     WasmModule module() {
