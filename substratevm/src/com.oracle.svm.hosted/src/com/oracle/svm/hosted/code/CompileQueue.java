@@ -341,7 +341,7 @@ public class CompileQueue {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
+            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
