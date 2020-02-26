@@ -2772,6 +2772,15 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        boolean isVisible(Object value) {
+            Object c = getLanguageContext();
+            if (c != UNSET_CONTEXT) {
+                return getSpi().isVisible(c, value);
+            } else {
+                return false;
+            }
+        }
+
         String toStringIfVisible(Object value, boolean checkVisibility) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {

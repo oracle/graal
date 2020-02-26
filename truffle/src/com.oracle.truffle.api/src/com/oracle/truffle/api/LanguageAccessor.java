@@ -323,8 +323,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public String toStringIfVisible(TruffleLanguage.Env env, Object value, boolean checkVisibility) {
-            return env.toStringIfVisible(value, checkVisibility);
+        public boolean isVisible(TruffleLanguage.Env env, Object value) {
+            return env.isVisible(value);
+        }
+
+        @Override
+        public String legacyToString(TruffleLanguage.Env env, Object value) {
+            return env.toStringIfVisible(value, false);
         }
 
         @Override

@@ -79,12 +79,16 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+
+    private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
     /**
      * This class isolates static state to optimize when only a single context is used. This
@@ -855,16 +859,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @TruffleBoundary
     private static void printResult(PolyglotLanguageContext languageContext, Object result) {
-        String stringResult = LANGUAGE.toStringIfVisible(languageContext.env, result, true);
-        if (stringResult != null) {
-            try {
-                OutputStream out = languageContext.context.config.out;
-                out.write(stringResult.getBytes(StandardCharsets.UTF_8));
-                out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ioex) {
-                // out stream has problems.
-                throw new IllegalStateException(ioex);
-            }
+        if (!LANGUAGE.isVisible(languageContext.env, result)) {
+            return;
+        }
+        String stringResult;
+        try {
+            stringResult = UNCACHED.asString(UNCACHED.toDisplayString(languageContext.getLanguageView(result), true));
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+        try {
+            OutputStream out = languageContext.context.config.out;
+            out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+            out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ioex) {
+            // out stream has problems.
+            throw new IllegalStateException(ioex);
         }
     }
 
