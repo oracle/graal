@@ -200,7 +200,7 @@ public class ValidationSuite extends WasmSuiteBase {
                                     "org.graalvm.wasm.exception.WasmException: Function index out of bounds: 1 should be < 1.",
                                     "(start 1)"),
 
-                    // The type of `C.funcs[x]` must be [] → [].
+                    // The type of `C.funcs[x]` must be [] -> [].
                     // Validated in SymbolTable.startFunction
                     stringCase(
                                     "Start function: returns a value",
