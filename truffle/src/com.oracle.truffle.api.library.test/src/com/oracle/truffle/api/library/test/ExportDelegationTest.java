@@ -261,6 +261,18 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
 
     }
 
+    @ExportLibrary(value = ExportDelegationLibrary.class, delegateTo = "delegate")
+    public abstract class ExportDelegationPrimitive {
+
+        final int delegate = 0;
+
+        @ExportMessage
+        public String m1(String arg0) {
+            return "m1_" + arg0;
+        }
+
+    }
+
     @GenerateLibrary
     @SuppressWarnings("unused")
     public abstract static class ExportDelegationLibrary extends Library {
@@ -316,15 +328,6 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
     public abstract class ExportDelegationError3 {
 
         @SuppressWarnings("unused") private final Object delegate = null;
-
-    }
-
-    @ExpectError("The type of export delegation field 'ExportDelegationError4.delegate' is not assignable to the expected type 'Object'. " +
-                    "Change the field type to 'Object' to resolve this.")
-    @ExportLibrary(value = ExportDelegationLibrary.class, delegateTo = "delegate")
-    public abstract class ExportDelegationError4 {
-
-        final int delegate = 0;
 
     }
 
