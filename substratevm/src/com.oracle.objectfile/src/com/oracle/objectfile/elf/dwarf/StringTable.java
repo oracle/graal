@@ -44,7 +44,7 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * Wnsures a unique instance of a string exists in the
+     * Ensures a unique instance of a string exists in the
      * table, inserting the supplied String if no equivalent
      * String is already present. This should only be called
      * before the string section has been written.
