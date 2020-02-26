@@ -144,7 +144,7 @@ public class ValidationSuite extends WasmSuiteBase {
                                     // (elem 5 (i32.const 0) $f1)
                                     // (func $f1 (result i32) i32.const 42)
                                     // )
-                                    "0061 736d 0100 0000 0105 0160 0001 7f03 " +
+                                    "0061 736d 0100 0000 0105 0160 0001 7f03" +
                                                     "0201 0004 0401 7000 0109 0701 0541 000b" +
                                                     "0100 0a06 0104 0041 2a0b"),
 
@@ -171,7 +171,15 @@ public class ValidationSuite extends WasmSuiteBase {
                     // ## 3.4.6 Data Segments
                     // The memory `C.mems[x]` must be defined in the context.
                     // Validated in: BinaryParser.readDataSection
-                    // TODO
+                    binaryCase(
+                                    "Data segment: invalid memory index",
+                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid memory index, only the memory index 0 is currently supported.: 5 should = 0.",
+                                    // (module
+                                    // (memory 1)
+                                    // (data 5 (i32.const 0) "Hi")
+                                    // )
+                                    "0061 736d 0100 0000 0503 0100 010b 0801" +
+                                                    "0541 000b 0248 69"),
 
                     // The expression `expr` must be valid with result type `[i32]`.
                     // TODO
