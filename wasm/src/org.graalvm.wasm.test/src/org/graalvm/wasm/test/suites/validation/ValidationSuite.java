@@ -68,8 +68,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     binaryCase(
                                     "Function: cannot return more than one value",
                                     "org.graalvm.wasm.exception.WasmException: A function can return at most one result.",
-                                    "0061 736d 0100 0000 0105 0160 0002 7f03" +
-                                                    "0201 000a 0801 0600 412a 412a 0b"),
+                                    "0061 736d 0100 0000 0105 0160 0002 7f03 0201 000a 0801 0600 412a 412a 0b"),
 
                     // ## 3.2.3 Table types
                     // The limits `limits` must be valid within range `2^32`.
@@ -82,7 +81,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     stringCase(
                                     "Table: initial size out of bounds",
                                     "org.graalvm.wasm.exception.BinaryParserException: Invalid max table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
-                                    " (table $table1 1 2147483648 funcref)"),
+                                    "(table $table1 1 2147483648 funcref)"),
                     stringCase(
                                     "Table: max size lower than initial size",
                                     "org.graalvm.wasm.exception.BinaryParserException: Invalid initial table size, must be less than max table size: 2 should be <= 1.",
@@ -115,13 +114,11 @@ public class ValidationSuite extends WasmSuiteBase {
                     stringCase(
                                     "Function: invalid type index",
                                     "org.graalvm.wasm.exception.WasmException: Function type out of bounds: 1 should be < 1.",
-                                    "(type (func (result i32)))" +
-                                                    "(func (export \"f\") (type 1))"),
+                                    "(type (func (result i32))) (func (export \"f\") (type 1))"),
                     stringCase(
                                     "Function: invalid type index",
                                     "org.graalvm.wasm.exception.WasmException: Function type out of bounds: 4294967254 should be < 1.",
-                                    "(type (func (result i32)))" +
-                                                    "(func (export \"f\") (type 4294967254))"),
+                                    "(type (func (result i32))) (func (export \"f\") (type 4294967254))"),
 
                     // Under the context `C'`, the expression `express` must be valid with type
                     // `t2`.
@@ -156,9 +153,7 @@ public class ValidationSuite extends WasmSuiteBase {
                                     // (elem 5 (i32.const 0) $f1)
                                     // (func $f1 (result i32) i32.const 42)
                                     // )
-                                    "0061 736d 0100 0000 0105 0160 0001 7f03" +
-                                                    "0201 0004 0401 7000 0109 0701 0541 000b" +
-                                                    "0100 0a06 0104 0041 2a0b"),
+                                    "0061 736d 0100 0000 0105 0160 0001 7f03 0201 0004 0401 7000 0109 0701 0541 000b 0100 0a06 0104 0041 2a0b"),
 
                     // The element type `elemtype` must be `funcref`.
                     // Validated in: BinaryParser.readTableSection and
@@ -177,8 +172,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     stringCase(
                                     "Element segments: invalid function index",
                                     "org.graalvm.wasm.exception.WasmException: Function index out of bounds: 1 should be < 1.",
-                                    "(table 2 anyfunc)" +
-                                                    "(elem (i32.const 0) 0 1)"),
+                                    "(table 1 funcref) (elem (i32.const 0) 1)"),
 
                     // ## 3.4.6 Data Segments
                     // The memory `C.mems[x]` must be defined in the context.
@@ -190,8 +184,7 @@ public class ValidationSuite extends WasmSuiteBase {
                                     // (memory 1)
                                     // (data 5 (i32.const 0) "Hi")
                                     // )
-                                    "0061 736d 0100 0000 0503 0100 010b 0801" +
-                                                    "0541 000b 0248 69"),
+                                    "0061 736d 0100 0000 0503 0100 010b 0801 0541 000b 0248 69"),
 
                     // The expression `expr` must be valid with result type `[i32]`.
                     // TODO
@@ -223,51 +216,43 @@ public class ValidationSuite extends WasmSuiteBase {
                     stringCase(
                                     "Module: two tables (2 locals)",
                                     "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module: 2 should be <= 1.",
-                                    "(table $table1 1 funcref)" +
-                                                    "(table $table2 1 funcref)"),
+                                    "(table $table1 1 funcref) (table $table2 1 funcref)"),
                     stringCase(
                                     "Module: two tables (1 local and 1 import)",
                                     "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module: 2 should be <= 1.",
-                                    "(table $table2 (import \"some\" \"table\") 1 funcref)" +
-                                                    "(table $table1 1 funcref)"),
+                                    "(table $table2 (import \"some\" \"table\") 1 funcref) (table $table1 1 funcref)"),
                     // Validated in: SymbolTable.validateSingleTable
                     stringCase(
                                     "Module: two tables (2 imports)",
                                     "org.graalvm.wasm.exception.WasmException: A table has been already imported in the module.",
-                                    "(table $table1 (import \"some\" \"table\") 1 funcref)" +
-                                                    "(table $table2 (import \"some\" \"table\") 1 funcref)"),
+                                    "(table $table1 (import \"some\" \"table\") 1 funcref) (table $table2 (import \"some\" \"table\") 1 funcref)"),
 
                     // The length of `C.mems` must not be larger than 1.
                     // Validated in: BinaryParser.readMemorySection
                     stringCase(
                                     "Module: two memories (2 locals)",
                                     "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one memory per module: 2 should be <= 1.",
-                                    "(memory $mem1 1)" +
-                                                    "(memory $mem2 1)"),
+                                    "(memory $mem1 1) (memory $mem2 1)"),
                     stringCase(
                                     "Module: two memories (1 local and 1 import)",
                                     "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one memory per module: 2 should be <= 1.",
-                                    "(memory $mem1 (import \"some\" \"memory\") 1)" +
-                                                    "(memory $mem2 1)"),
+                                    "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 1)"),
                     // Validated in: SymbolTable.validateSingleMemory
                     stringCase(
                                     "Module: two memories (2 imports)",
                                     "org.graalvm.wasm.exception.WasmException: Memory has been already imported in the module.",
-                                    "(memory $mem1 (import \"some\" \"memory\") 1)" +
-                                                    "(memory $mem2 (import \"some\" \"memory\") 1)"),
+                                    "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 (import \"some\" \"memory\") 1)"),
 
                     // All export names `export_i.name` must be different.
                     // Validated in: SymbolTable.checkUniqueExport
                     stringCase(
                                     "Module: duplicate export (2 functions)",
                                     "All export names must be different, but 'a' is exported twice.",
-                                    "(func (export \"a\") (result i32) i32.const 42)" +
-                                                    "(func (export \"a\") (result i32) i32.const 42)"),
+                                    "(func (export \"a\") (result i32) i32.const 42) (func (export \"a\") (result i32) i32.const 42)"),
                     stringCase(
                                     "Module: duplicate export (function and memory)",
                                     "All export names must be different, but 'a' is exported twice.",
-                                    "(func (export \"a\") (result i32) i32.const 42)" +
-                                                    "(memory (export \"a\") 1)"),
+                                    "(func (export \"a\") (result i32) i32.const 42) (memory (export \"a\") 1)"),
     };
 
     private static Properties opts = SystemProperties.createFromOptions(
@@ -292,8 +277,7 @@ public class ValidationSuite extends WasmSuiteBase {
     private static WasmStringCase stringCase(String name, String errorMessage, String snippet) {
         String source = "(module\n" +
                         snippet +
-                        "(func (export \"_main\") (result i32) i32.const 42)\n" +
-                        ")";
+                        "(func (export \"_main\") (result i32) i32.const 42)\n )";
         return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), source, null, opts);
     }
 
