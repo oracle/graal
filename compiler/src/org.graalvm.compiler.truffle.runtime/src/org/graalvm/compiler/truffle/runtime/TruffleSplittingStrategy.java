@@ -88,7 +88,7 @@ final class TruffleSplittingStrategy {
             maybeTraceFail(engine, call, "Recursive split.");
             return false;
         }
-        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
+        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= 0 /*engine.splitLimit*/) {
             maybeTraceFail(engine, call, "Not enough budget. " + engine.splitCount + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splitLimit);
             return false;
         }
@@ -100,8 +100,8 @@ final class TruffleSplittingStrategy {
     }
 
     private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, String message) {
-        if (engine.traceFailedSplits) {
-            GraalTruffleRuntime.getRuntime().logEvent(0, "Needs split failed to split: " + message, call.toString(), new HashMap<>());
+        if (engine.traceSplits) {
+            GraalTruffleRuntime.getRuntime().logEvent(0, "split failed: " + message, call.toString(), new HashMap<>());
         }
     }
 
