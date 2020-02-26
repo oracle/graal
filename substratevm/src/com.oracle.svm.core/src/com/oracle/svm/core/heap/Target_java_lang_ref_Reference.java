@@ -63,68 +63,23 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.misc.Unsafe;
 // Checkstyle: resume
 
-/* @formatter:off */
 /**
- *
- * This class is the plumbing under java.lang.ref.Reference. Instances of this class are discovered
- * by the collector and put on a list. The list can then be inspected to implement
- * java.lang.ref.Reference-like operations.
- *
- * Instances are treated specially by the collector.
- * <ul>
- * <li>The "referent" field will *not* be followed during live object discovery. It is a Pointer,
- * not an Object.</li>
- * <li>During live object discovery, each DiscoverableReference will be added to the "discovered"
- * list.</li>
- * <li>If the object referenced by the referent field is not live at the end of a collection, the
- * "referent" field will be set to null.</li>
- * <li>If the object referenced by the referent field is live at the end of a collection, the
- * referent field is updated if the object moved.</li>
- * <li>If the object referenced by the referent field is live at the end of a collection, the
- * DiscoverableReference will be removed from the discovered list.</li>
- * </ul>
- * After a collection, anyone who is interested can run down the discovered list and do something
- * with each DiscoverableReference.
- *
- * On top of this, I think you could build PhantomReference and WeakReference classes by adding a
- * getReferent() method that returned the referent as an Object. See
- * {@linkplain Target_java_lang_ref_Reference}, {@linkplain Target_java_lang_ref_ReferenceQueue}.
- * Reference classes that subsequently promote their referent (SoftReference and FinalReference)
- * would be more complicated.
- *
- * All the state that is needed to build lists, etc., is allocated in the DiscoverableReference
- * instances, because space can not be allocated for lists during a collection.
-
- * This is missing the notification methodsof java.lang.ref.Reference, but has list methods.
- *
- * Fields for putting an instance on a list is here in the instance, because space can't be
- * allocated during a collection. But they should only be used by list-manipulating classes.
- *
+ * The implementation of {@link java.lang.ref.Reference}, which is the abstract base class of all
+ * non-strong reference classes, the basis of the {@linkplain com.oracle.svm.core.jdk.CleanerSupport
+ * cleaner mechanism,} and subject to special treatment by the garbage collector.
  * <p>
- * The lifecycle of a FeebleReference:
+ * This class serves three purposes:
  * <ul>
- *   <li>If the FeebleReference does not have a list:
- *     <table>
- *       <tr>  <th align=left>Stage</th>  <th>.referent</th>      <th>.list</th>  <th>.next</th>  </tr>
- *       <tr>  <td>At construction</td>   <td>referent</td>       <td>null</td>   <td>this</td>   </tr>
- *       <tr>  <td>At discovery</td>      <td><em>null</em></td>  <td>null</td>   <td>this</td>   </tr>
- *     </table>
- *   </li>
- *   <li>If the FeebleReference does have a list:</li>
- *     <table>
- *       <tr>  <th align=left>Stage</th>  <th>.referent</th>      <th>.list</th>           <th>.next</th>           </tr>
- *       <tr>  <td>At construction</td>   <td>referent</td>       <td>list</td>            <td>this</td>            </tr>
- *       <tr>  <td>At discovery</td>      <td><em>null</em></td>  <td>list</td>            <td>this</td>            </tr>
- *       <tr>  <td>Before pushing</td>    <td>null</td>           <td><em>null</em></td>   <td>this</td>            </tr>
- *       <tr>  <td>After pushing</td>     <td>null</td>           <td>null</td>            <td><em>next</em></td>   </tr>
- *       <tr>  <td>After popping</td>     <td>null</td>           <td>null</td>            <td><em>this</em></td>   </tr>
- *     </table>
- *     Note that after being pushed and popped a FeebleReference with a list
- *     is in the same state as a discovered FeebleReference without a list.
- *   </li>
+ * <li>It has a {@linkplain #rawReferent reference to an object,} which is not strong. Therefore, if
+ * the object is not otherwise strongly reachable, the garbage collector can choose to reclaim it
+ * and will then set our reference (and possibly others) to {@code null}.
+ * <li>It has {@linkplain #nextDiscovered linkage} to be part of a linked list of reference objects
+ * that are discovered during garbage collection, when allocation is restricted.
+ * <li>It has {@linkplain #nextInQueue linkage} to optionally become part of a
+ * {@linkplain #futureQueue linked reference queue,} which is used to clean up resources associated
+ * with reclaimed objects.
  * </ul>
  */
-/* @formatter:on */
 @UnknownClass
 @TargetClass(java.lang.ref.Reference.class)
 @Substitute
@@ -137,52 +92,52 @@ public final class Target_java_lang_ref_Reference<T> {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "nextDiscovered", declClass = Target_java_lang_ref_Reference.class) //
     private static long nextDiscoveredFieldOffset;
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "list", declClass = Target_java_lang_ref_Reference.class) //
-    private static long listFieldOffset;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "futureQueue", declClass = Target_java_lang_ref_Reference.class) //
+    private static long futureQueueFieldOffset;
 
-    /**
-     * The list to which this FeebleReference is added when the referent is unreachable. This is
-     * initialized and then becomes null when the FeebleReference is put on its list.
-     */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
-    protected volatile Target_java_lang_ref_ReferenceQueue<? super T> list;
-
+    /** @see #isInitialized */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
     protected final boolean initialized;
 
     /**
-     * The referent. The declared type must be {@link Object}, so that the static analysis can track
-     * reads and writes. However, the field must not be in the regular reference map since we do all
+     * The object we reference. The field must not be in the regular reference map since we do all
      * the garbage collection support manually. The garbage collector performs Pointer-level access
-     * to the field. This is fine from the point of view of the static analysis, since field stores
-     * by the garbage collector do not change the type of the referent.
+     * to the field. This is fine from the point of view of the static analysis, because the field
+     * stores by the garbage collector do not change the type of the referent.
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap("Field is manually processed by the garbage collector.") //
     protected T rawReferent;
 
     /**
-     * Is this DiscoverableReference on a list?
+     * Whether this reference is currently {@linkplain #nextDiscovered on a list} of references
+     * discovered during garbage collection.
      * <p>
-     * DiscoverableReference does not use the self-link secret of the ancients that FeebleReference
-     * uses, because the discovery happens during blackening, so if the DiscoverableReference has
-     * been promoted, but the next field has not yet been updated, then this == next fails.
+     * This cannot be replaced with the same self-link trick that is used for {@link #nextInQueue}
+     * because during reference discovery, our reference object could have been moved, but
+     * {@link #nextDiscovered} might not have been updated yet, and {@code this == next} would fail.
+     * ({@link #nextDiscovered} != null is not valid either because there might not be a next node)
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     protected boolean isDiscovered;
 
-    /** The next element in whichever list of DiscoverableReferences. */
     @SuppressWarnings("unused") //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     protected Target_java_lang_ref_Reference<?> nextDiscovered;
 
     /**
-     * The next element in the FeebleReferenceList or null if this FeebleReference is not on a list.
-     * <p>
-     * If this field points to this instance, then this instance is not on any list.
+     * The queue to which this reference object will be added when the referent becomes unreachable.
+     * This field becomes {@code null} when the reference object is enqueued.
      */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReceiverValue.class) //
-    private Target_java_lang_ref_Reference<?> nextInList;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
+    protected volatile Target_java_lang_ref_ReferenceQueue<? super T> futureQueue;
+
+    /**
+     * If this reference is on a {@linkplain Target_java_lang_ref_ReferenceQueue queue}, the next
+     * reference object on the queue. If the reference is not (yet) on a queue, set to {@code this}.
+     */
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeThisInstanceValue.class) //
+    private Target_java_lang_ref_Reference<?> nextInQueue;
 
     @Substitute
     Target_java_lang_ref_Reference(T referent) {
@@ -195,8 +150,8 @@ public final class Target_java_lang_ref_Reference<T> {
         this.rawReferent = referent;
         this.nextDiscovered = null;
         this.isDiscovered = false;
-        this.list = queue;
-        Target_java_lang_ref_ReferenceQueue.clean(this);
+        this.futureQueue = queue;
+        Target_java_lang_ref_ReferenceQueue.clearQueuedState(this);
         this.initialized = true;
     }
 
@@ -210,27 +165,18 @@ public final class Target_java_lang_ref_Reference<T> {
         doClear();
     }
 
-    public void doClear() {
-        rawReferent = null;
-    }
-
     @Substitute
     public boolean enqueue() {
-        final Target_java_lang_ref_ReferenceQueue<? super T> frList = getList();
-        if (frList != null) {
-            return frList.push(this);
+        Target_java_lang_ref_ReferenceQueue<? super T> q = getFutureQueue();
+        if (q != null) {
+            return q.enqueue(this);
         }
         return false;
     }
 
     @Substitute
     public boolean isEnqueued() {
-        return isOnList();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isOnList() {
-        return (nextInList != this);
+        return isInQueue();
     }
 
     @Substitute
@@ -260,98 +206,93 @@ public final class Target_java_lang_ref_Reference<T> {
         GraalDirectives.blackhole(ref);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Target_java_lang_ref_ReferenceQueue<? super T> getList() {
-        return list;
-    }
-
-    /** Clears the list, returning the previous value, which might be null. */
-    public Target_java_lang_ref_ReferenceQueue<? super T> clearList() {
-        @SuppressWarnings("unchecked")
-        Target_java_lang_ref_ReferenceQueue<? super T> formerValue = (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(this, listFieldOffset, null);
-        return formerValue;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Target_java_lang_ref_Reference<?> listGetNext() {
-        return nextInList;
-    }
-
-    void listPrepend(Target_java_lang_ref_Reference<?> newNext) {
-        assert newNext != this : "Creating self-loop.";
-        nextInList = newNext;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void listRemove() {
-        nextInList = this;
-    }
-
-    public Target_java_lang_ref_Reference<T> prependToDiscoveredReference(Target_java_lang_ref_Reference<?> newNext) {
-        setNextDiscoveredReference(newNext, true);
-        return this;
-    }
-
     /**
-     * Is this instance initialized?
-     *
-     * This seems like a funny method to have, because by the time I could see an instance class
-     * from ordinary Java code it would be initialized. But the collector might see a reference to
-     * an instance between when it is allocated and when it is initialized, and so must be able to
-     * detect if the fields of the instance are safe to access. The constructor is
-     * unininterruptible, so the collector either sees an uninitialized instance or fully
-     * initialized instance.
+     * Garbage collection might run between the allocation of this object and before its constructor
+     * is called, so this returns a flag that is set in the constructor (which is
+     * {@link Uninterruptible}) and indicates whether the instance is fully initialized.
      */
     public boolean isInitialized() {
         return initialized;
     }
 
-    /**
-     * Read access to the referent, as a Pointer. This is the low-level access for the garbage
-     * collector, so no barriers are used.
-     */
+    /** Provided for direct access because {@link #clear()} can be overridden. */
+    public void doClear() {
+        rawReferent = null;
+    }
+
+    /** Barrier-less read of {@link #rawReferent} as pointer. */
     public Pointer getReferentPointer() {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(this, WordFactory.signed(rawReferentFieldOffset)));
     }
 
-    /**
-     * Write access to the referent, as a Pointer. This is the low-level access for the garbage
-     * collector, so no barriers are used.
-     */
+    /** Barrier-less write of {@link #rawReferent} as pointer. */
     public void setReferentPointer(Pointer value) {
         ObjectAccess.writeObject(this, WordFactory.signed(rawReferentFieldOffset), value.toObject());
     }
 
-    /**
-     * Read access to the next field. Must use ObjectAccess to read the field because it is written
-     * with ObjectAccess only.
-     */
-    public Target_java_lang_ref_Reference<?> getNextDiscoveredReference() {
+    public boolean isDiscovered() {
+        return isDiscovered;
+    }
+
+    /** Barrier-less read of {@link #nextDiscovered}. */
+    public Target_java_lang_ref_Reference<?> getNextDiscovered() {
         return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(this, WordFactory.signed(nextDiscoveredFieldOffset)), Target_java_lang_ref_Reference.class);
     }
 
-    /**
-     * Write access to the next field. Must use ObjectAccess to bypass the write barrier.
-     */
-    private void setNextDiscoveredReference(Target_java_lang_ref_Reference<?> newNext, boolean newIsDiscovered) {
+    public void clearDiscovered() {
+        setNextDiscovered(null, false);
+    }
+
+    public Target_java_lang_ref_Reference<T> setNextDiscovered(Target_java_lang_ref_Reference<?> newNext) {
+        setNextDiscovered(newNext, true);
+        return this;
+    }
+
+    /** Barrier-less write of {@link #nextDiscovered}. */
+    private void setNextDiscovered(Target_java_lang_ref_Reference<?> newNext, boolean newIsDiscovered) {
         ObjectAccess.writeObject(this, WordFactory.signed(nextDiscoveredFieldOffset), newNext);
         isDiscovered = newIsDiscovered;
     }
 
-    public boolean getIsDiscovered() {
-        return isDiscovered;
+    /** The address of the {@link #nextDiscovered} field of this instance. */
+    public Pointer getNextDiscoveredFieldPointer() {
+        return Word.objectToUntrackedPointer(this).add(WordFactory.signed(nextDiscoveredFieldOffset));
     }
 
-    public void cleanDiscovered() {
-        setNextDiscoveredReference(null, false);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Target_java_lang_ref_ReferenceQueue<? super T> getFutureQueue() {
+        return futureQueue;
     }
 
     /**
-     * Read access to the next field, as a Pointer. This is the low-level access for the garbage
-     * collector, so no barriers are used.
+     * Clears the queue on which this reference should eventually be enqueued and returns the
+     * previous value, which may be {@code null} if this reference should not be put on a queue, but
+     * also if the method has been called before -- such as, in a race to queue it.
      */
-    public Pointer getNextDiscoveredRefPointer() {
-        return Word.objectToUntrackedPointer(this).add(WordFactory.signed(nextDiscoveredFieldOffset));
+    @SuppressWarnings("unchecked")
+    Target_java_lang_ref_ReferenceQueue<? super T> clearFutureQueue() {
+        return (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(this, futureQueueFieldOffset, null);
+    }
+
+    /** Provided for direct access because {@link #isEnqueued()} can be overridden. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInQueue() {
+        return (nextInQueue != this);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    Target_java_lang_ref_Reference<?> getQueueNext() {
+        return nextInQueue;
+    }
+
+    void setQueueNext(Target_java_lang_ref_Reference<?> newNext) {
+        assert newNext != this : "Creating self-loop.";
+        nextInQueue = newNext;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void clearQueueNext() {
+        nextInQueue = this;
     }
 
     public static final class TestingBackDoor {
@@ -366,7 +307,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
         public static Reference<?> getNextDiscoveredReference(Reference<?> that) {
             Target_java_lang_ref_Reference<?> cast = SubstrateUtil.cast(that, Target_java_lang_ref_Reference.class);
-            Target_java_lang_ref_Reference<?> next = cast.getNextDiscoveredReference();
+            Target_java_lang_ref_Reference<?> next = cast.getNextDiscovered();
             return SubstrateUtil.cast(next, Reference.class);
         }
     }
@@ -415,7 +356,7 @@ class ComputeQueueValue implements CustomFieldValueComputer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ComputeReceiverValue implements CustomFieldValueComputer {
+class ComputeThisInstanceValue implements CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return receiver;

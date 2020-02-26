@@ -152,8 +152,8 @@ public class HeapVerifierImpl implements HeapVerifier {
                 getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  contains references to forwarded objects").string("]").newline();
                 return false;
             }
-            if (!verifyDiscoverableReference(obj)) {
-                getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  DiscoverableReference fails to verify.").string("]").newline();
+            if (!verifyReferenceObject(obj)) {
+                getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  Reference object fails to verify.").string("]").newline();
                 return false;
             }
         }
@@ -427,12 +427,12 @@ public class HeapVerifierImpl implements HeapVerifier {
 
     private static final HeapVerifierImpl.NoReferencesToForwardedObjectsVisitor noReferencesToForwardedObjectsVisitor = new NoReferencesToForwardedObjectsVisitor();
 
-    private static boolean verifyDiscoverableReference(Object object) {
+    private static boolean verifyReferenceObject(Object object) {
         boolean result = true;
         Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
         if (obj instanceof Target_java_lang_ref_Reference) {
             final Target_java_lang_ref_Reference<?> dr = (Target_java_lang_ref_Reference<?>) obj;
-            result = DiscoverableReferenceProcessing.verify(dr);
+            result = ReferenceObjectProcessing.verify(dr);
         }
         return result;
     }

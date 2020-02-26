@@ -42,13 +42,11 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-public class DiscoverableReferenceProcessing {
+/** Discovers and handles {@link Reference} objects during garbage collection. */
+public class ReferenceObjectProcessing {
 
-    /*
-     * Public methods for collectors.
-     */
     @AlwaysInline("GC performance")
-    public static void discoverDiscoverableReference(Object object) {
+    public static void discoverIfReference(Object object) {
         final Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
         /* TODO: What's the cost of this type test, since it will be a concrete subtype? */
         if (probability(SLOW_PATH_PROBABILITY, obj instanceof Target_java_lang_ref_Reference)) {
@@ -57,65 +55,55 @@ public class DiscoverableReferenceProcessing {
     }
 
     private static void handleDiscoverableReference(final Object obj) {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.discoverDiscoverableReference:");
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.handleDiscoverableReference:");
         final Target_java_lang_ref_Reference<?> dr = (Target_java_lang_ref_Reference<?>) obj;
         trace.string("  dr: ").object(dr);
         /*
-         * If the DiscoverableReference has been allocated but not initialized, do not do anything
-         * with it. The referent will be strongly-reachable because it is on the call stack to the
-         * constructor so the DiscoveredReference does not need to be put on the discovered list.
+         * If the Reference has been allocated but not initialized, do not do anything with it. The
+         * referent will be strongly-reachable because it is on the call stack to the constructor so
+         * the Reference does not need to be put on the discovered list.
          */
         if (dr.isInitialized()) {
-            /* Add this DiscoverableReference to the discovered list. */
             if (trace.isEnabled()) {
                 trace.string("  referent: ").hex(Target_java_lang_ref_Reference.TestingBackDoor.getReferentPointer(SubstrateUtil.cast(dr, Reference.class)));
             }
-            addToDiscoveredReferences(dr);
+            addToDiscoveredList(dr);
         } else {
             trace.string("  uninitialized");
         }
         trace.string("]").newline();
     }
 
-    /** The first element of the discovered list, or null. */
     public static Target_java_lang_ref_Reference<?> getDiscoveredList() {
         return HeapImpl.getHeapImpl().getGCImpl().getDiscoveredReferenceList();
     }
 
-    /** Clear the discovered DiscoverableReference list. */
-    static void clearDiscoveredReferences() {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.clearDiscoveredList:").newline();
-        /*
-         * It's not enough to just set the discovered list to null. I also have to clean all the
-         * entries from the discovered references from last time.
-         */
+    /** Clear the list of discovered references. */
+    static void clearDiscoveredList() {
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.clearList:").newline();
         for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
             trace.string("  current: ").object(current).string("  referent: ").hex(current.getReferentPointer()).newline();
-            current.cleanDiscovered();
+            current.clearDiscovered();
         }
         setDiscoveredList(null);
         trace.string("]");
     }
 
-    private static void addToDiscoveredReferences(Target_java_lang_ref_Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.addToDiscoveredReferences:").string("  this: ").object(dr).string("  referent: ").hex(dr.getReferentPointer());
-        if (dr.getIsDiscovered()) {
-            /*
-             * This DiscoverableReference is already on the discovered list. Don't add it again or
-             * the list gets broken.
-             */
+    private static void addToDiscoveredList(Target_java_lang_ref_Reference<?> dr) {
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr).string("  referent: ").hex(dr.getReferentPointer());
+        if (dr.isDiscovered()) {
             trace.string("  already on list]").newline();
             return;
         }
         trace.newline().string("  [adding to list:").string("  oldList: ").object(getDiscoveredList());
-        setDiscoveredList(dr.prependToDiscoveredReference(getDiscoveredList()));
+        setDiscoveredList(dr.setNextDiscovered(getDiscoveredList()));
         trace.string("  new list: ").object(getDiscoveredList()).string("]");
         trace.string("]").newline();
     }
 
     /** Scrub the list of entries whose referent is in the old space. */
     static void processDiscoveredReferences() {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.processDiscoveredReferences: ").string("  discoveredList: ").object(getDiscoveredList()).newline();
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(getDiscoveredList()).newline();
         /* Start a new list. */
         Target_java_lang_ref_Reference<?> newList = null;
         for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
@@ -127,7 +115,7 @@ public class DiscoverableReferenceProcessing {
             if (!processReferent(current)) {
                 /* The referent will not survive the collection: put it on the new list. */
                 trace.string("  unpromoted current: ").object(current).newline();
-                newList = current.prependToDiscoveredReference(newList);
+                newList = current.setNextDiscovered(newList);
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, newList);
             } else {
                 /* Referent will survive the collection: don't add it to the new list. */
@@ -144,7 +132,7 @@ public class DiscoverableReferenceProcessing {
      * Returns true if the referent will survive the collection, false otherwise.
      */
     private static boolean processReferent(Target_java_lang_ref_Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.processReferent:").string("  this: ").object(dr);
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processReferent:").string("  this: ").object(dr);
         final Pointer refPointer = dr.getReferentPointer();
         if (refPointer.isNull()) {
             return false;
@@ -192,8 +180,8 @@ public class DiscoverableReferenceProcessing {
     private static Target_java_lang_ref_Reference<?> popDiscoveredReference() {
         final Target_java_lang_ref_Reference<?> result = getDiscoveredList();
         if (result != null) {
-            setDiscoveredList(result.getNextDiscoveredReference());
-            result.cleanDiscovered();
+            setDiscoveredList(result.getNextDiscovered());
+            result.clearDiscovered();
         }
         return result;
     }
@@ -208,7 +196,7 @@ public class DiscoverableReferenceProcessing {
         final int refClassification = HeapVerifierImpl.classifyPointer(refPointer);
         if (refClassification < 0) {
             final Log witness = Log.log();
-            witness.string("[DiscoverableReference.verify:");
+            witness.string("[ReferenceObjectProcessing.verify:");
             witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
             witness.string("  refClassification: ").signed(refClassification);
             witness.string("]").newline();
@@ -227,7 +215,7 @@ public class DiscoverableReferenceProcessing {
         /* The referent might already have survived, or might not have. */
         if (!(refNull || refYoung || refBootImage || refOldFrom)) {
             final Log witness = Log.log();
-            witness.string("[DiscoverableReference.verify:");
+            witness.string("[ReferenceObjectProcessing.verify:");
             witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
             witness.string("  refBootImage: ").bool(refBootImage);
             witness.string("  refYoung: ").bool(refYoung);
@@ -240,41 +228,32 @@ public class DiscoverableReferenceProcessing {
         return true;
     }
 
-    /**
-     * Take the discovered references from the collector and distribute the references to their
-     * queues.
-     */
+    /** Takes the discovered references from the collector and distributes them to their queues. */
     static final class Scatterer {
         private Scatterer() {
         }
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during a collection.")
         static void distributeReferences() {
-            final Log trace = Log.noopLog().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").newline();
-            /*
-             * Walk down the discovered references looking for FeebleReferences, and put them on
-             * their lists, if any.
-             */
-            for (Target_java_lang_ref_Reference<?> dr = DiscoverableReferenceProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscoveredReference()) {
-                processReference(dr, trace);
+            final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.Scatterer.distributeReferences:").newline();
+            // Put discovered references on their queues
+            for (Target_java_lang_ref_Reference<?> dr = ReferenceObjectProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscovered()) {
+                enqueueReference(dr, trace);
             }
-            if (SubstrateOptions.MultiThreaded.getValue()) {
+            if (SubstrateOptions.MultiThreaded.getValue()) { // notify waiters on ReferenceQueue
                 trace.string("  broadcasting").newline();
-                /* Notify anyone blocked waiting for FeebleReferences to be available. */
                 Target_java_lang_ref_ReferenceQueue.signalWaiters();
             }
             trace.string("]").newline();
         }
 
-        private static <T> void processReference(Target_java_lang_ref_Reference<T> fr, Log trace) {
-            trace.string("  fr: ").object(fr).newline();
-            Target_java_lang_ref_ReferenceQueue<? super T> frList = fr.getList();
-            if (frList != null) {
-                trace.string("  frList: ").object(frList).newline();
-                frList.push(fr);
-            } else {
-                trace.string("  frList is null").newline();
+        private static <T> void enqueueReference(Target_java_lang_ref_Reference<T> ref, Log trace) {
+            trace.string("  ref: ").object(ref);
+            boolean enqueued = ref.enqueue();
+            if (enqueued) {
+                trace.string(" (enqueued)");
             }
+            trace.newline();
         }
     }
 
