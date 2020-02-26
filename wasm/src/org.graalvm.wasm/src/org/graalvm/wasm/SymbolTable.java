@@ -294,6 +294,13 @@ public class SymbolTable {
         }
     }
 
+    public void checkFunctionIndex(int funcIndex) {
+        if (funcIndex < 0 || funcIndex >= numFunctions) {
+            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions()));
+        }
+
+    }
+
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
         int[] newArray = new int[newLength];
         System.arraycopy(array, 0, newArray, 0, currentSize);
@@ -398,6 +405,7 @@ public class SymbolTable {
     }
 
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
+        checkNotLinked();
         ensureFunctionsCapacity(numFunctions);
         if (typeIndex < 0 || typeIndex >= typeCount) {
             throw new WasmException(String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
@@ -427,6 +435,13 @@ public class SymbolTable {
 
     void setStartFunction(int functionIndex) {
         checkNotLinked();
+        WasmFunction start = function(functionIndex);
+        if (start.numArguments() != 0) {
+            throw new WasmException("Start function cannot take arguments.");
+        }
+        if (start.returnTypeLength() != 0) {
+            throw new WasmException("Start function cannot return a value.");
+        }
         this.startFunctionIndex = functionIndex;
     }
 
@@ -435,9 +450,7 @@ public class SymbolTable {
     }
 
     public WasmFunction function(int funcIndex) {
-        if (funcIndex < 0 || funcIndex >= numFunctions()) {
-            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions()));
-        }
+        assert 0 <= funcIndex && funcIndex <= numFunctions() - 1;
         return functions[funcIndex];
     }
 
@@ -469,14 +482,7 @@ public class SymbolTable {
         if (startFunctionIndex == -1) {
             return null;
         }
-        final WasmFunction start = function(startFunctionIndex);
-        if (start.numArguments() != 0) {
-            throw new WasmException("Start function cannot take arguments.");
-        }
-        if (start.returnTypeLength() != 0) {
-            throw new WasmException("Start function cannot return a value.");
-        }
-        return start;
+        return function(startFunctionIndex);
     }
 
     WasmModule module() {
