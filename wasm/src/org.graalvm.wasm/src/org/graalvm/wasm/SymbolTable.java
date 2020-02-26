@@ -342,7 +342,10 @@ public class SymbolTable {
         int typeIdx = typeCount++;
         typeOffsets[typeIdx] = typeDataSize;
 
-        assert 0 <= numReturnTypes && numReturnTypes <= 1;
+        if (numReturnTypes != 0 && numReturnTypes != 1) {
+            throw new WasmException("A function might return at most one result.");
+        }
+
         int size = 2 + numParameterTypes + numReturnTypes;
         ensureTypeDataCapacity(typeDataSize + size);
         typeData[typeDataSize + 0] = numParameterTypes;

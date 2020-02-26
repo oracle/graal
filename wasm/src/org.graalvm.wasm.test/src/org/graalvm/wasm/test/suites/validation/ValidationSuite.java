@@ -59,6 +59,18 @@ public class ValidationSuite extends WasmSuiteBase {
     private WasmCase[] testCases = {
                     // # 3.2 Types
 
+                    // ## 3.2.1 Limits
+                    // See 3.2.3 and 3.2.4
+
+                    // ## 3.2.2 Function Types
+                    // The arity `m` must not be larger than 1.
+                    // Validated in: SymbolTable.allocateFunctionType
+                    binaryCase(
+                                    "Function: cannot return more than one value",
+                                    "org.graalvm.wasm.exception.WasmException: A function might return at most one result.",
+                                    "0061 736d 0100 0000 0105 0160 0002 7f03" +
+                                                    "0201 000a 0801 0600 412a 412a 0b"),
+
                     // ## 3.2.3 Table types
                     // The limits `limits` must be valid within range `2^32`.
                     // Validated in: BinaryParser.readTableLimits
