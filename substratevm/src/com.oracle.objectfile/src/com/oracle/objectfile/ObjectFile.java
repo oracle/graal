@@ -250,6 +250,16 @@ public abstract class ObjectFile {
          */
         DIRECT_HI,
         /**
+         * The index of the object file section containing the relocation's symbol supplies the fixup bytes
+         * (used in CodeView debug information)
+         */
+        SECTION,
+        /**
+         * The address of the object file section containing the relocation's symbol (+addend( supplies the fixup bytes.
+         * (used in CodeView debug information)
+         */
+        SECREL,
+        /**
          * The relocation's symbol provides low fixup bytes.
          */
         DIRECT_LO,

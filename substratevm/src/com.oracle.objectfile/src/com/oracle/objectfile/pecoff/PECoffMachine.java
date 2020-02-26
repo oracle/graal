@@ -56,6 +56,8 @@ public enum PECoffMachine/* implements Integral */ {
                 switch (k) {
                     case DIRECT:
                         switch (sizeInBytes) {
+                            case 4:
+                                return PECoffX86_64Relocation.ADDR32;
                             case 8:
                                 return PECoffX86_64Relocation.ADDR64;
                             default:
@@ -65,6 +67,20 @@ public enum PECoffMachine/* implements Integral */ {
                         switch (sizeInBytes) {
                             case 4:
                                 return PECoffX86_64Relocation.REL32;
+                            default:
+                                throw new IllegalArgumentException("unsupported relocation type: " + k + " size: " + sizeInBytes);
+                        }
+                    case SECTION:
+                        switch (sizeInBytes) {
+                            case 2:
+                                return PECoffX86_64Relocation.SECTION;
+                            default:
+                                throw new IllegalArgumentException("unsupported relocation type: " + k + " size: " + sizeInBytes);
+                        }
+                    case SECREL:
+                        switch (sizeInBytes) {
+                            case 4:
+                                return PECoffX86_64Relocation.SECREL;
                             default:
                                 throw new IllegalArgumentException("unsupported relocation type: " + k + " size: " + sizeInBytes);
                         }
@@ -174,6 +190,54 @@ enum PECoffX86_64Relocation implements PECoffRelocationMethod {
         @Override
         public long toLong() {
             return IMAGE_RELOCATION.IMAGE_REL_AMD64_ADDR64;
+        }
+    },
+    ADDR32 {
+        @Override
+        public RelocationKind getKind() {
+            return RelocationKind.DIRECT;
+        }
+
+        @Override
+        public int getRelocatedByteSize() {
+            return 4;
+        }
+
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_ADDR32;
+        }
+    },
+    SECREL {
+        @Override
+        public RelocationKind getKind() {
+            return RelocationKind.DIRECT;
+        }
+
+        @Override
+        public int getRelocatedByteSize() {
+            return 4;
+        }
+
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_SECREL;
+        }
+    },
+    SECTION {
+        @Override
+        public RelocationKind getKind() {
+            return RelocationKind.DIRECT;
+        }
+
+        @Override
+        public int getRelocatedByteSize() {
+            return 2;
+        }
+
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_SECTION;
         }
     },
     REL32 {
