@@ -1,1 +1,0 @@
-validation org.graalvm.wasm.exception.BinaryParserException: Invalid max memory size, must be less than upper bound: 2147483648 should be <= 65536.
