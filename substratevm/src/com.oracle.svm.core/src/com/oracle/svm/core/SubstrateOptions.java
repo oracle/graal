@@ -50,6 +50,8 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+
 public class SubstrateOptions {
 
     @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
@@ -417,4 +419,15 @@ public class SubstrateOptions {
     public static int codeAlignment() {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
+    @Option(help = "Insert debug info into the generated native image or library")//
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+            // force update of TrackNodeSourcePosition
+            if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
+                TrackNodeSourcePosition.update(values, true);
+            }
+        }
+    };
+
 }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -44,18 +46,29 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.hosted.image.sources.SourceManager;
+import com.oracle.svm.hosted.meta.HostedType;
+import jdk.vm.ci.code.site.Mark;
+import jdk.vm.ci.meta.LineNumberTable;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -67,6 +80,10 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
@@ -456,6 +473,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
             cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
+            // if we have constructed any debug info then
+            // give the object file a chance to install it
+            if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
+                ImageSingletons.add(SourceManager.class, new SourceManager());
+                DebugInfoProvider provider = new NativeImageDebugInfoProvider(codeCache, heap);
+                objectFile.installDebugInfo(provider);
+            }
             // - Write the heap, either to its own section, or to the ro and rw data sections.
             RelocatableBuffer heapSectionBuffer = null;
             ProgbitsSectionImpl heapSectionImpl = null;
@@ -949,5 +973,255 @@ public abstract class NativeBootImage extends AbstractBootImage {
         protected final RelocatableBuffer textBuffer;
         protected final ObjectFile objectFile;
         protected final NativeImageCodeCache codeCache;
+    }
+
+    /**
+     * implementation of the DebugInfoProvider API interface
+     * that allows type, code and heap data info to be passed to
+     * an ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugInfoProvider implements DebugInfoProvider {
+        private final NativeImageCodeCache codeCache;
+        private final NativeImageHeap heap;
+
+        NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
+            super();
+            this.codeCache = codeCache;
+            this.heap = heap;
+        }
+
+        @Override
+        public Stream<DebugTypeInfo> typeInfoProvider() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<DebugCodeInfo> codeInfoProvider() {
+            return codeCache.compilations.entrySet().stream().map(entry -> new NativeImageDebugCodeInfo(entry.getKey(), entry.getValue()));
+        }
+
+        @Override
+        public Stream<DebugDataInfo> dataInfoProvider() {
+            return Stream.empty();
+        }
+    }
+
+    private static final String[] GRAAL_SRC_PACKAGE_PREFIXES = {
+            "org.graalvm",
+            "com.oracle.graal",
+            "com.oracle.objectfile",
+            "com.oracle.svm",
+            "com.oracle.truffle",
+    };
+
+
+    /**
+     * implementation of the DebugCodeInfo API interface
+     * that allows code info to be passed to an ObjectFile
+     * when generation of debug info is enabled.
+     */
+    private class NativeImageDebugCodeInfo implements DebugCodeInfo {
+        private final HostedMethod method;
+        private final CompilationResult compilation;
+        private Path fullFilePath;
+
+        NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
+            this.method = method;
+            this.compilation = compilation;
+            this.fullFilePath = null;
+        }
+
+        @Override
+        public String fileName() {
+            if (fullFilePath == null) {
+                HostedType declaringClass = method.getDeclaringClass();
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
+            }
+            if (fullFilePath != null) {
+                return fullFilePath.getFileName().toString();
+            }
+            return null;
+        }
+        @Override
+        public Path filePath() {
+            if (fullFilePath == null) {
+                HostedType declaringClass = method.getDeclaringClass();
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
+            }
+            if (fullFilePath != null) {
+                return fullFilePath.getParent();
+            }
+            return null;
+        }
+
+        @Override
+        public String className() {
+            return method.format("%H");
+        }
+
+        @Override
+        public String methodName() {
+            return method.format("%n");
+        }
+
+        @Override
+        public String paramNames() {
+            return method.format("%P");
+        }
+
+        @Override
+        public String returnTypeName() {
+            return method.format("%R");
+        }
+
+        @Override
+        public int addressLo() {
+            return method.getCodeAddressOffset();
+        }
+
+        @Override
+        public int addressHi() {
+            return method.getCodeAddressOffset() + compilation.getTargetCodeSize();
+        }
+
+        @Override
+        public int line() {
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            if (lineNumberTable != null) {
+                return lineNumberTable.getLineNumber(0);
+            }
+            return -1;
+        }
+
+        @Override
+        public Stream<DebugLineInfo> lineInfoProvider() {
+            if (fileName().toString().length() == 0) {
+                return Stream.empty();
+            }
+            return compilation.getSourceMappings().stream().map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping));
+        }
+
+        public int getFrameSize() {
+            return compilation.getTotalFrameSize();
+        }
+
+        public List<DebugFrameSizeChange> getFrameSizeChanges() {
+            List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
+            for (Mark mark : compilation.getMarks()) {
+                // we only need to observe stack increment or decrement points
+                if (mark.id.equals("PROLOGUE_DECD_RSP")) {
+                    NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
+                    frameSizeChanges.add(sizeChange);
+                    // } else if (mark.id.equals("PROLOGUE_END")) {
+                    // can ignore these
+                    // } else if (mark.id.equals("EPILOGUE_START")) {
+                    // can ignore these
+                } else if (mark.id.equals("EPILOGUE_INCD_RSP")) {
+                    NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
+                    frameSizeChanges.add(sizeChange);
+                    // } else if(mark.id.equals("EPILOGUE_END")) {
+                }
+            }
+            return frameSizeChanges;
+        }
+    }
+
+    /**
+     * implementation of the DebugLineInfo API interface
+     * that allows line number info to be passed to an
+     * ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugLineInfo implements DebugLineInfo {
+        private final int bci;
+        private final ResolvedJavaMethod method;
+        private final int lo;
+        private final int hi;
+        private Path fullFilePath = null;
+
+        NativeImageDebugLineInfo(SourceMapping sourceMapping) {
+            NodeSourcePosition position = sourceMapping.getSourcePosition();
+            int bci = position.getBCI();
+            this.bci = (bci >= 0 ? bci : 0);
+            this.method = position.getMethod();
+            this.lo = sourceMapping.getStartOffset();
+            this.hi = sourceMapping.getEndOffset();
+        }
+
+        @Override
+        public String fileName() {
+            if (fullFilePath == null) {
+                ResolvedJavaType declaringClass = method.getDeclaringClass();
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
+            }
+            if (fullFilePath != null) {
+                return fullFilePath.getFileName().toString();
+            }
+            return null;
+        }
+
+        public Path filePath() {
+            if (fullFilePath == null) {
+                ResolvedJavaType declaringClass = method.getDeclaringClass();
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
+            }
+            if (fullFilePath != null) {
+                return fullFilePath.getParent();
+            }
+            return null;
+        }
+
+        @Override
+        public String className() {
+            return method.format("%H");
+        }
+
+        @Override
+        public String methodName() {
+            return method.format("%n");
+        }
+
+        @Override
+        public int addressLo() {
+            return lo;
+        }
+
+        @Override
+        public int addressHi() {
+            return hi;
+        }
+
+        @Override
+        public int line() {
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            if (lineNumberTable != null) {
+                return lineNumberTable.getLineNumber(bci);
+            }
+            return -1;
+        }
+    }
+
+    /**
+     * implementation of the DebugFrameSizeChange API interface
+     * that allows stack frame size change info to be passed to
+     * an ObjectFile when generation of debug info is enabled.
+     */
+    private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
+        private int offset;
+        private Type type;
+
+        NativeImageDebugFrameSizeChange(int offset, Type type) {
+            this.offset = offset;
+            this.type = type;
+        }
+
+        @Override
+        public int getOffset() {
+            return offset;
+        }
+
+        @Override
+        public Type getType() {
+            return type;
+        }
     }
 }

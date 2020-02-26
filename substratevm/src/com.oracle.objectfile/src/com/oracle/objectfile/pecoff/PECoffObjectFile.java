@@ -39,10 +39,14 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
+import com.oracle.objectfile.pecoff.cv.CVSections;
+import com.oracle.objectfile.pecoff.cv.CVSymbolSectionImpl;
+import com.oracle.objectfile.pecoff.cv.CVTypeSectionImpl;
 
 /**
  * Represents a PECoff object file.
@@ -683,5 +687,43 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     protected int getMinimumFileSize() {
         return 0;
+    }
+
+    @Override
+    public Section newDebugSection(String name, ElementImpl impl) {
+        PECoffSection coffSection = (PECoffSection) super.newDebugSection(name, impl);
+        coffSection.getFlags().add(PECoffSectionFlag.DISCARDABLE);
+        coffSection.getFlags().add(PECoffSectionFlag.READ);
+        coffSection.getFlags().add(PECoffSectionFlag.INITIALIZED_DATA);
+        impl.setElement(coffSection);
+        return coffSection;
+    }
+
+    @Override
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        CVSections cvSections = new CVSections(getMachine());
+
+        // we need an implementation for each section
+        CVSymbolSectionImpl cvSymbolSectionImpl = cvSections.getCVSymbolSection();
+        CVTypeSectionImpl cvTypeSectionImpl = cvSections.getCVTypeSection();
+
+        // now we can create the section elements with empty content
+        PECoffSection symbolSection = (PECoffSection) newDebugSection(cvSymbolSectionImpl.getSectionName(), cvSymbolSectionImpl);
+        PECoffSection typeSection = (PECoffSection) newDebugSection(cvTypeSectionImpl.getSectionName(), cvTypeSectionImpl);
+
+        // the byte[] for each implementation's content are created and
+        // written under getOrDecideContent. doing that ensures that all
+        // dependent sections are filled in and then sized according to the
+        // declared dependencies. however, if we leave it at that then
+        // associated reloc sections only get created when the first reloc
+        // is inserted during content write that's too late for them to have
+        // layout constraints included in the layout decision set and causes
+        // an NPE during reloc section write. so we need to create the relevant
+        // reloc sections here in advance
+        cvSymbolSectionImpl.getOrCreateRelocationElement(false);
+        cvTypeSectionImpl.getOrCreateRelocationElement(false);
+
+        // ok now we can populate the implementations
+        cvSections.installDebugInfo(debugInfoProvider);
     }
 }
