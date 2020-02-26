@@ -339,7 +339,7 @@ final class JDWP {
                 reply.writeBoolean(CAN_REDEFINE_CLASSES); // canRedefineClasses
                 reply.writeBoolean(false); // canAddMethod
                 reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
-                reply.writeBoolean(false); // canPopFrames
+                reply.writeBoolean(true); // canPopFrames
                 reply.writeBoolean(true); // canUseInstanceFilters
                 reply.writeBoolean(true); // canGetSourceDebugExtension
                 reply.writeBoolean(true); // canRequestVMDeathEvent
@@ -2519,7 +2519,7 @@ final class JDWP {
                 int slots = input.readInt();
                 reply.writeInt(slots);
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2569,7 +2569,7 @@ final class JDWP {
                 long frameId = input.readLong();
                 int slots = input.readInt();
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2608,7 +2608,7 @@ final class JDWP {
                 }
                 long frameId = input.readLong();
 
-                CallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyCallFrame(frameId, reply, context);
 
                 if (frame == null) {
                     return new CommandResult(reply);
@@ -2627,6 +2627,28 @@ final class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(thisValue));
                 } else {
                     reply.writeLong(0);
+                }
+                return new CommandResult(reply);
+            }
+        }
+
+        static class POP_FRAMES {
+            public static final int ID = 4;
+
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                Object thread = verifyThread(input.readLong(), reply, controller.getContext(), true);
+                CallFrame frame = verifyCallFrame(input.readLong(), reply, controller.getContext());
+
+                if (thread == null || frame == null) {
+                    return new CommandResult(reply);
+                }
+
+                if (!controller.popFrames(thread, frame)) {
+                    reply.errorCode(ErrorCodes.INVALID_FRAMEID);
+                    return new CommandResult(reply);
                 }
                 return new CommandResult(reply);
             }
@@ -2960,7 +2982,7 @@ final class JDWP {
         return classLoader;
     }
 
-    private static CallFrame verifyClassFrame(long frameId, PacketStream reply, JDWPContext context) {
+    private static CallFrame verifyCallFrame(long frameId, PacketStream reply, JDWPContext context) {
         Object frame = context.getIds().fromId((int) frameId);
         if (!(frame instanceof CallFrame)) {
             reply.errorCode(ErrorCodes.INVALID_FRAMEID);

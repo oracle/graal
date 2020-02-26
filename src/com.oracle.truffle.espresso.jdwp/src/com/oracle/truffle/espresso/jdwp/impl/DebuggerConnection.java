@@ -70,21 +70,21 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy());
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false);
         addBlocking(debuggerCommand);
     }
 
@@ -537,18 +537,15 @@ public final class DebuggerConnection implements Commands {
                             break;
                         case JDWP.ArrayReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ArrayReference.LENGTH.ID: {
+                                case JDWP.ArrayReference.LENGTH.ID:
                                     result = JDWP.ArrayReference.LENGTH.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.ArrayReference.GET_VALUES.ID: {
+                                case JDWP.ArrayReference.GET_VALUES.ID:
                                     result = JDWP.ArrayReference.GET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.ArrayReference.SET_VALUES.ID: {
+                                case JDWP.ArrayReference.SET_VALUES.ID:
                                     result = JDWP.ArrayReference.SET_VALUES.createReply(packet, context);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -556,27 +553,23 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.ClassLoaderReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID: {
+                                case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID:
                                     result = JDWP.ClassLoaderReference.VISIBLE_CLASSES.createReply(packet, context);
                                     break;
-                                }
                             }
                             break;
                         }
                         case JDWP.EventRequest.ID: {
                             switch (packet.cmd) {
-                                case JDWP.EventRequest.SET.ID: {
+                                case JDWP.EventRequest.SET.ID:
                                     result = requestedJDWPEvents.registerEvent(packet, DebuggerConnection.this);
                                     break;
-                                }
-                                case JDWP.EventRequest.CLEAR.ID: {
+                                case JDWP.EventRequest.CLEAR.ID:
                                     result = requestedJDWPEvents.clearRequest(packet);
                                     break;
-                                }
-                                case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID: {
+                                case JDWP.EventRequest.CLEAR_ALL_BREAKPOINTS.ID:
                                     result = requestedJDWPEvents.clearAllRequests(packet);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -584,18 +577,18 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.StackFrame.ID: {
                             switch (packet.cmd) {
-                                case JDWP.StackFrame.GET_VALUES.ID: {
+                                case JDWP.StackFrame.GET_VALUES.ID:
                                     result = JDWP.StackFrame.GET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.StackFrame.SET_VALUES.ID: {
+                                case JDWP.StackFrame.SET_VALUES.ID:
                                     result = JDWP.StackFrame.SET_VALUES.createReply(packet, context);
                                     break;
-                                }
-                                case JDWP.StackFrame.THIS_OBJECT.ID: {
+                                case JDWP.StackFrame.THIS_OBJECT.ID:
                                     result = JDWP.StackFrame.THIS_OBJECT.createReply(packet, controller);
                                     break;
-                                }
+                                case JDWP.StackFrame.POP_FRAMES.ID:
+                                    result = JDWP.StackFrame.POP_FRAMES.createReply(packet, controller);
+                                    break;
                                 default:
                                     break;
                             }
@@ -603,10 +596,9 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.ClassObjectReference.ID: {
                             switch (packet.cmd) {
-                                case JDWP.ClassObjectReference.REFLECTED_TYPE.ID: {
+                                case JDWP.ClassObjectReference.REFLECTED_TYPE.ID:
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
                                     break;
-                                }
                                 default:
                                     break;
                             }
@@ -614,10 +606,9 @@ public final class DebuggerConnection implements Commands {
                         }
                         case JDWP.Event.ID: {
                             switch (packet.cmd) {
-                                case JDWP.Event.COMPOSITE.ID: {
+                                case JDWP.Event.COMPOSITE.ID:
                                     result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
-                                }
                                 default:
                                     break;
                             }
