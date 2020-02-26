@@ -83,8 +83,8 @@ public class InspectorMessageTransportTest {
 
     @Test
     public void inspectorEndpointExplicitPathTest() {
-        inspectorEndpointTest("simplePath");
-        inspectorEndpointTest("/some/complex/path");
+        inspectorEndpointTest("simplePath" + SecureInspectorPathGenerator.getToken());
+        inspectorEndpointTest("/some/complex/path" + SecureInspectorPathGenerator.getToken());
     }
 
     @Test
@@ -133,7 +133,7 @@ public class InspectorMessageTransportTest {
     @Test
     public void inspectorReconnectTest() throws IOException, InterruptedException {
         Session session = new Session(null);
-        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath", null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
         Engine engine = endpoint.onOpen(session);
 
         try (Context context = Context.newBuilder().engine(engine).build()) {
