@@ -110,95 +110,88 @@ abstract class ToEspressoNode extends Node {
         return doPrimitive(value, primitiveKlass, InteropLibrary.getFactory().getUncached(), primitiveKlass, BranchProfile.getUncached());
     }
 
-    static boolean isString(Klass klass) {
-        return klass.getMeta().java_lang_String.equals(klass);
-    }
-
-    @Specialization(guards = "isString(stringKlass)")
-    Object doString(Object value,
-                    ObjectKlass stringKlass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile) throws UnsupportedMessageException, UnsupportedTypeException {
-        if (interop.isNull(value)) {
-            return StaticObject.NULL;
-        } else if (interop.isString(value)) {
-            String str = interop.asString(value);
-            return stringKlass.getMeta().toGuestString(str);
+    @Specialization(guards = "!klass.isPrimitive()" /* && isStaticObject(value) */)
+    Object doEspresso(StaticObject value,
+                    Klass klass,
+                    @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+        // TODO(peterssen): Use a node for the instanceof check.
+        if (StaticObject.isNull(value) || InterpreterToVM.instanceOf(value, klass)) {
+            return value; // pass through, NULL coercion not needed.
         }
         exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, stringKlass.getTypeAsString());
+        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
-    @TruffleBoundary
-    @Specialization(guards = "isString(stringKlass)", replaces = "doString")
-    Object doStringUncached(Object value,
-                    ObjectKlass stringKlass) throws UnsupportedMessageException, UnsupportedTypeException {
-        return doString(value, stringKlass, InteropLibrary.getFactory().getUncached(), BranchProfile.getUncached());
+    static boolean isStaticObject(Object obj) {
+        return obj instanceof StaticObject;
+    }
+
+    static boolean isString(Klass klass) {
+        return klass.getMeta().java_lang_String.equals(klass);
     }
 
     static boolean isStringArray(Klass klass) {
         return klass.getMeta().java_lang_String.array().equals(klass);
     }
 
-    // TODO(peterssen): Remove, temporary workaround for passing arguments to main.
+    // TODO(peterssen): Remove, temporary workaround to call main.
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isStringArray(stringArrayKlass)", "interop.hasArrayElements(value)"})
-    Object doStringArraySlow(Object value,
-                    ArrayKlass stringArrayKlass,
-                    @CachedLibrary(limit = "0") InteropLibrary interop,
-                    @Cached ToEspressoNode toEspressoNode)
+    @Specialization(guards = {"!isStaticObject(value)", "isStringArray(klass)"})
+    Object doArray(Object value,
+                    ArrayKlass klass,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop)
                     throws UnsupportedMessageException, UnsupportedTypeException {
         if (interop.isNull(value)) {
-            return StaticObject.NULL;
+            return StaticObject.NULL; // coercion to Espresso NULL.
         }
         int length = (int) interop.getArraySize(value);
-        final Klass jlString = stringArrayKlass.getComponentType();
-
+        final Klass jlString = klass.getComponentType();
         return jlString.allocateReferenceArray(length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
-
                 if (interop.isArrayElementReadable(value, index)) {
                     try {
                         Object elem = interop.readArrayElement(value, index);
                         return (StaticObject) toEspressoNode.execute(elem, jlString);
                     } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                        rethrow(UnsupportedTypeException.create(new Object[]{value}, stringArrayKlass.getTypeAsString()));
+                        rethrow(UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString()));
                     } catch (UnsupportedTypeException e) {
                         rethrow(e);
                     }
                 }
-                rethrow(UnsupportedTypeException.create(new Object[]{value}, stringArrayKlass.getTypeAsString()));
+                rethrow(UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString()));
                 throw EspressoError.shouldNotReachHere();
             }
         });
     }
 
-    @Specialization
-    Object doEspressoObject(StaticObject value, Klass klass, @Cached BranchProfile exceptionProfile)
-                    throws UnsupportedTypeException {
-        if (StaticObject.isNull(value)) {
-            return value;
-        } else {
-            if (InterpreterToVM.instanceOf(value, klass)) {
-                return value;
-            }
-        }
-        exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
-    }
-
-    @Specialization(guards = {"!klass.isPrimitive()", "!isString(klass)", "!isStringArray(klass)"})
-    Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop, @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+    @Specialization(guards = {"!isStaticObject(klass)", "isString(klass)"})
+    Object doString(Object value,
+                    ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile exceptionProfile)
+                    throws UnsupportedMessageException, UnsupportedTypeException {
         if (interop.isNull(value)) {
-            return StaticObject.NULL; // coercion to Espresso null.
+            return StaticObject.NULL; // coercion to Espresso NULL.
+        }
+        if (interop.isString(value)) {
+            return klass.getMeta().toGuestString(interop.asString(value));
         }
         exceptionProfile.enter();
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
-    @Specialization
-    Object doUnsupported(Object value, Klass klass) throws UnsupportedTypeException {
+    @Specialization(guards = {"!isStaticObject(klass)", "!isString(klass)", "!isStringArray(klass)", "!klass.isPrimitive()"})
+    Object doNullOrUnsupported(Object value,
+                    Klass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile exceptionProfile)
+                    throws UnsupportedTypeException {
+        if (interop.isNull(value)) {
+            return StaticObject.NULL; // coercion to Espresso NULL.
+        }
+        exceptionProfile.enter();
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
