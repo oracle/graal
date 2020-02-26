@@ -31,6 +31,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -51,13 +52,16 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
 
 /* @formatter:off */
 /**
@@ -125,6 +129,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(java.lang.ref.Reference.class)
 @Substitute
 public final class Target_java_lang_ref_Reference<T> {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "rawReferent", declClass = Target_java_lang_ref_Reference.class) //
     private static long rawReferentFieldOffset;
@@ -132,12 +137,15 @@ public final class Target_java_lang_ref_Reference<T> {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "nextDiscovered", declClass = Target_java_lang_ref_Reference.class) //
     private static long nextDiscoveredFieldOffset;
 
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "list", declClass = Target_java_lang_ref_Reference.class) //
+    private static long listFieldOffset;
+
     /**
      * The list to which this FeebleReference is added when the referent is unreachable. This is
      * initialized and then becomes null when the FeebleReference is put on its list.
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
-    protected final UninterruptibleUtils.AtomicReference<Target_java_lang_ref_ReferenceQueue<? super T>> list;
+    protected volatile Target_java_lang_ref_ReferenceQueue<? super T> list;
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
     protected final boolean initialized;
@@ -178,16 +186,12 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Substitute
     Target_java_lang_ref_Reference(T referent) {
-        this(referent, (Target_java_lang_ref_ReferenceQueue<? super T>) null);
+        this(referent, null);
     }
 
     @Substitute
-    Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
-        this(referent, new UninterruptibleUtils.AtomicReference<>(queue));
-    }
-
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
-    private Target_java_lang_ref_Reference(T referent, UninterruptibleUtils.AtomicReference<Target_java_lang_ref_ReferenceQueue<? super T>> queue) {
+    Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
         this.rawReferent = referent;
         this.nextDiscovered = null;
         this.isDiscovered = false;
@@ -257,18 +261,15 @@ public final class Target_java_lang_ref_Reference<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean hasList() {
-        return (list != null);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Target_java_lang_ref_ReferenceQueue<? super T> getList() {
-        return list.get();
+        return list;
     }
 
     /** Clears the list, returning the previous value, which might be null. */
     public Target_java_lang_ref_ReferenceQueue<? super T> clearList() {
-        return list.getAndSet(null);
+        @SuppressWarnings("unchecked")
+        Target_java_lang_ref_ReferenceQueue<? super T> formerValue = (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(this, listFieldOffset, null);
+        return formerValue;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -406,7 +407,7 @@ class ComputeQueueValue implements CustomFieldValueComputer {
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         try {
-            return new UninterruptibleUtils.AtomicReference<>(QUEUE_FIELD.get(receiver));
+            return QUEUE_FIELD.get(receiver);
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

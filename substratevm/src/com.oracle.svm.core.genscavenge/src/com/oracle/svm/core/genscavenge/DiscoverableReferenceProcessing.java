@@ -41,7 +41,6 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 public class DiscoverableReferenceProcessing {
 
@@ -269,30 +268,12 @@ public class DiscoverableReferenceProcessing {
 
         private static <T> void processReference(Target_java_lang_ref_Reference<T> fr, Log trace) {
             trace.string("  fr: ").object(fr).newline();
-            if (fr.hasList()) {
-                final Target_java_lang_ref_ReferenceQueue<? super T> frList = fr.getList();
-                if (frList != null) {
-                    trace.string("  frList: ").object(frList).newline();
-                    frList.push(fr);
-                } else {
-                    trace.string("  frList is null").newline();
-                }
+            Target_java_lang_ref_ReferenceQueue<? super T> frList = fr.getList();
+            if (frList != null) {
+                trace.string("  frList: ").object(frList).newline();
+                frList.push(fr);
             } else {
-                /*
-                 * GR-14335: The DiscoverableReference should be initialized, but the Reference has
-                 * an `AtomicReference list` field containing `null`, not even a list field that
-                 * points to a `null`. This should not be possible, but I see it when the VM
-                 * crashes. Before crashing the VM print out some values.
-                 */
-                final Log failureLog = Log.log().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").indent(true);
-                failureLog.string("  fr: ").object(fr)
-                                .string("  .referent (should be null): ").hex(fr.getReferentPointer())
-                                .string("  .isDiscovered (should be true): ").bool(fr.getIsDiscovered())
-                                .string("  .isInitialized (should be true): ").bool(fr.isInitialized())
-                                .newline()
-                                .string("  .hasList (should be true): ").bool(fr.hasList());
-                failureLog.string("]").indent(false);
-                throw VMError.shouldNotReachHere("DiscoverableReferenceProcessing.Scatterer.distributeReferences: Reference with null list");
+                trace.string("  frList is null").newline();
             }
         }
     }
