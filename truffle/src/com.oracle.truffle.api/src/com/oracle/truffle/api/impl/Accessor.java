@@ -170,6 +170,8 @@ public abstract class Accessor {
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
+        public abstract void forceAdoption(Node parent, Node child);
+
     }
 
     public abstract static class SourceSupport {
