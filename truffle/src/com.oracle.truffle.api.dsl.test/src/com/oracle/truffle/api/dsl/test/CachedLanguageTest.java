@@ -63,7 +63,6 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("unused")
 public class CachedLanguageTest extends AbstractLibraryTest {
