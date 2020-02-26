@@ -897,31 +897,38 @@ public final class LLVMContext {
         private final boolean isInternal;
 
         public static ExternalLibrary external(String name, boolean isNative) {
-            return new ExternalLibrary(name, isNative, false);
+            return ExternalLibrary.create(name, isNative, false);
         }
 
         public static ExternalLibrary internal(String name, boolean isNative) {
-            return new ExternalLibrary(name, isNative, true);
+            return ExternalLibrary.create(name, isNative, true);
         }
 
         public static ExternalLibrary external(Path path, boolean isNative) {
-            return new ExternalLibrary(path, isNative, false);
+            return ExternalLibrary.create(path, isNative, false);
         }
 
         public static ExternalLibrary internal(Path path, boolean isNative) {
-            return new ExternalLibrary(path, isNative, true);
+            return ExternalLibrary.create(path, isNative, true);
         }
 
         public static ExternalLibrary external(TruffleFile file, boolean isNative) {
-            return new ExternalLibrary(file, isNative, false);
+            return ExternalLibrary.create(file, isNative, false);
         }
 
-        public ExternalLibrary(String name, boolean isNative, boolean isInternal) {
-            this(name, null, isNative, isInternal);
+        public static ExternalLibrary create(String name, boolean isNative, boolean isInternal) {
+            return new ExternalLibrary(name, null, isNative, isInternal);
         }
 
-        public ExternalLibrary(Path path, boolean isNative, boolean isInternal) {
-            this(extractName(path), path, isNative, isInternal);
+        public static ExternalLibrary create(Path path, boolean isNative, boolean isInternal) {
+            return new ExternalLibrary(extractName(path), path, isNative, isInternal);
+        }
+
+        public static ExternalLibrary create(TruffleFile file, boolean isNative, boolean isInternal) {
+            Path path = Paths.get(file.getPath());
+            String name = extractName(path);
+            TruffleFile canonicalFile = getCanonicalFile(file);
+            return new ExternalLibrary(name, path, isNative, isInternal, canonicalFile);
         }
 
         private static TruffleFile getCanonicalFile(TruffleFile file) {
@@ -936,20 +943,29 @@ public final class LLVMContext {
             }
         }
 
-        public ExternalLibrary(TruffleFile file, boolean isNative, boolean isInternal) {
-            this.path = Paths.get(file.getPath());
-            this.name = extractName(path);
-            this.isNative = isNative;
-            this.isInternal = isInternal;
-            this.file = getCanonicalFile(file);
+        private static String extractName(Path path) {
+            Path filename = path.getFileName();
+            if (filename == null) {
+                throw new IllegalArgumentException("Path " + path + " is empty");
+            }
+            String nameWithExt = filename.toString();
+            int lengthWithoutExt = nameWithExt.lastIndexOf(".");
+            if (lengthWithoutExt > 0) {
+                return nameWithExt.substring(0, lengthWithoutExt);
+            }
+            return nameWithExt;
         }
 
         private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal) {
+            this(name, path, isNative, isInternal, null);
+        }
+
+        private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal, TruffleFile file) {
             this.name = name;
             this.path = path;
             this.isNative = isNative;
             this.isInternal = isInternal;
-            this.file = null;
+            this.file = file;
         }
 
         public boolean hasFile() {
@@ -998,19 +1014,6 @@ public final class LLVMContext {
         @Override
         public int hashCode() {
             return name.hashCode() ^ Objects.hashCode(path);
-        }
-
-        private static String extractName(Path path) {
-            Path filename = path.getFileName();
-            if (filename == null) {
-                throw new IllegalArgumentException("Path " + path + " is empty");
-            }
-            String nameWithExt = filename.toString();
-            int lengthWithoutExt = nameWithExt.lastIndexOf(".");
-            if (lengthWithoutExt > 0) {
-                return nameWithExt.substring(0, lengthWithoutExt);
-            }
-            return nameWithExt;
         }
 
         @Override
