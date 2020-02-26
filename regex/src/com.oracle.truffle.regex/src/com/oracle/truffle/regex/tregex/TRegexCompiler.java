@@ -52,6 +52,8 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 
 public final class TRegexCompiler implements RegexCompiler {
 
@@ -74,7 +76,17 @@ public final class TRegexCompiler implements RegexCompiler {
     @TruffleBoundary
     @Override
     public CompiledRegexObject compile(RegexSource source) throws RegexSyntaxException {
-        return new TRegexCompilationRequest(this, source).compile();
+        RegexFlavor flavor = options.getFlavor();
+        RegexSource ecmascriptSource = source;
+        if (flavor != null) {
+            /*
+             * We rewrite the pattern here, to avoid rewriting again when switching to other
+             * matching strategies via the other compile* methods below.
+             */
+            RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+            ecmascriptSource = flavorProcessor.toECMAScriptRegex();
+        }
+        return new TRegexCompilationRequest(this, ecmascriptSource).compile();
     }
 
     @TruffleBoundary

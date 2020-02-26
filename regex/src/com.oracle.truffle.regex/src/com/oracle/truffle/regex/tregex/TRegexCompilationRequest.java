@@ -53,7 +53,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.analysis.RegexUnifier;
@@ -79,8 +78,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
@@ -263,16 +260,7 @@ public final class TRegexCompilationRequest {
     }
 
     private RegexParser createParser() {
-        RegexOptions options = tRegexCompiler.getOptions();
-        RegexFlavor flavor = options.getFlavor();
-        RegexSource ecmascriptSource = source;
-        if (flavor != null) {
-            phaseStart("Flavor");
-            RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
-            ecmascriptSource = flavorProcessor.toECMAScriptRegex();
-            phaseEnd("Flavor");
-        }
-        return new RegexParser(ecmascriptSource, options, compilationBuffer);
+        return new RegexParser(source, tRegexCompiler.getOptions(), compilationBuffer);
     }
 
     private void createNFA() {
