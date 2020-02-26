@@ -152,16 +152,32 @@ public class TRegexOptions {
     public static final int RegexMaxCacheSize = 1_000;
 
     /**
-     * Bailout threshold for counted repetitions.
+     * The parser will try to unroll bounded quantifiers on single character classes up to this
+     * limit.
      */
-    public static final int TRegexMaxCountedRepetition = 1;
+    public static final int TRegexQuantifierUnrollThresholdSingleCC = 20;
 
     /**
-     * Bailout threshold for number of capture groups. This number must not be higher than 127,
-     * because we compress capture group boundary indices to {@code byte} in
+     * The parser will try to unroll bounded quantifiers on groups up to this limit.
+     */
+    public static final int TRegexQuantifierUnrollThresholdGroup = 5;
+
+    /**
+     * Bailout threshold for counted repetitions.
+     */
+    public static final int TRegexMaxCountedRepetition = 6;
+
+    /**
+     * Bailout threshold for number of capture groups.
+     */
+    public static final int TRegexMaxNumberOfCaptureGroups = Short.MAX_VALUE;
+
+    /**
+     * Bailout threshold for number of capture groups in the DFA generator. This number must not be
+     * higher than 127, because we compress capture group boundary indices to {@code byte} in
      * {@link DFACaptureGroupPartialTransition}!
      */
-    public static final int TRegexMaxNumberOfCaptureGroups = 127;
+    public static final int TRegexMaxNumberOfCaptureGroupsForDFA = Byte.MAX_VALUE;
 
     /**
      * Maximum number of NFA states involved in one DFA transition. This number must not be higher
@@ -177,7 +193,7 @@ public class TRegexOptions {
         assert TRegexMaxNFASize <= Short.MAX_VALUE;
         assert TRegexMaxDFASize <= Short.MAX_VALUE;
         assert TRegexMaxDFASizeAfterNodeSplitting <= Short.MAX_VALUE;
-        assert TRegexMaxNumberOfCaptureGroups <= 127;
+        assert TRegexMaxNumberOfCaptureGroupsForDFA <= 127;
         assert TRegexMaxNumberOfNFAStatesInOneDFATransition <= 255;
         assert TRegexRangeToBitSetConversionThreshold > 1;
     }

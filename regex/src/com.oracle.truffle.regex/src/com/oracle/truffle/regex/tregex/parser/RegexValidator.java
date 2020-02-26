@@ -183,7 +183,8 @@ public class RegexValidator {
                             if (lookBehindDepth > 0 && quantifier.getMin() != quantifier.getMax()) {
                                 features.setNonTrivialQuantifiersInLookBehind();
                             }
-                            if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
+                            int threshold = Math.max(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+                            if (quantifier.getMin() > threshold || quantifier.getMax() > threshold) {
                                 features.setLargeCountedRepetitions();
                             }
                             break;

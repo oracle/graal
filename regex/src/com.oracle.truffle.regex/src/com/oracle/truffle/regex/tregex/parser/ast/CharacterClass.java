@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
@@ -118,6 +119,11 @@ public class CharacterClass extends QuantifiableTerm {
 
     public void setWasSingleChar(boolean value) {
         setFlag(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR, value);
+    }
+
+    @Override
+    public boolean isUnrollingCandidate() {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
     }
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {

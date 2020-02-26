@@ -227,6 +227,22 @@ public class Token implements JsonConvertible {
             this.zeroWidthIndex = (short) zeroWidthIndex;
         }
 
+        /**
+         * Returns {@code true} iff both {@link #getMin()} and {@link #getMax()} are less or equal
+         * to the given threshold, or infinite {@link #isInfiniteLoop()}.
+         */
+        public boolean isWithinThreshold(int threshold) {
+            return min <= threshold && max <= threshold;
+        }
+
+        /**
+         * Returns {@code true} iff "unrolling" this quantifier is trivial, i.e. nothing has to be
+         * duplicated. This is the case for quantifiers {@code ?} and {@code *}.
+         */
+        public boolean isUnrollTrivial() {
+            return min == 0 && max <= 1;
+        }
+
         @Override
         public int hashCode() {
             return 31 * min + 31 * max + (greedy ? 1 : 0);

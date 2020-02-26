@@ -530,7 +530,7 @@ public final class RegexParser {
     private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
         assert toExpand.hasNotUnrolledQuantifier();
         Token.Quantifier quantifier = toExpand.getQuantifier();
-        assert !unroll || quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition : toExpand + " in " + source;
+        assert !unroll || toExpand.isUnrollingCandidate();
         curTerm = toExpand;
         curSequence = (Sequence) curTerm.getParent();
         curGroup = curSequence.getParent();
@@ -583,32 +583,26 @@ public final class RegexParser {
         @Override
         protected void visit(BackReference backReference) {
             if (backReference.hasNotUnrolledQuantifier()) {
-                parser.expandQuantifier(backReference, shouldAlwaysUnroll(backReference));
+                parser.expandQuantifier(backReference, shouldUnroll(backReference));
             }
         }
 
         @Override
         protected void visit(CharacterClass characterClass) {
             if (characterClass.hasNotUnrolledQuantifier()) {
-                parser.expandQuantifier(characterClass, isInUnrollBounds(characterClass));
+                parser.expandQuantifier(characterClass, shouldUnroll(characterClass));
             }
         }
 
         @Override
         protected void leave(Group group) {
             if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifier() && !group.getLastAlternative().isExpandedQuantifier()) {
-                parser.expandQuantifier(group, shouldAlwaysUnroll(group) || isInUnrollBounds(group) && shouldUnrollVisitor.shouldUnroll(group));
+                parser.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
 
-        private static boolean isInUnrollBounds(QuantifiableTerm term) {
-            Quantifier quantifier = term.getQuantifier();
-            return quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition;
-        }
-
-        private static boolean shouldAlwaysUnroll(QuantifiableTerm term) {
-            Quantifier quantifier = term.getQuantifier();
-            return quantifier.getMin() == 0 && (quantifier.getMax() == 1 || quantifier.isInfiniteLoop());
+        private boolean shouldUnroll(QuantifiableTerm term) {
+            return term.getQuantifier().isUnrollTrivial() || (parser.ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && term.isUnrollingCandidate());
         }
 
         private static final class ShouldUnrollQuantifierVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -875,10 +869,10 @@ public final class RegexParser {
     }
 
     private void setQuantifier(QuantifiableTerm term, Token.Quantifier quantifier) {
-        if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
+        term.setQuantifier(quantifier);
+        if (!term.isUnrollingCandidate()) {
             properties.setLargeCountedRepetitions();
         }
-        term.setQuantifier(quantifier);
         properties.setQuantifiers();
         if (quantifier.getMin() != quantifier.getMax()) {
             properties.setAlternations();

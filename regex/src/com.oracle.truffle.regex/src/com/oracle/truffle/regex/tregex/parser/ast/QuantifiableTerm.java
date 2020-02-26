@@ -77,6 +77,11 @@ public abstract class QuantifiableTerm extends Term {
         return hasQuantifier() && !isExpandedQuantifier();
     }
 
+    /**
+     * Returns {@code true} iff the parser should try to unroll this term's quantifier.
+     */
+    public abstract boolean isUnrollingCandidate();
+
     public Token.Quantifier getQuantifier() {
         return quantifier;
     }

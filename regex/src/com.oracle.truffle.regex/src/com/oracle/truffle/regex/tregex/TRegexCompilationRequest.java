@@ -240,9 +240,14 @@ public final class TRegexCompilationRequest {
 
     private static boolean canTransformToDFA(RegexAST ast) throws UnsupportedRegexException {
         RegexProperties p = ast.getProperties();
-        return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && !(p.hasBackReferences() || p.hasLargeCountedRepetitions() || p.hasNegativeLookAheadAssertions() ||
-                        p.hasNonLiteralLookBehindAssertions() || p.hasNegativeLookBehindAssertions() ||
-                        ast.getRoot().hasQuantifiers());
+        return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
+                        ast.getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
+                        !(p.hasBackReferences() ||
+                                        p.hasLargeCountedRepetitions() ||
+                                        p.hasNegativeLookAheadAssertions() ||
+                                        p.hasNonLiteralLookBehindAssertions() ||
+                                        p.hasNegativeLookBehindAssertions() ||
+                                        ast.getRoot().hasQuantifiers());
     }
 
     private void createAST() {
