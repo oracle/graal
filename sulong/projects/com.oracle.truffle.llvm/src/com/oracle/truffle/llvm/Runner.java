@@ -665,7 +665,7 @@ final class Runner {
         return type instanceof PointerType;
     }
 
-    ExternalLibrary[] parseDefaultLibraries(ParseContext parseContext) {
+    private ExternalLibrary[] parseDefaultLibraries(ParseContext parseContext) {
         // There could be conflicts between Sulong's default libraries and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later
         // on.
@@ -716,7 +716,7 @@ final class Runner {
         }
 
         // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibraries = loader.getDefaultDependencies(this, parseContext);
+        ExternalLibrary[] sulongLibraries = getDefaultDependencies(parseContext);
 
         // finally we are dealing with all indirect dependencies
         while (!parseContext.dependencyQueueIsEmpty()) {
@@ -724,6 +724,26 @@ final class Runner {
             parseLibrary(lib, parseContext);
         }
         return sulongLibraries;
+    }
+
+    /**
+     * Returns the default dependencies (as {@link ExternalLibrary} and adds their
+     * {@link LLVMParserResult parser results} to the current {@link ParseContext}. The default
+     * dependencies are cached in the {@link #loader}.
+     */
+    private ExternalLibrary[] getDefaultDependencies(ParseContext parseContext) {
+        if (loader.getCachedDefaultDependencies() == null) {
+            synchronized (loader) {
+                if (loader.getCachedDefaultDependencies() == null) {
+                    ParseContext newParseContext = ParseContext.create();
+                    ExternalLibrary[] defaultLibraries = parseDefaultLibraries(newParseContext);
+                    List<LLVMParserResult> parserResults = newParseContext.getParserResults();
+                    loader.setDefaultLibraries(defaultLibraries, parserResults);
+                }
+            }
+        }
+        parseContext.parserResultsAddAll(loader.getCachedDefaultDependencies());
+        return loader.getCachedSulongLibraries();
     }
 
     private static void resolveRenamedSymbols(LLVMParserResult[] sulongLibraryResults) {
