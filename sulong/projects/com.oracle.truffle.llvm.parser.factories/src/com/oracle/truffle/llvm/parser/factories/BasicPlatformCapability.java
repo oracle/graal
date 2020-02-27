@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,14 +36,19 @@ import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
-        if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
-            return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux")) {
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+                return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+            }
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("aarch64")) {
+                return new LinuxAArch64PlatformCapability(loadCxxLibraries);
+            }
         }
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new DarwinAMD64PlatformCapability(loadCxxLibraries);
@@ -86,7 +91,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         try {
             return createSyscallNode(getSyscall(index));
         } catch (IllegalArgumentException e) {
-            return new LLVMAMD64UnknownSyscallNode(index);
+            return new LLVMUnknownSyscallNode(index);
         }
     }
 

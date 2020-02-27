@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,29 +41,29 @@ import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild("rax")
-@NodeChild("rdi")
-@NodeChild("rsi")
-@NodeChild("rdx")
-@NodeChild("r10")
-@NodeChild("r8")
-@NodeChild("r9")
-public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
+@NodeChild("syscallNum")
+@NodeChild("arg1")
+@NodeChild("arg2")
+@NodeChild("arg3")
+@NodeChild("arg4")
+@NodeChild("arg5")
+@NodeChild("arg6")
+public abstract class LLVMSyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
-    protected LLVMSyscallOperationNode createNode(long rax) {
-        return LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).createSyscallNode(rax);
+    protected LLVMSyscallOperationNode createNode(long syscallNum) {
+        return LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).createSyscallNode(syscallNum);
     }
 
-    @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
-    protected long cachedSyscall(@SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
-                    @Cached("rax") @SuppressWarnings("unused") long cachedRax,
-                    @Cached("createNode(rax)") LLVMSyscallOperationNode node,
+    @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS")
+    protected long cachedSyscall(@SuppressWarnings("unused") long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6,
+                    @Cached("syscallNum") @SuppressWarnings("unused") long cachedSyscallNum,
+                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         if (context.syscallTraceStream() != null) {
-            trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), rdi, rsi, rdx, r10, r8, r9);
+            trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), arg1, arg2, arg3, arg4, arg5, arg6);
         }
-        long result = node.execute(rdi, rsi, rdx, r10, r8, r9);
+        long result = node.execute(arg1, arg2, arg3, arg4, arg5, arg6);
         if (context.syscallTraceStream() != null) {
             trace(context, "         result: %d\n", result);
         }
@@ -76,10 +76,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(replaces = "cachedSyscall")
-    protected long doI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    protected long doI64(long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
         // TODO: implement big switch with type casts + logic + ...?
         CompilerDirectives.transferToInterpreter();
-        return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);
+        return createNode(syscallNum).execute(arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
     @TruffleBoundary

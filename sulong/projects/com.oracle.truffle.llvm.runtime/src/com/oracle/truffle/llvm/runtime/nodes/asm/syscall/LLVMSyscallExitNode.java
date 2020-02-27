@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
+import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD64Syscall;
 
-final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
-
-    DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
-        super(DarwinAMD64Syscall.class, loadCxxLibraries);
+public class LLVMSyscallExitNode extends LLVMSyscallOperationNode {
+    @Override
+    public final String getName() {
+        return "exit";
     }
 
     @Override
-    protected LLVMSyscallOperationNode createSyscallNode(DarwinAMD64Syscall syscall) {
-        switch (syscall) {
-            case SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
-            case SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
-            case SYS_exit:
-                return new LLVMSyscallExitNode();
-            case SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
-            case SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
-            default:
-                return new LLVMUnknownSyscallNode(syscall);
-        }
+    public long execute(Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        int code = (int) ((long) arg1);
+        throw LLVMExitException.exit(code, this);
     }
 }
