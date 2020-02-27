@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
@@ -37,28 +37,25 @@ import java.util.Map;
  * track debug info associated with a Java class.
  */
 public class ClassEntry {
-   /**
+    /**
      * the name of the associated class.
-    */
+     */
     private String className;
     /**
      * details of the associated file.
      */
     FileEntry fileEntry;
     /**
-     * a list recording details of all primary
-     * ranges included in this class sorted by
-     * ascending address range.
+     * a list recording details of all primary ranges included in this class sorted by ascending
+     * address range.
      */
     private LinkedList<PrimaryEntry> primaryEntries;
     /**
-     * an index identifying primary ranges which
-     * have already been encountered.
+     * an index identifying primary ranges which have already been encountered.
      */
     private Map<Range, PrimaryEntry> primaryIndex;
     /**
-     * an index of all primary and secondary files
-     * referenced from this class's compilation unit.
+     * an index of all primary and secondary files referenced from this class's compilation unit.
      */
     private Map<FileEntry, Integer> localFilesIndex;
     /**
@@ -66,8 +63,7 @@ public class ClassEntry {
      */
     private LinkedList<FileEntry> localFiles;
     /**
-     * an index of all primary and secondary dirs
-     * referenced from this class's compilation unit.
+     * an index of all primary and secondary dirs referenced from this class's compilation unit.
      */
     private HashMap<DirEntry, Integer> localDirsIndex;
     /**
@@ -75,23 +71,19 @@ public class ClassEntry {
      */
     private LinkedList<DirEntry> localDirs;
     /**
-     * index of debug_info section compilation unit
-     * for this class.
+     * index of debug_info section compilation unit for this class.
      */
     private int cuIndex;
     /**
-     * index into debug_line section for associated
-     * compilation unit.
+     * index into debug_line section for associated compilation unit.
      */
     private int lineIndex;
     /**
-     * size of line number info prologue region for
-     * associated compilation unit.
+     * size of line number info prologue region for associated compilation unit.
      */
     private int linePrologueSize;
     /**
-     * total size of line number info region for
-     * associated compilation unit.
+     * total size of line number info region for associated compilation unit.
      */
     private int totalSize;
 
@@ -104,12 +96,14 @@ public class ClassEntry {
         this.localFilesIndex = new HashMap<>();
         this.localDirs = new LinkedList<>();
         this.localDirsIndex = new HashMap<>();
-        localFiles.add(fileEntry);
-        localFilesIndex.put(fileEntry, localFiles.size());
-        DirEntry dirEntry = fileEntry.getDirEntry();
-        if (dirEntry != null) {
-            localDirs.add(dirEntry);
-            localDirsIndex.put(dirEntry, localDirs.size());
+        if (fileEntry != null) {
+            localFiles.add(fileEntry);
+            localFilesIndex.put(fileEntry, localFiles.size());
+            DirEntry dirEntry = fileEntry.getDirEntry();
+            if (dirEntry != null) {
+                localDirs.add(dirEntry);
+                localDirsIndex.put(dirEntry, localDirs.size());
+            }
         }
         this.cuIndex = -1;
         this.lineIndex = -1;
@@ -117,7 +111,7 @@ public class ClassEntry {
         this.totalSize = -1;
     }
 
-    PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
@@ -127,7 +121,7 @@ public class ClassEntry {
         return null;
     }
 
-    void addSubRange(Range subrange, FileEntry subFileEntry) {
+    public void addSubRange(Range subrange, FileEntry subFileEntry) {
         Range primary = subrange.getPrimary();
         /*
          * the subrange should belong to a primary range
@@ -140,14 +134,16 @@ public class ClassEntry {
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
         primaryEntry.addSubRange(subrange, subFileEntry);
-        if (localFilesIndex.get(subFileEntry) == null) {
-            localFiles.add(subFileEntry);
-            localFilesIndex.put(subFileEntry, localFiles.size());
-        }
-        DirEntry dirEntry = subFileEntry.getDirEntry();
-        if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
-            localDirs.add(dirEntry);
-            localDirsIndex.put(dirEntry, localDirs.size());
+        if (subFileEntry != null) {
+            if (localFilesIndex.get(subFileEntry) == null) {
+                localFiles.add(subFileEntry);
+                localFilesIndex.put(subFileEntry, localFiles.size());
+            }
+            DirEntry dirEntry = subFileEntry.getDirEntry();
+            if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
+                localDirs.add(dirEntry);
+                localDirsIndex.put(dirEntry, localDirs.size());
+            }
         }
     }
 
@@ -163,36 +159,48 @@ public class ClassEntry {
         return localFilesIndex.get(fileEntry);
     }
 
-    String getFileName() {
-        return fileEntry.getFileName();
+    public String getFileName() {
+        if (fileEntry != null) {
+            return fileEntry.getFileName();
+        } else {
+            return "";
+        }
     }
 
     String getFullFileName() {
-        return fileEntry.getFullName();
+        if (fileEntry != null) {
+            return fileEntry.getFullName();
+        } else {
+            return null;
+        }
     }
 
     String getDirName() {
-        return fileEntry.getPathName();
+        if (fileEntry != null) {
+            return fileEntry.getPathName();
+        } else {
+            return "";
+        }
     }
 
-    void setCUIndex(int cuIndex) {
+    public void setCUIndex(int cuIndex) {
         // should only get set once to a non-negative value
         assert cuIndex >= 0;
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
 
-    int getCUIndex() {
+    public int getCUIndex() {
         // should have been set before being read
         assert cuIndex >= 0;
         return cuIndex;
     }
 
-    int getLineIndex() {
+    public int getLineIndex() {
         return lineIndex;
     }
 
-    void setLineIndex(int lineIndex) {
+    public void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
     }
 

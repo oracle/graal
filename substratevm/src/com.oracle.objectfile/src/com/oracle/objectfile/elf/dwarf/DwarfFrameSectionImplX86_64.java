@@ -27,8 +27,8 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * x86_64-specific section generator for debug_frame section
- * that knows details of x86_64 registers and frame layout.
+ * x86_64-specific section generator for debug_frame section that knows details of x86_64 registers
+ * and frame layout.
  */
 public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     public static final int DW_CFA_RSP_IDX = 7;
@@ -52,15 +52,23 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * rsp points at the word containing the saved rip
-         * so the frame base (cfa) is at rsp + 8 (why not - ???)
-         * def_cfa r7 (sp) offset 8
+         * rsp points at the word containing the saved rip so the frame base (cfa) is at rsp + 8
+         * (why not - ???)
+         *
+         * <ul>
+         *
+         * <li><code>def_cfa r7 (sp) offset 8</code>
+         *
+         * </ul>
          */
         pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
         /*
-         * and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
-         * (why not -1 ???)
-         * offset r16 (rip) cfa - 8
+         * rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa (why
+         * not -1 ???)
+         *
+         * <ul> <li><code>offset r16 (rip) cfa - 8</code>
+         *
+         * </ul>
          */
         pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
         return pos;

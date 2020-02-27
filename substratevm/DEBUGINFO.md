@@ -2,22 +2,69 @@ Using the ptototype debug info feature
 --------------------------------------
 
 To add debug info to a generated native image add flag
--H:+GenerateDebugInfo to the native image command line.
+-H:GenerateDebugInfo=<N> to the native image command line (where N is
+a positive integer value -- the default value 0 means generate no
+debug info). For example,
 
     $ javac Hello.java
     $ mx native-image -H:GenerateDebugInfo=1 Hello
 
 The resulting image should contain code (method) debug records in a
-format gdb understands (VS support is still under development).
+format gdb understands (VS support is still under development). At
+present it makes no difference which positive value is supplied as
+argument to the GenerateDebugInfo option.
 
-The flag also enables caching of sources for JDK runtime classes,
-GraalVM classes and application classes which can be located during
-native image generation. The cache is created under local subdirectory
-sources and can be used to configure source file search path roots for
-the debugger. Files in the cache are located in a directory hierarchy
-that matches the file path information included in the native image
-debug records
+The GenerateDebugInfo option also enables caching of sources for any
+JDK runtime classes, GraalVM classes and application classes which can
+be located during native image generation. The cache is created under
+local subdirectory sources. It is used to configure source file search
+path roots for the debugger. Files in the cache are located in a
+directory hierarchy that matches the file path information included in
+the native image debug records. The source cache should contain all
+the files needed to debug the generated image and nothing more. This
+local cache provides a convenient way of making just the necessary
+sources available to the debugger/IDE when debugging a native image.
 
+The implementation tries to be smart about locating source files. It
+uses the current JAVA_HOME to locate the JDK src.zip when searching
+for JDK runtime sources. It also uses entries in the classpath to
+suggest locations for GraalVM source files and application source
+files (see below for precise details of the scheme used to identify
+source locations). However, source layouts do vary and it may no tbe
+possible to find all sources. Hence, users can specify the location of
+source files explicitly on the command line using option
+DebugInfoSourceSearchPath:
+
+    $ javac --source-path apps/greeter/src \
+        -d apps/greeter/classes org/my/greeter/*Greeter.java
+    $ javac -cp apps/greeter/classes \
+        --source-path apps/hello/src \
+        -d apps/hello/classes org/my/hello/Hello.java
+    $ mx native-image -H:GenerateDebugInfo=1 \
+        -H:DebugInfoSourceSearchPath=apps/hello/src \
+        -H:DebugInfoSourceSearchPath=apps/greeter/src \
+        -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
+
+Option DebugInfoSourceSearchPath can be repeated as many times as
+required to notify all the target source locations. The value passed
+to this option can be either an absolute or relative path. It can
+identify either a directory, a source jar or a source zip file. It is
+also possible to specify several source roots at once using a comma
+separator:
+
+    $ mx native-image -H:GenerateDebugInfo=1 \
+        -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
+        -cp apps/target/hello.jar:apps/target/greeter.jar \
+        org.my.Hello
+
+Note that in both the examples above the DebugInfoSourceSearchPath
+options are actually redundant. In the first case the classpath
+entries for apps/hello/classes and apps/greeter/classes will be used
+to derive the default search roots apps/hello/src and
+apps/greeter/src. In the second case classpath entires
+apps/target/hello.jar and apps/target/greeter.jar will be used to
+derive the default search roots apps/target/hello-sources.jar and
+apps/target/greeter-sources.jar.
 
 What is currently implemented
 -----------------------------

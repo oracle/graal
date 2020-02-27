@@ -24,15 +24,15 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 /**
- * Details of a specific address range in a compiled method
- * either a primary range identifying a whole method
- * or a sub-range identifying a sequence of
- * instructions that belong to an inlined method.
+ * Details of a specific address range in a compiled method either a primary range identifying a
+ * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
+ * method.
  */
 
 public class Range {
@@ -54,20 +54,20 @@ public class Range {
     /*
      * create a primary range
      */
-    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
         this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
     }
 
     /*
      * create a primary or secondary range
      */
-    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
         /*
-         * currently file name and full method name need to go into the debug_str section
-         * other strings just need to be deduplicated to save space
+         * currently file name and full method name need to go into the debug_str section other
+         * strings just need to be deduplicated to save space
          */
-        this.fileName = stringTable.uniqueDebugString(fileName);
-        this.filePath =  filePath;
+        this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
+        this.filePath = filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);
@@ -102,8 +102,10 @@ public class Range {
     public Path getFileAsPath() {
         if (filePath != null) {
             return filePath.resolve(fileName);
-        } else {
+        } else if (fileName != null) {
             return Paths.get(fileName);
+        } else {
+            return null;
         }
     }
 

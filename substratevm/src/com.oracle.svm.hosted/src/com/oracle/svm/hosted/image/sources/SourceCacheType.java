@@ -26,8 +26,22 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public enum SourceCacheType {
-    JDK,
-    GRAALVM,
-    APPLICATION
+    JDK("jdk"),
+    GRAALVM("graal"),
+    APPLICATION("src");
+
+    final Path subdir;
+
+    SourceCacheType(String subdir) {
+        this.subdir = Paths.get(subdir);
+    }
+
+    public Path getSubdir() {
+        return subdir;
+    }
+
 }

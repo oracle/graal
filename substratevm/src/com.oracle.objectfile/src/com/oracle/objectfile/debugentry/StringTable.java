@@ -24,16 +24,15 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import java.util.HashMap;
 import java.util.Iterator;
 
 /**
- * Allows incoming strings to be reduced to unique (up
- * to equals) instances and supports marking of strings
- * which need to be written to the debug_str section
- * and retrieval of the location offset after writing.
+ * Allows incoming strings to be reduced to unique (up to equals) instances and supports marking of
+ * strings which need to be written to the debug_str section and retrieval of the location offset
+ * after writing.
  */
 public class StringTable implements Iterable<StringEntry> {
 
@@ -44,10 +43,10 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * Ensures a unique instance of a string exists in the
-     * table, inserting the supplied String if no equivalent
-     * String is already present. This should only be called
-     * before the string section has been written.
+     * Ensures a unique instance of a string exists in the table, inserting the supplied String if
+     * no equivalent String is already present. This should only be called before the string section
+     * has been written.
+     * 
      * @param string the string to be included in the table
      * @return the unique instance of the String
      */
@@ -56,13 +55,12 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * Ensures a unique instance of a string exists in the
-     * table and is marked for inclusion in the debug_str
-     * section, inserting the supplied String if no equivalent
-     * String is already present. This should only be called
-     * before the string section has been written.
-     * @param string the string to be included in the table
-     * and marked for  inclusion in the debug_str section
+     * Ensures a unique instance of a string exists in the table and is marked for inclusion in the
+     * debug_str section, inserting the supplied String if no equivalent String is already present.
+     * This should only be called before the string section has been written.
+     * 
+     * @param string the string to be included in the table and marked for inclusion in the
+     *            debug_str section
      * @return the unique instance of the String
      */
     public String uniqueDebugString(String string) {
@@ -82,13 +80,12 @@ public class StringTable implements Iterable<StringEntry> {
     }
 
     /**
-     * Retrieves the offset at which a given string was written
-     * into the debug_str section. This should only be called
-     * after the string section has been written.
+     * Retrieves the offset at which a given string was written into the debug_str section. This
+     * should only be called after the string section has been written.
+     * 
      * @param string
-     * @return the offset or -1 if the string does not
-     * define an entry or the entry has nto been written
-     * to the debug_str section
+     * @return the offset or -1 if the string does not define an entry or the entry has not been
+     *         written to the debug_str section
      */
     public int debugStringIndex(String string) {
         StringEntry stringEntry = table.get(string);

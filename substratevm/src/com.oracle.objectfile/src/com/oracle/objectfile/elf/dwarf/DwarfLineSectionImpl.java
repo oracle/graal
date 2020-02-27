@@ -29,12 +29,18 @@ package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.DirEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.Range;
 
 import java.util.Map;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LINE_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+
 /**
  * Section generator for debug_line section.
  */
@@ -48,13 +54,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_LN_LINE_BASE = -5;
     /**
-     * current generator follows C++ with line range 14
-     * giving full range -5 to 8.
+     * current generator follows C++ with line range 14 giving full range -5 to 8.
      */
     private static final int DW_LN_LINE_RANGE = 14;
     /**
-     *  current generator uses opcode base of 13
-     *  which must equal DW_LNS_define_file + 1.
+     * current generator uses opcode base of 13 which must equal DW_LNS_define_file + 1.
      */
     private static final int DW_LN_OPCODE_BASE = 13;
 
@@ -62,15 +66,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      * standard opcodes defined by Dwarf 2
      */
     /*
-     *  0 can be returned to indicate an invalid opcode
+     * 0 can be returned to indicate an invalid opcode
      */
     private static final byte DW_LNS_undefined = 0;
     /*
-     *  0 can be inserted as a prefix for extended opcodes
+     * 0 can be inserted as a prefix for extended opcodes
      */
     private static final byte DW_LNS_extended_prefix = 0;
     /*
-     *  append current state as matrix row 0 args
+     * append current state as matrix row 0 args
      */
     private static final byte DW_LNS_copy = 1;
     /*
@@ -78,7 +82,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final byte DW_LNS_advance_pc = 2;
     /*
-     *  increment line 1 sleb arg
+     * increment line 1 sleb arg
      */
     private static final byte DW_LNS_advance_line = 3;
     /*
@@ -86,15 +90,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final byte DW_LNS_set_file = 4;
     /*
-     *  set column 1 uleb arg
+     * set column 1 uleb arg
      */
     private static final byte DW_LNS_set_column = 5;
     /*
-     *  flip is_stmt 0 args
+     * flip is_stmt 0 args
      */
     private static final byte DW_LNS_negate_stmt = 6;
     /*
-     *  set end sequence and copy row 0 args
+     * set end sequence and copy row 0 args
      */
     private static final byte DW_LNS_set_basic_block = 7;
     /*
@@ -112,9 +116,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /*
      * there is no extended opcode 0
      */
-    // private static final byte DW_LNE_undefined = 0;
+    @SuppressWarnings("unused")
+    private static final byte DW_LNE_undefined = 0;
     /*
-     *  end sequence of addresses
+     * end sequence of addresses
      */
     private static final byte DW_LNE_end_sequence = 1;
     /*
@@ -138,8 +143,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * we need to create a header, dir table, file table and line
-         * number table encoding for each CU
+         * we need to create a header, dir table, file table and line number table encoding for each
+         * CU
          */
 
         /*
@@ -168,16 +173,30 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     public int headerSize() {
         /*
          * header size is standard 31 bytes
-         * uint32 total_length
-         * uint16 version
-         * uint32 prologue_length
-         * uint8 min_insn_length
-         * uint8 default_is_stmt
-         * int8 line_base
-         * uint8 line_range
-         * uint8 opcode_base
-         * uint8 li_opcode_base
-         * uint8[opcode_base-1] standard_opcode_lengths
+         *
+         * <ul>
+         *
+         * <li><code>uint32 total_length</code>
+         *
+         * <li><code>uint16 version</code>
+         *
+         * <li><code>uint32 prologue_length</code>
+         *
+         * <li><code>uint8 min_insn_length</code>
+         *
+         * <li><code>uint8 default_is_stmt</code>
+         *
+         * <li><code>int8 line_base</code>
+         *
+         * <li><code>uint8 line_range</code>
+         *
+         * <li><code>uint8 opcode_base</code>
+         *
+         * <li><code>uint8 li_opcode_base</code>
+         *
+         * <li><code>uint8[opcode_base-1] standard_opcode_lengths</code>
+         *
+         * </ul>
          */
 
         return DW_LN_HEADER_SIZE;
@@ -185,13 +204,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     public int computeDirTableSize(ClassEntry classEntry) {
         /*
-         * table contains a sequence of 'nul'-terminated
-         * dir name bytes followed by an extra 'nul'
-         * and then a sequence of 'nul'-terminated
-         * file name bytes followed by an extra 'nul'
+         * table contains a sequence of 'nul'-terminated dir name bytes followed by an extra 'nul'
+         * and then a sequence of 'nul'-terminated file name bytes followed by an extra 'nul'
          *
-         * for now we assume dir and file names are ASCII
-         * byte strings
+         * for now we assume dir and file names are ASCII byte strings
          */
         int dirSize = 0;
         for (DirEntry dir : classEntry.getLocalDirs()) {
@@ -206,13 +222,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     public int computeFileTableSize(ClassEntry classEntry) {
         /*
-         * table contains a sequence of 'nul'-terminated
-         * dir name bytes followed by an extra 'nul'
-         * and then a sequence of 'nul'-terminated
-         * file name bytes followed by an extra 'nul'
-
-         * for now we assume dir and file names are ASCII
-         * byte strings
+         * table contains a sequence of 'nul'-terminated dir name bytes followed by an extra 'nul'
+         * and then a sequence of 'nul'-terminated file name bytes followed by an extra 'nul'
+         * 
+         * for now we assume dir and file names are ASCII byte strings
          */
         int fileSize = 0;
         for (FileEntry localEntry : classEntry.getLocalFiles()) {
@@ -221,6 +234,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              */
             String baseName = localEntry.getFileName();
             int length = baseName.length();
+            /* we should never have a null or zero length entry in local files */
+            assert length > 0;
             fileSize += length + 1;
             DirEntry dirEntry = localEntry.getDirEntry();
             int idx = classEntry.localDirsIdx(dirEntry);
@@ -239,9 +254,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     public int computeLineNUmberTableSize(ClassEntry classEntry) {
         /*
-         * sigh -- we have to do this by generating the
-         * content even though we cannot write it into a byte[]
-        */
+         * sigh -- we have to do this by generating the content even though we cannot write it into
+         * a byte[]
+         */
         return writeLineNumberTable(classEntry, null, 0);
     }
 
@@ -253,9 +268,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
             if (valueObj != null && valueObj instanceof Number) {
                 /*
-                 * this may not be the final vaddr for the text segment
-                 * but it will be close enough to make debug easier
-                 * i.e. to within a 4k page or two
+                 * this may not be the final vaddr for the text segment but it will be close enough
+                 * to make debug easier i.e. to within a 4k page or two
                  */
                 debugTextBase = ((Number) valueObj).longValue();
             }
@@ -304,8 +318,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         pos = putShort(DW_VERSION_2, buffer, pos);
         /*
-         * 4 ubyte prologue length includes rest of header and
-         * dir + file table section
+         * 4 ubyte prologue length includes rest of header and dir + file table section
          */
         int prologueSize = classEntry.getLinePrologueSize() - 6;
         pos = putInt(prologueSize, buffer, pos);
@@ -346,7 +359,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         putByte((byte) 0, buffer, pos + 5);
         /* DW_LNS_set_basic_block */
         putByte((byte) 0, buffer, pos + 6);
-       /* DW_LNS_const_add_pc */
+        /* DW_LNS_const_add_pc */
         putByte((byte) 0, buffer, pos + 7);
         /* DW_LNS_fixed_advance_pc */
         putByte((byte) 1, buffer, pos + 8);
@@ -411,10 +424,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
+        FileEntry fileEntry = classEntry.getFileEntry();
+        if (fileEntry == null) {
+            return pos;
+        }
         /*
          * the primary file entry should always be first in the local files list
          */
-        assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
+        assert classEntry.localFilesIdx(fileEntry) == 1;
         String primaryClassName = classEntry.getClassName();
         String primaryFileName = classEntry.getFileName();
         String file = primaryFileName;
@@ -425,9 +442,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             Range primaryRange = primaryEntry.getPrimary();
             assert primaryRange.getFileName().equals(primaryFileName);
             /*
-             * each primary represents a method i.e. a contiguous
-             * sequence of subranges. we assume the default state
-             * at the start of each sequence because we always post an
+             * each primary represents a method i.e. a contiguous sequence of subranges. we assume
+             * the default state at the start of each sequence because we always post an
              * end_sequence when we finish all the subranges in the method
              */
             long line = primaryRange.getLine();
@@ -443,7 +459,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * set state for primary
              */
             debug("  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d\n", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(),
-                  primaryRange.getLine());
+                            primaryRange.getLine());
 
             /*
              * initialize and write a row for the start of the primary method
@@ -452,11 +468,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             pos = putSetBasicBlock(buffer, pos);
             /*
              * address is currently 0
-              */
+             */
             pos = putSetAddress(address, buffer, pos);
             /*
-             * state machine value of line is currently 1
-             * increment to desired line
+             * state machine value of line is currently 1 increment to desired line
              */
             if (line != 1) {
                 pos = putAdvanceLine(line - 1, buffer, pos);
@@ -470,6 +485,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 assert subrange.getLo() >= primaryRange.getLo();
                 assert subrange.getHi() <= primaryRange.getHi();
                 FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subrange);
+                if (subFileEntry == null) {
+                    continue;
+                }
                 String subfile = subFileEntry.getFileName();
                 int subFileIdx = classEntry.localFilesIdx(subFileEntry);
                 long subLine = subrange.getLine();
@@ -486,12 +504,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                     debug("  [0x%08x] missing line info - staying put at %s:%d\n", pos, file, line);
                 }
                 /*
-                 * there is a temptation to append end sequence at here
-                 * when the hiAddress lies strictly between the current
-                 * address and the start of the next subrange because,
-                 * ostensibly, we have void space between the end of
-                 * the current subrange and the start of the next one.
-                 * however, debug works better if we treat all the insns up
+                 * there is a temptation to append end sequence at here when the hiAddress lies
+                 * strictly between the current address and the start of the next subrange because,
+                 * ostensibly, we have void space between the end of the current subrange and the
+                 * start of the next one. however, debug works better if we treat all the insns up
                  * to the next range start as belonging to the current line
                  *
                  * if we have to update to a new file then do so
@@ -505,8 +521,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                     fileIdx = subFileIdx;
                 }
                 /*
-                 * check if we can advance line and/or address in
-                 * one byte with a special opcode
+                 * check if we can advance line and/or address in one byte with a special opcode
                  */
                 long lineDelta = subLine - line;
                 long addressDelta = subAddressLo - address;
@@ -520,15 +535,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                     }
                 } else {
                     /*
-                     * does it help to divide and conquer using
-                     * a fixed address increment
+                     * does it help to divide and conquer using a fixed address increment
                      */
                     int remainder = isConstAddPC(addressDelta);
                     if (remainder > 0) {
                         pos = putConstAddPC(buffer, pos);
                         /*
-                         * the remaining address can be handled with a
-                         * special opcode but what about the line delta
+                         * the remaining address can be handled with a special opcode but what about
+                         * the line delta
                          */
                         opcode = isSpecialOpcode(remainder, lineDelta);
                         if (opcode != DW_LNS_undefined) {
@@ -538,8 +552,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                             pos = putSpecialOpcode(opcode, buffer, pos);
                         } else {
                             /*
-                             * ok, bump the line separately then use a
-                             * special opcode for the address remainder
+                             * ok, bump the line separately then use a special opcode for the
+                             * address remainder
                              */
                             opcode = isSpecialOpcode(remainder, 0);
                             assert opcode != DW_LNS_undefined;
@@ -554,8 +568,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                             pos = putAdvanceLine(lineDelta, buffer, pos);
                         }
                         /*
-                         * n.b. we might just have had an out of range line increment
-                         * with a zero address increment
+                         * n.b. we might just have had an out of range line increment with a zero
+                         * address increment
                          */
                         if (addressDelta > 0) {
                             /*
@@ -655,6 +669,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int putSetColumn(long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_column;
         int pos = p;
@@ -667,6 +682,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int putNegateStmt(byte[] buffer, int p) {
         byte opcode = DW_LNS_negate_stmt;
         int pos = p;
@@ -826,7 +842,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             debugAddress += opcodeAddress(opcode);
             debugLine += opcodeLine(opcode);
             debug("  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d\n",
-                  pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
+                            pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
             return putByte(opcode, buffer, pos);
         }
     }
@@ -842,8 +858,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             long offsetLineDelta = lineDelta - DW_LN_LINE_BASE;
             if (offsetLineDelta < DW_LN_LINE_RANGE) {
                 /*
-                 * line_delta can be encoded
-                 * check if address is ok
+                 * line_delta can be encoded check if address is ok
                  */
                 if (addressDelta <= MAX_ADDRESS_ONLY_DELTA) {
                     long opcode = DW_LN_OPCODE_BASE + (addressDelta * DW_LN_LINE_RANGE) + offsetLineDelta;
@@ -886,8 +901,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     public final LayoutDecision.Kind[] targetSectionKinds = {
-            LayoutDecision.Kind.CONTENT,
-            LayoutDecision.Kind.OFFSET,
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.OFFSET,
     };
 
     @Override

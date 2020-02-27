@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
@@ -33,8 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Tracks debug info associated with a primary method.
- * i.e. a top level compiled method
+ * Tracks debug info associated with a primary method. i.e. a top level compiled method
  */
 public class PrimaryEntry {
     /**
@@ -61,6 +60,7 @@ public class PrimaryEntry {
      * Size of compiled method frame.
      */
     private int frameSize;
+
     public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
@@ -77,8 +77,7 @@ public class PrimaryEntry {
         assert !subranges.contains(subrange);
         assert subrangeIndex.get(subrange) == null;
         /*
-         * we need to generate a file table entry
-         * for all ranges
+         * we need to generate a file table entry for all ranges
          */
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);
@@ -92,10 +91,6 @@ public class PrimaryEntry {
         return classEntry;
     }
 
-    public FileEntry getFileEntry() {
-        return classEntry.getFileEntry();
-    }
-
     public List<Range> getSubranges() {
         return subranges;
     }
@@ -104,11 +99,11 @@ public class PrimaryEntry {
         return subrangeIndex.get(subrange);
     }
 
-    List<DebugFrameSizeChange> getFrameSizeInfos() {
+    public List<DebugFrameSizeChange> getFrameSizeInfos() {
         return frameSizeInfos;
     }
 
-    int getFrameSize() {
+    public int getFrameSize() {
         return frameSize;
     }
 }

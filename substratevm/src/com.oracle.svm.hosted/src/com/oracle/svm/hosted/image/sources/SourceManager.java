@@ -26,7 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -35,74 +34,59 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 
 /**
- * A singleton class responsible for locating source files
- * for classes included in a native image and copying them
- * into the local sources.
+ * A singleton class responsible for locating source files for classes included in a native image
+ * and copying them into the local sources.
  */
 public class SourceManager {
     /**
-     * Find and cache a source file for a give Java class and
-     * return a Path to the file relative to the source.
-     * @param resolvedType the Java type whose source file
-     * should  be located and cached
-     * @return a path identifying the location of a successfully
-     * cached file for inclusion in the generated debug info or
-     * null if a source file cannot be found or cached.
+     * Find and cache a source file for a give Java class and return a Path to the file relative to
+     * the source.
+     * 
+     * @param resolvedType the Java type whose source file should be located and cached
+     * @param clazz the Java class associated with the resolved type
+     * @return a path identifying the location of a successfully cached file for inclusion in the
+     *         generated debug info or null if a source file cannot be found or cached.
      */
-    public Path findAndCacheSource(ResolvedJavaType resolvedType) {
-        Path path = null;
+    public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz) {
+        /* short circuit if we have already seen this type */
+        Path path = verifiedPaths.get(resolvedType);
+        if (path != null) {
+            return (path != INVALID_PATH ? path : null);
+        }
+
         String fileName = computeBaseName(resolvedType);
         /*
-         * null for the name means this class
-         * will not have a source so we skip on that
+         * null for the name means this class will not have a source so we skip on that
          */
         if (fileName != null) {
             /*
-             * we can only provide sources
-             * for known classes and interfaces
+             * we can only provide sources for known classes and interfaces
              */
             if (resolvedType.isInstanceClass() || resolvedType.isInterface()) {
-                /*
-                 * if we have an OriginalClassProvider we
-                 * can use the underlying Java class
-                 * to provide the details we need to locate
-                 * a source
-                 */
-                if (resolvedType instanceof OriginalClassProvider) {
-                    Class<?> javaClass = ((OriginalClassProvider) resolvedType).getJavaClass();
-                    String packageName = computePackageName(javaClass);
-                    SourceCacheType type = sourceCacheType(packageName, javaClass);
-                    path = locateSource(fileName, packageName, type, javaClass);
-                }
-                /*
-                 * if we could not locate a source via the cache
-                 * then the fallback is to generate a path to the
-                 * file based on the class name and let the
-                 * user configure a path to the sources
-                 */
+                String packageName = computePackageName(resolvedType);
+                SourceCacheType sourceCacheType = sourceCacheType(packageName);
+                path = locateSource(fileName, packageName, sourceCacheType, resolvedType, clazz);
                 if (path == null) {
-                    String name = resolvedType.toJavaName();
-                    int idx = name.lastIndexOf('.');
-                    if (idx >= 0 && idx < name.length() - 1) {
-                        name = name.substring(0, idx);
-                        path = Paths.get("", name.split("\\."));
+                    // as a last ditch effort derive path from the Java class name
+                    if (packageName.length() > 0) {
+                        path = Paths.get("", packageName.split("\\."));
                         path = path.resolve(fileName);
                     }
                 }
             }
         }
+        /* memoize the lookup */
+        verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
+
         return path;
     }
 
     /**
-     * Construct the base file name for a resolved
-     * Java class excluding path elements using either
-     * the source name embedded in the class file or
-     * the class name itself.
-     * @param resolvedType the resolved java type whose
-     * source file name is required
-     * @return the file name or null if it the class cannot
-     * be associated with a source file
+     * Construct the base file name for a resolved Java class excluding path elements using either
+     * the source name embedded in the class file or the class name itself.
+     * 
+     * @param resolvedType the resolved java type whose source file name is required
+     * @return the file name or null if it the class cannot be associated with a source file
      */
     private String computeBaseName(ResolvedJavaType resolvedType) {
         String fileName = resolvedType.getSourceFileName();
@@ -129,33 +113,41 @@ public class SourceManager {
         }
         return fileName;
     }
+
     /**
-     * Construct the package name for a  Java class or
-     * the empty String if it has no package.
-     * @param javaClass the java class whose package
-     * name is required
-     * @return the package name or the empty String
-     * if it has no package
+     * Construct the package name for a Java type or the empty String if it has no package.
+     * 
+     * @param javaType the Java type whose package name is required
+     * @return the package name or the empty String if it has no package
      */
-    private String computePackageName(Class<?> javaClass) {
-        Package pkg = javaClass.getPackage();
-        return (pkg == null ? "" : pkg.getName());
+    private String computePackageName(ResolvedJavaType javaType) {
+        String name = javaType.toClassName();
+        int idx = name.lastIndexOf('.');
+        if (idx > 0) {
+            return name.substring(0, idx);
+        } else {
+            return "";
+        }
     }
+
     /**
-     * Construct the prototype name for a Java source file
-     * which can be used to resolve and cache an actual source
-     * file.
+     * Construct the prototype name for a Java source file which can be used to resolve and cache an
+     * actual source file.
+     * 
      * @param fileName the base file name for the source file
      * @param packageName the name of the package for the associated Java class
-     * @param type the type of cache in which to lookup or cache this class's source file
-     * @param javaClass the java class whose prototype name is required
+     * @param sourceCacheType the sourceCacheType of cache in which to lookup or cache this class's
+     *            source file
+     * @param javaType the java sourceCacheType whose prototype name is required
+     * @param clazz the class associated with the sourceCacheType used to identify the module prefix
+     *            for JDK classes
      * @return a protoype name for the source file
      */
-    private Path computePrototypeName(String fileName, String packageName, SourceCacheType type, Class<?> javaClass) {
+    private Path computePrototypeName(String fileName, String packageName, SourceCacheType sourceCacheType, ResolvedJavaType javaType, Class<?> clazz) {
         String prefix = "";
-        if (type == SourceCacheType.JDK) {
-            /* JDK paths may require the module name as prefix */
-            String moduleName = ModuleSupport.getModuleName(javaClass);
+        if (sourceCacheType == SourceCacheType.JDK && clazz != null) {
+            /* JDK11+ paths will require the module name as prefix */
+            String moduleName = ModuleSupport.getModuleName(clazz);
             if (moduleName != null) {
                 prefix = moduleName;
             }
@@ -166,51 +158,48 @@ public class SourceManager {
             return Paths.get(prefix, packageName.split("\\.")).resolve(fileName);
         }
     }
+
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter JDK runtime class lookups.
+     * A whitelist of packages prefixes used to pre-filter JDK runtime class lookups.
      */
     public static final String[] JDK_SRC_PACKAGE_PREFIXES = {
-            "java.",
-            "jdk.",
-            "javax.",
-            "sun.",
-            "com.sun.",
-            "org.ietf.",
-            "org.jcp.",
-            "org.omg.",
-            "org.w3c.",
-            "org.xml",
+                    "java.",
+                    "jdk.",
+                    "javax.",
+                    "sun.",
+                    "com.sun.",
+                    "org.ietf.",
+                    "org.jcp.",
+                    "org.omg.",
+                    "org.w3c.",
+                    "org.xml",
     };
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter GraalVM class lookups.
+     * A whitelist of packages prefixes used to pre-filter GraalVM class lookups.
      */
     public static final String[] GRAALVM_SRC_PACKAGE_PREFIXES = {
-            "com.oracle.graal.",
-            "com.oracle.objectfile.",
-            "com.oracle.svm.",
-            "com.oracle.truffle.",
-            "org.graalvm.",
+                    "com.oracle.graal.",
+                    "com.oracle.objectfile.",
+                    "com.oracle.svm.",
+                    "com.oracle.truffle.",
+                    "org.graalvm.",
     };
 
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter app class lookups which
-     * includes just the empty string because
-     * any package will do.
+     * A whitelist of packages prefixes used to pre-filter app class lookups which includes just the
+     * empty string because any package will do.
      */
     private static final String[] APP_SRC_PACKAGE_PREFIXES = {
-            "",
+                    "",
     };
 
     /**
      * Check a package name against a whitelist of acceptable packages.
+     * 
      * @param packageName the package name of the class to be checked
-     * @param whitelist a list of prefixes one of which may form
-     * the initial prefix of the package name being checked
-     * @return true if the package name matches an entry in the
-     * whitelist otherwise false
+     * @param whitelist a list of prefixes one of which may form the initial prefix of the package
+     *            name being checked
+     * @return true if the package name matches an entry in the whitelist otherwise false
      */
     private boolean whiteListPackage(String packageName, String[] whitelist) {
         for (String prefix : whitelist) {
@@ -222,10 +211,13 @@ public class SourceManager {
     }
 
     /**
-     * Identify which type of source cache should be used
-     * to locate a given class's source code.
+     * Identify which type of source cache should be used to locate a given class's source code as
+     * determined by it's package name.
+     * 
+     * @param packageName the package name of the class.
+     * @return the corresponding source cache type
      */
-    private SourceCacheType sourceCacheType(String packageName, Class<?> javaClass) {
+    private SourceCacheType sourceCacheType(String packageName) {
         if (whiteListPackage(packageName, JDK_SRC_PACKAGE_PREFIXES)) {
             return SourceCacheType.JDK;
         }
@@ -234,19 +226,30 @@ public class SourceManager {
         }
         return SourceCacheType.APPLICATION;
     }
+
     /**
-     * A map from each of the top level root keys to a
-     * cache that knows how to handle lookup and caching
-     * of the associated type of source file.
+     * A map from each of the top level root keys to a cache that knows how to handle lookup and
+     * caching of the associated type of source file.
      */
     private static HashMap<SourceCacheType, SourceCache> caches = new HashMap<>();
 
     /**
-     * Retrieve the source cache used to locate and cache sources
-     * of a given type as determined by the supplied key, creating
-     * and initializing it if it does not already exist.
-     * @param type an enum identifying the type of Java sources
-     * cached by the returned cache.
+     * A map from a Java type to an associated source paths which is known to have an up to date
+     * entry in the relevant source file cache. This is used to memoize previous lookups.
+     */
+    private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
+
+    /**
+     * An invalid path used as a marker to track failed lookups so we don't waste time looking up
+     * the source again. Note that all legitimate paths will end with a ".java" suffix.
+     */
+    private static final Path INVALID_PATH = Paths.get("invalid");
+
+    /**
+     * Retrieve the source cache used to locate and cache sources of a given type as determined by
+     * the supplied key, creating and initializing it if it does not already exist.
+     * 
+     * @param type an enum identifying the type of Java sources cached by the returned cache.
      * @return the desired source cache.
      */
     private SourceCache getOrCreateCache(SourceCacheType type) {
@@ -258,10 +261,13 @@ public class SourceManager {
         return sourceCache;
     }
 
-    private Path locateSource(String fileName, String packagename, SourceCacheType type, Class<?> javaClass) {
+    private Path locateSource(String fileName, String packagename, SourceCacheType type, ResolvedJavaType javaType, Class<?> clazz) {
         SourceCache cache = getOrCreateCache(type);
-        Path prototypeName = computePrototypeName(fileName, packagename, type, javaClass);
-        return cache.resolve(prototypeName);
+        Path prototypeName = computePrototypeName(fileName, packagename, type, javaType, clazz);
+        if (prototypeName != null) {
+            return cache.resolve(prototypeName);
+        } else {
+            return null;
+        }
     }
 }
-

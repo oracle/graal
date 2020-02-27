@@ -33,21 +33,33 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.JDK;
+
 public class JDKSourceCache extends SourceCache {
     /**
-     * create a JDK runtime class source cache.
+     * Create a JDK runtime class source cache..
      */
     protected JDKSourceCache() {
-        super(SourceCache.JDK_CACHE_KEY);
         initSrcRoots();
     }
+
+    @Override
+    protected final SourceCacheType getType() {
+        return JDK;
+    }
+
+    /*
+     * properties needed to locate relevant JDK and app source roots
+     */
+    private static final String JAVA_HOME_PROP = "java.home";
+    private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
 
     private void initSrcRoots() {
         String javaHome = System.getProperty(JAVA_HOME_PROP);
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
-        String javaSpecVersion =  System.getProperty(JAVA_SPEC_VERSION_PROP);
+        String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
         if (javaSpecVersion.equals("1.8")) {
             srcZipPath = javaHomePath.resolve("src.zip");
         } else {
@@ -68,4 +80,3 @@ public class JDKSourceCache extends SourceCache {
         }
     }
 }
-

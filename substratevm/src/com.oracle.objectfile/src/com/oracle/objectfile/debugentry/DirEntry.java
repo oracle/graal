@@ -24,38 +24,29 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
+
+import java.nio.file.Path;
 
 /**
- * Tracks debug info associated with a Java source file.
+ * Tracks the directory associated with one or more source files.
+ *
+ * This is identified separately from each FileEntry idenityfing files that reside in the directory.
+ * That is necessary because the line info generator needs to collect and write out directory names
+ * into directory tables once only rather than once per file.
  */
-public class FileEntry {
-    private String fileName;
-    private DirEntry dirEntry;
+public class DirEntry {
+    private Path path;
 
-    public FileEntry(String fileName, DirEntry dirEntry) {
-        this.fileName = fileName;
-        this.dirEntry = dirEntry;
+    public DirEntry(Path path) {
+        this.path = path;
     }
 
-    /**
-     * The name of the associated file excluding path elements.
-     */
-    public String getFileName() {
-        return fileName;
+    public Path getPath() {
+        return path;
     }
 
-    public String getPathName() {
-        return getDirEntry().getPathString();
-    }
-
-    public String getFullName() {
-        return getDirEntry().getPath().resolve(getFileName()).toString();
-    }
-    /**
-     * The directory entry associated with this file entry.
-     */
-    public DirEntry getDirEntry() {
-        return dirEntry;
+    public String getPathString() {
+        return path.toString();
     }
 }

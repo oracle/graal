@@ -31,6 +31,7 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.ELFObjectFile;
 
 import java.nio.ByteOrder;
@@ -40,8 +41,7 @@ import java.util.Set;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;
 
 /**
- * class from which all DWARF debug sections
- * inherit providing common behaviours.
+ * class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected DwarfSections dwarfSections;
@@ -55,26 +55,20 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * creates the target byte[] array used to define the section
-     * contents.
+     * creates the target byte[] array used to define the section contents.
      *
-     * the main task of this method is to precompute the
-     * size of the debug section. given the complexity of the
-     * data layouts that invariably requires performing a dummy
-     * write of the contents, inserting bytes into a small,
-     * scratch buffer only when absolutely necessary. subclasses
-     * may also cache some information for use when writing the
-     * contents.
+     * the main task of this method is to precompute the size of the debug section. given the
+     * complexity of the data layouts that invariably requires performing a dummy write of the
+     * contents, inserting bytes into a small, scratch buffer only when absolutely necessary.
+     * subclasses may also cache some information for use when writing the contents.
      */
     public abstract void createContent();
 
     /**
-     * populates the byte[] array used to contain the section
-     * contents.
+     * populates the byte[] array used to contain the section contents.
      *
-     * in most cases this task reruns the operations performed
-     * under createContent but this time actually writing data
-     * to the target byte[].
+     * in most cases this task reruns the operations performed under createContent but this time
+     * actually writing data to the target byte[].
      */
     public abstract void writeContent();
 
@@ -88,8 +82,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     public void checkDebug(int pos) {
         /*
-         * if the env var relevant to this element
-         * type is set then switch on debugging
+         * if the env var relevant to this element type is set then switch on debugging
          */
         String name = getSectionName();
         String envVarName = "DWARF_" + name.substring(1).toUpperCase();
@@ -279,6 +272,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putLong(value, scratch, 0);
@@ -312,22 +306,24 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * identify the section after which this debug section
-     * needs to be ordered when sizing and creating content.
+     * identify the section after which this debug section needs to be ordered when sizing and
+     * creating content.
+     * 
      * @return the name of the preceding section
      */
     public abstract String targetSectionName();
 
     /**
-     * identify the layout properties of the target section
-     * which need to have been decided before the contents
-     * of this section can be created.
+     * identify the layout properties of the target section which need to have been decided before
+     * the contents of this section can be created.
+     * 
      * @return an array of the relevant decision kinds
      */
     public abstract LayoutDecision.Kind[] targetSectionKinds();
 
     /**
      * identify this debug section by name.
+     * 
      * @return the name of the debug section
      */
     public abstract String getSectionName();

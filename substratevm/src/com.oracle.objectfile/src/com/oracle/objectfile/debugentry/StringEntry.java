@@ -24,13 +24,11 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 /**
- * Used to retain a unique (up to equals) copy of a
- * String. Also flag swhether the String needs to be
- * located in the debug_string section and, if so,
- * tracks the offset at which it gets written.
+ * Used to retain a unique (up to equals) copy of a String. Also flags whether the String needs to
+ * be located in the debug_string section and, if so, tracks the offset at which it gets written.
  */
 public class StringEntry {
     private String string;

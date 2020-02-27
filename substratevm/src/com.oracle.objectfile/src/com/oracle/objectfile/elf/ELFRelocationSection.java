@@ -240,10 +240,9 @@ public class ELFRelocationSection extends ELFSection {
         // our content depends on the content of the section being relocated
         // (because entries only get registered during generation)
         if (relocated != null) {
-            LayoutDecision relocatedSectionContent =
-                    decisions.get(relocated).getDecision(LayoutDecision.Kind.CONTENT);
+            LayoutDecision relocatedSectionContent = decisions.get(relocated).getDecision(LayoutDecision.Kind.CONTENT);
             deps.add(BuildDependency.createOrGet(ourContent,
-                                                 relocatedSectionContent));
+                            relocatedSectionContent));
         }
 
         if (isDynamic()) {
