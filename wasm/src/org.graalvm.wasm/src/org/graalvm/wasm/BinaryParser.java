@@ -959,8 +959,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int elemSegmentId = 0; elemSegmentId != numElements; ++elemSegmentId) {
             int tableIndex = readUnsignedInt32();
             // At the moment, WebAssembly (1.0, MVP) only supports one table instance, thus the only
-            // valid
-            // table index is 0.
+            // valid table index is 0.
             // Support for different table indices and "segment flags" might be added in the future
             // (see
             // https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#element-segments).
