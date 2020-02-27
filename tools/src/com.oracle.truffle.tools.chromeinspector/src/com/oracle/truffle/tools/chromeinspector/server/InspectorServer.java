@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import org.nanohttpd.protocols.http.ClientHandler;
 import org.nanohttpd.protocols.http.IHTTPSession;
 import org.nanohttpd.protocols.http.NanoHTTPD;
@@ -86,7 +87,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
     private final int port;
-    private final Map<String, ServerPathSession> sessions = new ConcurrentHashMap<>();
+    private final Map<Token, ServerPathSession> sessions = new ConcurrentHashMap<>();
 
     private InspectorServer(InetSocketAddress isa) {
         super(isa.getHostName(), isa.getPort());
@@ -100,7 +101,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         addHTTPInterceptor(new JSONHandler());
     }
 
-    public static InspectorServer get(InetSocketAddress isa, String path, InspectorExecutionContext context, boolean debugBrk,
+    public static InspectorServer get(InetSocketAddress isa, Token token, String pathContainingToken, InspectorExecutionContext context, boolean debugBrk,
                     boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
                     InspectServerSession initialSession) throws IOException {
         InspectorServer wss;
@@ -120,11 +121,11 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                 startServer = true;
                 SERVERS.put(isa, wss);
             }
-            if (wss.sessions.containsKey(path)) {
+            if (wss.sessions.containsKey(token)) {
                 // We have a session with this path already
                 throw new IOException("Inspector session with the same path exists already on " + isa.getHostString() + ":" + isa.getPort());
             }
-            wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
+            wss.sessions.put(token, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher, pathContainingToken));
         }
         if (startServer) {
             wss.start(Integer.MAX_VALUE);
@@ -239,7 +240,8 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                 }
                 if ("/json".equals(uri)) {
                     JSONArray json = new JSONArray();
-                    for (String path : sessions.keySet()) {
+                    for (ServerPathSession serverPathSession : sessions.values()) {
+                        final String path = serverPathSession.pathContainingToken;
                         JSONObject info = new JSONObject();
                         info.put("description", "GraalVM");
                         info.put("faviconUrl", "https://assets-cdn.github.com/images/icons/emoji/unicode/1f680.png");
@@ -269,9 +271,10 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
     @Override
     protected WebSocket openWebSocket(IHTTPSession handshake) {
-        String descriptor = handshake.getUri();
+        final String uri = handshake.getUri();
+        final Token token = Token.createHashedTokenFromString(uri);
         ServerPathSession session;
-        session = sessions.get(descriptor);
+        session = sessions.get(token);
         if (session != null) {
             InspectServerSession iss = session.getServerSession();
             if (iss == null) {
@@ -281,7 +284,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             }
             InspectWebSocket iws = new InspectWebSocket(handshake, iss, session.getConnectionWatcher());
             session.activeWS = iws;
-            iss.context.logMessage("CLIENT ws connection opened, descriptor = ", descriptor);
+            iss.context.logMessage("CLIENT ws connection opened, token = ", token);
             return iws;
         } else {
             return new ClosedWebSocket(handshake);
@@ -350,8 +353,8 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
      * path already, this is called after the {@link ConnectionWatcher#waitForClose()} is done.
      */
     @Override
-    public void close(String wspath) throws IOException {
-        ServerPathSession sps = sessions.remove(wspath);
+    public void close(Token token) throws IOException {
+        ServerPathSession sps = sessions.remove(token);
         if (sps != null) {
             InspectWebSocket iws = sps.activeWS;
             if (iws != null) {
@@ -364,8 +367,8 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     }
 
     @Override
-    public void consoleAPICall(String wsspath, String type, Object text) {
-        ServerPathSession sps = sessions.get(wsspath);
+    public void consoleAPICall(Token token, String type, Object text) {
+        ServerPathSession sps = sessions.get(token);
         if (sps != null) {
             InspectWebSocket iws = sps.activeWS;
             if (iws != null) {
@@ -394,13 +397,15 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         private final AtomicReference<InspectServerSession> serverSession;
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
+        private final String pathContainingToken;
         volatile InspectWebSocket activeWS;
 
-        ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
+        ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher, String pathContainingToken) {
             this.context = context;
             this.serverSession = new AtomicReference<>(serverSession);
             this.debugBrk = new AtomicBoolean(debugBrk);
             this.connectionWatcher = connectionWatcher;
+            this.pathContainingToken = pathContainingToken;
         }
 
         InspectorExecutionContext getContext() {
@@ -422,14 +427,14 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
     private class InspectWebSocket extends WebSocket {
 
-        private final String descriptor;
+        private final Token token;
         private final InspectServerSession iss;
         private final ConnectionWatcher connectionWatcher;
 
         InspectWebSocket(IHTTPSession handshake, InspectServerSession iss,
                         ConnectionWatcher connectionWatcher) {
             super(handshake);
-            this.descriptor = handshake.getUri();
+            this.token = Token.createHashedTokenFromString(handshake.getUri());
             this.iss = iss;
             this.connectionWatcher = connectionWatcher;
         }
@@ -469,7 +474,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         public void onClose(CloseCode code, String reason, boolean initiatedByRemote) {
             iss.context.logMessage("CLIENT web socket connection closed.", "");
             connectionWatcher.notifyClosing();
-            ServerPathSession sps = sessions.get(descriptor);
+            ServerPathSession sps = sessions.get(token);
             if (sps != null) {
                 sps.activeWS = null;
             }
