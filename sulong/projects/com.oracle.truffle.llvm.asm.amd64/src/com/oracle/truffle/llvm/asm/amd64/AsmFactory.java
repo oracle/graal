@@ -213,7 +213,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNode
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
@@ -508,7 +508,7 @@ class AsmFactory {
                 LLVMExpressionNode r10 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r10"));
                 LLVMExpressionNode r8 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r8"));
                 LLVMExpressionNode r9 = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("r9"));
-                LLVMExpressionNode syscall = LLVMAMD64SyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
+                LLVMExpressionNode syscall = LLVMSyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
                 statements.add(getOperandStore(PrimitiveType.I64, new AsmRegisterOperand("rax"), syscall));
                 break;
             }

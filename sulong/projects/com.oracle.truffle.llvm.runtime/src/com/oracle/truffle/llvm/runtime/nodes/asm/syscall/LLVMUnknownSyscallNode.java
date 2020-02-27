@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,27 +31,27 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMPosixCallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMPosixCallNodeGen;
 
-public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
+public class LLVMUnknownSyscallNode extends LLVMSyscallOperationNode {
 
     private final long nr;
     private final LLVMSyscallEntry syscallValue;
-    @Child private LLVMAMD64PosixCallNode syscall;
+    @Child private LLVMPosixCallNode syscall;
 
-    public LLVMAMD64UnknownSyscallNode(long nr) {
+    public LLVMUnknownSyscallNode(long nr) {
         this(nr, null);
     }
 
-    public LLVMAMD64UnknownSyscallNode(LLVMSyscallEntry syscall) {
+    public LLVMUnknownSyscallNode(LLVMSyscallEntry syscall) {
         this(syscall.value(), syscall);
     }
 
-    private LLVMAMD64UnknownSyscallNode(long nr, LLVMSyscallEntry syscallValue) {
+    private LLVMUnknownSyscallNode(long nr, LLVMSyscallEntry syscallValue) {
         this.nr = nr;
         this.syscallValue = syscallValue;
-        this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
+        this.syscall = LLVMPosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
     }
 
     @Override

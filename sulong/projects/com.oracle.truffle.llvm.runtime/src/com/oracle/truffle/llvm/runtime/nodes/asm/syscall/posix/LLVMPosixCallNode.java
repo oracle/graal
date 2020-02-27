@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,11 +41,11 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
+public abstract class LLVMPosixCallNode extends LLVMNode {
     private final String name;
     private final String signature;
 
-    public LLVMAMD64PosixCallNode(String name, String signature) {
+    public LLVMPosixCallNode(String name, String signature) {
         this.name = name;
         this.signature = signature;
     }

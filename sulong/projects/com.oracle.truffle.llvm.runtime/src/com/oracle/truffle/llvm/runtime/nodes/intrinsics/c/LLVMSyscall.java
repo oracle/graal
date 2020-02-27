@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSyscallFactory.SyscallArgConverterNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -53,7 +53,7 @@ public abstract class LLVMSyscall {
         for (int i = arguments.length; i < args.length; i++) {
             args[i] = new LLVMI64LiteralNode(0L);
         }
-        return LLVMAMD64SyscallNodeGen.create(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+        return LLVMSyscallNodeGen.create(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
 
     }
 

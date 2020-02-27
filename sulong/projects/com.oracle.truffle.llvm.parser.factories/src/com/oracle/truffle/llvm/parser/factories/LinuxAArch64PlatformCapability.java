@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
  *
@@ -27,20 +28,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
+package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
 
-public class LLVMAMD64SyscallExitNode extends LLVMSyscallOperationNode {
-    @Override
-    public final String getName() {
-        return "exit";
+final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
+
+    LinuxAArch64PlatformCapability(boolean loadCxxLibraries) {
+        super(LinuxAArch64Syscall.class, loadCxxLibraries);
     }
 
     @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        int code = (int) ((long) rdi);
-        throw LLVMExitException.exit(code, this);
+    protected LLVMSyscallOperationNode createSyscallNode(LinuxAArch64Syscall syscall) {
+        switch (syscall) {
+            case SYS_exit:
+            case SYS_exit_group: // TODO: implement difference to SYS_exit
+                return new LLVMSyscallExitNode();
+            default:
+                return new LLVMUnknownSyscallNode(syscall);
+        }
     }
 }
