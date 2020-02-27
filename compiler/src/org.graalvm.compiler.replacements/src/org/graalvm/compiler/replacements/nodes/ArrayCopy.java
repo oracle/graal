@@ -128,8 +128,7 @@ public interface ArrayCopy extends Virtualizable, SingleMemoryKill, MemoryAccess
     }
 
     /**
-     * Mark this node for deletion by the virtualizer. Can be overridden to perform other or
-     * additional actions when this node is virtualized.
+     * Perform any work required to safely delete this node during virtualization.
      */
     default void deleteThisNode(VirtualizerTool tool) {
         tool.delete();

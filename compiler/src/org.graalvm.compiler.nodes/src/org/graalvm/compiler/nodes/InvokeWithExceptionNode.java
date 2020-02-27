@@ -248,7 +248,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public InvokeNode replaceWithNonExceptingVariant() {
+    public InvokeNode replaceWithNonThrowing() {
         return replaceWithInvoke();
     }
 

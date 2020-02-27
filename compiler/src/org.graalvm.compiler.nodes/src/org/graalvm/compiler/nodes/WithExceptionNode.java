@@ -95,7 +95,7 @@ public abstract class WithExceptionNode extends ControlSplitNode {
     /**
      * Replace this node with a variant with the same semantics but without an exception edge.
      */
-    public abstract FixedNode replaceWithNonExceptingVariant();
+    public abstract FixedNode replaceWithNonThrowing();
 
     /**
      * Create a begin node appropriate as this node's next successor. In particular, if this node is

@@ -146,7 +146,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     }
 
     @Override
-    public FixedNode replaceWithNonExceptingVariant() {
+    public FixedNode replaceWithNonThrowing() {
         ForeignCallNode foreignCall = this.asNode().graph().add(new ForeignCallNode(foreignCalls, descriptor, stamp, arguments));
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, foreignCall, this.next());

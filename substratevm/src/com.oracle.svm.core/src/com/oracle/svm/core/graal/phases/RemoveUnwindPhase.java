@@ -77,7 +77,7 @@ public class RemoveUnwindPhase extends Phase {
          */
         for (WithExceptionNode node : withExceptionNodes) {
             if (node.isAlive()) {
-                node.replaceWithNonExceptingVariant();
+                node.replaceWithNonThrowing();
             }
         }
         for (BytecodeExceptionNode bytecodeExceptionNode : bytecodeExceptionNodes) {

@@ -131,7 +131,7 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
     }
 
     @Override
-    public FixedNode replaceWithNonExceptingVariant() {
+    public FixedNode replaceWithNonThrowing() {
         /*
          * TODO (GR-21064): Once we have VM-independent stubs for arraycopy, we will be able to just
          * generate a plain ArrayCopyNode here and benefit from all of its optimized variants.
