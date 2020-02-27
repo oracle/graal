@@ -88,7 +88,7 @@ final class TruffleSplittingStrategy {
             maybeTraceFail(engine, call, "Recursive split.");
             return false;
         }
-        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= 0 /*engine.splitLimit*/) {
+        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
             maybeTraceFail(engine, call, "Not enough budget. " + engine.splitCount + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splitLimit);
             return false;
         }
