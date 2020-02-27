@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public final class WasmContext {
@@ -137,7 +137,7 @@ public final class WasmContext {
         for (String moduleSpec : moduleSpecs) {
             final String[] parts = moduleSpec.split(":");
             if (parts.length > 2) {
-                throw new WasmException("Module specification '" + moduleSpec + "' is not valid.");
+                throw new WasmValidationException("Module specification '" + moduleSpec + "' is not valid.");
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];

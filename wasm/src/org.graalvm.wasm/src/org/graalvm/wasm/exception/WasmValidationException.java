@@ -48,17 +48,17 @@ import com.oracle.truffle.api.nodes.Node;
  * Thrown on various errors that may occur in the WebAssembly engine, but not during the execution
  * of a WebAssembly program.
  */
-public class WasmException extends RuntimeException implements TruffleException {
+public class WasmValidationException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
 
     @TruffleBoundary
-    public WasmException(String message) {
+    public WasmValidationException(String message) {
         super(message);
     }
 
     @TruffleBoundary
-    public WasmException(String message, Throwable cause) {
+    public WasmValidationException(String message, Throwable cause) {
         super(message, cause);
     }
 

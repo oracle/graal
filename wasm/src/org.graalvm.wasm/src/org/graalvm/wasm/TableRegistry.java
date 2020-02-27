@@ -41,7 +41,7 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmValidationException;
 
 public class TableRegistry {
     private static final int INITIAL_TABLES_SIZE = 8;
@@ -92,7 +92,7 @@ public class TableRegistry {
 
         public void ensureSizeAtLeast(int targetSize) {
             if (maxSize >= 0 && targetSize > maxSize) {
-                throw new WasmException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
+                throw new WasmValidationException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
                                 "declared maximum size is " + maxSize);
             }
             if (elements.length < targetSize) {
@@ -116,7 +116,7 @@ public class TableRegistry {
 
         public void set(int i, WasmFunction function) {
             if (elements[i] != null) {
-                throw new WasmException("Table " + tableIndex + " already has an element at index " + i + ".");
+                throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
             }
             elements[i] = function;
         }
