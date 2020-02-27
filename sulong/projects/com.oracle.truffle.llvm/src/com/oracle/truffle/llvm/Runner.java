@@ -904,22 +904,7 @@ final class Runner {
             library.makeBitcodeLibrary();
             context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            List<String> libraries = binaryParserResult.getLibraries();
-            ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
-            for (String lib : libraries) {
-                boolean added = false;
-                ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
-                if (dependency == null) {
-                    dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
-                    added = true;
-                }
-                if (dependency != null) {
-                    dependencies.add(dependency);
-                    if (added) {
-                        parseContext.dependencyQueueAddLast(dependency);
-                    }
-                }
-            }
+            ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
             parserResult.setDependencies(dependencies);
             parseContext.parserResultsAdd(parserResult);
@@ -930,6 +915,28 @@ final class Runner {
             LibraryLocator.traceDelegateNative(context, library);
             return null;
         }
+    }
+
+    /**
+     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
+     * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the
+     * {@link ParseContext#dependencyQueueAddLast dependency queue} if not already in there.
+     */
+    private ArrayList<ExternalLibrary> processDependencies(BinaryParserResult binaryParserResult, ParseContext parseContext, Object reason) {
+        ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
+        for (String lib : binaryParserResult.getLibraries()) {
+            ExternalLibrary dependency = context.findExternalLibrary(lib, reason, binaryParserResult.getLocator());
+            if (dependency != null) {
+                dependencies.add(dependency);
+            } else {
+                dependency = context.addExternalLibrary(lib, reason, binaryParserResult.getLocator());
+                if (dependency != null) {
+                    parseContext.dependencyQueueAddLast(dependency);
+                    dependencies.add(dependency);
+                }
+            }
+        }
+        return dependencies;
     }
 
     private void addExternalSymbolsToScopes(List<LLVMParserResult> parserResults) {
