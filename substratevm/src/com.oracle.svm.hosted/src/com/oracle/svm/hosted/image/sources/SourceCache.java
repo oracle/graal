@@ -212,7 +212,7 @@ public abstract class SourceCache {
         String fileSeparator = filePath.getFileSystem().getSeparator();
         String newSeparator = root.getFileSystem().getSeparator();
         if (!fileSeparator.equals(newSeparator)) {
-            filePathString = filePathString.replaceAll(fileSeparator, newSeparator);
+            filePathString = filePathString.replace(fileSeparator, newSeparator);
         }
         return root.resolve(filePathString);
     }
