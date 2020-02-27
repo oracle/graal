@@ -46,9 +46,12 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -75,6 +78,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     public static final byte KIND_EMPTY_MATCH = 4;
 
     private static final byte FLAG_IS_LOOK_AROUND_NEGATED = 1 << N_FLAGS;
+    private static final byte FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 1;
 
     private final short astNodeId;
     private final short extraId;
@@ -141,12 +145,65 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         setFlag(FLAG_IS_LOOK_AROUND_NEGATED, value);
     }
 
+    public boolean isDeterministic() {
+        return getFlag(FLAG_IS_DETERMINISTIC);
+    }
+
+    public void setDeterministic(boolean value) {
+        setFlag(FLAG_IS_DETERMINISTIC, value);
+    }
+
     public boolean isLookAhead(RegexAST ast) {
         return isLookAround() && ast.getLookArounds().get(getLookAroundId()).isLookAheadAssertion();
     }
 
     public boolean isLookBehind(RegexAST ast) {
         return isLookAround() && ast.getLookArounds().get(getLookAroundId()).isLookBehindAssertion();
+    }
+
+    /**
+     * Initializes this state's {@link #isDeterministic()}-property, depending on {@code forward}. A
+     * state is considered deterministic iff it either has only one successor, or all of its
+     * successors/predecessors (depending on {@code forward}) represent {@link #isCharacterClass()
+     * character classes}, and none of those character classes intersect.
+     */
+    public void initIsDeterministic(boolean forward, CompilationBuffer compilationBuffer) {
+        setDeterministic(calcIsDeterministic(forward, compilationBuffer));
+    }
+
+    private boolean calcIsDeterministic(boolean forward, CompilationBuffer compilationBuffer) {
+        PureNFATransition[] successors = getSuccessors(forward);
+        if (successors.length <= 1) {
+            return true;
+        }
+        if (!successors[0].getTarget(forward).isCharacterClass()) {
+            return false;
+        }
+        RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
+        if (successors.length > 8) {
+            acc.addSet(successors[0].getTarget(forward).getCharSet());
+        }
+        for (int i = 1; i < successors.length; i++) {
+            PureNFAState target = successors[i].getTarget(forward);
+            if (!target.isCharacterClass()) {
+                return false;
+            }
+            if (successors.length <= 8) {
+                // avoid calculating union sets on low number of successors
+                for (int j = 0; j < i; j++) {
+                    if (successors[j].getTarget(forward).getCharSet().intersects(target.getCharSet())) {
+                        return false;
+                    }
+                }
+            } else {
+                if (target.getCharSet().intersects(acc.get())) {
+                    return false;
+                }
+                acc.addSet(target.getCharSet());
+            }
+        }
+        return true;
+
     }
 
     @Override

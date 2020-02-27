@@ -105,6 +105,10 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
         return quantifierGuards;
     }
 
+    public boolean hasAnyGuards() {
+        return caretGuard || dollarGuard || quantifierGuards.length > 0;
+    }
+
     @TruffleBoundary
     public JsonValue toJson(RegexAST ast) {
         return Json.obj(Json.prop("id", id),

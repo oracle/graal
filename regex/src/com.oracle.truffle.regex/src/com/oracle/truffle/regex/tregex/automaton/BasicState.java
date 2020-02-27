@@ -209,6 +209,22 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     }
 
     /**
+     * Returns {@code true} iff this state is non-final and has no successors/predecessors
+     * (depending on {@code forward} other than itself.
+     */
+    public boolean isDead(boolean forward) {
+        if (isFinalState(forward)) {
+            return false;
+        }
+        for (int i = 0; i < getSuccessors(forward).length; i++) {
+            if (getSuccessors(forward)[i].getTarget(forward) != this) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Helper for predecessor initialization. Since the number of predecessors of a given state is
      * unknown during automaton construction, we cannot allocate a suitable array for them
      * immediately. Instead, we capture the number of predecessors with this method, and initialize

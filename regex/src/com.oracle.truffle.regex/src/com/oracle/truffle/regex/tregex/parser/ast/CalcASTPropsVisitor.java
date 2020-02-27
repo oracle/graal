@@ -155,6 +155,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
+        backReference.setHasBackReferences();
         backReference.getParent().setHasBackReferences();
         if (backReference.hasQuantifier()) {
             // TODO: maybe check if the referenced group can produce a zero-width match

@@ -671,7 +671,7 @@ public final class DFAGenerator implements JsonConvertible {
                  * itself as long as no newline is encountered, and the optimized search would
                  * hardly ever trigger after the first occurrence of the literal.
                  */
-                RangesAccumulator<IntRangesBuffer> acc = new RangesAccumulator<>(new IntRangesBuffer());
+                RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
                 for (DFAStateNodeBuilder s : stateMap.values()) {
                     acc.clear();
                     if (!prefixNFAStates.containsAll(s.getNfaTransitionSet().getTargetStateSet())) {

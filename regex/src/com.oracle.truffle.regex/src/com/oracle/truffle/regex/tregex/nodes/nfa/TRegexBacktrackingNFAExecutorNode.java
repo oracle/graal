@@ -126,6 +126,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                 matchers[i] = CP16BitMatchers.createMatcher(s.getCharSet(), compilationBuffer);
             }
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(forward).length);
+            s.initIsDeterministic(forward, compilationBuffer);
         }
         this.maxNTransitions = maxTransitions;
     }
@@ -259,19 +260,16 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         final int index = locals.getIndex();
         boolean atEnd = isForward() ? index >= getInputLength(locals) : index == 0;
         char c = atEnd ? 0 : inputGetChar(locals, index);
-        if (successors.length == 0) {
-            // TODO: eliminate dead states from NFA
-            return IP_BACKTRACK;
-        }
-        if (successors.length == 1) {
-            PureNFATransition transition = successors[0];
-            CompilerDirectives.isPartialEvaluationConstant(transition);
-            if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
-                updateState(locals, transition, index);
-                return transition.getTarget(isForward()).getId();
-            } else {
-                return IP_BACKTRACK;
+        if (curState.isDeterministic()) {
+            for (int i = 0; i < successors.length; i++) {
+                PureNFATransition transition = successors[i];
+                CompilerDirectives.isPartialEvaluationConstant(transition);
+                if (transitionMatches(locals, compactString, transition, index, atEnd, c)) {
+                    updateState(locals, transition, index);
+                    return transition.getTarget(isForward()).getId();
+                }
             }
+            return IP_BACKTRACK;
         } else {
             long[] transitionBitSet = locals.getTransitionBitSet();
             CompilerDirectives.isPartialEvaluationConstant(transitionBitSet);

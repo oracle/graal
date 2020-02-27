@@ -285,10 +285,6 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
         possibleResults.set(index);
     }
 
-    public boolean isDead(boolean forward) {
-        return !isFinalState(forward) && (getSuccessors(forward).length == 0 || getSuccessors(forward).length == 1 && getSuccessors(forward)[0].getTarget(forward) == this);
-    }
-
     @TruffleBoundary
     public String idToString() {
         return getStateSet().stream().map(x -> String.valueOf(x.getId())).collect(Collectors.joining(",", "(", ")")) + "[" + getId() + "]";

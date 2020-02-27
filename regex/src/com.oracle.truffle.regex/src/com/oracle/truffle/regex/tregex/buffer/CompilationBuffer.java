@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 /**
@@ -68,6 +69,7 @@ public class CompilationBuffer {
     private IntRangesBuffer intRangesBuffer1;
     private IntRangesBuffer intRangesBuffer2;
     private IntRangesBuffer intRangesBuffer3;
+    private RangesAccumulator<IntRangesBuffer> intRangesAccumulator;
 
     @SuppressWarnings("unchecked")
     public <T> ObjectArrayBuffer<T> getObjectBuffer1() {
@@ -149,5 +151,13 @@ public class CompilationBuffer {
         }
         intRangesBuffer3.clear();
         return intRangesBuffer3;
+    }
+
+    public RangesAccumulator<IntRangesBuffer> getIntRangesAccumulator() {
+        if (intRangesAccumulator == null) {
+            intRangesAccumulator = new RangesAccumulator<>(new IntRangesBuffer());
+        }
+        intRangesAccumulator.clear();
+        return intRangesAccumulator;
     }
 }
