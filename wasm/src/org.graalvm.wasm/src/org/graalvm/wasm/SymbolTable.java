@@ -296,7 +296,7 @@ public class SymbolTable {
 
     public void checkFunctionIndex(int funcIndex) {
         if (funcIndex < 0 || funcIndex >= numFunctions) {
-            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions()));
+            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
         }
 
     }
