@@ -113,9 +113,11 @@ class MBeanProxy<T extends DynamicMBean> {
         if (this.bean != null) {
             throw new IllegalStateException("Already initialized.");
         }
-        assert name != null;
+        assert this.name == null;
+        assert this.objName == null;
         this.bean = mbean;
         this.name = strName;
+        this.objName = objectName;
     }
 
     /**

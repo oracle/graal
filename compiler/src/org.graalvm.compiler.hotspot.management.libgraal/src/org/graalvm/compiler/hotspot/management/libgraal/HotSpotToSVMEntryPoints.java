@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import javax.management.Attribute;
 import javax.management.AttributeList;
+import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
@@ -37,7 +38,6 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
-import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -58,7 +58,7 @@ final class HotSpotToSVMEntryPoints {
     }
 
     /**
-     * Returns the pending {@link HotSpotGraalRuntimeMBean} registrations.
+     * Returns the pending {@link DynamicMBean} registrations.
      */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
     @SuppressWarnings({"try", "unused"})
@@ -177,8 +177,8 @@ final class HotSpotToSVMEntryPoints {
     }
 
     /**
-     * Returns the required {@link HotSpotGraalRuntimeMBean}'s attribute values encoded as a byte
-     * array using {@link OptionsEncoder}.
+     * Returns the required {@link DynamicMBean}'s attribute values encoded as a byte array using
+     * {@link OptionsEncoder}.
      */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getAttributes")
     @SuppressWarnings({"try", "unused"})
@@ -199,7 +199,7 @@ final class HotSpotToSVMEntryPoints {
     }
 
     /**
-     * Sets the given {@link HotSpotGraalRuntimeMBean}'s attribute values.
+     * Sets the given {@link DynamicMBean}'s attribute values.
      */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_setAttributes")
     @SuppressWarnings({"try", "unused"})
@@ -219,7 +219,7 @@ final class HotSpotToSVMEntryPoints {
     }
 
     /**
-     * Invokes an action on {@link HotSpotGraalRuntimeMBean}.
+     * Invokes an action on {@link DynamicMBean}.
      */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_invoke")
     @SuppressWarnings({"try", "unused"})
