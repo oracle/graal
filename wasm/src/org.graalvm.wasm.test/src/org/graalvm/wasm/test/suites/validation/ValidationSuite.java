@@ -68,6 +68,9 @@ public class ValidationSuite extends WasmSuiteBase {
                     binaryCase(
                                     "Function: cannot return more than one value",
                                     "org.graalvm.wasm.exception.WasmException: A function can return at most one result.",
+                                    // (module
+                                    // (func $f (result i32) i32.const 42 i32.const 42)
+                                    // )
                                     "0061 736d 0100 0000 0105 0160 0002 7f03 0201 000a 0801 0600 412a 412a 0b"),
 
                     // ## 3.2.3 Table types
