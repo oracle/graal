@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -156,7 +156,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * library.
  */
 public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
-    private final ExternalLibrary library = ExternalLibrary.internal("SulongIntrinsics", false);
+    private final ExternalLibrary library = ExternalLibrary.internalFromName("SulongIntrinsics", false);
 
     @Override
     public ExternalLibrary getLibrary() {

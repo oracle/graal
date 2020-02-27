@@ -504,14 +504,10 @@ def getCommonOptions(withAssertion, lib_args=None):
         options.append('-Dpolyglot.llvm.libraries=' + ':'.join(lib_args))
 
     options += ['-Xss56m', '-Xms4g', '-Xmx4g']
-    options.append(getLLVMRootOption())
     if withAssertion:
         options += ['-ea', '-esa']
 
     return options
-
-def getLLVMRootOption():
-    return "-Dsulongtest.projectRoot=" + _root
 
 def pullsuite(suiteDir, urls):
     name = os.path.basename(urls[0])

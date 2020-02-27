@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -84,7 +83,7 @@ import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
@@ -162,21 +161,21 @@ final class Runner {
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    CallTarget parse(Source source) {
+    CallTarget parseWithDependencies(Source source) {
         ByteSequence bytes;
         ExternalLibrary library;
         if (source.hasBytes()) {
             bytes = source.getBytes();
             if (source.getPath() != null) {
-                library = new ExternalLibrary(context.getEnv().getInternalTruffleFile(source.getPath()), false, source.isInternal());
+                library = ExternalLibrary.createFromFile(context.getEnv().getInternalTruffleFile(source.getPath()), false, source.isInternal());
             } else {
-                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
+                library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
             }
         } else if (source.hasCharacters()) {
             switch (source.getMimeType()) {
                 case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
                     bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
-                    library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
+                    library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
                     break;
                 default:
                     throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
@@ -184,7 +183,7 @@ final class Runner {
         } else {
             throw new LLVMParserException("Should not reach here: Source is neither char-based nor byte-based!");
         }
-        return parse(source, bytes, library);
+        return parseWithDependencies(source, bytes, library);
     }
 
     private static final class LoadModulesNode extends RootNode {
@@ -297,18 +296,21 @@ final class Runner {
         }
     }
 
-    private CallTarget parse(Source source, ByteSequence bytes, ExternalLibrary library) {
+    /**
+     * Parses a bitcode module and all its dependencies and return a {@code CallTarget} that
+     * performs all necessary module initialization on execute.
+     */
+    private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
         // process the bitcode file and its dependencies in the dynamic linking order
         // (breadth-first)
-        List<LLVMParserResult> parserResults = new ArrayList<>();
-        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+        ParseContext parseContext = ParseContext.create();
+        parseLibraryWithSource(source, library, bytes, parseContext);
+        assert !library.isNative() && !parseContext.parserResultsIsEmpty();
 
-        parse(parserResults, dependencyQueue, source, library, bytes);
-        assert !library.isNative() && !parserResults.isEmpty();
+        ExternalLibrary[] sulongLibraries = parseDependencies(parseContext);
+        assert parseContext.dependencyQueueIsEmpty();
 
-        ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
-        assert dependencyQueue.isEmpty();
-
+        List<LLVMParserResult> parserResults = parseContext.getParserResults();
         addExternalSymbolsToScopes(parserResults);
 
         InitializationOrder initializationOrder = computeInitializationOrder(parserResults, sulongLibraries);
@@ -650,9 +652,7 @@ final class Runner {
         return type instanceof PointerType;
     }
 
-    ExternalLibrary[] parseDefaultLibraries(List<LLVMParserResult> parserResults) {
-        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
-
+    ExternalLibrary[] parseDefaultLibraries(ParseContext parseContext) {
         // There could be conflicts between Sulong's default libraries and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later
         // on.
@@ -668,7 +668,7 @@ final class Runner {
             // assume that the library is a native one until we parsed it and can say for sure
             ExternalLibrary lib = context.addExternalLibrary(external, true, "<command line>");
             if (lib != null) {
-                parse(parserResults, dependencyQueue, lib);
+                parseLibrary(lib, parseContext);
             }
         }
 
@@ -677,14 +677,14 @@ final class Runner {
         // code comes last, which is not necessarily correct...
         LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
-            sulongLibraryResults[i] = parse(parserResults, dependencyQueue, sulongLibraries[i]);
+            sulongLibraryResults[i] = parseLibrary(sulongLibraries[i], parseContext);
             if (sulongLibraries[i].getName().equalsIgnoreCase("libsulong")) {
                 context.addLibsulongDataLayout(sulongLibraryResults[i].getDataLayout());
             }
         }
-        while (!dependencyQueue.isEmpty()) {
-            ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, lib);
+        while (!parseContext.dependencyQueueIsEmpty()) {
+            ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
+            parseLibrary(lib, parseContext);
         }
 
         updateOverriddenSymbols(sulongLibraryResults);
@@ -695,21 +695,21 @@ final class Runner {
     /**
      * @return The sulong default libraries, if any were parsed.
      */
-    private ExternalLibrary[] parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue) {
+    private ExternalLibrary[] parseDependencies(ParseContext parseContext) {
         // at first, we are only parsing the direct dependencies of the main bitcode file
-        int directDependencies = dependencyQueue.size();
+        int directDependencies = parseContext.dependencyQueueSize();
         for (int i = 0; i < directDependencies; i++) {
-            ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, lib);
+            ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
+            parseLibrary(lib, parseContext);
         }
 
         // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibraries = loader.getDefaultDependencies(this, parserResults);
+        ExternalLibrary[] sulongLibraries = loader.getDefaultDependencies(this, parseContext);
 
         // finally we are dealing with all indirect dependencies
-        while (!dependencyQueue.isEmpty()) {
-            ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, lib);
+        while (!parseContext.dependencyQueueIsEmpty()) {
+            ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
+            parseLibrary(lib, parseContext);
         }
         return sulongLibraries;
     }
@@ -822,10 +822,8 @@ final class Runner {
 
     @SuppressWarnings("unchecked")
     public void loadDefaults(Path internalLibraryPath) {
-        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
-        ExternalLibrary polyglotMock = new ExternalLibrary(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
-        ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
-        LLVMParserResult polyglotMockResult = parse(parserResults, dependencyQueue, polyglotMock);
+        ExternalLibrary polyglotMock = ExternalLibrary.createFromPath(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
+        LLVMParserResult polyglotMockResult = parseLibrary(polyglotMock, ParseContext.create());
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
         // However, this is based on the assumption that polyglot-mock is the first loaded library!
         int symbolSize = polyglotMockResult.getDefinedFunctions().size() + polyglotMockResult.getDefinedGlobals().size() + polyglotMockResult.getExternalFunctions().size() +
@@ -845,7 +843,19 @@ final class Runner {
         }
     }
 
-    private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
+    /**
+     * Parses the {@link ExternalLibrary} {@code lib} and returns its {@link LLVMParserResult}.
+     * Explicit and implicit dependencies of {@code lib} are added to the
+     * {@link ParseContext#dependencyQueueAddLast dependency queue}. The returned
+     * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
+     * results}. The {@code lib} parameter is add to the {@link LLVMContext#addExternalLibrary
+     * context}.
+     * 
+     * @param lib the library to be parsed
+     * @param parseContext
+     * @return the parser result corresponding to {@code lib}
+     */
+    private LLVMParserResult parseLibrary(ExternalLibrary lib, ParseContext parseContext) {
         if (lib.hasFile() && !lib.getFile().isRegularFile() || lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
                 throw new LLVMParserException("'" + lib.getPath() + "' is not a file or does not exist.");
@@ -861,11 +871,15 @@ final class Runner {
         } catch (IOException | SecurityException | OutOfMemoryError ex) {
             throw new LLVMParserException("Error reading file " + lib.getPath() + ".");
         }
-        return parse(parserResults, dependencyQueue, source, lib, source.getBytes());
+        return parseLibraryWithSource(source, lib, source.getBytes(), parseContext);
     }
 
-    private LLVMParserResult parseBinary(List<LLVMParserResult> parserResults, BinaryParserResult binaryParserResult, Source source, ExternalLibrary library, ArrayList<ExternalLibrary> dependencies) {
+    /**
+     * Parses a binary (bitcode with optional meta information from an ELF, Mach-O object file).
+     */
+    private LLVMParserResult parseBinary(BinaryParserResult binaryParserResult, ExternalLibrary library) {
         ModelModule module = new ModelModule();
+        Source source = binaryParserResult.getSource();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
@@ -874,13 +888,24 @@ final class Runner {
         LLVMScope fileScope = new LLVMScope();
         LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory, id.getAndIncrement());
         LLVMParser parser = new LLVMParser(source, runtime);
-        LLVMParserResult parserResult = parser.parse(module, targetDataLayout, dependencies);
-        parserResults.add(parserResult);
-        return parserResult;
+        return parser.parse(module, targetDataLayout);
     }
 
-    private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
-                    ExternalLibrary library, ByteSequence bytes) {
+    /**
+     * Parses a single bitcode module and returns its {@link LLVMParserResult}. Explicit and
+     * implicit dependencies of {@code lib} are added to the
+     * {@link ParseContext#dependencyQueueAddLast dependency queue}. The returned
+     * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
+     * results}. This method adds {@code library} parameter to the
+     * {@link LLVMContext#addExternalLibrary context}.
+     * 
+     * @param source the {@link Source} of the library to be parsed
+     * @param library the {@link ExternalLibrary} corresponding to the library to be parsed
+     * @param bytes the bytes of the library to be parsed
+     * @param parseContext
+     * @return the parser result corresponding to {@code lib}
+     */
+    private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ParseContext parseContext) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             library.setIsNative(false);
@@ -889,16 +914,23 @@ final class Runner {
             List<String> libraries = binaryParserResult.getLibraries();
             ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
             for (String lib : libraries) {
-                LLVMContext.AddResult result = context.addExternalLibraryPair(lib, true, library, binaryParserResult.getLocator());
-                if (result != null) {
-                    ExternalLibrary dependency = result.library;
+                boolean added = false;
+                ExternalLibrary dependency = context.findExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                if (dependency == null) {
+                    dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                    added = true;
+                }
+                if (dependency != null) {
                     dependencies.add(dependency);
-                    if (result.added) {
-                        dependencyQueue.addLast(dependency);
+                    if (added) {
+                        parseContext.dependencyQueueAddLast(dependency);
                     }
                 }
             }
-            return parseBinary(parserResults, binaryParserResult, source, library, dependencies);
+            LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
+            parserResult.setDependencies(dependencies);
+            parseContext.parserResultsAdd(parserResult);
+            return parserResult;
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
