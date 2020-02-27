@@ -134,7 +134,26 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
+/**
+ * Drives a parsing request.
+ *
+ * @see #parse
+ */
 final class Runner {
+
+    /**
+     * Parses a {@code source} and all its (explicit and implicit) dependencies.
+     *
+     * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
+     *         constructors, etc.) the module represented by {@code source} and all dependencies.
+     */
+    public static CallTarget parse(LLVMContext context, DefaultLoader loader, AtomicInteger id, Source source) {
+        return new Runner(context, loader, id).parseWithDependencies(source);
+    }
+
+    public static void loadDefaults(LLVMContext context, DefaultLoader loader, AtomicInteger id, Path internalLibraryPath) {
+        new Runner(context, loader, id).loadDefaults(internalLibraryPath);
+    }
 
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
@@ -151,7 +170,7 @@ final class Runner {
     private final LLVMLanguage language;
     private final AtomicInteger id;
 
-    Runner(LLVMContext context, DefaultLoader loader, AtomicInteger id) {
+    private Runner(LLVMContext context, DefaultLoader loader, AtomicInteger id) {
         this.context = context;
         this.loader = loader;
         this.language = context.getLanguage();
@@ -161,7 +180,7 @@ final class Runner {
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    CallTarget parseWithDependencies(Source source) {
+    private CallTarget parseWithDependencies(Source source) {
         ByteSequence bytes;
         ExternalLibrary library;
         if (source.hasBytes()) {
@@ -814,7 +833,7 @@ final class Runner {
     }
 
     @SuppressWarnings("unchecked")
-    public void loadDefaults(Path internalLibraryPath) {
+    private void loadDefaults(Path internalLibraryPath) {
         ExternalLibrary polyglotMock = ExternalLibrary.createFromPath(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
         LLVMParserResult polyglotMockResult = parseLibrary(polyglotMock, ParseContext.create());
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
