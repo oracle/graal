@@ -38,7 +38,7 @@ import java.nio.file.Paths;
 import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
 public class GraalVMSourceCache extends SourceCache {
     /**
-     * create a GraalVM source cache
+     * Create a GraalVM source cache.
      */
     protected GraalVMSourceCache() {
         super(SourceCache.GRAALVM_CACHE_KEY);

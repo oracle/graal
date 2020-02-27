@@ -55,9 +55,15 @@ public abstract class SourceCache {
     protected static final String JAVA_CLASSPATH_PROP = "java.class.path";
     protected static final String JAVA_HOME_PROP = "java.home";
     protected static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
+
     /**
-     * A list of root directories which may contain source files
-     * from which this cache can be populated
+     * Set to true to avoid building the source code cache.
+     */
+    protected static final boolean DONT_CACHE = false;
+
+    /**
+     * A list of root directories which may contain source files.
+     * files in these directories are used to populate this cache.
      */
     protected List<Path> srcRoots;
 
@@ -219,7 +225,6 @@ public abstract class SourceCache {
      */
     public static SourceCache createSourceCache(SourceCacheType type) {
         SourceCache sourceCache = null;
-        boolean DONT_CACHE = false;
         switch (type) {
             case JDK:
                 sourceCache = DONT_CACHE ? new NullSourceCache(JDK_CACHE_KEY) : new JDKSourceCache();
@@ -274,7 +279,7 @@ public abstract class SourceCache {
         return cachedPath(candidate).toFile();
     }
     /**
-     * indicate whether a source path identifies a fie in the associated file system
+     * indicate whether a source path identifies a file in the associated file system.
      * @param sourcePath
      * @return true if the path identifies a file or false if no such file can be found
      * @throws IOException if there is some error in resolving the path
@@ -283,8 +288,8 @@ public abstract class SourceCache {
         return Files.isRegularFile(sourcePath);
     }
     /**
-     * ensure the directory hierarchy for a path exists
-     * creating any missing directories if needed
+     * Ensure the directory hierarchy for a path exists.
+     * Create any missing directories if needed.
      * @param targetDir a path to the desired directory
      * @throws IOException if it is not possible to create
      * one or more directories in the path

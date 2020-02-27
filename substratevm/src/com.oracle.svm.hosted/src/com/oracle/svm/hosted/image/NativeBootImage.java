@@ -64,7 +64,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;

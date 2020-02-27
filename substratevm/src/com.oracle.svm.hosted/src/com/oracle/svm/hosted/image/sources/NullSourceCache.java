@@ -26,19 +26,15 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class NullSourceCache extends SourceCache {
     /**
-     * create a cache that does nothing and assumes the sources are in 
-     * their original locations, to be resolved at debug time.
+     * Create a cache that does nothing.
+     * Assumes the sources are in their original locations,
+     * to be resolved at debug time.
      * 
-     * Why would you want to do this?
+     * Why might this be useful?
      *  - Shorter compile turnaround
      *  - the original cache doesn't account for C/C++ native code
      */
@@ -47,7 +43,7 @@ public class NullSourceCache extends SourceCache {
     }
 
     /**
-     * Just return the original path
+     * Just return the original path.
      *
      * @param filePath a prototype path for a source file
      * @return the original path
@@ -57,4 +53,3 @@ public class NullSourceCache extends SourceCache {
         return filePath;
     }
 }
-

@@ -34,11 +34,23 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-/* TODO : share this with ELF/DWARF and Mach-O code */
+/**
+ * Accept debugCodeInfo (etc) and populate the local debug database.
+ */
+
+/*
+ * TODO: 
+ * - share this with ELF/DWARF and Mach-O code 
+ * - abstract out the original code in elf.dwarf package and reuse it.
+ * - speed this up
+ * - move the nested classes outside
+ * - handle stack frames
+ */
 public abstract class DebugInfoBase {
 
     private boolean isWanted(DebugInfoProvider.DebugCodeInfo debugCodeInfo) {
-        return !debugCodeInfo.className().startsWith("com.oracle");
+        /* TODO: be much more clever; this is merely proof of concept */
+        return !(CVConstants.skipGraalInternals && debugCodeInfo.className().startsWith("com.oracle"));
     }
 
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
@@ -56,7 +68,7 @@ public abstract class DebugInfoBase {
             CVUtil.debug("primaryrange: [0x%08x,0x%08x,l=%d) %s.%s(%s) %s\n", lo, hi, primaryLine, className, methodName, paramNames, fileName);
             /* create an infoSection entry for the method */
             addRange(primary);
-            
+
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
                 String classNameAtLine = debugLineInfo.className();

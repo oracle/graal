@@ -35,7 +35,7 @@ import java.nio.file.Paths;
 
 public class JDKSourceCache extends SourceCache {
     /**
-     * create a JDK runtime class source cache.
+     * Create a JDK runtime class source cache.
      */
     protected JDKSourceCache() {
         super(SourceCache.JDK_CACHE_KEY);
@@ -68,4 +68,3 @@ public class JDKSourceCache extends SourceCache {
         }
     }
 }
-

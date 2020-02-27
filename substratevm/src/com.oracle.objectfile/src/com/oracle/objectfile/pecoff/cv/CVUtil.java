@@ -161,6 +161,6 @@ abstract class CVUtil {
     }
 
     public static void debug(String format, Object ... args) {
-        System.out.format(format, args);
+        //System.out.format(format, args);
     }
 }

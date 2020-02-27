@@ -36,7 +36,7 @@ import java.nio.file.Paths;
 
 public class ApplicationSourceCache extends SourceCache {
     /**
-     * create an application source cache
+     * Create an application source cache.
      */
     protected ApplicationSourceCache() {
         super(SourceCache.APPLICATION_CACHE_KEY);
@@ -88,6 +88,6 @@ public class ApplicationSourceCache extends SourceCache {
             }
         }
         /* add the current working directory as a path of last resort */
-        srcRoots.add(Paths.get("."));        
+        srcRoots.add(Paths.get("."));
     }
 }

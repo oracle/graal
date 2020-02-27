@@ -45,7 +45,7 @@ public interface CVConstants {
      * 
      * (some may become Graal options in the future)
      */
-    
+
     /*
      * path to JDK source code (for example unzipped src.zip)
      * If set, source paths for JDK classes in the object file will be
