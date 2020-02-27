@@ -99,8 +99,8 @@ public abstract class WithExceptionNode extends ControlSplitNode {
 
     /**
      * Create a begin node appropriate as this node's next successor. In particular, if this node is
-     * a memory kill, this should create a {@link KillingBeginNode} with the appropriate location
-     * identity.
+     * a memory kill, this should create a {@link KillingBeginNode} or {@link MultiKillingBeginNode}
+     * with the appropriate location identities.
      */
     public abstract AbstractBeginNode createNextBegin();
 }

@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
+import org.graalvm.compiler.nodes.MultiKillingBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
@@ -88,7 +89,8 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
                 LocationIdentity locationsKilledByPredecessor = ((SingleMemoryKill) predecessor).getKilledLocationIdentity();
                 entry = graph().add(KillingBeginNode.create(locationsKilledByPredecessor));
             } else if (predecessor instanceof MultiMemoryKill) {
-                entry = graph().add(KillingBeginNode.create(LocationIdentity.any()));
+                LocationIdentity[] locationsKilledByPredecessor = ((MultiMemoryKill) predecessor).getKilledLocationIdentities();
+                entry = graph().add(MultiKillingBeginNode.create(locationsKilledByPredecessor));
             } else {
                 entry = graph().add(new BeginNode());
             }
