@@ -1,5 +1,8 @@
 # Change Log
 
+## Version 0.0.5
+* GraalVM LSP support added
+
 ## Version 0.0.4
 * Published on Visual Studio Marketplace
 

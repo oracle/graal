@@ -2,7 +2,7 @@
 	"name": "graalvm-ruby",
 	"displayName": "GraalVM Ruby",
 	"description": "Support for GraalVM Ruby",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
