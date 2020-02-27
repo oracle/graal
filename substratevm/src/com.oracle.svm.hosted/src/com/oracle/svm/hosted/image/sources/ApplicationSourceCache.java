@@ -26,6 +26,9 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.OptionUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -34,60 +37,92 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.APPLICATION;
+
 public class ApplicationSourceCache extends SourceCache {
     /**
-     * create an application source cache
+     * Create an application source cache.
      */
     protected ApplicationSourceCache() {
-        super(SourceCache.APPLICATION_CACHE_KEY);
         initSrcRoots();
+    }
+
+    @Override
+    protected final SourceCacheType getType() {
+        return APPLICATION;
     }
 
     private void initSrcRoots() {
         String javaClassPath = System.getProperty(JAVA_CLASSPATH_PROP);
         assert javaClassPath != null;
         String[] classPathEntries = javaClassPath.split(File.pathSeparator);
-        /* add dirs or jars found in the classpath */
+        /* Add dirs or jars found in the classpath */
         for (String classPathEntry : classPathEntries) {
-            Path entryPath = Paths.get(classPathEntry);
-            String fileNameString = entryPath.getFileName().toString();
-            if (fileNameString.endsWith(".jar")) {
-                // application jar /path/to/xxx.jar should have
-                // sources /path/to/xxx-sources.jar
-                int length = fileNameString.length();
-                String srcFileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
-                Path srcPath = entryPath.getParent().resolve(srcFileNameString);
-                if (srcPath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            srcRoots.add(root);
-                        }
-                    } catch (IOException ioe) {
-                        /* ignore this entry */
-                    } catch (FileSystemNotFoundException fnfe) {
-                        /* ignore this entry */
-                    }
-                }
-            } else  {
-                /*
-                * for dir entries ending in classes or target/classes
-                * look for a parallel src tree
-                */
-                if (entryPath.endsWith("classes")) {
-                    Path parent = entryPath.getParent();
-                    if (parent.endsWith("target")) {
-                        parent = parent.getParent();
-                    }
-                    Path srcPath = (parent.resolve("src"));
-                    File file = srcPath.toFile();
-                    if (file.exists() && file.isDirectory()) {
-                        srcRoots.add(srcPath);
-                    }
-                }
+            tryClassPathRoot(classPathEntry);
+        }
+        if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
+            for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
+                trySourceRoot(searchPathEntry);
             }
         }
         /* add the current working directory as a path of last resort */
-        srcRoots.add(Paths.get("."));        
+        srcRoots.add(Paths.get("."));
+    }
+    private void tryClassPathRoot(String sourceRoot) {
+        trySourceRoot(sourceRoot, true);
+    }
+    private void trySourceRoot(String sourceRoot) {
+        trySourceRoot(sourceRoot, false);
+    }
+    private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
+        Path sourcePath = Paths.get(sourceRoot);
+        String fileNameString = sourcePath.getFileName().toString();
+        if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
+            if (fromClassPath && fileNameString.endsWith(".jar")) {
+                /*
+                 * application jar /path/to/xxx.jar should have
+                 * sources /path/to/xxx-sources.jar
+                 */
+                int length = fileNameString.length();
+                fileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
+            }
+            sourcePath = sourcePath.getParent().resolve(fileNameString);
+            if (sourcePath.toFile().exists()) {
+                try {
+                    FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, null);
+                    for (Path root : fileSystem.getRootDirectories()) {
+                        srcRoots.add(root);
+                    }
+                } catch (IOException ioe) {
+                    /* ignore this entry */
+                } catch (FileSystemNotFoundException fnfe) {
+                    /* ignore this entry */
+                }
+            }
+        } else {
+            if (fromClassPath) {
+                /*
+                 * for dir entries ending in classes or target/classes
+                 * look for a parallel src tree
+                 */
+                if (sourcePath.endsWith("classes")) {
+                    Path parent = sourcePath.getParent();
+                    if (parent.endsWith("target")) {
+                        parent = parent.getParent();
+                    }
+                    sourcePath = (parent.resolve("src"));
+                    File file = sourcePath.toFile();
+                    if (file.exists() && file.isDirectory()) {
+                        srcRoots.add(sourcePath);
+                    }
+                }
+            } else {
+                // try the path as provided
+                File file = sourcePath.toFile();
+                if (file.exists() && file.isDirectory()) {
+                    srcRoots.add(sourcePath);
+                }
+            }
+        }
     }
 }

@@ -33,13 +33,19 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.JDK;
+
 public class JDKSourceCache extends SourceCache {
     /**
-     * create a JDK runtime class source cache.
+     * Create a JDK runtime class source cache..
      */
     protected JDKSourceCache() {
-        super(SourceCache.JDK_CACHE_KEY);
         initSrcRoots();
+    }
+
+    @Override
+    protected final SourceCacheType getType() {
+        return JDK;
     }
 
     private void initSrcRoots() {
