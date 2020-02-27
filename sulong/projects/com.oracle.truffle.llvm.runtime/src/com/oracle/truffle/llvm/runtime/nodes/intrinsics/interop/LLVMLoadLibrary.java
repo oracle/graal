@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,6 @@ public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
 
     @TruffleBoundary
     private static void addExternalLibrary(LLVMContext context, String name) {
-        context.addExternalLibrary(name, true, "<truffle_load_library>");
+        context.addExternalLibraryDefaultLocator(name, "<truffle_load_library>");
     }
 }

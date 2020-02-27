@@ -659,8 +659,7 @@ final class Runner {
         // parse all libraries that were passed on the command-line
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String external : externals) {
-            // assume that the library is a native one until we parsed it and can say for sure
-            ExternalLibrary lib = context.addExternalLibrary(external, true, "<command line>");
+            ExternalLibrary lib = context.addExternalLibraryDefaultLocator(external, "<command line>");
             if (lib != null) {
                 parseLibrary(lib, parseContext);
             }
@@ -902,16 +901,16 @@ final class Runner {
     private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ParseContext parseContext) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
-            library.setIsNative(false);
+            library.makeBitcodeLibrary();
             context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             List<String> libraries = binaryParserResult.getLibraries();
             ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
             for (String lib : libraries) {
                 boolean added = false;
-                ExternalLibrary dependency = context.findExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency == null) {
-                    dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
+                    dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
                     added = true;
                 }
                 if (dependency != null) {

@@ -132,8 +132,8 @@ public final class ExternalLibrary {
         return isInternal;
     }
 
-    public void setIsNative(boolean isNative) {
-        this.isNative = isNative;
+    public void makeBitcodeLibrary() {
+        this.isNative = false;
     }
 
     public String getName() {
