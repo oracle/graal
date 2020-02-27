@@ -31,20 +31,26 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
 
-    private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
+    public static LLVMFloatLoadNode create() {
+        return LLVMFloatLoadNodeGen.create((LLVMExpressionNode) null);
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected float doFloatNative(LLVMNativePointer addr,
+                    @Cached("createRawIdentityProfile()") FloatValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getFloat(addr));
     }

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -39,8 +40,10 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -93,7 +96,7 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMAbstractLoadNode {
 
         static LLVM80BitFloatDirectLoadNode create() {
-            return LLVM80BitFloatDirectLoadNodeGen.create(null);
+            return LLVM80BitFloatDirectLoadNodeGen.create((LLVMExpressionNode) null);
         }
 
         protected abstract LLVM80BitFloat executeManaged(LLVMManagedPointer addr);
@@ -126,7 +129,12 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
+    @GenerateUncached
     public abstract static class LLVMPointerDirectLoadNode extends LLVMAbstractLoadNode {
+
+        public static LLVMPointerDirectLoadNode create() {
+            return LLVMPointerDirectLoadNodeGen.create((LLVMExpressionNode) null);
+        }
 
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,

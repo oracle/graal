@@ -31,14 +31,21 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
+
+    public static LLVMI1LoadNode create() {
+        return LLVMI1LoadNodeGen.create((LLVMExpressionNode) null);
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected boolean doI1Native(LLVMNativePointer addr,

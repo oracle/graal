@@ -31,20 +31,26 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
 
-    private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
+    public static LLVMI8LoadNode create() {
+        return LLVMI8LoadNodeGen.create((LLVMExpressionNode) null);
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected byte doI8Native(LLVMNativePointer addr,
+                    @Cached("createIdentityProfile()") ByteValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getI8(addr));
     }
