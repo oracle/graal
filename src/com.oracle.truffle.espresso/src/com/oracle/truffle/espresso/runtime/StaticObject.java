@@ -30,11 +30,13 @@ import java.lang.reflect.Array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -94,6 +96,34 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     public String asString() {
         return Meta.toHostString(this);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return EspressoLanguage.class;
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (StaticObject.isNull(this)) {
+            return "NULL";
+        }
+        Klass thisKlass = getKlass();
+        if (thisKlass == thisKlass.getMeta().java_lang_Class) {
+            return "class " + thisKlass.getTypeAsString();
+        }
+        if (thisKlass == thisKlass.getMeta().java_lang_String) {
+            return Meta.toHostString(this);
+        }
+        return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
     }
 
     // endregion Interop
