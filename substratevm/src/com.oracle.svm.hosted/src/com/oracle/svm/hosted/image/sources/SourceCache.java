@@ -62,16 +62,18 @@ public abstract class SourceCache {
     protected List<Path> srcRoots;
 
     /**
-     * Create a source cache with a specific base type.
-     * @param key a String identifying the subdir under
-     * which sources should be cached which should also
-     * match the type of content being cached
+     * Create some flavour of source cache.
      */
-    protected SourceCache(String key) {
-        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR, key);
+    protected SourceCache() {
+        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR).resolve(getType().getSubdir());
         srcRoots = new ArrayList<>();
-
     }
+
+    /**
+     * Idenitfy the specific type of this source cache
+     * @return
+     */
+    protected abstract SourceCacheType getType();
 
     /**
      * A local directory serving as the root for all
@@ -84,44 +86,7 @@ public abstract class SourceCache {
      * under which files belonging to this specific cache
      * are located.
      */
-    private Path basePath;
-    /**
-     * JDK runtime code sources are cached using this key as a
-     * leading path prefix with a module name as a sub-path
-     * prefix when we have a modular JDK.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be jdk/java/lang/Throwable.java on jdk8 or
-     * jdk/java.base/java/lang/Throwable.java on jdk11
-     */
-    protected static final String JDK_CACHE_KEY = "jdk";
-    /**
-     * GraalVM code sources are cached using this key as a
-     * leading path prefix with an enclosing package name
-     * and the name src or src_gen forming a sub-path prefix.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be
-     * graal/com/oracle/svm/core/Isolates.java
-     * or
-     * graal/org/graalvm/compiler/core/phases/LowTier_OptionDescriptors.java
-     */
-    protected static final String GRAALVM_CACHE_KEY = "graal";
-    /**
-     * Application code sources are cached using this key as
-     * a leading path prefix with a name or sequence of
-     * names derived from a classpath jar or dir entry
-     * employed as a sub-path prefix.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be
-     * src/Hello.java
-     * or
-     * src/hello/impl/HelloImpl.java
-     * or
-     * src/hibernate-core-5.4.4.Final/org/hibernate/annotations/Entity.java
-     */
-    protected static final String APPLICATION_CACHE_KEY = "src";
+    private final Path basePath;
     /**
      * Cache the source file identified by the supplied prototype
      * path if a legitimate candidate for inclusion in this cache
