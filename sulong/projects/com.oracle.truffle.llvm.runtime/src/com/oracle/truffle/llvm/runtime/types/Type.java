@@ -32,15 +32,14 @@ package com.oracle.truffle.llvm.runtime.types;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLazyException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -265,13 +264,7 @@ public abstract class Type {
      * when executed.
      */
     public static LLVMExpressionNode handleOverflowExpression(TypeOverflowException e) {
-        return new LLVMExpressionNode() {
-            @Override
-            public Object executeGeneric(VirtualFrame frame) {
-                throwOverflowExceptionAsLLVMException(this, e);
-                return null;
-            }
-        };
+        return LLVMLazyException.createExpressionNode(Type::throwOverflowExceptionAsLLVMException, e);
     }
 
     /**
@@ -279,12 +272,7 @@ public abstract class Type {
      * executed.
      */
     public static LLVMStatementNode handleOverflowStatement(TypeOverflowException e) {
-        return new LLVMStatementNode() {
-            @Override
-            public void execute(VirtualFrame frame) {
-                throwOverflowExceptionAsLLVMException(this, e);
-            }
-        };
+        return LLVMLazyException.createStatementNode(Type::throwOverflowExceptionAsLLVMException, e);
     }
 
     /**
@@ -292,17 +280,10 @@ public abstract class Type {
      * executed.
      */
     public static LLVMAllocateNode handleOverflowAllocate(TypeOverflowException e) {
-        final class UnsupportedAllocateNode extends LLVMNode implements LLVMAllocateNode {
-            @Override
-            public LLVMPointer executeWithTarget() {
-                throwOverflowExceptionAsLLVMException(this, e);
-                return null;
-            }
-        }
-        return new UnsupportedAllocateNode();
+        return LLVMLazyException.createAllocateNode(Type::throwOverflowExceptionAsLLVMException, e);
     }
 
-    public static void throwOverflowExceptionAsLLVMException(Node node, TypeOverflowException e) {
+    public static LLVMException throwOverflowExceptionAsLLVMException(Node node, TypeOverflowException e) {
         CompilerDirectives.transferToInterpreter();
         throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
     }
