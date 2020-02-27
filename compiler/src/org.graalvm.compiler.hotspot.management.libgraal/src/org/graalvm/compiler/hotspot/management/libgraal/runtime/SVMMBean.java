@@ -28,11 +28,14 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -51,6 +54,12 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
@@ -66,13 +75,30 @@ import org.graalvm.util.OptionsEncoder;
  * the {@link DynamicMBean} by delegating all operations to an object in the SVM heap.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
+class SVMMBean implements DynamicMBean {
+
+    private static final Logger LOG = Logger.getLogger(SVMMBean.class.getName());
+    private static final String COMPOSITE_TAG = ".composite";
+    private static final Map<Class<?>, OpenType<?>> PRIMITIVE_TO_OPENTYPE;
+    static {
+        PRIMITIVE_TO_OPENTYPE = new HashMap<>();
+        PRIMITIVE_TO_OPENTYPE.put(Void.class, SimpleType.VOID);
+        PRIMITIVE_TO_OPENTYPE.put(Boolean.class, SimpleType.BOOLEAN);
+        PRIMITIVE_TO_OPENTYPE.put(Byte.class, SimpleType.BYTE);
+        PRIMITIVE_TO_OPENTYPE.put(Character.class, SimpleType.CHARACTER);
+        PRIMITIVE_TO_OPENTYPE.put(Short.class, SimpleType.SHORT);
+        PRIMITIVE_TO_OPENTYPE.put(Integer.class, SimpleType.INTEGER);
+        PRIMITIVE_TO_OPENTYPE.put(Float.class, SimpleType.FLOAT);
+        PRIMITIVE_TO_OPENTYPE.put(Long.class, SimpleType.LONG);
+        PRIMITIVE_TO_OPENTYPE.put(Double.class, SimpleType.DOUBLE);
+        PRIMITIVE_TO_OPENTYPE.put(String.class, SimpleType.STRING);
+    }
 
     private static volatile Factory factory;
 
     private final long handle;
 
-    SVMHotSpotGraalRuntimeMBean(long handle) {
+    SVMMBean(long handle) {
         this.handle = handle;
     }
 
@@ -85,7 +111,7 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
         AttributeList attributes = getAttributes(new String[]{attribute});
-        return ((Attribute) attributes.get(0)).getValue();
+        return attributes.isEmpty() ? null : ((Attribute) attributes.get(0)).getValue();
     }
 
     /**
@@ -147,12 +173,81 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     private static AttributeList rawToAttributeList(byte[] rawData) {
         AttributeList res = new AttributeList();
         Map<String, Object> map = OptionsEncoder.decode(rawData);
-        for (Map.Entry<String, Object> e : map.entrySet()) {
+        for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<>(map.entrySet().iterator()); it.hasNext();) {
+            Map.Entry<String, Object> e = it.next();
             String attrName = e.getKey();
             Object attrValue = e.getValue();
+            if (isComposite(attrName)) {
+                try {
+                    attrValue = readComposite(attrName, (String) attrValue, it);
+                    attrName = compositeAttrName(attrName);
+                } catch (OpenDataException ex) {
+                    LOG.log(Level.WARNING, "Cannot read composite attribute " + attrName, ex);
+                    continue;
+                }
+            }
             res.add(new Attribute(attrName, attrValue));
         }
         return res;
+    }
+
+    /**
+     * Check if the serialized attribute is a {@link CompositeData}.
+     */
+    private static boolean isComposite(String name) {
+        return name.endsWith(COMPOSITE_TAG);
+    }
+
+    /**
+     * Removes the composite tag from attribute name.
+     */
+    private static String compositeAttrName(String name) {
+        return name.substring(0, name.length() - COMPOSITE_TAG.length());
+    }
+
+    /**
+     * Deserializes the {@link CompositeData}.
+     */
+    private static CompositeData readComposite(String scope, String typeName, PushBackIterator<Map.Entry<String, Object>> it) throws OpenDataException {
+        String prefix = scope + '.';
+        List<String> attrNames = new ArrayList<>();
+        List<Object> attrValues = new ArrayList<>();
+        List<OpenType<?>> attrTypes = new ArrayList<>();
+        while (it.hasNext()) {
+            Map.Entry<String, Object> e = it.next();
+            String attrName = e.getKey();
+            if (!attrName.startsWith(prefix)) {
+                it.pushBack(e);
+                break;
+            }
+            Object attrValue = e.getValue();
+            if (isComposite(attrName)) {
+                attrValue = readComposite(attrName, (String) attrValue, it);
+                attrName = compositeAttrName(attrName);
+            }
+            attrName = attrName.substring(prefix.length());
+            attrNames.add(attrName);
+            attrValues.add(attrValue);
+            attrTypes.add(getOpenType(attrValue));
+        }
+        String[] attrNamesArray = attrNames.toArray(new String[attrNames.size()]);
+        CompositeType type = new CompositeType(typeName, typeName, attrNamesArray, attrNamesArray, attrTypes.toArray(new OpenType<?>[attrTypes.size()]));
+        return new CompositeDataSupport(type, attrNamesArray, attrValues.toArray(new Object[attrValues.size()]));
+    }
+
+    /**
+     * Returns an {@link OpenType} representing given value.
+     */
+    private static OpenType<?> getOpenType(Object value) {
+        if (value instanceof CompositeData) {
+            return ((CompositeData) value).getCompositeType();
+        }
+        Class<?> clz = value == null ? String.class : value.getClass();
+        OpenType<?> openType = PRIMITIVE_TO_OPENTYPE.get(clz);
+        if (openType == null) {
+            throw new IllegalArgumentException(clz.getName());
+        }
+        return openType;
     }
 
     /**
@@ -236,15 +331,15 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     }
 
     /**
-     * Returns a factory thread registering the {@link SVMHotSpotGraalRuntimeMBean} instances into
-     * {@link MBeanServer}. If the factory thread does not exist it's created and started.
+     * Returns a factory thread registering the {@link SVMMBean} instances into {@link MBeanServer}.
+     * If the factory thread does not exist it's created and started.
      *
      * @return the started factory thread instance.
      */
     static Factory getFactory() {
         Factory res = factory;
         if (res == null) {
-            synchronized (SVMHotSpotGraalRuntimeMBean.class) {
+            synchronized (SVMMBean.class) {
                 res = factory;
                 if (res == null) {
                     res = new Factory();
@@ -440,7 +535,7 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     }
 
     /**
-     * A factory thread creating the {@link SVMHotSpotGraalRuntimeMBean} instances for
+     * A factory thread creating the {@link SVMMBean} instances for
      * {@link HotSpotGraalRuntimeMBean}s in SVM heap and registering them to {@link MBeanServer}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -461,8 +556,8 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         /**
          * Main loop waiting for {@link HotSpotGraalRuntimeMBean} creation in SVM heap. When a new
          * {@link HotSpotGraalRuntimeMBean} is created in the SVM heap this thread creates a new
-         * {@link SVMHotSpotGraalRuntimeMBean} encapsulation the {@link HotSpotGraalRuntimeMBean}
-         * and registers it to {@link MBeanServer}.
+         * {@link SVMMBean} encapsulation the {@link HotSpotGraalRuntimeMBean} and registers it to
+         * {@link MBeanServer}.
          */
         @Override
         public void run() {
@@ -500,13 +595,11 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
 
         /**
-         * In case of successful {@link MBeanServer} initialization creates
-         * {@link SVMHotSpotGraalRuntimeMBean} for pending {@link HotSpotGraalRuntimeMBean}s and
-         * registers them.
+         * In case of successful {@link MBeanServer} initialization creates {@link SVMMBean} for
+         * pending {@link HotSpotGraalRuntimeMBean}s and registers them.
          *
-         * @return {@code true} if {@link SVMHotSpotGraalRuntimeMBean}s were successfuly registered,
-         *         {@code false} when {@link MBeanServer} is not yet available and {@code poll}
-         *         should be retried.
+         * @return {@code true} if {@link SVMMBean}s were successfuly registered, {@code false} when
+         *         {@link MBeanServer} is not yet available and {@code poll} should be retried.
          * @throws SecurityException can be thrown by {@link MBeanServer}
          * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
          * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
@@ -527,8 +620,8 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
 
         /**
-         * Creates {@link SVMHotSpotGraalRuntimeMBean} for pending {@link HotSpotGraalRuntimeMBean}s
-         * and registers them {@link MBeanServer}.
+         * Creates {@link SVMMBean} for pending {@link HotSpotGraalRuntimeMBean}s and registers them
+         * {@link MBeanServer}.
          *
          * @return {@code true}
          * @throws SecurityException can be thrown by {@link MBeanServer}
@@ -543,9 +636,9 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
                 if (svmRegistrations.length > 0) {
                     for (long svmRegistration : svmRegistrations) {
                         try {
-                            SVMHotSpotGraalRuntimeMBean bean = new SVMHotSpotGraalRuntimeMBean(svmRegistration);
-                            String name = HotSpotToSVMCalls.getRegistrationName(LibGraalScope.getIsolateThread(), svmRegistration);
-                            platformMBeanServer.registerMBean(bean, new ObjectName("org.graalvm.compiler.hotspot:type=" + name));
+                            SVMMBean bean = new SVMMBean(svmRegistration);
+                            String name = HotSpotToSVMCalls.getObjectName(LibGraalScope.getIsolateThread(), svmRegistration);
+                            platformMBeanServer.registerMBean(bean, new ObjectName(name));
                         } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                             e.printStackTrace(TTY.out);
                         }

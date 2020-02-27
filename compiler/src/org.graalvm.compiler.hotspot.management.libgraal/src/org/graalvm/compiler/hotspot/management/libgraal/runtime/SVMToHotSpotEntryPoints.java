@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
-import org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean.Factory;
+import org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMMBean.Factory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,10 +38,10 @@ final class SVMToHotSpotEntryPoints {
     }
 
     /**
-     * @see SVMHotSpotGraalRuntimeMBean#getFactory()
+     * @see SVMMBean#getFactory()
      */
     static Factory getFactory() {
-        Factory factory = SVMHotSpotGraalRuntimeMBean.getFactory();
+        Factory factory = SVMMBean.getFactory();
         return factory;
     }
 
