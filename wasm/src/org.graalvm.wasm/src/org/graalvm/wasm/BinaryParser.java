@@ -1004,7 +1004,7 @@ public class BinaryParser extends BinaryStreamParser {
                 // or anything in the spec about that).
                 WasmFunction[] elements = new WasmFunction[segmentLength];
                 for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = readFunctionIndex();
+                    final int functionIndex = readDeclaredFunctionIndex();
                     final WasmFunction function = symbolTable.function(functionIndex);
                     elements[index] = function;
                 }
@@ -1012,7 +1012,7 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 table.ensureSizeAtLeast(offsetAddress + segmentLength);
                 for (int index = 0; index != segmentLength; ++index) {
-                    final int functionIndex = readFunctionIndex();
+                    final int functionIndex = readDeclaredFunctionIndex();
                     final WasmFunction function = symbolTable.function(functionIndex);
                     table.set(offsetAddress + index, function);
                 }
@@ -1026,7 +1026,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readStartSection() {
-        int startFunctionIndex = readFunctionIndex();
+        int startFunctionIndex = readDeclaredFunctionIndex();
         module.symbolTable().setStartFunction(startFunctionIndex);
     }
 
@@ -1037,7 +1037,7 @@ public class BinaryParser extends BinaryStreamParser {
             byte exportType = readExportType();
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
-                    int functionIndex = readFunctionIndex();
+                    int functionIndex = readDeclaredFunctionIndex();
                     module.symbolTable().exportFunction(context, functionIndex, exportName);
                     break;
                 }
@@ -1233,7 +1233,7 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32();
     }
 
-    private int readFunctionIndex() {
+    private int readDeclaredFunctionIndex() {
         final int index = readUnsignedInt32();
         module.symbolTable().checkFunctionIndex(index);
         return index;
