@@ -45,8 +45,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Thrown on various errors that may occur in the WebAssembly engine, but not during the execution
- * of a WebAssembly program.
+ * Thrown on various errors that may occur in the WebAssembly engine.
  */
 public class WasmValidationException extends RuntimeException implements TruffleException {
 
