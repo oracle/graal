@@ -203,4 +203,16 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             return super.hasTag(tag);
         }
     }
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
 }
