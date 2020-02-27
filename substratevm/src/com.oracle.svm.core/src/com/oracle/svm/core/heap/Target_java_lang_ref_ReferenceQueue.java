@@ -87,16 +87,16 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
          * Atomically clear the queue so it can not be enqueued again, to avoid A-B-A problems. Only
          * the winner of the race to clear the list field will push the Reference to the list.
          */
-        Target_java_lang_ref_ReferenceQueue<?> clearedQueue = ref.clearFutureQueue();
+        Target_java_lang_ref_ReferenceQueue<?> clearedQueue = ReferenceInternals.clearFutureQueue(ref);
         if (clearedQueue == null) {
             return false;
         }
         assert clearedQueue == this : "Trying to enqueue in the wrong queue";
-        assert !ref.isInQueue() : "Trying to enqueue a Reference that is already on a queue";
+        assert !ReferenceInternals.testIsEnqueued(ref) : "Trying to enqueue a Reference that is already on a queue";
         Target_java_lang_ref_Reference<? extends T> head;
         do {
             head = getHead();
-            ref.setQueueNext(head);
+            ReferenceInternals.setQueueNext(ref, head);
         } while (!queueHead.compareAndSet(head, ref));
         return true;
     }
@@ -113,7 +113,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
                 return null;
             }
             @SuppressWarnings("unchecked")
-            Target_java_lang_ref_Reference<? extends T> next = (Target_java_lang_ref_Reference<? extends T>) head.getQueueNext();
+            Target_java_lang_ref_Reference<? extends T> next = (Target_java_lang_ref_Reference<? extends T>) ReferenceInternals.getQueueNext(head);
             if (queueHead.compareAndSet(head, next)) {
                 clearQueuedState(head);
                 return head;
@@ -175,7 +175,7 @@ public final class Target_java_lang_ref_ReferenceQueue<T> {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void clearQueuedState(Target_java_lang_ref_Reference<?> ref) {
-        ref.clearQueueNext();
+        ReferenceInternals.clearQueueNext(ref);
     }
 
     private static void await() {

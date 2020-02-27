@@ -31,13 +31,9 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
@@ -52,16 +48,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-
-// Checkstyle: stop
-import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * The implementation of {@link java.lang.ref.Reference}, which is the abstract base class of all
@@ -84,20 +75,18 @@ import sun.misc.Unsafe;
 @TargetClass(java.lang.ref.Reference.class)
 @Substitute
 public final class Target_java_lang_ref_Reference<T> {
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "rawReferent", declClass = Target_java_lang_ref_Reference.class) //
-    private static long rawReferentFieldOffset;
+    static long rawReferentFieldOffset;
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "nextDiscovered", declClass = Target_java_lang_ref_Reference.class) //
-    private static long nextDiscoveredFieldOffset;
+    static long nextDiscoveredFieldOffset;
 
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "futureQueue", declClass = Target_java_lang_ref_Reference.class) //
-    private static long futureQueueFieldOffset;
+    static long futureQueueFieldOffset;
 
-    /** @see #isInitialized */
+    /** @see ReferenceInternals#isInitialized */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
-    protected final boolean initialized;
+    final boolean initialized;
 
     /**
      * The object we reference. The field must not be in the regular reference map since we do all
@@ -107,7 +96,7 @@ public final class Target_java_lang_ref_Reference<T> {
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap("Field is manually processed by the garbage collector.") //
-    protected T rawReferent;
+    T rawReferent;
 
     /**
      * Whether this reference is currently {@linkplain #nextDiscovered on a list} of references
@@ -119,25 +108,25 @@ public final class Target_java_lang_ref_Reference<T> {
      * ({@link #nextDiscovered} != null is not valid either because there might not be a next node)
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    protected boolean isDiscovered;
+    boolean isDiscovered;
 
     @SuppressWarnings("unused") //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    protected Target_java_lang_ref_Reference<?> nextDiscovered;
+    Target_java_lang_ref_Reference<?> nextDiscovered;
 
     /**
      * The queue to which this reference object will be added when the referent becomes unreachable.
      * This field becomes {@code null} when the reference object is enqueued.
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
-    protected volatile Target_java_lang_ref_ReferenceQueue<? super T> futureQueue;
+    volatile Target_java_lang_ref_ReferenceQueue<? super T> futureQueue;
 
     /**
      * If this reference is on a {@linkplain Target_java_lang_ref_ReferenceQueue queue}, the next
      * reference object on the queue. If the reference is not (yet) on a queue, set to {@code this}.
      */
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeThisInstanceValue.class) //
-    private Target_java_lang_ref_Reference<?> nextInQueue;
+    Target_java_lang_ref_Reference<?> nextInQueue;
 
     @Substitute
     Target_java_lang_ref_Reference(T referent) {
@@ -162,21 +151,17 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Substitute
     public void clear() {
-        doClear();
+        ReferenceInternals.doClear(this);
     }
 
     @Substitute
     public boolean enqueue() {
-        Target_java_lang_ref_ReferenceQueue<? super T> q = getFutureQueue();
-        if (q != null) {
-            return q.enqueue(this);
-        }
-        return false;
+        return ReferenceInternals.doEnqueue(this);
     }
 
     @Substitute
     public boolean isEnqueued() {
-        return isInQueue();
+        return ReferenceInternals.testIsEnqueued(this);
     }
 
     @Substitute
@@ -200,99 +185,9 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    // @ForceInline
     @SuppressWarnings("unused")
     public static void reachabilityFence(Object ref) {
         GraalDirectives.blackhole(ref);
-    }
-
-    /**
-     * Garbage collection might run between the allocation of this object and before its constructor
-     * is called, so this returns a flag that is set in the constructor (which is
-     * {@link Uninterruptible}) and indicates whether the instance is fully initialized.
-     */
-    public boolean isInitialized() {
-        return initialized;
-    }
-
-    /** Provided for direct access because {@link #clear()} can be overridden. */
-    public void doClear() {
-        rawReferent = null;
-    }
-
-    /** Barrier-less read of {@link #rawReferent} as pointer. */
-    public Pointer getReferentPointer() {
-        return Word.objectToUntrackedPointer(ObjectAccess.readObject(this, WordFactory.signed(rawReferentFieldOffset)));
-    }
-
-    /** Barrier-less write of {@link #rawReferent} as pointer. */
-    public void setReferentPointer(Pointer value) {
-        ObjectAccess.writeObject(this, WordFactory.signed(rawReferentFieldOffset), value.toObject());
-    }
-
-    public boolean isDiscovered() {
-        return isDiscovered;
-    }
-
-    /** Barrier-less read of {@link #nextDiscovered}. */
-    public Target_java_lang_ref_Reference<?> getNextDiscovered() {
-        return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(this, WordFactory.signed(nextDiscoveredFieldOffset)), Target_java_lang_ref_Reference.class);
-    }
-
-    public void clearDiscovered() {
-        setNextDiscovered(null, false);
-    }
-
-    public Target_java_lang_ref_Reference<T> setNextDiscovered(Target_java_lang_ref_Reference<?> newNext) {
-        setNextDiscovered(newNext, true);
-        return this;
-    }
-
-    /** Barrier-less write of {@link #nextDiscovered}. */
-    private void setNextDiscovered(Target_java_lang_ref_Reference<?> newNext, boolean newIsDiscovered) {
-        ObjectAccess.writeObject(this, WordFactory.signed(nextDiscoveredFieldOffset), newNext);
-        isDiscovered = newIsDiscovered;
-    }
-
-    /** The address of the {@link #nextDiscovered} field of this instance. */
-    public Pointer getNextDiscoveredFieldPointer() {
-        return Word.objectToUntrackedPointer(this).add(WordFactory.signed(nextDiscoveredFieldOffset));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Target_java_lang_ref_ReferenceQueue<? super T> getFutureQueue() {
-        return futureQueue;
-    }
-
-    /**
-     * Clears the queue on which this reference should eventually be enqueued and returns the
-     * previous value, which may be {@code null} if this reference should not be put on a queue, but
-     * also if the method has been called before -- such as, in a race to queue it.
-     */
-    @SuppressWarnings("unchecked")
-    Target_java_lang_ref_ReferenceQueue<? super T> clearFutureQueue() {
-        return (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(this, futureQueueFieldOffset, null);
-    }
-
-    /** Provided for direct access because {@link #isEnqueued()} can be overridden. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInQueue() {
-        return (nextInQueue != this);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Target_java_lang_ref_Reference<?> getQueueNext() {
-        return nextInQueue;
-    }
-
-    void setQueueNext(Target_java_lang_ref_Reference<?> newNext) {
-        assert newNext != this : "Creating self-loop.";
-        nextInQueue = newNext;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void clearQueueNext() {
-        nextInQueue = this;
     }
 
     public static final class TestingBackDoor {
@@ -302,12 +197,12 @@ public final class Target_java_lang_ref_Reference<T> {
 
         @NeverInline("Prevent the access from moving around")
         public static Pointer getReferentPointer(Reference<?> that) {
-            return SubstrateUtil.cast(that, Target_java_lang_ref_Reference.class).getReferentPointer();
+            return ReferenceInternals.getReferentPointer(SubstrateUtil.cast(that, Target_java_lang_ref_Reference.class));
         }
 
         public static Reference<?> getNextDiscoveredReference(Reference<?> that) {
             Target_java_lang_ref_Reference<?> cast = SubstrateUtil.cast(that, Target_java_lang_ref_Reference.class);
-            Target_java_lang_ref_Reference<?> next = cast.getNextDiscovered();
+            Target_java_lang_ref_Reference<?> next = ReferenceInternals.getNextDiscovered(cast);
             return SubstrateUtil.cast(next, Reference.class);
         }
     }

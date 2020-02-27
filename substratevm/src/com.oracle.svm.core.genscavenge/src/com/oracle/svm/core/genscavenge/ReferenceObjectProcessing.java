@@ -37,6 +37,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
 import com.oracle.svm.core.log.Log;
@@ -63,7 +64,7 @@ public class ReferenceObjectProcessing {
          * referent will be strongly-reachable because it is on the call stack to the constructor so
          * the Reference does not need to be put on the discovered list.
          */
-        if (dr.isInitialized()) {
+        if (ReferenceInternals.isInitialized(dr)) {
             if (trace.isEnabled()) {
                 trace.string("  referent: ").hex(Target_java_lang_ref_Reference.TestingBackDoor.getReferentPointer(SubstrateUtil.cast(dr, Reference.class)));
             }
@@ -82,21 +83,22 @@ public class ReferenceObjectProcessing {
     static void clearDiscoveredList() {
         final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.clearList:").newline();
         for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
-            trace.string("  current: ").object(current).string("  referent: ").hex(current.getReferentPointer()).newline();
-            current.clearDiscovered();
+            trace.string("  current: ").object(current).string("  referent: ").hex(ReferenceInternals.getReferentPointer(current)).newline();
+            ReferenceInternals.clearDiscovered(current);
         }
         setDiscoveredList(null);
         trace.string("]");
     }
 
     private static void addToDiscoveredList(Target_java_lang_ref_Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr).string("  referent: ").hex(dr.getReferentPointer());
-        if (dr.isDiscovered()) {
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.addToDiscoveredList:").string("  this: ").object(dr).string("  referent: ")
+                        .hex(ReferenceInternals.getReferentPointer(dr));
+        if (ReferenceInternals.isDiscovered(dr)) {
             trace.string("  already on list]").newline();
             return;
         }
         trace.newline().string("  [adding to list:").string("  oldList: ").object(getDiscoveredList());
-        setDiscoveredList(dr.setNextDiscovered(getDiscoveredList()));
+        setDiscoveredList(ReferenceInternals.setNextDiscovered(dr, getDiscoveredList()));
         trace.string("  new list: ").object(getDiscoveredList()).string("]");
         trace.string("]").newline();
     }
@@ -107,7 +109,7 @@ public class ReferenceObjectProcessing {
         /* Start a new list. */
         Target_java_lang_ref_Reference<?> newList = null;
         for (Target_java_lang_ref_Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
-            trace.string("  [current: ").object(current).string("  referent before: ").hex(current.getReferentPointer()).string("]").newline();
+            trace.string("  [current: ").object(current).string("  referent before: ").hex(ReferenceInternals.getReferentPointer(current)).string("]").newline();
             /*
              * The referent *has not* been processed as a grey reference, so I have to be careful
              * about looking through the referent field.
@@ -115,7 +117,7 @@ public class ReferenceObjectProcessing {
             if (!processReferent(current)) {
                 /* The referent will not survive the collection: put it on the new list. */
                 trace.string("  unpromoted current: ").object(current).newline();
-                newList = current.setNextDiscovered(newList);
+                newList = ReferenceInternals.setNextDiscovered(current, newList);
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, newList);
             } else {
                 /* Referent will survive the collection: don't add it to the new list. */
@@ -132,8 +134,7 @@ public class ReferenceObjectProcessing {
      * Returns true if the referent will survive the collection, false otherwise.
      */
     private static boolean processReferent(Target_java_lang_ref_Reference<?> dr) {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processReferent:").string("  this: ").object(dr);
-        final Pointer refPointer = dr.getReferentPointer();
+        final Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
         if (refPointer.isNull()) {
             return false;
         }
@@ -146,7 +147,7 @@ public class ReferenceObjectProcessing {
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             /* If the referent got forwarded, then update the referent. */
             Pointer forwardedPointer = Word.objectToUntrackedPointer(ObjectHeaderImpl.getForwardedObject(refPointer));
-            dr.setReferentPointer(forwardedPointer);
+            ReferenceInternals.setReferentPointer(dr, forwardedPointer);
             HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, forwardedPointer.toObject());
             return true;
         }
@@ -165,7 +166,7 @@ public class ReferenceObjectProcessing {
          * static analysis must see that the field can be null. This means that we get a write
          * barrier for this store.
          */
-        dr.doClear();
+        ReferenceInternals.doClear(dr);
         return false;
     }
 
@@ -180,8 +181,8 @@ public class ReferenceObjectProcessing {
     private static Target_java_lang_ref_Reference<?> popDiscoveredReference() {
         final Target_java_lang_ref_Reference<?> result = getDiscoveredList();
         if (result != null) {
-            setDiscoveredList(result.getNextDiscovered());
-            result.clearDiscovered();
+            setDiscoveredList(ReferenceInternals.getNextDiscovered(result));
+            ReferenceInternals.clearDiscovered(result);
         }
         return result;
     }
@@ -192,7 +193,7 @@ public class ReferenceObjectProcessing {
     }
 
     public static boolean verify(Target_java_lang_ref_Reference<?> dr) {
-        final Pointer refPointer = dr.getReferentPointer();
+        final Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
         final int refClassification = HeapVerifierImpl.classifyPointer(refPointer);
         if (refClassification < 0) {
             final Log witness = Log.log();
@@ -237,7 +238,7 @@ public class ReferenceObjectProcessing {
         static void distributeReferences() {
             final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.Scatterer.distributeReferences:").newline();
             // Put discovered references on their queues
-            for (Target_java_lang_ref_Reference<?> dr = ReferenceObjectProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscovered()) {
+            for (Target_java_lang_ref_Reference<?> dr = ReferenceObjectProcessing.getDiscoveredList(); dr != null; dr = ReferenceInternals.getNextDiscovered(dr)) {
                 enqueueReference(dr, trace);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) { // notify waiters on ReferenceQueue
@@ -249,7 +250,8 @@ public class ReferenceObjectProcessing {
 
         private static <T> void enqueueReference(Target_java_lang_ref_Reference<T> ref, Log trace) {
             trace.string("  ref: ").object(ref);
-            boolean enqueued = ref.enqueue();
+            // Do not call enqueue() here because it can be overridden and might allocate or throw
+            boolean enqueued = ReferenceInternals.doEnqueue(ref);
             if (enqueued) {
                 trace.string(" (enqueued)");
             }
