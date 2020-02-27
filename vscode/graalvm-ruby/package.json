@@ -32,6 +32,17 @@
 	],
 	"main": "./dist/extension",
 	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "GraalVM",
+			"properties": {
+				"graalvm.languageServer.startRubyLanguageServer": {
+					"type": "boolean",
+					"default": true,
+					"description": "Start Ruby Language Server"
+				}
+			}
+		},
 		"grammars": [
 			{
 				"path": "./syntaxes/polyglot-injection.json",
@@ -55,6 +66,13 @@
 			{
 				"language": "ruby",
 				"path": "./snippets/polyglot-snippets.json"
+			}
+		],
+		"commands": [
+			{
+				"command": "extension.graalvm-ruby.installRubyLanguageServer",
+				"title": "Install Ruby Language Server",
+				"category": "GraalVM"
 			}
 		],
 		"debuggers": [
