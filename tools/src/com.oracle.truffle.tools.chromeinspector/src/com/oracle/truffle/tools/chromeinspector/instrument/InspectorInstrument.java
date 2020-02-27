@@ -383,8 +383,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     private static final class Server {
 
         private InspectorWSConnection wss;
-        private final String wsspath;
-        private final String wsURL;
+        private final Token token;
+        private final String urlContainingToken;
         private final InspectorExecutionContext executionContext;
 
         Server(final Env env, final String contextName, final HostAndPort hostAndPort, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
@@ -392,28 +392,30 @@ public final class InspectorInstrument extends TruffleInstrument {
                         final KeyStoreOptions keyStoreOptions, final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
             InetSocketAddress socketAddress = hostAndPort.createSocket();
             PrintWriter info = new PrintWriter(env.err(), true);
+            final String pathContainingToken;
             if (pathOrNull == null || pathOrNull.isEmpty()) {
-                wsspath = "/" + generateSecureToken();
+                pathContainingToken = "/" + generateSecureToken();
             } else {
                 String head = pathOrNull.startsWith("/") ? "" : "/";
-                wsspath = head + pathOrNull;
+                pathContainingToken = head + pathOrNull;
             }
+            token = Token.createHashedTokenFromString(pathContainingToken);
             boolean secure = (!secureHasBeenSet && socketAddress.getAddress().isLoopbackAddress()) ? false : secureValue;
 
             PrintWriter err = (hideErrors) ? null : info;
             executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
             if (attach) {
-                wss = new InspectWSClient(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
-                wsURL = ((InspectWSClient) wss).getURI().toString();
+                wss = new InspectWSClient(socketAddress, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
+                urlContainingToken = ((InspectWSClient) wss).getURI().toString();
             } else {
-                URI wsuri;
+                final URI wsuri;
                 try {
-                    wsuri = new URI(secure ? "wss" : "ws", null, socketAddress.getAddress().getHostAddress(), socketAddress.getPort(), wsspath, null, null);
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAddress.getAddress().getHostAddress(), socketAddress.getPort(), pathContainingToken, null, null);
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
                 InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
-                WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss, connectionWatcher);
+                WSInterceptorServer interceptor = new WSInterceptorServer(socketAddress.getPort(), token, iss, connectionWatcher);
                 MessageEndpoint serverEndpoint;
                 try {
                     serverEndpoint = env.startServer(wsuri, iss);
@@ -421,11 +423,11 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IOException(vex.getLocalizedMessage());
                 }
                 if (serverEndpoint == null) {
-                    interceptor.close(wsspath);
-                    wss = InspectorServer.get(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    interceptor.close(token);
+                    wss = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), pathContainingToken, secure);
                     String address = DEV_TOOLS_PREFIX + wsStr;
-                    wsURL = wsStr.replace("=", "://");
+                    urlContainingToken = wsStr.replace("=", "://");
                     info.println("Debugger listening on port " + wss.getPort() + ".");
                     info.println("To start debugging, open the following URL in Chrome:");
                     info.println("    " + address);
@@ -434,7 +436,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
                     interceptor.opened(serverEndpoint);
                     wss = interceptor;
-                    wsURL = wsuri.toString();
+                    urlContainingToken = wsuri.toString();
                 }
             }
             if (debugBreak || waitAttached) {
@@ -539,7 +541,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         public void close() throws IOException {
             if (wss != null) {
-                wss.close(wsspath);
+                wss.close(token);
                 wss = null;
             }
         }
@@ -548,13 +550,8 @@ public final class InspectorInstrument extends TruffleInstrument {
             return new InspectorServerConnection() {
 
                 @Override
-                public String getWSPath() {
-                    return wsspath;
-                }
-
-                @Override
                 public String getURL() {
-                    return wsURL;
+                    return urlContainingToken;
                 }
 
                 @Override
@@ -570,7 +567,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 @Override
                 public void consoleAPICall(String type, Object text) {
                     if (wss != null) {
-                        wss.consoleAPICall(getWSPath(), type, text);
+                        wss.consoleAPICall(token, type, text);
                     }
                 }
             };
