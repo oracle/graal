@@ -42,8 +42,13 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -85,6 +90,39 @@ public class PureNFAMap {
 
     public RegexASTSubtreeRootNode getASTSubtree(PureNFA nfa) {
         return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getLookArounds().get(nfa.getSubTreeId());
+    }
+
+    public CodePointSet getMergedInitialStateCharSet(CompilationBuffer compilationBuffer) {
+        RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
+        if (mergeInitialStateMatcher(root, acc)) {
+            return CodePointSet.create(acc.get());
+        }
+        return null;
+    }
+
+    private boolean mergeInitialStateMatcher(PureNFA nfa, RangesAccumulator<IntRangesBuffer> acc) {
+        for (PureNFATransition t : nfa.getUnAnchoredInitialState().getSuccessors()) {
+            PureNFAState target = t.getTarget();
+            switch (target.getKind()) {
+                case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
+                    break;
+                case PureNFAState.KIND_BACK_REFERENCE:
+                case PureNFAState.KIND_EMPTY_MATCH:
+                    return false;
+                case PureNFAState.KIND_LOOK_AROUND:
+                    if (target.isLookAroundNegated() || target.isLookBehind(ast) || !mergeInitialStateMatcher(lookArounds.get(target.getLookAroundId()), acc)) {
+                        return false;
+                    }
+                    break;
+                case PureNFAState.KIND_CHARACTER_CLASS:
+                    acc.addSet(target.getCharSet());
+                    break;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException();
+            }
+        }
+        return true;
     }
 
     /**
