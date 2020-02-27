@@ -37,9 +37,13 @@ import java.util.LinkedList;
 /* TODO : share this with ELF/DWARF and Mach-O code */
 public abstract class DebugInfoBase {
 
+    private boolean isWanted(DebugInfoProvider.DebugCodeInfo debugCodeInfo) {
+        return !debugCodeInfo.className().startsWith("com.oracle");
+    }
+
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
 
-        debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> {
+        debugInfoProvider.codeInfoProvider().filter(debugCodeInfo -> isWanted(debugCodeInfo)).forEach(debugCodeInfo -> {
             String fileName = debugCodeInfo.fileName();
             String className = debugCodeInfo.className();
             String methodName = debugCodeInfo.methodName();

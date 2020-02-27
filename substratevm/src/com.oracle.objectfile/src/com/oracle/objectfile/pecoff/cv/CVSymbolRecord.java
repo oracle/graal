@@ -142,6 +142,13 @@ abstract class CVSymbolRecord implements CVDebugConstants {
             this.strings = strings;
         }
 
+        /*
+         * Convert a simple path into an absolute path by determining if it's 
+         * part of Graal, the JDK, or use code.
+         * 
+         * This method is incompletely implemented.
+         * TODO: replace this with the new SourceCache system
+         */
         private String fixPath(String fn) {
             String substrateDir = GRAAL_SOURCE_BASE + "substratevm\\src\\";
             String compilerDir = GRAAL_SOURCE_BASE + "compiler\\src\\";
@@ -209,7 +216,7 @@ abstract class CVSymbolRecord implements CVDebugConstants {
 
         @Override
         public int computeContents(byte[] buffer, int pos) {
-            CVUtil.debug("XXXX file computeContents(%d) nf=%d\n", pos, cvSections.getFiles().size());
+            CVUtil.debug("file computeContents(%d) nf=%d\n", pos, cvSections.getFiles().size());
             for (FileEntry entry : cvSections.getFiles()) {
                 pos = put(entry, buffer, pos);
             }

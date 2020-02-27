@@ -152,7 +152,7 @@ public abstract class SourceCache {
      * in the cache derived from the name of some associated class.
      * @return a File identifying a cached candidate or null.
      */
-    public File findCandidate(Path filePath) {
+    private File findCandidate(Path filePath) {
         /*
          * JDK source candidates are stored in the src.zip file
          * using the path we are being asked for. A cached version
@@ -165,7 +165,7 @@ public abstract class SourceCache {
         }
         return null;
     }
-    public Path tryCacheFile(Path filePath) {
+    private Path tryCacheFile(Path filePath) {
         for (Path root : srcRoots) {
             Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
@@ -182,7 +182,7 @@ public abstract class SourceCache {
         }
         return null;
     }
-    public Path checkCacheFile(Path filePath) {
+    private Path checkCacheFile(Path filePath) {
         for (Path root : srcRoots) {
             Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
@@ -219,15 +219,16 @@ public abstract class SourceCache {
      */
     public static SourceCache createSourceCache(SourceCacheType type) {
         SourceCache sourceCache = null;
+        boolean DONT_CACHE = false;
         switch (type) {
             case JDK:
-                sourceCache = new JDKSourceCache();
+                sourceCache = DONT_CACHE ? new NullSourceCache(JDK_CACHE_KEY) : new JDKSourceCache();
                 break;
             case GRAALVM:
-                sourceCache = new GraalVMSourceCache();
+                sourceCache = DONT_CACHE ? new NullSourceCache(GRAALVM_CACHE_KEY) : new GraalVMSourceCache();
                 break;
             case APPLICATION:
-                sourceCache = new ApplicationSourceCache();
+                sourceCache = DONT_CACHE ? new NullSourceCache(APPLICATION_CACHE_KEY) : new ApplicationSourceCache();
                 break;
             default:
                 assert false;
@@ -236,7 +237,7 @@ public abstract class SourceCache {
     }
     /**
      * Extend a root path form one file system using a path potentially derived
-     * from another file system by converting he latter to a text string and
+     * from another file system by converting the latter to a text string and
      * replacing the file separator if necessary.
      * @param root the path to be extended
      * @param filePath the subpath to extend it with
@@ -247,7 +248,7 @@ public abstract class SourceCache {
         String fileSeparator = filePath.getFileSystem().getSeparator();
         String newSeparator = root.getFileSystem().getSeparator();
         if (!fileSeparator.equals(newSeparator)) {
-            filePathString = filePathString.replaceAll(fileSeparator, newSeparator);
+            filePathString = filePathString.replace(fileSeparator, newSeparator);
         }
         return root.resolve(filePathString);
     }

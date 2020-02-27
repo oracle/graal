@@ -32,6 +32,7 @@ import com.oracle.objectfile.pecoff.cv.DebugInfoBase.Range;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.functionNamesHashArgs;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.replaceMainFunctionName;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.emitUnadornedMain;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_NOTYPE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
 
@@ -54,6 +55,10 @@ final class CVSymbolRecordBuilder {
         if (replaceMainFunctionName != null && noMainFound && range.getMethodName().equals("main")) {
             noMainFound = false;
             methodName = replaceMainFunctionName;
+        } else if (emitUnadornedMain && noMainFound && range.getMethodName().equals("main")) {
+            // TODO: check for static void main(String args[])
+            noMainFound = false;
+            methodName = range.getClassAndMethodName();
         } else if (functionNamesHashArgs) {
             long hash = ((long) range.getParamNames().hashCode()) & 0xffffffffL;
             methodName = range.getClassAndMethodName() + "." + hash;
@@ -84,7 +89,7 @@ final class CVSymbolRecordBuilder {
 
     private void processFunction(String methodName, Range range) {
 
-        CVUtil.debug("XXXX addfunc(" + methodName + ") numtypes = %d\n", typeSection.getRecords().size());
+        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", typeSection.getRecords().size());
         int functionTypeIndex = addTypeRecords();
         byte funcFlags = 0;
         CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvSections, methodName, 0, 0, 0, range.getHi() - range.getLo(), 0, 0, functionTypeIndex, range.getLo(), (short) 0, funcFlags);

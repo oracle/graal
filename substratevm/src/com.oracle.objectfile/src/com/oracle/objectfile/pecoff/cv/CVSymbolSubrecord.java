@@ -313,12 +313,12 @@ abstract class CVSymbolSubrecord {
                 cvSections.getCVSymbolSection().getOwner().createDefinedSymbol(name, textSection, offset, proclen, true, true);
             }
             if (buffer != null) {
-                //CVUtil.debug("XXXX CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
+                //CVUtil.debug("CVSymbolGProc32Record() adding SECREL reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
                 cvSections.getCVSymbolSection().markRelocationSite(pos, 4, ObjectFile.RelocationKind.SECREL, name, false, 1L);
             }
             pos = CVUtil.putInt(0, buffer, pos);
             if (buffer != null) {
-                //CVUtil.debug("XXXX CVSymbolGProc32Record() adding SECTION reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
+                //CVUtil.debug("CVSymbolGProc32Record() adding SECTION reloc at pos=0x%x for func=%s addr=0x%x\n", pos, name, offset);
                 cvSections.getCVSymbolSection().markRelocationSite(pos, 2, ObjectFile.RelocationKind.SECTION, name, false, 1L);
             }
             pos = CVUtil.putShort((short) 0, buffer, pos);

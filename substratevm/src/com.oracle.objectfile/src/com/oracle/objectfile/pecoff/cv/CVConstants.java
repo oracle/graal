@@ -40,15 +40,48 @@ public interface CVConstants {
     /* Codeview section header signature */
     int CV_SIGNATURE_C13 = 4;
 
-    /* Knobs */
-    String JDK_SOURCE_BASE = ""; //"C:\\tmp\\graal-8\\jdk8_jvmci\\src\\";
-    String GRAAL_SOURCE_BASE = ""; //"C:\\tmp\\graal-8\\graal8\\";
+    /* 
+     * Knobs 
+     * 
+     * (some may become Graal options in the future)
+     */
+    
+    /*
+     * path to JDK source code (for example unzipped src.zip)
+     * If set, source paths for JDK classes in the object file will be
+     *    $JDK_SOURCE_BASE/java/package/someclass.java
+     * instead of 
+     *    (cache directory)/sources/jdk/java/package/someclass.java
+     * or (if source cache is disabled)
+     *    java/package/someclass.java
+     * 
+     * example
+     *    JDK_SOURCE_BASE = C:\\tmp\\graal-8\\jdk8_jvmci\\src\\";
+     */
+    String JDK_SOURCE_BASE = "";
 
-    boolean skipGraalInternals = false;             /* if true, don't emit debug code for Graal classes */
-    boolean skipGraalIntrinsics = true;             /* Graal inlined code treated as generated code */
-    boolean mergeAdjacentLineRecords = false;       /* if a line record is the same line in the same file as the previous record, meerge them */
-    String replaceMainFunctionName = null; //"javamain";    /* first main() becomes this name (with no arg list at all) */
+    /*
+     * path to Graal source code base (for examplke checked out Graal source repository)
+     * if set source paths will be inferred from appropriate Graal package directories
+     * (behaves similarly to JDK_SOURCE_BASE)
+     * 
+     * Example:
+     *    GRAAL_SOURCE_BASE = "C:\\tmp\\graal-8\\graal8\\";
+     */
+    String GRAAL_SOURCE_BASE = "";
 
-    /* setting functionNamesHashArgs causes link errors as the illegal characters in arg lists confuse link.exe */
-    boolean functionNamesHashArgs = true;           /* if true, arg lists become obscure integers */
+    boolean skipGraalInternals = false;         /* if true, don't emit debug code for Graal classes */
+    boolean skipJDKInternals = false;           /* (unimplemented) if true, don't emit debug code for JDK classes */
+    boolean skipGraalIntrinsics = true;         /* Graal inlined code treated as generated code */
+    boolean mergeAdjacentLineRecords = false;   /* if a line record is the same line in the same file as the previous record, meerge them */
+    boolean emitUnadornedMain = true;           /* if true, first main() does not have args in the debug name */
+    String replaceMainFunctionName = null;      /* first main() becomes this name (with no class name or arg list at all) (set null to disable) */
+
+    /* 
+     * The standard link.exe can't handle odd characters (parentheses or commas, for example) in enternal names.
+     * Setting functionNamesHashArgs true replaces those names, 
+     * so that "Foo.function(String[] args)" becomes "Foo.function_617849326".
+     * If functionNamesHashArgs is false, currently the linker will fail.
+     */
+    boolean functionNamesHashArgs = true;       /* if true, arg lists become obscure integers (and link.exe will not work properly) */
 }
