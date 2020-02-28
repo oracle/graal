@@ -58,6 +58,7 @@ import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 import static org.graalvm.wasm.TableRegistry.Table;
+import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
  * Contains the symbol information of a module.
@@ -293,6 +294,13 @@ public class SymbolTable {
         }
     }
 
+    public void checkFunctionIndex(int funcIndex) {
+        if (funcIndex < 0 || funcIndex >= numFunctions) {
+            throw new WasmException(String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
+        }
+
+    }
+
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
         int[] newArray = new int[newLength];
         System.arraycopy(array, 0, newArray, 0, currentSize);
@@ -341,7 +349,10 @@ public class SymbolTable {
         int typeIdx = typeCount++;
         typeOffsets[typeIdx] = typeDataSize;
 
-        assert 0 <= numReturnTypes && numReturnTypes <= 1;
+        if (numReturnTypes != 0 && numReturnTypes != 1) {
+            throw new WasmException("A function can return at most one result.");
+        }
+
         int size = 2 + numParameterTypes + numReturnTypes;
         ensureTypeDataCapacity(typeDataSize + size);
         typeData[typeDataSize + 0] = numParameterTypes;
@@ -394,7 +405,11 @@ public class SymbolTable {
     }
 
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
+        checkNotLinked();
         ensureFunctionsCapacity(numFunctions);
+        if (typeIndex < 0 || typeIndex >= typeCount) {
+            throw new WasmException(String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
+        }
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
         numFunctions++;
@@ -420,6 +435,13 @@ public class SymbolTable {
 
     void setStartFunction(int functionIndex) {
         checkNotLinked();
+        WasmFunction start = function(functionIndex);
+        if (start.numArguments() != 0) {
+            throw new WasmException("Start function cannot take arguments.");
+        }
+        if (start.returnTypeLength() != 0) {
+            throw new WasmException("Start function cannot return a value.");
+        }
         this.startFunctionIndex = functionIndex;
     }
 
@@ -460,7 +482,7 @@ public class SymbolTable {
         if (startFunctionIndex == -1) {
             return null;
         }
-        return functions[startFunctionIndex];
+        return function(startFunctionIndex);
     }
 
     WasmModule module() {
