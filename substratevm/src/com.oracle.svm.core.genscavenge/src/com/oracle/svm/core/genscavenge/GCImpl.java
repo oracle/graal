@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,7 +71,6 @@ import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -141,7 +141,7 @@ public class GCImpl implements GC {
         this.collectionEpoch = WordFactory.zero();
         this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
-        this.discoveredReferenceList = null;
+        this.discoveredReferencesListHead = null;
         this.completeCollection = false;
         this.sizeBefore = WordFactory.zero();
 
@@ -1059,14 +1059,14 @@ public class GCImpl implements GC {
         policy = newPolicy;
     }
 
-    private Target_java_lang_ref_Reference<?> discoveredReferenceList = null;
+    private Reference<?> discoveredReferencesListHead = null;
 
-    Target_java_lang_ref_Reference<?> getDiscoveredReferenceList() {
-        return discoveredReferenceList;
+    Reference<?> getDiscoveredReferencesListHead() {
+        return discoveredReferencesListHead;
     }
 
-    void setDiscoveredReferenceList(Target_java_lang_ref_Reference<?> newList) {
-        discoveredReferenceList = newList;
+    void setDiscoveredReferencesListHead(Reference<?> newList) {
+        discoveredReferencesListHead = newList;
     }
 
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {

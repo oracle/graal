@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.ref.Reference;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -33,7 +35,6 @@ import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReference
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -428,13 +429,11 @@ public class HeapVerifierImpl implements HeapVerifier {
     private static final HeapVerifierImpl.NoReferencesToForwardedObjectsVisitor noReferencesToForwardedObjectsVisitor = new NoReferencesToForwardedObjectsVisitor();
 
     private static boolean verifyReferenceObject(Object object) {
-        boolean result = true;
         Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
-        if (obj instanceof Target_java_lang_ref_Reference) {
-            final Target_java_lang_ref_Reference<?> dr = (Target_java_lang_ref_Reference<?>) obj;
-            result = ReferenceObjectProcessing.verify(dr);
+        if (obj instanceof Reference) {
+            return ReferenceObjectProcessing.verify((Reference<?>) obj);
         }
-        return result;
+        return true;
     }
 
     public enum ChunkLimit {

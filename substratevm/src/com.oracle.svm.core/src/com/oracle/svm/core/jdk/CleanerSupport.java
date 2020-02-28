@@ -24,27 +24,29 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.ref.ReferenceQueue;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.Target_java_lang_ref_ReferenceQueue;
+import com.oracle.svm.core.heap.ReferenceQueueInternals;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.util.VMError;
 
 public class CleanerSupport {
     public static void drainReferenceQueues() {
-        Target_java_lang_ref_ReferenceQueue<?> cleanerQueue = SubstrateUtil.cast(Target_jdk_internal_ref_Cleaner.dummyQueue, Target_java_lang_ref_ReferenceQueue.class);
+        ReferenceQueue<?> cleanerQueue = SubstrateUtil.cast(Target_jdk_internal_ref_Cleaner.dummyQueue, ReferenceQueue.class);
         processQueue(cleanerQueue);
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             // TODO: there can be other cleaners with one additional reference queue each
-            Target_java_lang_ref_ReferenceQueue<?> cleanableQueue = SubstrateUtil.cast(Target_jdk_internal_ref_CleanerFactory.cleaner().impl.queue, Target_java_lang_ref_ReferenceQueue.class);
+            ReferenceQueue<?> cleanableQueue = SubstrateUtil.cast(Target_jdk_internal_ref_CleanerFactory.cleaner().impl.queue, ReferenceQueue.class);
             processQueue(cleanableQueue);
         }
     }
 
-    private static void processQueue(Target_java_lang_ref_ReferenceQueue<?> queue) {
-        if (!queue.isEmpty()) {
+    private static void processQueue(ReferenceQueue<?> queue) {
+        if (!ReferenceQueueInternals.isEmpty(queue)) {
             ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt the cleaner processing as this would result in a memory leak.");
             try {
                 for (; /* return */ ;) {
