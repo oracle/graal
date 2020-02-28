@@ -789,6 +789,8 @@ final class Runner {
                             LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
                             parserResult.getRuntime().getFileScope().register(alias);
                             it.remove();
+                        } else {
+                            throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
                         }
                     }
                 }
