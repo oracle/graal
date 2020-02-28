@@ -129,6 +129,7 @@ public final class ProbeNode extends Node {
     private static final Object UNWIND_ACTION_IGNORED = new Object();
 
     private final InstrumentationHandler handler;
+    private Node oldNode;
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
@@ -144,6 +145,14 @@ public final class ProbeNode extends Node {
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
         this.context = new EventContext(this, sourceSection);
+    }
+
+    public Node getOldNode() {
+        return oldNode;
+    }
+
+    public void setOldNode(Node oldNode) {
+        this.oldNode = oldNode;
     }
 
     /**
@@ -317,12 +326,17 @@ public final class ProbeNode extends Node {
             if (nextChain == null) {
                 // chain is null -> remove wrapper;
                 // Note: never set child nodes to null, can cause races
-                InstrumentationHandler.removeWrapper(ProbeNode.this);
-                return null;
+                if (oldNode == null) {
+                    InstrumentationHandler.removeWrapper(ProbeNode.this);
+                    return null;
+                } else {
+                    oldChain = this.chain;
+                    this.chain = null;
+                }
+            } else {
+                oldChain = this.chain;
+                this.chain = insert(nextChain);
             }
-
-            oldChain = this.chain;
-            this.chain = insert(nextChain);
             this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
         } finally {
             lock.unlock();

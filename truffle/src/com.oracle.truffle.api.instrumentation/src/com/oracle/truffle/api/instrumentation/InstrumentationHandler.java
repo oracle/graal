@@ -352,7 +352,6 @@ final class InstrumentationHandler {
         if (!executionBindings.isEmpty()) {
             visitRoot(root, root, new InsertWrappersVisitor(executionBindings), false);
         }
-
     }
 
     void initializeInstrument(Object polyglotInstrument, String instrumentClassName, Supplier<? extends Object> instrumentSupplier) {
@@ -1276,6 +1275,7 @@ final class InstrumentationHandler {
             computingRootNodeBits = bits;
         }
 
+        private Node newTreeTraversalParent;
         private Node savedParent;
         private SourceSection savedParentSourceSection;
 
@@ -1284,13 +1284,18 @@ final class InstrumentationHandler {
             SourceSection sourceSection = node.getSourceSection();
             boolean instrumentable = InstrumentationHandler.isInstrumentableNode(node);
             Node previousParent = null;
+            Node previousNewTreeTraversalParent = null;
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
+                Node oldNode = node;
+                boolean oldNodeObtainedFromProbe = false;
                 if (!visitingOldNodes) {
-                    Node oldNode = node;
-                    node = materializeSyntaxNodes(node, sourceSection);
-                    if (node != oldNode) {
+                    Node materializedNode = materializeSyntaxNodes(node, sourceSection);
+                    if (materializedNode != oldNode) {
+                        // If this line is reached, both oldNode and materializedNode implement
+                        // InstrumentableNode.
+                        node = replaceByMaterializedNode((InstrumentableNode) oldNode, (InstrumentableNode) materializedNode);
                         /*
                          * We also need to traverse all old children on materialization. This is
                          * necessary if the old node is still currently executing and does not yet
@@ -1305,23 +1310,57 @@ final class InstrumentationHandler {
                         } finally {
                             visitingOldNodes = false;
                         }
+                    } else {
+                        /*
+                         * We also need to traverse all old children that are no longer reachable in
+                         * the AST due to previous materialization
+                         */
+                        WrapperNode wrapperNode = getWrapperNode(node);
+                        oldNode = (wrapperNode != null ? wrapperNode.getProbeNode().getOldNode() : null);
+                        oldNodeObtainedFromProbe = true;
+                        if (oldNode != null) {
+                            visitingOldNodes = true;
+                            try {
+                                NodeUtil.forEachChild(oldNode, this);
+                            } finally {
+                                visitingOldNodes = false;
+                            }
+                        }
                     }
                 }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
+                if (oldNode != node && !oldNodeObtainedFromProbe) {
+                    WrapperNode wrapperNode = getWrapperNode(node);
+                    if (wrapperNode != null) {
+                        wrapperNode.getProbeNode().setOldNode(oldNode);
+                    }
+                }
                 previousParent = this.savedParent;
                 previousParentSourceSection = this.savedParentSourceSection;
                 this.savedParent = node;
                 this.savedParentSourceSection = sourceSection;
             }
             try {
+                if (!visitingOldNodes) {
+                    previousNewTreeTraversalParent = newTreeTraversalParent;
+                    newTreeTraversalParent = node;
+                }
                 NodeUtil.forEachChild(node, this);
             } finally {
+                if (!visitingOldNodes) {
+                    newTreeTraversalParent = previousNewTreeTraversalParent;
+                }
                 if (instrumentable) {
                     this.savedParent = previousParent;
                     this.savedParentSourceSection = previousParentSourceSection;
                 }
             }
             return true;
+        }
+
+        private WrapperNode getWrapperNode(Node node) {
+            Node parent = node.getParent();
+            return parent instanceof WrapperNode ? (WrapperNode) parent : null;
         }
 
         @SuppressWarnings("unchecked")
@@ -1343,20 +1382,25 @@ final class InstrumentationHandler {
                         throw new IllegalStateException(String.format("The source section of the materialized syntax node must match the source section of the original node. %s != %s.", sourceSection,
                                         newSourceSection));
                     }
-                    Node currentParent = ((Node) currentNode).getParent();
-                    // The current parent is a wrapper. We need to replace the wrapper.
-                    if (currentParent instanceof WrapperNode && !NodeUtil.isReplacementSafe(currentParent, instrumentableNode, (Node) materializedNode)) {
-                        ProbeNode probe = ((WrapperNode) currentParent).getProbeNode();
-                        WrapperNode wrapper = materializedNode.createWrapper(probe);
-                        final Node wrapperNode = getWrapperNodeChecked(wrapper, (Node) materializedNode, currentParent.getParent());
-                        currentParent.replace(wrapperNode, "Insert instrumentation wrapper node.");
-                        return (Node) materializedNode;
-                    } else {
-                        return ((Node) currentNode).replace((Node) materializedNode);
-                    }
+
+                    return (Node) materializedNode;
                 }
             }
             return instrumentableNode;
+        }
+
+        private Node replaceByMaterializedNode(InstrumentableNode currentNode, InstrumentableNode materializedNode) {
+            Node currentParent = ((Node) currentNode).getParent();
+            // The current parent is a wrapper. We need to replace the wrapper.
+            if (currentParent instanceof WrapperNode && !NodeUtil.isReplacementSafe(currentParent, (Node) currentNode, (Node) materializedNode)) {
+                ProbeNode probe = ((WrapperNode) currentParent).getProbeNode();
+                WrapperNode wrapper = materializedNode.createWrapper(probe);
+                final Node wrapperNode = getWrapperNodeChecked(wrapper, (Node) materializedNode, currentParent.getParent());
+                currentParent.replace(wrapperNode, "Insert instrumentation wrapper node.");
+                return (Node) materializedNode;
+            } else {
+                return ((Node) currentNode).replace((Node) materializedNode);
+            }
         }
 
         protected abstract void visitInstrumentable(Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode, SourceSection sourceSection);

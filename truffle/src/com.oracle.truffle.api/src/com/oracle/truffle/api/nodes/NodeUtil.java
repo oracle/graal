@@ -54,8 +54,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**

@@ -47,6 +47,7 @@ import java.io.PrintWriter;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -196,7 +197,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT_BODY, ROOT, CONSTANT, TRY_CATCH};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
-                    "VARIABLE", "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
+                    "VARIABLE", "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "MATERIALIZE_CHILD_EXPR_AND_STMT",
+                    "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
 
     // used to test that no getSourceSection calls happen in certain situations
@@ -511,6 +513,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new InnerFrameNode(childArray);
                 case "MATERIALIZE_CHILD_EXPRESSION":
                     return new MaterializeChildExpressionNode(childArray);
+                case "MATERIALIZE_CHILD_EXPR_AND_STMT":
+                    return new MaterializeChildExpressionAndStatementNode(childArray);
                 case "TRY":
                     return new TryCatchNode(childArray);
                 case "CATCH":
@@ -650,6 +654,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             b.append(")");
             return InstrumentationTestLanguage.toString(b);
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new ExpressionNode(cloneUninitialized(children));
+        }
     }
 
     static class BlockNoSourceSectionNode extends BlockNode {
@@ -668,6 +677,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return null;
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new BlockNoSourceSectionNode(cloneUninitialized(children));
+        }
     }
 
     @GenerateWrapper
@@ -785,6 +798,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             super(children);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new BlockNode(cloneUninitialized(children));
+        }
     }
 
     static class TryCatchNode extends InstrumentedNode {
@@ -850,6 +867,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new TryCatchNode(cloneUninitialized(children));
+        }
     }
 
     static class TryNode extends BlockNode {
@@ -912,6 +933,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             }
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new TryNode(cloneUninitialized(children), cloneUninitialized(((CatchesInfoObject) catchesInfoNode).catches));
+        }
     }
 
     @GenerateWrapper
@@ -936,6 +962,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public WrapperNode createWrapper(ProbeNode probe) {
             return new CatchNodeWrapper(this, probe);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new CatchNode(exceptionName, cloneUninitialized(children));
         }
     }
 
@@ -968,11 +999,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         }
 
+        MultipleNode(BaseNode[] children, Collection<Class<? extends Tag>> tags) {
+            super(children);
+            this.resolvedTags = new HashSet<>(tags);
+        }
+
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
             return resolvedTags.contains(tag);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new MultipleNode(cloneUninitialized(children), resolvedTags);
+        }
     }
 
     public static class ThrowNode extends InstrumentedNode {
@@ -1023,6 +1063,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new ThrowNode(type, message);
+        }
     }
 
     private static final class FunctionRootNode extends InstrumentedNode {
@@ -1046,6 +1091,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             return false;
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new FunctionRootNode(cloneUninitialized(children));
+        }
     }
 
     private static final class FunctionBodyNode extends InstrumentedNode {
@@ -1054,12 +1104,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             super(children);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new FunctionBodyNode(cloneUninitialized(children));
+        }
     }
 
-    private static class StatementNode extends InstrumentedNode {
+    static class StatementNode extends InstrumentedNode {
 
         StatementNode(BaseNode[] children) {
             super(children);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new StatementNode(cloneUninitialized(children));
         }
     }
 
@@ -1075,6 +1134,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
             this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
+        }
+
+        private DefineNode(String identifier, CallTarget target) {
+            this.identifier = identifier;
+            this.target = target;
         }
 
         @Override
@@ -1099,6 +1163,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             context.callFunctions.callTargets.put(this.identifier, target);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new DefineNode(identifier, target);
+        }
     }
 
     static class ContextNode extends BaseNode {
@@ -1128,6 +1196,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return returnValue;
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new ContextNode(cloneUninitialized(children));
+        }
+
         @TruffleBoundary
         private TruffleContext createInnerContext() {
             InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
@@ -1154,6 +1227,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
             return callNode.call(new Object[0]);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new CallNode(identifier, cloneUninitialized(children));
         }
     }
 
@@ -1193,6 +1271,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 context.spawnedThreads.add(t);
             }
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new SpawnNode(identifier, cloneUninitialized(children));
+        }
     }
 
     private static class JoinNode extends InstrumentedNode {
@@ -1229,6 +1312,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             } while (!threads.isEmpty());
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new JoinNode(cloneUninitialized(children));
+        }
     }
 
     private static class RecursiveCallNode extends InstrumentedNode {
@@ -1260,6 +1348,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else {
                 return null;
             }
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new RecursiveCallNode(identifier, depth, cloneUninitialized(children));
         }
     }
 
@@ -1294,6 +1387,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             Object retval = callNode.call(thisArg);
             return retval;
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new CallWithNode(identifier, ((ThisArg) thisArg[0]).thisElement, cloneUninitialized(children));
         }
     }
 
@@ -1347,6 +1445,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             reporter.onReturnValue(allocatedObject, 0, 1);
             return allocatedObject;
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new AllocationNode(cloneUninitialized(children));
+        }
     }
 
     private static class SleepNode extends InstrumentedNode {
@@ -1372,6 +1475,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 throw new AssertionError();
             }
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new SleepNode(timeToSleep, cloneUninitialized(children));
+        }
     }
 
     private static class ConstantNode extends InstrumentedNode {
@@ -1383,11 +1491,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.constant = parseIdent(identifier);
         }
 
+        ConstantNode(Object constant, BaseNode[] children) {
+            super(children);
+            this.constant = constant;
+        }
+
         @Override
         public Object execute(VirtualFrame frame) {
             return constant;
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new ConstantNode(constant, cloneUninitialized(children));
+        }
     }
 
     private static class InvalidateNode extends InstrumentedNode {
@@ -1402,6 +1519,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             return 1;
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new InvalidateNode(cloneUninitialized(children));
         }
     }
 
@@ -1447,12 +1569,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public SourceSection getSourceSection() {
             return Source.newBuilder(ID, "UnexpectedResultException(" + value + ")", "unexpected").build().createSection(1);
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new TypeSpecializedNode(value);
+        }
     }
 
     private static class UnexpectedResultNode extends InstrumentedNode {
 
         UnexpectedResultNode(String value) {
             super(new BaseNode[]{new TypeSpecializedNode(value)});
+        }
+
+        UnexpectedResultNode(BaseNode[] children) {
+            super(children);
         }
 
         @Override
@@ -1471,6 +1602,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             return super.hasTag(tag);
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new UnexpectedResultNode(cloneUninitialized(children));
+        }
     }
 
     static class MaterializeChildExpressionNode extends StatementNode {
@@ -1481,11 +1617,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
-                MaterializedChildExpressionNode materializedNode = new MaterializedChildExpressionNode(getSourceSection(), children);
+                MaterializedChildExpressionNode materializedNode = new MaterializedChildExpressionNode(getSourceSection(), cloneUninitialized(children));
                 materializedNode.setSourceSection(getSourceSection());
                 return materializedNode;
             }
             return this;
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new MaterializeChildExpressionNode(cloneUninitialized(children));
         }
     }
 
@@ -1499,12 +1640,91 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.expressionNode.setSourceSection(sourceSection);
         }
 
+        MaterializedChildExpressionNode(ExpressionNode expressionNode, BaseNode[] children) {
+            super(children);
+            this.expressionNode = expressionNode;
+        }
+
         @Override
         public Object execute(VirtualFrame frame) {
             expressionNode.execute(frame);
             return super.execute(frame);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new MaterializedChildExpressionNode((ExpressionNode) cloneUninitialized(expressionNode), cloneUninitialized(children));
+        }
+    }
+
+    static class MaterializeChildExpressionAndStatementNode extends StatementNode {
+
+        MaterializeChildExpressionAndStatementNode(BaseNode[] children) {
+            super(children);
+        }
+
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(StandardTags.ExpressionTag.class) || materializedTags.contains(StandardTags.StatementTag.class)) {
+                BaseNode[] newChildren = children != null ? new BaseNode[children.length] : null;
+                int skippedExpressionsCount = 0;
+                if (newChildren != null) {
+                    for (int i = 0; i < newChildren.length; i++) {
+                        if (children[i] instanceof ExpressionNode) {
+                            ExpressionNode expr = (ExpressionNode) children[i];
+                            if (expr.children != null && expr.children.length == 1) {
+                                // use nested expression
+                                newChildren[i] = expr.children[i];
+                                skippedExpressionsCount++;
+                            }
+                        } else {
+                            newChildren[i] = children[i];
+                        }
+                    }
+                }
+                BaseNode[] replacementForSkippedExpressions = new BaseNode[skippedExpressionsCount];
+                for (int i = 0; i < skippedExpressionsCount; i++) {
+                    replacementForSkippedExpressions[i] = new ExpressionNode(null);
+                    replacementForSkippedExpressions[i].setSourceSection(getSourceSection());
+                }
+                MaterializedChildExpressionAndStatementNode materializedNode = new MaterializedChildExpressionAndStatementNode(getSourceSection(), replacementForSkippedExpressions,
+                                cloneUninitialized(newChildren));
+                materializedNode.setSourceSection(getSourceSection());
+                return materializedNode;
+            }
+            return this;
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new MaterializeChildExpressionAndStatementNode(cloneUninitialized(children));
+        }
+    }
+
+    static class MaterializedChildExpressionAndStatementNode extends StatementNode {
+
+        @Child private InstrumentedNode statementNode;
+
+        MaterializedChildExpressionAndStatementNode(SourceSection sourceSection, BaseNode[] expressions, BaseNode[] children) {
+            super(children);
+            this.statementNode = new StatementNode(expressions);
+            this.statementNode.setSourceSection(sourceSection);
+        }
+
+        MaterializedChildExpressionAndStatementNode(StatementNode statementNode, BaseNode[] children) {
+            super(children);
+            this.statementNode = statementNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            statementNode.execute(frame);
+            return super.execute(frame);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new MaterializedChildExpressionAndStatementNode((StatementNode) cloneUninitialized(statementNode), cloneUninitialized(children));
+        }
     }
 
     private static class InnerFrameNode extends InstrumentedNode {
@@ -1523,6 +1743,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public Object execute(VirtualFrame frame) {
             return super.execute(Truffle.getRuntime().createVirtualFrame(frame.getArguments(), innerFrameDescriptor));
+        }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new InnerFrameNode(cloneUninitialized(children));
         }
     }
 
@@ -1550,6 +1775,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             super(children);
             this.name = name;
             this.value = parseIdent(identifier);
+            this.allocationReporter = allocationReporter;
+        }
+
+        private VariableNode(String name, Object value, BaseNode[] children, AllocationReporter allocationReporter) {
+            super(children);
+            this.name = name;
+            this.value = value;
             this.allocationReporter = allocationReporter;
         }
 
@@ -1590,6 +1822,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return AllocationReporter.SIZE_UNKNOWN;
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new VariableNode(name, value, cloneUninitialized(children), allocationReporter);
+        }
     }
 
     private static class ArgumentNode extends InstrumentedNode {
@@ -1626,6 +1862,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return value;
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new ArgumentNode(name, cloneUninitialized(children));
+        }
     }
 
     static final class WhileLoopNode extends InstrumentedNode {
@@ -1637,6 +1877,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         WhileLoopNode(Object loopCount, BaseNode[] children) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
+        }
+
+        WhileLoopNode(RepeatingNode repeatingNode) {
+            this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
         }
 
         FrameSlot getLoopIndex() {
@@ -1680,12 +1924,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new WhileLoopNode((RepeatingNode) cloneUninitialized((BaseNode) loop.getRepeatingNode()));
+        }
+
         final class LoopConditionNode extends InstrumentedNode implements RepeatingNode {
 
             private final int loopCount;
             private final boolean infinite;
-
-            @Children BaseNode[] children;
 
             LoopConditionNode(Object loopCount, BaseNode[] children) {
                 super(children);
@@ -1701,6 +1948,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     throw new LanguageError("Invalid loop count " + loopCount);
                 }
                 this.infinite = inf;
+            }
+
+            public LoopConditionNode(int loopCount, boolean infinite, BaseNode[] children) {
+                super(children);
+                this.loopCount = loopCount;
+                this.infinite = infinite;
             }
 
             @Override
@@ -1725,6 +1978,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return false;
                 }
             }
+
+            @Override
+            protected BaseNode copyUninitialized() {
+                return new LoopConditionNode(loopCount, infinite, cloneUninitialized(children));
+            }
         }
     }
 
@@ -1744,6 +2002,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return super.execute(frame);
         }
 
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new InternalNode(cloneUninitialized(children));
+        }
     }
 
     static class PrintNode extends InstrumentedNode {
@@ -1766,6 +2028,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 this.where = Output.valueOf(where);
                 this.what = what;
             }
+        }
+
+        public PrintNode(Output where, String what, BaseNode[] children) {
+            super(children);
+            this.where = where;
+            this.what = what;
         }
 
         @Override
@@ -1793,6 +2061,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             writer.write(what);
             writer.flush();
         }
+
+        @Override
+        protected BaseNode copyUninitialized() {
+            return new PrintNode(where, what, cloneUninitialized(children));
+        }
     }
 
     public abstract static class BaseNode extends Node {
@@ -1815,6 +2088,39 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         public abstract Object execute(VirtualFrame frame);
 
+        protected BaseNode copyUninitialized() {
+            if (this instanceof InstrumentableNode.WrapperNode) {
+                InstrumentableNode.WrapperNode wrapperNode = (InstrumentableNode.WrapperNode) this;
+                return cloneUninitialized((BaseNode) wrapperNode.getDelegateNode());
+            }
+
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unchecked")
+        public static <T extends BaseNode> T cloneUninitialized(T node) {
+            if (node == null) {
+                return null;
+            } else {
+                T copy = (T) node.copyUninitialized();
+                if (copy.getSourceSection() == null && node.getSourceSection() != null) {
+                    copy.setSourceSection(node.getSourceSection());
+                }
+                return copy;
+            }
+        }
+
+        public static <T extends BaseNode> T[] cloneUninitialized(T[] nodeArray) {
+            if (nodeArray == null) {
+                return null;
+            } else {
+                T[] copy = nodeArray.clone();
+                for (int i = 0; i < copy.length; i++) {
+                    copy[i] = cloneUninitialized(copy[i]);
+                }
+                return copy;
+            }
+        }
     }
 
     @SuppressWarnings("serial")
