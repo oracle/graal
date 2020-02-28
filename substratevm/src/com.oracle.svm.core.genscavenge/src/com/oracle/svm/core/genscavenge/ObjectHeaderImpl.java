@@ -49,9 +49,9 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * The pointer to the hub is always stored in uncompressed form. This limits the address space where
- * all hubs must be placed to 32/64 bits but due to the object alignment, the 3 least-significant
- * bits can be reserved for the GC.
+ * The pointer to the hub is either an uncompressed absolute reference or a heap-base-relative
+ * reference without a shift. This limits the address space where all hubs must be placed to 32/64
+ * bits but due to the object alignment, the 3 least-significant bits can be reserved for the GC.
  *
  * Image heap objects are not marked explicitly and have the same header as an aligned object
  * without a remembered set. So, in places where it is necessary to explicitly distinguish image

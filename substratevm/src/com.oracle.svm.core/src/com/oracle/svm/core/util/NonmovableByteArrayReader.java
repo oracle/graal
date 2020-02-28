@@ -91,17 +91,6 @@ public class NonmovableByteArrayReader {
         return getS4(data, byteIndex) & 0xFFFFFFFFL;
     }
 
-    public static long getU4(Pointer position) {
-        return getS4(position) & 0xFFFFFFFFL;
-    }
-
-    public static int getS4(Pointer position) {
-        if (SubstrateUtil.HOSTED) {
-            throw VMError.shouldNotReachHere("Uses a raw pointer and therefore must not be called at image build time.");
-        }
-        return position.readInt(0);
-    }
-
     @Fold
     protected static int getByteArrayBaseOffset() {
         return ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
