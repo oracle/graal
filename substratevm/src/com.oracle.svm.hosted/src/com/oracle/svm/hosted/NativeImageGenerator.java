@@ -848,7 +848,7 @@ public class NativeImageGenerator {
                 prepareLibC();
 
                 CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
-                if (!"llvm".equals(SubstrateOptions.CompilerBackend.getValue())) {
+                if (!("llvm".equals(SubstrateOptions.CompilerBackend.getValue()) && NativeImageOptions.ExitAfterRelocatableImageWrite.getValue())) {
                     compilerInvoker.verifyCompiler();
                 }
                 ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
