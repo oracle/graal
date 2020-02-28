@@ -48,6 +48,12 @@ public class JDKSourceCache extends SourceCache {
         return JDK;
     }
 
+    /*
+     * properties needed to locate relevant JDK and app source roots
+     */
+    private static final String JAVA_HOME_PROP = "java.home";
+    private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
+
     private void initSrcRoots() {
         String javaHome = System.getProperty(JAVA_HOME_PROP);
         assert javaHome != null;
