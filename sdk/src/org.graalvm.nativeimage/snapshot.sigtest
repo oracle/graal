@@ -349,7 +349,7 @@ supr java.lang.Object
 CLSS public final org.graalvm.nativeimage.VMRuntime
 meth public static void initialize()
 meth public static void shutdown()
-meth public static boolean dumpHeap(java.io.FileOutputStream,boolean)
+meth public static void dumpHeap(java.lang.String,boolean)
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CContext

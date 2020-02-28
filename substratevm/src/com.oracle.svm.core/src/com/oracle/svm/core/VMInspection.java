@@ -26,11 +26,11 @@ package com.oracle.svm.core;
 
 //Checkstyle: stop
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
@@ -39,6 +39,8 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -125,37 +127,21 @@ class DumpAllStacks implements SignalHandler {
 }
 
 class DumpHeapReport implements SignalHandler {
+    private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
+
     static void install() {
         Signal.handle(new Signal("USR1"), new DumpHeapReport());
     }
 
-    private static void performHeapDump(FileOutputStream fileOutputStream) {
-        try {
-            RuntimeSupport.getRuntimeSupport().dumpHeap(fileOutputStream, true);
-        } catch (IOException e) {
-            Log.log().string("HeapDump failed: ").string(e.getMessage()).newline();
-        }
-    }
-
     @Override
     public void handle(Signal arg0) {
-        Path heapDumpFilePath = null;
-        FileOutputStream fileOutputStream = null;
+        DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
+        dateFormat.setTimeZone(UTC_TIMEZONE);
+        String heapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
         try {
-            heapDumpFilePath = Files.createTempFile(Paths.get("."), "svm-heapdump-", ".hprof");
-            fileOutputStream = new FileOutputStream(heapDumpFilePath.toFile());
-            performHeapDump(fileOutputStream);
-        } catch (Exception e) {
-            Log.log().string("svm-heapdump failed").newline().flush();
-            try {
-                if (fileOutputStream != null) {
-                    fileOutputStream.close();
-                }
-                if (heapDumpFilePath != null) {
-                    Files.deleteIfExists(heapDumpFilePath);
-                }
-            } catch (IOException e1) {
-            }
+            VMRuntime.dumpHeap(heapDumpFileName, true);
+        } catch (IOException e) {
+            Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
         }
     }
 }
