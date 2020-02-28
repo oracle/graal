@@ -56,6 +56,6 @@ public class CMicroBenchmarkSuite extends WasmBenchmarkSuiteBase {
 
     @Benchmark
     public void run(CBenchmarkState state) {
-        state.setResult(state.benchmarkRun().execute());
+        state.run();
     }
 }
