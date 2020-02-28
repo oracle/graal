@@ -26,9 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.OptionUtils;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -62,17 +59,15 @@ public class GraalVMSourceCache extends SourceCache {
         for (String classPathEntry : classPathEntries) {
             tryClassPathRoot(classPathEntry);
         }
-        if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-            for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
-                trySourceRoot(searchPathEntry);
-            }
+        for (String sourcePathEntry : sourcePathEntries) {
+            tryClassPathRoot(sourcePathEntry);
         }
     }
-    private void tryClassPathRoot(String sourceRoot) {
-        trySourceRoot(sourceRoot, true);
+    private void tryClassPathRoot(String classPathEntry) {
+        trySourceRoot(classPathEntry, true);
     }
-    private void trySourceRoot(String sourceRoot) {
-        trySourceRoot(sourceRoot, false);
+    private void trySourceRoot(String sourcePathEntry) {
+        trySourceRoot(sourcePathEntry, false);
     }
     private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
         Path sourcePath = Paths.get(sourceRoot);

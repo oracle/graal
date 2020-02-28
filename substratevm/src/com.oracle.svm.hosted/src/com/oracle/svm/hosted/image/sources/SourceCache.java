@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +26,13 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +42,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * An abstract cache manager for some subspace of the
  * JDK, GraalVM or application source file space. This class
@@ -49,12 +58,16 @@ import java.util.List;
 
 public abstract class SourceCache {
 
-    /*
-     * properties needed to locate relevant JDK and app source roots
+    /**
+     * A list of all entries in the classpath used
+     * by the native image classloader
      */
-    protected static final String JAVA_CLASSPATH_PROP = "java.class.path";
-    protected static final String JAVA_HOME_PROP = "java.home";
-    protected static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
+    protected static final List<String> classPathEntries = new ArrayList<>();
+    /**
+     * A list of all entries in the classpath used
+     * by the native image classloader
+     */
+    protected static final List<String> sourcePathEntries = new ArrayList<>();
     /**
      * A list of root directories which may contain source files
      * from which this cache can be populated
@@ -70,8 +83,8 @@ public abstract class SourceCache {
     }
 
     /**
-     * Idenitfy the specific type of this source cache
-     * @return
+     * Identify the specific type of this source cache
+     * @return the source cache type
      */
     protected abstract SourceCacheType getType();
 
@@ -130,6 +143,17 @@ public abstract class SourceCache {
         }
         return null;
     }
+    /**
+     * Attempt to copy a source file from one of this cache's
+     * source roots to the local sources directory storing
+     * it in the subdirectory that belongs to this cache.
+     * @param filePath a path appended to each of the cache's
+     * source roots in turn until an acceptable source file
+     * is found and copied to the local source directory.
+     * @return the supplied path if the file has been located
+     * and copied to the local sources directory or null if
+     * it was not found or the copy failed.
+     */
     public Path tryCacheFile(Path filePath) {
         for (Path root : srcRoots) {
             Path targetPath = cachedPath(filePath);
@@ -147,9 +171,21 @@ public abstract class SourceCache {
         }
         return null;
     }
+    /**
+     * Check whether the copy of a given source file in the
+     * local source cache is up to date with respect to any
+     * original located in this cache's and if not copy the
+     * original to the subdirectory that belongs to this cache.
+     * @param filePath a path appended to each of the cache's
+     * source roots in turn until an matching original source
+     * is found for comparison against the local source directory.
+     * @return the supplied path if the file is up to date or if
+     * an updated version has been copied to the local sources
+     * directory or null if was not found or the copy failed.
+     */
     public Path checkCacheFile(Path filePath) {
+        Path targetPath = cachedPath(filePath);
         for (Path root : srcRoots) {
-            Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
             try {
                 if (checkSourcePath(sourcePath)) {
@@ -159,19 +195,23 @@ public abstract class SourceCache {
                         try {
                             Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                         } catch (IOException e) {
+                            /* delete the target file as it is invalid */
+                            targetPath.toFile().delete();
                             return null;
                         }
                     }
                     return filePath;
-                } else {
-                    /* delete the target file as it is out of date */
-                    targetPath.toFile().delete();
                 }
             } catch (IOException e) {
-                // hmm last modified time blew up?
+                /* delete the target file as it is invalid */
+                targetPath.toFile().delete();
+                /* have another go at caching it */
                 return tryCacheFile(filePath);
             }
         }
+        /* delete the target file as it is invalid */
+        targetPath.toFile().delete();
+
         return null;
     }
     /**
@@ -218,7 +258,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * convert a potential resolved candidate path to
+     * Convert a potential resolved candidate path to
      * the corresponding local Path in this cache.
      * @param candidate a resolved candidate path for
      * some given resolution request
@@ -228,7 +268,7 @@ public abstract class SourceCache {
         return basePath.resolve(candidate);
     }
     /**
-     * convert a potential resolved candidate path to
+     * Convert a potential resolved candidate path to
      * the corresponding local File in this cache.
      * @param candidate a resolved candidate path for
      * some given resolution request
@@ -238,17 +278,20 @@ public abstract class SourceCache {
         return cachedPath(candidate).toFile();
     }
     /**
-     * indicate whether a source path identifies a fie in the associated file system
+     * Indicate whether a source path identifies a
+     * file in the associated file system.
      * @param sourcePath
-     * @return true if the path identifies a file or false if no such file can be found
-     * @throws IOException if there is some error in resolving the path
+     * @return true if the path identifies a file or
+     * false if no such file can be found.
+     * @throws IOException if there is some error in
+     * resolving the path.
      */
     private boolean checkSourcePath(Path sourcePath) throws IOException {
         return Files.isRegularFile(sourcePath);
     }
     /**
-     * ensure the directory hierarchy for a path exists
-     * creating any missing directories if needed
+     * Ensure the directory hierarchy for a path exists
+     * creating any missing directories if needed.
      * @param targetDir a path to the desired directory
      * @throws IOException if it is not possible to create
      * one or more directories in the path
@@ -258,6 +301,43 @@ public abstract class SourceCache {
             File targetFile = targetDir.toFile();
             if (!targetFile.exists()) {
                 targetDir.toFile().mkdirs();
+            }
+        }
+    }
+    /**
+     * Add a path to the list of classpath entries
+     * @param path The path to add.
+     */
+    private static void addClassPathEntry(String path) {
+        classPathEntries.add(path);
+    }
+
+    /**
+     * Add a path to the list of source path entries
+     * @param path The path to add.
+     */
+    private static void addSourcePathEntry(String path) {
+        sourcePathEntries.add(path);
+    }
+
+    /**
+     * An automatic feature class which acquires the image
+     * loader class path via the  afterAnalysis callback.
+     */
+    @AutomaticFeature
+    public static class SourceCacheFeature implements Feature {
+        @Override
+        public void afterAnalysis(AfterAnalysisAccess access) {
+            FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+            ImageClassLoader loader = accessImpl.getImageClassLoader();
+            for (String entry : loader.getClasspath()) {
+                addClassPathEntry(entry);
+            }
+            // also add any necessary source path entries
+            if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
+                for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
+                    addSourcePathEntry(searchPathEntry);
+                }
             }
         }
     }
