@@ -36,7 +36,10 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -131,7 +134,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public abstract void layoutMethods(DebugContext debug, String imageName);
+    public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
 
     public void layoutConstants() {
         for (CompilationResult compilation : compilations.values()) {
