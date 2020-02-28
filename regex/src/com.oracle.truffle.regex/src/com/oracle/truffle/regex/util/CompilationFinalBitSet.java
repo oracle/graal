@@ -99,6 +99,9 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         return STATIC_INSTANCES[0];
     }
 
+    /**
+     * Static shared instances for deduplication of common immutable bit sets.
+     */
     public static CompilationFinalBitSet getStaticInstance(int i) {
         return STATIC_INSTANCES[i];
     }

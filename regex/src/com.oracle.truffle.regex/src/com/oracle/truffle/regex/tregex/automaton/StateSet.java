@@ -51,6 +51,10 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * A specialized set for sequentially indexed objects. Uses an {@link StateIndex index} for mapping
+ * indices to actual objects.
+ */
 public interface StateSet<S> extends Set<S>, Iterable<S>, JsonConvertible {
 
     static <T> StateSet<T> create(StateIndex<? super T> stateIndex) {

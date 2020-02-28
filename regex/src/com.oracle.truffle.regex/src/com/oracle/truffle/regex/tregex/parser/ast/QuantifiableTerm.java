@@ -44,15 +44,13 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
 /**
- * A common supertype for all {@link RegexASTNode}s except {@link Sequence}s.
- * <p>
- * Roughly corresponds to the goal symbol <em>Term</em> in the ECMAScript RegExp syntax. A
- * <em>Term</em> ({@link QuantifiableTerm}) can be either an <em>Assertion</em>
- * ({@link PositionAssertion} or {@link RegexASTSubtreeRootNode}) or an <em>Atom</em>
- * ({@link CharacterClass}, {@link BackReference} or {@link Group}). <em>Quantifier</em>s are
- * handled by the {@link Group#isLoop()} flag of {@link Group}s.
+ * Roughly corresponds to the goal symbol <em>Atom</em> in the ECMAScript RegExp syntax. An
+ * <em>Atom</em> ({@link QuantifiableTerm}) can be either a {@link CharacterClass}, a
+ * {@link BackReference} or a {@link Group}). <em>Quantifier</em>s ({@link Quantifier}) are attached
+ * directly to the quantified term.
  */
 public abstract class QuantifiableTerm extends Term {
 
@@ -73,6 +71,9 @@ public abstract class QuantifiableTerm extends Term {
         return quantifier != null;
     }
 
+    /**
+     * Returns {@code true} iff this term has a quantifier that was not unrolled by the parser.
+     */
     public boolean hasNotUnrolledQuantifier() {
         return hasQuantifier() && !isExpandedQuantifier();
     }

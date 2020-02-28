@@ -56,14 +56,25 @@ public class InnerLiteral {
         this.maxPrefixSize = maxPrefixSize;
     }
 
+    /**
+     * The literal string.
+     */
     public String getLiteral() {
         return literal;
     }
 
+    /**
+     * An optional mask for matching the string in ignore-case mode.
+     */
     public String getMask() {
         return mask;
     }
 
+    /**
+     * The maximum number of code points the regular expression may match before matching this
+     * literal. Example: the inner literal of {@code /a?b/} is {@code "b"}, with a max prefix size
+     * of {@code 1}.
+     */
     public int getMaxPrefixSize() {
         return maxPrefixSize;
     }

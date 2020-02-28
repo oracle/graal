@@ -163,11 +163,6 @@ public class TRegexOptions {
     public static final int TRegexQuantifierUnrollThresholdGroup = 5;
 
     /**
-     * Bailout threshold for counted repetitions.
-     */
-    public static final int TRegexMaxCountedRepetition = 6;
-
-    /**
      * Bailout threshold for number of capture groups.
      */
     public static final int TRegexMaxNumberOfCaptureGroups = Short.MAX_VALUE;

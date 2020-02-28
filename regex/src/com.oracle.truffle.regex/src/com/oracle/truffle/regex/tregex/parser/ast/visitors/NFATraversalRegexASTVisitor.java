@@ -127,18 +127,19 @@ public abstract class NFATraversalRegexASTVisitor {
      * insideLoops is the set of looping groups that we are currently inside of. We need to maintain
      * this in order to detect infinite loops in the NFA traversal. If we enter a looping group,
      * traverse it without encountering a CharacterClass node or a MatchFound node and arrive back
-     * at the same group, then we are bound to loop like this forever. Using insideQuantifiers, we
-     * can detect this situation and proceed with the search using another alternative. For example,
-     * in the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
+     * at the same group, then we are bound to loop like this forever. Using insideLoops, we can
+     * detect this situation and proceed with the search using another alternative. For example, in
+     * the RegexAST {@code ((|[a])*|)*}, which corresponds to the regex {@code /(a*?)* /}, we can
      * traverse the inner loop, {@code (|[a])*}, without hitting any CharacterClass node by choosing
      * the first alternative and we will then arrive back at the outer loop. There, we detect an
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
      * loop, leading us to the CharacterClass node [a].
-     *
-     * This set is also needed to make sure that a quantified term cannot match the empty string, as
-     * is specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
      */
     private final StateSet<Group> insideLoops;
+    /**
+     * This set is needed to make sure that a quantified term cannot match the empty string, as is
+     * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
+     */
     private final StateSet<Group> insideEmptyGuardGroup;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
@@ -304,11 +305,7 @@ public abstract class NFATraversalRegexASTVisitor {
                                 if (quantifierGuardsLoop.get(quantifier.getIndex()) && !quantifierGuardsExited.get(quantifier.getIndex())) {
                                     quantifierGuards.add(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
                                 } else {
-                                    if (quantifier.isInfiniteLoop() || quantifierGuardsExited.get(quantifier.getIndex())) {
-                                        quantifierGuards.add(QuantifierGuard.createEnterInc(quantifier));
-                                    } else {
-                                        quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
-                                    }
+                                    quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
                                 }
                             } else if (pathIsGroupPassThrough(element)) {
                                 if (quantifier.getMin() > 0) {
@@ -513,6 +510,10 @@ public abstract class NFATraversalRegexASTVisitor {
     private boolean advanceEmptyGuard(Term curTerm) {
         Group parent = curTerm.getParent().getParent().asGroup();
         if (parent.hasNotUnrolledQuantifier() && parent.getQuantifier().getMin() > 0) {
+            assert curTerm.isGroup();
+            // We found a zero-width match group with a bounded quantifier.
+            // By returning the quantified group itself, we map the transition target to the special
+            // empty-match state.
             cur = curTerm;
             return false;
         }

@@ -41,19 +41,17 @@
 package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
-import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
@@ -84,7 +82,6 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     private final short extraId;
     private final byte kind;
     private final CodePointSet charSet;
-    private Set<PureNFA> lookBehindEntries;
 
     public PureNFAState(short id, Term t) {
         super(id, EMPTY_TRANSITIONS);
@@ -103,54 +100,22 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         return (Term) ast.getState(astNodeId);
     }
 
-    public short getLookAroundId() {
-        assert isLookAround();
-        return extraId;
-    }
-
-    public short getBackRefNumber() {
-        assert isBackReference();
-        return extraId;
-    }
-
     public byte getKind() {
         return kind;
     }
 
+    /**
+     * State represents a {@link CharacterClass}.
+     */
     public boolean isCharacterClass() {
         return kind == KIND_CHARACTER_CLASS;
     }
 
+    /**
+     * State represents a {@link LookAroundAssertion}.
+     */
     public boolean isLookAround() {
         return kind == KIND_LOOK_AROUND;
-    }
-
-    public boolean isBackReference() {
-        return kind == KIND_BACK_REFERENCE;
-    }
-
-    public boolean isEmptyMatch() {
-        return kind == KIND_EMPTY_MATCH;
-    }
-
-    public CodePointSet getCharSet() {
-        return charSet;
-    }
-
-    public boolean isLookAroundNegated() {
-        return getFlag(FLAG_IS_LOOK_AROUND_NEGATED);
-    }
-
-    public void setLookAroundNegated(boolean value) {
-        setFlag(FLAG_IS_LOOK_AROUND_NEGATED, value);
-    }
-
-    public boolean isDeterministic() {
-        return getFlag(FLAG_IS_DETERMINISTIC);
-    }
-
-    public void setDeterministic(boolean value) {
-        setFlag(FLAG_IS_DETERMINISTIC, value);
     }
 
     public boolean isLookAhead(RegexAST ast) {
@@ -162,10 +127,64 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     }
 
     /**
-     * Initializes this state's {@link #isDeterministic()}-property, depending on {@code forward}. A
-     * state is considered deterministic iff it either has only one successor, or all of its
+     * State represents a {@link BackReference}.
+     */
+    public boolean isBackReference() {
+        return kind == KIND_BACK_REFERENCE;
+    }
+
+    /**
+     * State represents an empty loop iteration in a quantified expression. This kind of state is
+     * needed when a quantified expression where {@link Quantifier#getMin()} > 0 can match the empty
+     * string - e.g. <code>(a|){10,20}</code>. In such expressions, the quantifier must match the
+     * empty string until the minimum number of iterations is reached, but after that it is no
+     * longer allowed to match the empty string. To model this behavior, we insert an "empty match"
+     * state whenever a quantified expression that can match the empty string is encountered.
+     */
+    public boolean isEmptyMatch() {
+        return kind == KIND_EMPTY_MATCH;
+    }
+
+    public CodePointSet getCharSet() {
+        assert isCharacterClass();
+        return charSet;
+    }
+
+    public short getLookAroundId() {
+        assert isLookAround();
+        return extraId;
+    }
+
+    public short getBackRefNumber() {
+        assert isBackReference();
+        return extraId;
+    }
+
+    public boolean isLookAroundNegated() {
+        return getFlag(FLAG_IS_LOOK_AROUND_NEGATED);
+    }
+
+    public void setLookAroundNegated(boolean value) {
+        setFlag(FLAG_IS_LOOK_AROUND_NEGATED, value);
+    }
+
+    /**
+     * A state is considered "deterministic" iff it either has only one successor, or all of its
      * successors/predecessors (depending on {@code forward}) represent {@link #isCharacterClass()
      * character classes}, and none of those character classes intersect.
+     *
+     * @see #initIsDeterministic(boolean, CompilationBuffer)
+     */
+    public boolean isDeterministic() {
+        return getFlag(FLAG_IS_DETERMINISTIC);
+    }
+
+    public void setDeterministic(boolean value) {
+        setFlag(FLAG_IS_DETERMINISTIC, value);
+    }
+
+    /**
+     * Initializes this state's {@link #isDeterministic()}-property, depending on {@code forward}.
      */
     public void initIsDeterministic(boolean forward, CompilationBuffer compilationBuffer) {
         setDeterministic(calcIsDeterministic(forward, compilationBuffer));
@@ -211,20 +230,6 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         return new PureNFATransition[length];
     }
 
-    public Set<PureNFA> getLookBehindEntries() {
-        if (lookBehindEntries == null) {
-            return Collections.emptySet();
-        }
-        return lookBehindEntries;
-    }
-
-    public void addLookBehindEntry(SimpleStateIndex<PureNFA> lookArounds, PureNFA lb) {
-        if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(lookArounds);
-        }
-        lookBehindEntries.add(lb);
-    }
-
     public void addLoopBackNext(PureNFATransition transition) {
         PureNFATransition[] newSuccessors = Arrays.copyOf(getSuccessors(), getSuccessors().length + 1);
         newSuccessors[newSuccessors.length - 1] = transition;
@@ -232,12 +237,12 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
     }
 
     public void removeLoopBackNext() {
-        setSuccessors(Arrays.copyOf(getSuccessors(), getSuccessors().length + 1));
+        setSuccessors(Arrays.copyOf(getSuccessors(), getSuccessors().length - 1));
     }
 
     @Override
     protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
-        for (PureNFATransition t : (forward ? getSuccessors() : getPredecessors())) {
+        for (PureNFATransition t : (getSuccessors(forward))) {
             if (t.getTarget(forward).isUnAnchoredFinalState(forward)) {
                 return true;
             }
@@ -279,6 +284,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         return getId() + " " + toStringIntl();
     }
 
+    @TruffleBoundary
     private String toStringIntl() {
         switch (getKind()) {
             case KIND_INITIAL_OR_FINAL_STATE:

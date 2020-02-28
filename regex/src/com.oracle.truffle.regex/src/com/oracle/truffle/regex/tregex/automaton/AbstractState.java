@@ -41,12 +41,12 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 /**
- * Abstract base class for states of an automaton.
+ * Abstract base interface for states of an automaton.
  */
 public interface AbstractState<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
 
     /**
-     * Unique ID of this state.
+     * Unique ID of this state. Uniqueness holds only for the automaton the state belongs to.
      */
     short getId();
 }

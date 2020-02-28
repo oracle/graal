@@ -98,6 +98,9 @@ public class GroupBoundaries implements JsonConvertible {
         this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
     }
 
+    /**
+     * Used for deduplication of very common instances of this class.
+     */
     public static GroupBoundaries getStaticInstance(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
         if (clearIndices.isEmpty()) {
             int key = updateIndices.getStaticCacheKey();

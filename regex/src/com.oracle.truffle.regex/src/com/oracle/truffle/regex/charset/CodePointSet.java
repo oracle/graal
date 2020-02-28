@@ -186,6 +186,11 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         return ranges[(i * 2) + 1];
     }
 
+    /**
+     * Get the number of ranges in this set, interpreted as a set of {@code char} / 16-bit values.
+     * This interpretation is valid iff the set contains either none or all code points above
+     * {@link Character#MAX_VALUE}.
+     */
     public int size16() {
         if (isEmpty()) {
             return 0;
@@ -198,12 +203,22 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, Comparab
         }
     }
 
+    /**
+     * Get the lower bound of range {@code i} in this set, interpreted as a set of {@code char} /
+     * 16-bit values. This interpretation is valid iff the set contains either none or all code
+     * points above {@link Character#MAX_VALUE}.
+     */
     public char getLo16(int i) {
         int lo = getLo(i);
         assert lo <= Character.MAX_VALUE : this;
         return (char) lo;
     }
 
+    /**
+     * Get the upper bound of range {@code i} in this set, interpreted as a set of {@code char} /
+     * 16-bit values. This interpretation is valid iff the set contains either none or all code
+     * points above {@link Character#MAX_VALUE}.
+     */
     public char getHi16(int i) {
         int hi = getHi(i);
         assert hi <= Character.MAX_VALUE || hi == Character.MAX_CODE_POINT : this;

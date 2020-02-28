@@ -88,7 +88,7 @@ public class LookBehindAssertion extends LookAroundAssertion {
 
     @Override
     public boolean equalsSemantic(RegexASTNode obj) {
-        return this == obj || (obj instanceof LookBehindAssertion && groupEqualsSemantic((LookBehindAssertion) obj));
+        return this == obj || (obj.isLookBehindAssertion() && groupEqualsSemantic(obj.asLookBehindAssertion()));
     }
 
     @TruffleBoundary

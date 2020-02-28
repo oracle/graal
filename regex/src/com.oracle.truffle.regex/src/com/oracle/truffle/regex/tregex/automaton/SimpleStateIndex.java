@@ -49,6 +49,9 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Simple base class for implementors of {@link StateIndex}.
+ */
 public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
 
     private final ArrayList<T> states;

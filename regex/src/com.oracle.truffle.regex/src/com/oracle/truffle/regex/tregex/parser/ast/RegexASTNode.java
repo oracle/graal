@@ -198,14 +198,6 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_PREFIX);
     }
 
-    public boolean hasCaret() {
-        return isFlagSet(FLAG_HAS_CARET);
-    }
-
-    public void setHasCaret() {
-        setHasCaret(true);
-    }
-
     /**
      * Indicates whether or not this node should be allowed to match the empty string.
      *
@@ -219,10 +211,24 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_EMPTY_GUARD, emptyGuard);
     }
 
+    /**
+     * Subexpression contains {@link #isCaret() "^"}.
+     */
+    public boolean hasCaret() {
+        return isFlagSet(FLAG_HAS_CARET);
+    }
+
+    public void setHasCaret() {
+        setHasCaret(true);
+    }
+
     public void setHasCaret(boolean hasCaret) {
         setFlag(FLAG_HAS_CARET, hasCaret);
     }
 
+    /**
+     * Subexpression contains {@link #isCaret() "$"}.
+     */
     public boolean hasDollar() {
         return isFlagSet(FLAG_HAS_DOLLAR);
     }
@@ -235,6 +241,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_DOLLAR, hasDollar);
     }
 
+    /**
+     * This subexpression is dominated by {@link #isCaret() "^"}.
+     */
     public boolean startsWithCaret() {
         return isFlagSet(FLAG_STARTS_WITH_CARET);
     }
@@ -247,6 +256,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_STARTS_WITH_CARET, startsWithCaret);
     }
 
+    /**
+     * All paths out of this subexpression go through {@link #isCaret() "$"}.
+     */
     public boolean endsWithDollar() {
         return isFlagSet(FLAG_ENDS_WITH_DOLLAR);
     }
@@ -259,6 +271,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_ENDS_WITH_DOLLAR, endsWithDollar);
     }
 
+    /**
+     * Subexpression contains {@link Group#isLoop() loops}.
+     */
     public boolean hasLoops() {
         return isFlagSet(FLAG_HAS_LOOPS);
     }
@@ -271,6 +286,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_LOOPS, hasLoops);
     }
 
+    /**
+     * Subexpression contains {@link QuantifiableTerm#hasNotUnrolledQuantifier() not unrolled
+     * quantifiers}.
+     */
     public boolean hasQuantifiers() {
         return isFlagSet(FLAG_HAS_QUANTIFIERS);
     }
@@ -279,6 +298,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_QUANTIFIERS, true);
     }
 
+    /**
+     * Subexpression contains {@link Group#isCapturing() capturing groups}.
+     */
     public boolean hasCaptureGroups() {
         return isFlagSet(FLAG_HAS_CAPTURE_GROUPS);
     }
@@ -287,6 +309,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_CAPTURE_GROUPS, true);
     }
 
+    /**
+     * Subexpression contains {@link #isLookAheadAssertion() look-ahead assertions}.
+     */
     public boolean hasLookAheads() {
         return isFlagSet(FLAG_HAS_LOOK_AHEADS);
     }
@@ -295,6 +320,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_LOOK_AHEADS, true);
     }
 
+    /**
+     * Subexpression contains {@link #isLookBehindAssertion() look-behind assertions}.
+     */
     public boolean hasLookBehinds() {
         return isFlagSet(FLAG_HAS_LOOK_BEHINDS);
     }
@@ -303,6 +331,9 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_HAS_LOOK_BEHINDS, true);
     }
 
+    /**
+     * Subexpression contains {@link #isBackReference() back-references}.
+     */
     public boolean hasBackReferences() {
         return isFlagSet(FLAG_HAS_BACK_REFERENCES);
     }

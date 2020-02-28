@@ -49,6 +49,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
+/**
+ * Calculates the successor transitions of a given {@link PureNFAState}.
+ */
 public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisitor {
 
     private final PureNFAGenerator nfaGen;

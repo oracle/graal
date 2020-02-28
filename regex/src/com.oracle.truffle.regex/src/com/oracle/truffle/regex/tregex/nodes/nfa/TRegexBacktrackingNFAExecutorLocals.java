@@ -56,6 +56,8 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * <li>the current index in the input string</li>
  * <li>the current NFA state</li>
  * <li>all current capture group boundaries</li>
+ * <li>all current quantifier loop counters</li>
+ * <li>all saved indices for zero-width checks in quantifiers</li>
  * </ul>
  * The backtracker state is written to the stack in the order given above, so one stack frame looks
  * like this:

@@ -45,7 +45,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.RangesAccumulator;
-import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
@@ -62,11 +61,11 @@ public class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
-    private final SimpleStateIndex<PureNFA> lookArounds;
+    private final PureNFAIndex lookArounds;
     private int prefixLength = 0;
     private StateSet<PureNFA>[] prefixLookbehindEntries;
 
-    public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookArounds) {
+    public PureNFAMap(RegexAST ast, PureNFA root, PureNFAIndex lookArounds) {
         this.ast = ast;
         this.root = root;
         this.lookArounds = lookArounds;
@@ -80,7 +79,7 @@ public class PureNFAMap {
         return root;
     }
 
-    public SimpleStateIndex<PureNFA> getLookArounds() {
+    public PureNFAIndex getLookArounds() {
         return lookArounds;
     }
 
@@ -92,6 +91,13 @@ public class PureNFAMap {
         return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getLookArounds().get(nfa.getSubTreeId());
     }
 
+    /**
+     * Creates a {@link CodePointSet} that matches the union of all code point sets of
+     * {@link PureNFAState#isCharacterClass() character class successor states} of the root NFA's
+     * {@link PureNFA#getUnAnchoredInitialState() unanchored initial state}. If this can not be
+     * calculated, e.g. because one of the successors is an {@link PureNFAState#isEmptyMatch() empty
+     * match state}, {@code null} is returned.
+     */
     public CodePointSet getMergedInitialStateCharSet(CompilationBuffer compilationBuffer) {
         RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
         if (mergeInitialStateMatcher(root, acc)) {

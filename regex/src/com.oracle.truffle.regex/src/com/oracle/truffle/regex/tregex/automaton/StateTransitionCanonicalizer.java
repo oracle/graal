@@ -81,17 +81,26 @@ public abstract class StateTransitionCanonicalizer<S extends AbstractState<S, T>
         this.prioritySensitive = prioritySensitive;
     }
 
+    /**
+     * If priority-sensitive mode, transition sets are pruned after transitions to final states.
+     * Also, target state sets are considered equal iff their order is equal as well.
+     */
     protected boolean isPrioritySensitive() {
         return prioritySensitive;
     }
 
+    /**
+     * Submits an argument to be processed by {@link #run(CompilationBuffer)}.
+     */
     public void addArgument(T transition, CodePointSet charSet) {
         argTransitions.add(transition);
         argCharSets.add(charSet);
     }
 
     /**
-     * Runs the NFA to DFA transition conversion algorithm. This algorithm has two phases:
+     * Runs the NFA to DFA transition conversion algorithm on the NFA transitions given by previous
+     * calls to {@link #addArgument(AbstractTransition, CodePointSet)}. This algorithm has two
+     * phases:
      * <ol>
      * <li>Merge NFA transitions according to their expected character sets. The result of this
      * phase is a list of {@link TransitionBuilder}s whose {@link CodePointSet}s have no more

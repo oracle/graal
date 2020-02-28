@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 
 /**
  * Abstract base class for states of an automaton.
@@ -82,9 +83,6 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         this.predecessors = emptyTransitions;
     }
 
-    /**
-     * Unique ID of this state.
-     */
     @Override
     public short getId() {
         return id;
@@ -114,6 +112,9 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return getFlag(FLAG_ANY_INITIAL_STATE);
     }
 
+    /**
+     * Anchored final states are implicitly guarded by a {@code ^}-{@link PositionAssertion}.
+     */
     public boolean isAnchoredInitialState() {
         return getFlag(FLAG_ANCHORED_INITIAL_STATE);
     }
@@ -138,6 +139,9 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return getFlag(FLAG_ANY_FINAL_STATE);
     }
 
+    /**
+     * Anchored final states are implicitly guarded by a {@code $}-{@link PositionAssertion}.
+     */
     public boolean isAnchoredFinalState() {
         return getFlag(FLAG_ANCHORED_FINAL_STATE);
     }
@@ -261,6 +265,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         predecessors[--nPredecessors] = predecessor;
     }
 
+    /**
+     * Returns the current value of {@code nPredecessors} set by {@link #incPredecessors()}, which
+     * is not necessarily the final number of predecessors. Use with caution.
+     */
     protected int getNPredecessors() {
         return nPredecessors;
     }

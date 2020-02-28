@@ -60,8 +60,16 @@ import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.TwoCharMatcher;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
+/**
+ * Helper class for converting 16-bit code point sets to {@link CharMatcher}s.
+ */
 public class CP16BitMatchers {
 
+    /**
+     * Create a new {@link CharMatcher} from the given code point set. The given set must contain
+     * either none or all of the code points above {@code 0xffff}. Code points above {@code 0xffff}
+     * are cut off.
+     */
     public static CharMatcher createMatcher(CodePointSet cps, CompilationBuffer compilationBuffer) {
         if (cps.sizeOfInverse() < cps.size16() || (cps.size16() > 1 && !allSameHighByte(cps) && highByte((char) (cps.getHi16(0) + 1)) == highByte((char) (cps.getLo16(cps.size16() - 1) - 1)))) {
             return createMatcher(cps.createInverse(), compilationBuffer, true, true);

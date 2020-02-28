@@ -46,6 +46,10 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Specialized implementation of {@link StateSet} for {@link StateIndex state indices} with less
+ * than 65 elements. Uses a single {@code long} value as a bit set.
+ */
 final class SmallStateSetImpl<S> implements StateSet<S> {
 
     private final StateIndex<? super S> stateIndex;
@@ -218,6 +222,9 @@ final class SmallStateSetImpl<S> implements StateSet<S> {
         return defaultToString();
     }
 
+    /**
+     * Yields all elements in this set, ordered by their {@link StateIndex#getId(Object) ID}.
+     */
     @Override
     public Iterator<S> iterator() {
         return new SmallStateSetIterator<>(this, set);

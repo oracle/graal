@@ -44,6 +44,10 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 
+/**
+ * Calculates possible entry points of look-behind assertions in their parent {@link PureNFA}. Work
+ * in progress.
+ */
 public class PureNFAMarkLookBehindEntries {
 
     private final PureNFAMap nfa;
@@ -116,12 +120,12 @@ public class PureNFAMarkLookBehindEntries {
                     if (prevLBState.isAnchoredInitialState()) {
                         for (PureNFATransition curTransition : cur.getPredecessors()) {
                             if (curTransition.getSource().isInitialState()) {
-                                cur.addLookBehindEntry(nfa.getLookArounds(), lb);
+                                addLookBehindEntry(cur, lb);
                                 break;
                             }
                         }
                     } else if (prevLBState.isUnAnchoredInitialState()) {
-                        cur.addLookBehindEntry(nfa.getLookArounds(), lb);
+                        addLookBehindEntry(cur, lb);
                     } else {
                         for (PureNFATransition curTransition : cur.getPredecessors()) {
                             markLiteralStatesNext.add(curTransition.getSource());
@@ -137,6 +141,11 @@ public class PureNFAMarkLookBehindEntries {
 
     @SuppressWarnings("unused")
     private void markGeneric(PureNFAState s, PureNFA lookBehindNFA) {
+        throw new UnsupportedRegexException("not implemented", nfa.getAst().getSource());
+    }
+
+    @SuppressWarnings("unused")
+    private void addLookBehindEntry(PureNFAState state, PureNFA lookBehind) {
         throw new UnsupportedRegexException("not implemented", nfa.getAst().getSource());
     }
 }

@@ -50,8 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 /**
  * A specialized set for sequentially indexed objects. Up to a size of four, this set uses a list of
  * {@code short} values compressed into one {@code long} to store the indices. When the set grows
- * larger than four elements, the indices are stored in a {@link StateSetBackingSet}, which can be
- * set in the constructor.
+ * larger than four elements, the indices are stored in a {@link StateSetBackingSet}.
  */
 abstract class StateSetImpl<S> implements StateSet<S> {
 
@@ -441,6 +440,9 @@ abstract class StateSetImpl<S> implements StateSet<S> {
         return new StateListIterator();
     }
 
+    /**
+     * Yields all elements in this set, ordered by their {@link StateIndex#getId(Object) ID}.
+     */
     @Override
     public Iterator<S> iterator() {
         return new StateSetIterator(stateIndex, intIterator());

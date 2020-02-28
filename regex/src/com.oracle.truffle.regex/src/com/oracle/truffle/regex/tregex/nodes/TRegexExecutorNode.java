@@ -78,6 +78,9 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getNumberOfCaptureGroups();
     }
 
+    /**
+     * Returns {@code true} if this executor may write any new capture group boundaries.
+     */
     public abstract boolean writesCaptureGroups();
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);

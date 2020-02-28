@@ -184,6 +184,9 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             }
             CompilerAsserts.partialEvaluationConstant(ip);
             if (ip == IP_BEGIN) {
+                /*
+                 * Begin of the regex match. Here, we select the inital state based on "^".
+                 */
                 if (nfa.getAnchoredInitialState(isForward()) != nfa.getUnAnchoredInitialState(isForward()) && inputAtBegin(locals)) {
                     ip = nfa.getAnchoredInitialState(isForward()).getId();
                     continue outer;
@@ -193,15 +196,23 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                 }
             } else if (ip == IP_BACKTRACK) {
                 if (locals.canPopResult()) {
+                    // there is a result on the stack, break and return it.
                     break;
                 } else if (!locals.canPop()) {
                     if (loopbackInitialState) {
+                        /*
+                         * We are out of states to pop from the stack, so we start with the inital
+                         * state again.
+                         */
                         assert isForward();
                         int nextIndex = locals.getLastInitialStateIndex() + 1;
                         if (nextIndex > locals.getMaxIndex()) {
+                            // break if we are at the end of the string.
                             break;
                         }
                         if (innerLiteral != null) {
+                            // we can search for the inner literal again, but only if we tried all
+                            // offsets between the last inner literal match and maxPrefixSize.
                             if (locals.getLastInitialStateIndex() == locals.getLastInnerLiteralIndex()) {
                                 nextIndex = findInnerLiteral(locals, nextIndex);
                                 if (nextIndex < 0) {
@@ -213,6 +224,8 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         } else if (loopbackInitialStateMatcher != null) {
+                            // find the next character that matches any of the initial state's
+                            // successors.
                             nextIndex = findFirstLoopbackMatch(locals, compactString, nextIndex);
                             if (nextIndex < 0) {
                                 nextIndex = locals.getMaxIndex();
@@ -226,6 +239,10 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                         break;
                     }
                 } else {
+                    /*
+                     * We can pop a state from the stack, and since we don't know which one it will
+                     * be we have to dispatch to it with a big switch.
+                     */
                     final int nextIp = locals.pop();
                     for (int i = 0; i < nfa.getNumberOfStates(); i++) {
                         int stateId = nfa.getState(i).getId();
@@ -240,6 +257,9 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             } else if (ip == IP_END) {
                 break;
             }
+            /*
+             * Compilation of the actual states.
+             */
             final PureNFAState curState = nfa.getState(ip);
             CompilerAsserts.partialEvaluationConstant(curState);
             final PureNFATransition[] successors = curState.getSuccessors(isForward());
@@ -263,6 +283,9 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
+    /**
+     * Executes the given NFA state.
+     */
     @ExplodeLoop
     private int runState(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString, PureNFAState curState) {
         CompilerDirectives.isPartialEvaluationConstant(curState);
@@ -270,6 +293,11 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             locals.pushResult();
             return IP_END;
         }
+        /*
+         * Do very expensive operations per-state instead of per-transition, to avoid code size
+         * explosion. Drawback: these postponed operations cannot be checked eagerly, so their state
+         * will always be pushed to the stack.
+         */
         if (curState.isLookAround() && !canInlineLookAroundIntoTransition(curState)) {
             int[] subMatchResult = runSubMatcher(locals.createSubNFALocals(), compactString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
@@ -293,6 +321,10 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         boolean atEnd = isForward() ? index >= locals.getMaxIndex() : index == 0;
         char c = atEnd ? 0 : inputGetChar(locals, index);
         if (curState.isDeterministic()) {
+            /*
+             * We know that in this state only one transition can match at a time, so we can always
+             * break after the first match.
+             */
             for (int i = 0; i < successors.length; i++) {
                 PureNFATransition transition = successors[i];
                 CompilerDirectives.isPartialEvaluationConstant(transition);
@@ -303,12 +335,28 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             }
             return IP_BACKTRACK;
         } else {
+            /*
+             * Multiple transitions may match, and we may have to push states to the stack. We avoid
+             * one stack push and some code duplication with a three-phased approach:
+             *
+             * First, we check every transition for a match, and save the boolean result in a bit
+             * set.
+             *
+             * Second, we push (number of matched transitions) - 1 copies of the current state to
+             * the stack.
+             *
+             * Third, we check all the bits in the bit set and update the state copies on the stack
+             * accordingly. The highest-priority match becomes this state's successor.
+             */
             long[] transitionBitSet = locals.getTransitionBitSet();
             CompilerDirectives.isPartialEvaluationConstant(transitionBitSet);
             CompilerDirectives.ensureVirtualized(transitionBitSet);
             final int bitSetWords = ((successors.length - 1) >> 6) + 1;
             CompilerDirectives.isPartialEvaluationConstant(bitSetWords);
             int lastMatch = 0;
+            // Fill the bit set.
+            // We check the transitions in reverse order, so the last match will be the highest
+            // priority one.
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
                 CompilerDirectives.isPartialEvaluationConstant(iBS);
                 long bs = 0;
@@ -326,6 +374,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                 }
                 transitionBitSet[iBS] = bs;
             }
+            // Create the new stack frames.
             int nMatched = -1;
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
                 nMatched += Long.bitCount(transitionBitSet[iBS]);
@@ -333,6 +382,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             if (nMatched > 0) {
                 locals.dupFrame(nMatched);
             }
+            // Update the new stack frames.
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
                 CompilerDirectives.isPartialEvaluationConstant(iBS);
                 long bs = transitionBitSet[iBS];
@@ -411,7 +461,6 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             Quantifier q = guard.getQuantifier();
             CompilerDirectives.isPartialEvaluationConstant(q);
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
-                case enter:
                 case loop:
                     // retreat if quantifier count is at maximum
                     if (locals.getQuantifierCount(q) == q.getMax()) {
@@ -487,7 +536,6 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             CompilerDirectives.isPartialEvaluationConstant(q);
             switch (isForward() ? guard.getKind() : guard.getKindReverse()) {
                 case enter:
-                case enterInc:
                 case loop:
                 case loopInc:
                     locals.incQuantifierCount(q);
@@ -542,6 +590,21 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
+    /**
+     * Returns {@code true} if we can inline the back-reference check with
+     * {@link #matchBackReferenceSimple(TRegexBacktrackingNFAExecutorLocals, int, int, int)}. This
+     * is the case when we are not in ignore-case mode and the regex cannot match lone surrogate
+     * characters. The reason for lone surrogates being a problem is cases like this:
+     *
+     * <pre>
+     * /(\ud800)\1/.exec("\ud800\ud800\udc00")
+     * </pre>
+     * 
+     * Here, the referenced group matches a lone surrogate, but the back-reference must decode the
+     * {@code "\ud800\udc00"} to {@code \u10000}, and therefore must not match.
+     *
+     * See also: testV8 suite, mjsunit/es6/unicode-regexp-backrefs.js
+     */
     private boolean canInlineBackReferenceIntoTransition() {
         return !(ignoreCase || loneSurrogates);
     }

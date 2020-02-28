@@ -48,9 +48,7 @@ import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
  * <p>
  * Roughly corresponds to the goal symbol <em>Term</em> in the ECMAScript RegExp syntax. A
  * <em>Term</em> ({@link Term}) can be either an <em>Assertion</em> ({@link PositionAssertion} or
- * {@link RegexASTSubtreeRootNode}) or an <em>Atom</em> ({@link CharacterClass},
- * {@link BackReference} or {@link Group}). <em>Quantifier</em>s are handled by the
- * {@link Group#isLoop()} flag of {@link Group}s.
+ * {@link LookAroundAssertion}) or an <em>Atom</em> ({@link QuantifiableTerm}.
  */
 public abstract class Term extends RegexASTNode implements AbstractState<Term, ASTTransition> {
 

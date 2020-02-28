@@ -50,6 +50,10 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 
+/**
+ * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
+ * literal} {@link LookAroundAssertion}s.
+ */
 public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
 
     private final boolean forward;
