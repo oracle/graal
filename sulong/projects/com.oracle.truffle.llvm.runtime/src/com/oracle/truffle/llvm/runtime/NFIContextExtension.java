@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -135,8 +134,7 @@ public final class NFIContextExtension implements ContextExtension {
         CompilerAsserts.neverPartOfCompilation();
         context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
         if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
-            // dummy library for C++, see {@link #handleSpecialLibraries}
-            context.addInternalLibrary("libsulong++-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            context.addInternalLibrary(getLibCxxName(), "<default nfi library>");
         }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
@@ -146,7 +144,7 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibrary(ExternalLibrary lib, LLVMContext context) throws UnsatisfiedLinkError {
         CompilerAsserts.neverPartOfCompilation();
-        if (!libraryHandles.containsKey(lib) && !handleSpecialLibraries(lib, context)) {
+        if (!libraryHandles.containsKey(lib) && !handleSpecialLibraries(lib)) {
             try {
                 libraryHandles.put(lib, loadLibrary(lib, context));
             } catch (UnsatisfiedLinkError e) {
@@ -164,7 +162,10 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    private boolean handleSpecialLibraries(ExternalLibrary lib, LLVMContext context) {
+    /**
+     * @return true if the library does not need to be loaded
+     */
+    private static boolean handleSpecialLibraries(ExternalLibrary lib) {
         Path fileNamePath = lib.getPath().getFileName();
         if (fileNamePath == null) {
             throw new IllegalArgumentException("Filename path of " + lib.getPath() + " is null");
@@ -175,34 +176,21 @@ public final class NFIContextExtension implements ContextExtension {
             return true;
         } else if (fileName.startsWith("libpolyglot-mock.")) {
             // special mock library for polyglot intrinsics
-            return true;
-        } else if (fileName.startsWith("libsulong++-native.") || fileName.startsWith("libc++.")) {
-            /*
-             * Dummy library that doesn't actually exist, but is implicitly replaced by libc++ if
-             * available. The libc++ dependency is optional. The bitcode interpreter will still work
-             * if it is not found, but C++ programs might not work because of unresolved symbols.
-             */
-            String libName = LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
-            TruffleFile tf = DefaultLibraryLocator.locateGlobal(context, libName);
-            if (tf == null) {
-                throw new UnsatisfiedLinkError("Library '" + libName + "' not found in the llvm home.");
-            }
-            TruffleObject cxxlib = loadLibrary(tf.getPath(), false, null, context);
-            libraryHandles.put(lib, cxxlib);
+            // TODO (je) should we remove this?
             return true;
         } else {
             return false;
         }
     }
 
+    private static String getLibCxxName() {
+        return LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
+    }
+
     private TruffleObject loadLibrary(ExternalLibrary lib, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         String libName = lib.getPath().toString();
         return loadLibrary(libName, false, null, context, lib);
-    }
-
-    private TruffleObject loadLibrary(String libName, boolean optional, String flags, LLVMContext context) {
-        return loadLibrary(libName, optional, flags, context, libName);
     }
 
     private TruffleObject loadLibrary(String libName, boolean optional, String flags, LLVMContext context, Object file) {
