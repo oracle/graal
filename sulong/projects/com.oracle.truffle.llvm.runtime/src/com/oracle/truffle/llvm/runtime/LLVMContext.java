@@ -612,7 +612,7 @@ public final class LLVMContext {
         return false;
     }
 
-    private boolean isInternalLibrary(ExternalLibrary lib) {
+    public boolean isInternalLibrary(ExternalLibrary lib) {
         if (lib.getFile() != null) {
             return isInternalLibraryFile(lib.getFile());
         }

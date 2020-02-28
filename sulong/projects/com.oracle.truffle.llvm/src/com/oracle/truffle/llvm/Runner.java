@@ -332,6 +332,13 @@ final class Runner {
         ExternalLibrary[] sulongLibraries = parseDependencies(parseContext);
         assert parseContext.dependencyQueueIsEmpty();
 
+        for (LLVMParserResult parserResult : parseContext.getParserResults()) {
+            if (context.isInternalLibrary(parserResult.getRuntime().getLibrary())) {
+                // renaming is attempted only for internal libraries.
+                resolveRenamedSymbols(parserResult, parseContext);
+            }
+        }
+
         List<LLVMParserResult> parserResults = parseContext.getParserResults();
         addExternalSymbolsToScopes(parserResults);
 
@@ -714,7 +721,6 @@ final class Runner {
         }
 
         updateOverriddenSymbols(sulongLibraryResults);
-        resolveRenamedSymbols(sulongLibraryResults);
         return sulongLibraries;
     }
 
@@ -766,41 +772,46 @@ final class Runner {
     private static final String SULONG_RENAME_MARKER = "___sulong_import_";
     public static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    private static void resolveRenamedSymbols(LLVMParserResult[] sulongLibraryResults) {
-        EconomicMap<String, LLVMScope> scopes = EconomicMap.create();
-
-        for (LLVMParserResult parserResult : sulongLibraryResults) {
-            scopes.put(parserResult.getRuntime().getLibrary().getName(), parserResult.getRuntime().getFileScope());
+    private static void resolveRenamedSymbols(LLVMParserResult parserResult, ParseContext parseContext) {
+        EconomicMap<ExternalLibrary, LLVMParserResult> libToRes = EconomicMap.create();
+        for (LLVMParserResult res : parseContext.getParserResults()) {
+            libToRes.put(res.getRuntime().getLibrary(), res);
         }
-
-        for (LLVMParserResult parserResult : sulongLibraryResults) {
-            ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
-            while (it.hasNext()) {
-                FunctionSymbol external = it.next();
-                String name = external.getName();
-                /*
-                 * An unresolved name has the form defined by the {@code
-                 * _SULONG_IMPORT_SYMBOL(libName, symbolName)} macro defined in the {@code
-                 * sulong-internal.h} header file. Check whether we have a symbol named "symbolName"
-                 * in the library "libName". If it exists, introduce an alias. This can be used to
-                 * explicitly call symbols from a certain standard library, in case the symbol is
-                 * hidden (either using the "hidden" attribute, or because it is overridden).
-                 */
-                if (name.startsWith(SULONG_RENAME_MARKER)) {
-                    int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
-                    if (idx > 0) {
-                        String lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
-                        LLVMScope scope = scopes.get(lib);
-                        if (scope != null) {
-                            String originalName = name.substring(idx + 1);
-                            LLVMFunction originalSymbol = scope.getFunction(originalName);
-                            assert originalSymbol != null;
-                            LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
-                            parserResult.getRuntime().getFileScope().register(alias);
-                            it.remove();
-                        } else {
-                            throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
-                        }
+        EconomicMap<String, LLVMScope> scopes = EconomicMap.create();
+        // TODO (je) we should probably do this in symbol resolution order - let's fix that when we
+        // fix symbol resolution [GR-21400]
+        for (ExternalLibrary dep : parserResult.getDependencies()) {
+            LLVMParserResult depResult = libToRes.get(dep);
+            if (depResult != null) {
+                scopes.put(dep.getName(), depResult.getRuntime().getFileScope());
+            }
+        }
+        ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
+        while (it.hasNext()) {
+            FunctionSymbol external = it.next();
+            String name = external.getName();
+            /*
+             * An unresolved name has the form defined by the {@code _SULONG_IMPORT_SYMBOL(libName,
+             * symbolName)} macro defined in the {@code sulong-internal.h} header file. Check
+             * whether we have a symbol named "symbolName" in the library "libName". If it exists,
+             * introduce an alias. This can be used to explicitly call symbols from a certain
+             * standard library, in case the symbol is hidden (either using the "hidden" attribute,
+             * or because it is overridden).
+             */
+            if (name.startsWith(SULONG_RENAME_MARKER)) {
+                int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
+                if (idx > 0) {
+                    String lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
+                    LLVMScope scope = scopes.get(lib);
+                    if (scope != null) {
+                        String originalName = name.substring(idx + 1);
+                        LLVMFunction originalSymbol = scope.getFunction(originalName);
+                        assert originalSymbol != null;
+                        LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
+                        parserResult.getRuntime().getFileScope().register(alias);
+                        it.remove();
+                    } else {
+                        throw new LLVMLinkerException(String.format("The %s could not be imported because library %s was not found.", external.getName(), lib));
                     }
                 }
             }
