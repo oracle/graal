@@ -152,6 +152,8 @@ public class InstallCommand implements InstallerCommand {
 
     private String current;
 
+    private StringBuilder parameterList = new StringBuilder();
+
     /**
      * Minimum required GraalVM version for the to-be-installed content.
      */
@@ -379,16 +381,26 @@ public class InstallCommand implements InstallerCommand {
                             printComponentList(dependencyMap.get(s)));
         }
         if (!input.getRegistry().isRemoteEnabled()) {
-            feedback.error("INSTALL_UnknownComponentsNote1", null);
+            feedback.error("INSTALL_UnknownComponentsNote1", null, parameterList.toString());
         }
         if (wasFile && !input.hasOption(Commands.OPTION_LOCAL_DEPENDENCIES)) {
-            feedback.error("INSTALL_UnknownComponentsNote2", null);
+            feedback.error("INSTALL_UnknownComponentsNote2", null, parameterList.toString());
         }
         throw feedback.failure("INSTALL_UnresolvedDependencies", null);
     }
 
+    private void appendParameterText() {
+        String s = input.peekParameter();
+        if (parameterList.length() > 0) {
+            parameterList.append(" "); // NOI18N
+        }
+        parameterList.append(s);
+    }
+
     protected void processComponents(Iterable<ComponentParam> toProcess) throws IOException {
-        for (ComponentParam p : toProcess) {
+        for (Iterator<ComponentParam> it = toProcess.iterator(); it.hasNext();) {
+            appendParameterText();
+            ComponentParam p = it.next();
             feedback.output(p.isComplete() ? "INSTALL_VerboseProcessingArchive" : "INSTALL_VerboseProcessingComponent", p.getDisplayName());
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
