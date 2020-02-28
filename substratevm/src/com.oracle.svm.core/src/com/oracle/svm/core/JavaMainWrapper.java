@@ -58,7 +58,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -186,6 +185,12 @@ public class JavaMainWrapper {
         return runCore(paramArgc, paramArgv);
     }
 
+    private static void checkArgumentBlockAvailable() {
+        if (argv.isNull() || argc <= 0) {
+            throw new UnsupportedOperationException("Argument vector not accessible (called from shared library image?)");
+        }
+    }
+
     /**
      * Argv is an array of C strings (i.e. array of pointers to characters). Each entry points to a
      * different C string corresponding to a program argument. The program argument strings
@@ -201,7 +206,7 @@ public class JavaMainWrapper {
      *         contiguous memory block without writing into the environment variables part.
      */
     public static int getCRuntimeArgumentBlockLength() {
-        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
+        checkArgumentBlockAvailable();
 
         CCharPointer firstArgPos = argv.read(0);
         if (argvLength.equal(WordFactory.zero())) {
@@ -216,8 +221,7 @@ public class JavaMainWrapper {
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
-        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
-
+        checkArgumentBlockAvailable();
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -243,8 +247,7 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
-        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
-
+        checkArgumentBlockAvailable();
         return CTypeConversion.toJavaString(argv.read(0));
     }
 
