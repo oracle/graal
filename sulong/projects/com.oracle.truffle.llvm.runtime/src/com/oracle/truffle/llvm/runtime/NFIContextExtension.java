@@ -133,10 +133,10 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), true);
+        context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
         if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
             // dummy library for C++, see {@link #handleSpecialLibraries}
-            context.addInternalLibrary("libsulong++-native." + getNativeLibrarySuffix(), true);
+            context.addInternalLibrary("libsulong++-native." + getNativeLibrarySuffix(), "<default nfi library>");
         }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {

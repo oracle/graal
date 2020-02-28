@@ -686,7 +686,7 @@ final class Runner {
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         ExternalLibrary[] sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
-            sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
+            sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
         }
 
         // parse all libraries that were passed on the command-line
@@ -879,6 +879,7 @@ final class Runner {
     @SuppressWarnings("unchecked")
     private void loadDefaults(Path internalLibraryPath) {
         ExternalLibrary polyglotMock = ExternalLibrary.createFromPath(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
+        // TODO (je) maybe add the polyglotMock to the context already?
         LLVMParserResult polyglotMockResult = parseLibrary(polyglotMock, ParseContext.create());
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
         // However, this is based on the assumption that polyglot-mock is the first loaded library!
@@ -952,9 +953,9 @@ final class Runner {
      * implicit dependencies of {@code lib} are added to the
      * {@link ParseContext#dependencyQueueAddLast dependency queue}. The returned
      * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
-     * results}. This method adds {@code library} parameter to the
-     * {@link LLVMContext#addExternalLibrary context}.
-     *
+     * results}. This method ensures that the {@code library} parameter is added to the
+     * {@link LLVMContext#ensureExternalLibraryAdded context}.
+     * 
      * @param source the {@link Source} of the library to be parsed
      * @param library the {@link ExternalLibrary} corresponding to the library to be parsed
      * @param bytes the bytes of the library to be parsed
@@ -965,7 +966,7 @@ final class Runner {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             library.makeBitcodeLibrary();
-            context.addExternalLibrary(library);
+            context.ensureExternalLibraryAdded(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
