@@ -94,6 +94,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.InlineAssemblyConstrain
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.InlineAssemblyConstraint.Location;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.InlineAssemblyConstraint.Type;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.LinkageType;
+import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMStackMapInfo;
 import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
@@ -159,6 +160,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private Block currentBlock;
     private final Map<AbstractBeginNode, LLVMBasicBlockRef> basicBlockMap = new HashMap<>();
     private final Map<Block, LLVMBasicBlockRef> splitBlockEndMap = new HashMap<>();
+    private final Map<Block, LLVMValueRef[]> specialRegValues = new HashMap<>();
+    private final Map<Block, LLVMValueRef[]> initialSpecialRegValues = new HashMap<>();
+    private final Map<Block, LLVMValueRef[]> handlerSpecialRegValues = new HashMap<>();
 
     private final LLVMValueRef[] stackSlots = new LLVMValueRef[SpecialRegister.count()];
     private final Map<Constant, String> constants = new HashMap<>();
@@ -424,7 +428,28 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
-        return getLLVMStackType(getTypeKind(returnType, forMainFunction));
+        LLVMTypeRef llvmReturnType = getLLVMStackType(getTypeKind(returnType, forMainFunction));
+
+        if (LLVMOptions.ReturnSpecialRegs.getValue() && !(forMainFunction && isEntryPoint)) {
+            boolean voidReturnType = LLVMIRBuilder.isVoidType(llvmReturnType);
+            LLVMTypeRef[] returnTypes = new LLVMTypeRef[SpecialRegister.count() + (voidReturnType ? 0 : 1)];
+            for (SpecialRegister reg : SpecialRegister.registers()) {
+                returnTypes[reg.index] = builder.wordType();
+            }
+            if (!voidReturnType) {
+                returnTypes[SpecialRegister.count()] = llvmReturnType;
+            }
+            llvmReturnType = builder.structType(returnTypes);
+        }
+
+        return llvmReturnType;
+    }
+
+    boolean isVoidReturnType(LLVMTypeRef returnType) {
+        if (LLVMOptions.ReturnSpecialRegs.getValue()) {
+            return LLVMIRBuilder.countElementTypes(returnType) == SpecialRegister.count();
+        }
+        return LLVMIRBuilder.isVoidType(returnType);
     }
 
     private LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
@@ -435,7 +460,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (!isEntryPoint(method) && SpecialRegister.count() > 0) {
             newParameterTypes = new LLVMTypeRef[SpecialRegister.count() + parameterTypes.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
-                newParameterTypes[reg.index] = canModifySpecialRegisters(method) ? builder.pointerType(builder.wordType()) : builder.wordType();
+                newParameterTypes[reg.index] = !LLVMOptions.ReturnSpecialRegs.getValue() && canModifySpecialRegisters(method) ? builder.pointerType(builder.wordType()) : builder.wordType();
             }
             System.arraycopy(parameterTypes, 0, newParameterTypes, SpecialRegister.count(), parameterTypes.length);
         }
@@ -446,14 +471,15 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      * Creates a new function type based on the given one with the given argument types prepended to
      * the original ones.
      */
-    private LLVMTypeRef prependArgumentTypes(LLVMTypeRef functionType, LLVMTypeRef... typesToAdd) {
+    private LLVMTypeRef prependArgumentTypes(LLVMTypeRef functionType, int prefixTypes, LLVMTypeRef... typesToAdd) {
         LLVMTypeRef returnType = LLVMIRBuilder.getReturnType(functionType);
         boolean varargs = LLVMIRBuilder.isFunctionVarArg(functionType);
         LLVMTypeRef[] oldTypes = LLVMIRBuilder.getParamTypes(functionType);
 
         LLVMTypeRef[] newTypes = new LLVMTypeRef[oldTypes.length + typesToAdd.length];
-        System.arraycopy(typesToAdd, 0, newTypes, 0, typesToAdd.length);
-        System.arraycopy(oldTypes, 0, newTypes, typesToAdd.length, oldTypes.length);
+        System.arraycopy(oldTypes, 0, newTypes, 0, prefixTypes);
+        System.arraycopy(typesToAdd, 0, newTypes, prefixTypes, typesToAdd.length);
+        System.arraycopy(oldTypes, prefixTypes, newTypes, prefixTypes + typesToAdd.length, oldTypes.length - prefixTypes);
 
         return builder.functionType(returnType, varargs, newTypes);
     }
@@ -730,11 +756,19 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
         if (dst.equals(getRegisterConfig().getThreadRegister())) {
             VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
-            builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.ThreadPointer));
+            if (LLVMOptions.ReturnSpecialRegs.getValue()) {
+                setSpecialRegisterValue(SpecialRegister.ThreadPointer, getVal(src));
+            } else {
+                builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.ThreadPointer));
+            }
             return;
         } else if (dst.equals(getRegisterConfig().getHeapBaseRegister())) {
             VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
-            builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.HeapBase));
+            if (LLVMOptions.ReturnSpecialRegs.getValue()) {
+                setSpecialRegisterValue(SpecialRegister.HeapBase, getVal(src));
+            } else {
+                builder.buildStore(getVal(src), getSpecialRegisterPointer(SpecialRegister.HeapBase));
+            }
             return;
         }
         throw VMError.shouldNotReachHere();
@@ -808,17 +842,54 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     static final AtomicLong nextPatchpointId = new AtomicLong(0);
 
-    LLVMValueRef buildStatepointCall(LLVMValueRef callee, long statepointId, LLVMValueRef... args) {
+    LLVMValueRef buildStatepointCall(LLVMValueRef callee, boolean nativeABI, long statepointId, LLVMValueRef... args) {
         LLVMValueRef result;
         result = builder.buildCall(callee, args);
         builder.setCallSiteAttribute(result, Attribute.StatepointID, Long.toString(statepointId));
+
+        if (!nativeABI && LLVMOptions.ReturnSpecialRegs.getValue()) {
+            for (SpecialRegister reg : SpecialRegister.registers()) {
+                setSpecialRegisterValue(reg, builder.buildExtractValue(result, reg.index));
+            }
+            int numReturnValues = LLVMIRBuilder.countElementTypes(typeOf(result));
+            return numReturnValues > SpecialRegister.count() ? builder.buildExtractValue(result, SpecialRegister.count()) : result;
+        }
         return result;
     }
 
-    LLVMValueRef buildStatepointInvoke(LLVMValueRef callee, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, long statepointId, LLVMValueRef... args) {
-        LLVMValueRef result;
-        result = builder.buildInvoke(callee, successor, handler, args);
+    LLVMValueRef buildStatepointInvoke(LLVMValueRef callee, boolean nativeABI, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, long statepointId, LLVMValueRef... args) {
+        LLVMBasicBlockRef successorBlock;
+        LLVMBasicBlockRef handlerBlock;
+        if (!nativeABI && LLVMOptions.ReturnSpecialRegs.getValue()) {
+            successorBlock = builder.appendBasicBlock(currentBlock.toString() + "_invoke_successor");
+            handlerBlock = builder.appendBasicBlock(currentBlock.toString() + "_invoke_handler");
+            splitBlockEndMap.put(currentBlock, successorBlock);
+        } else {
+            successorBlock = successor;
+            handlerBlock = handler;
+        }
+
+        LLVMValueRef result = builder.buildInvoke(callee, successorBlock, handlerBlock, args);
         builder.setCallSiteAttribute(result, Attribute.StatepointID, Long.toString(statepointId));
+
+        if (!nativeABI && LLVMOptions.ReturnSpecialRegs.getValue()) {
+            builder.positionAtEnd(handlerBlock);
+            builder.buildLandingPad();
+            for (SpecialRegister reg : SpecialRegister.registers()) {
+                setHandlerSpecialRegisterValue(reg, getSpecialRegisterValue(reg));
+            }
+            builder.buildBranch(handler);
+
+            builder.positionAtEnd(successorBlock);
+            int numReturnValues = LLVMIRBuilder.countElementTypes(typeOf(result));
+            for (SpecialRegister reg : SpecialRegister.registers()) {
+                assert reg.index < numReturnValues;
+                setSpecialRegisterValue(reg, builder.buildExtractValue(result, reg.index));
+            }
+            result = numReturnValues > SpecialRegister.count() ? builder.buildExtractValue(result, SpecialRegister.count()) : result;
+            builder.buildBranch(successor);
+        }
+
         return result;
     }
 
@@ -835,8 +906,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         CallingConvention.Type callType = ((SubstrateCallingConvention) linkage.getOutgoingCallingConvention()).getType();
         LLVMValueRef[] callArguments = getCallArguments(args, callType, targetMethod);
 
-        LLVMValueRef call = buildStatepointCall(callee, patchpointId, callArguments);
-        return (LLVMIRBuilder.isVoidType(getLLVMFunctionReturnType(targetMethod, false))) ? null : new LLVMVariable(call);
+        LLVMValueRef call = buildStatepointCall(callee, ((SubstrateCallingConventionType) callType).nativeABI, patchpointId, callArguments);
+        return (isVoidReturnType(getLLVMFunctionReturnType(targetMethod, false))) ? null : new LLVMVariable(call);
     }
 
     LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
@@ -873,14 +944,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      * which the return address can be accessed. The parameters to this wrapper are the anchor, the
      * native callee, and the arguments to the callee.
      */
-    LLVMValueRef createJNIWrapper(LLVMValueRef callee, int numArgs, int anchorIPOffset) {
+    LLVMValueRef createJNIWrapper(LLVMValueRef callee, boolean nativeABI, int numArgs, int anchorIPOffset) {
         LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(LLVMIRBuilder.typeOf(callee));
         String wrapperName = JNI_WRAPPER_BASE_NAME + LLVMIRBuilder.intrinsicType(calleeType);
 
         LLVMValueRef transitionWrapper = builder.getNamedFunction(wrapperName);
         if (transitionWrapper == null) {
             try (LLVMIRBuilder tempBuilder = new LLVMIRBuilder(builder)) {
-                LLVMTypeRef wrapperType = prependArgumentTypes(calleeType, tempBuilder.rawPointerType(), LLVMIRBuilder.typeOf(callee));
+                LLVMTypeRef wrapperType = prependArgumentTypes(calleeType, nativeABI ? 0 : SpecialRegister.count(), tempBuilder.rawPointerType(), LLVMIRBuilder.typeOf(callee));
                 transitionWrapper = tempBuilder.addFunction(wrapperName, wrapperType);
                 LLVMIRBuilder.setLinkage(transitionWrapper, LinkageType.LinkOnce);
                 tempBuilder.setGarbageCollector(transitionWrapper, GCStrategy.CompressedPointers);
@@ -889,7 +960,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 LLVMBasicBlockRef block = tempBuilder.appendBasicBlock(transitionWrapper, "main");
                 tempBuilder.positionAtEnd(block);
 
-                LLVMValueRef anchor = LLVMIRBuilder.getParam(transitionWrapper, 0);
+                LLVMValueRef anchor = LLVMIRBuilder.getParam(transitionWrapper, 0 + (nativeABI ? 0 : SpecialRegister.count()));
                 LLVMValueRef lastIPAddr = tempBuilder.buildGEP(anchor, tempBuilder.constantInt(anchorIPOffset));
                 LLVMValueRef callIP = tempBuilder.buildReturnAddress(tempBuilder.constantInt(0));
                 LLVMValueRef castedLastIPAddr = tempBuilder.buildBitcast(lastIPAddr, tempBuilder.pointerType(tempBuilder.rawPointerType()));
@@ -897,9 +968,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
                 LLVMValueRef[] args = new LLVMValueRef[numArgs];
                 for (int i = 0; i < numArgs; ++i) {
-                    args[i] = LLVMIRBuilder.getParam(transitionWrapper, i + 2);
+                    if (!nativeABI && i < SpecialRegister.count()) {
+                        args[i] = LLVMIRBuilder.getParam(transitionWrapper, i);
+                    } else {
+                        args[i] = LLVMIRBuilder.getParam(transitionWrapper, i + 2);
+                    }
                 }
-                LLVMValueRef target = LLVMIRBuilder.getParam(transitionWrapper, 1);
+                LLVMValueRef target = LLVMIRBuilder.getParam(transitionWrapper, 1 + (nativeABI ? 0 : SpecialRegister.count()));
                 LLVMValueRef ret = tempBuilder.buildCall(target, args);
                 tempBuilder.setCallSiteAttribute(ret, Attribute.GCLeafFunction);
 
@@ -944,7 +1019,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public void emitReturn(JavaKind javaKind, Value input) {
         if (javaKind == JavaKind.Void) {
             debugInfoPrinter.printRetVoid();
-            builder.buildRetVoid();
+            if (LLVMOptions.ReturnSpecialRegs.getValue() && !isEntryPoint) {
+                LLVMTypeRef[] retTypes = new LLVMTypeRef[SpecialRegister.count()];
+                LLVMValueRef[] retValues = new LLVMValueRef[SpecialRegister.count()];
+                for (SpecialRegister reg : SpecialRegister.registers()) {
+                    retTypes[reg.index] = builder.wordType();
+                    retValues[reg.index] = getSpecialRegisterValue(reg);
+                }
+                LLVMValueRef retStruct = builder.constantNull(builder.structType(retTypes));
+                for (int i = 0; i < retValues.length; ++i) {
+                    retStruct = builder.buildInsertValue(retStruct, i, retValues[i]);
+                }
+                builder.buildRet(retStruct);
+            } else {
+                builder.buildRetVoid();
+            }
         } else {
             debugInfoPrinter.printRet(javaKind, input);
             LLVMValueRef retVal = getVal(input);
@@ -963,6 +1052,23 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     result = builder.buildIntToPtr(retVal, builder.objectType(false));
                 }
                 retVal = result;
+            }
+
+            if (LLVMOptions.ReturnSpecialRegs.getValue() && !isEntryPoint) {
+                LLVMTypeRef[] retTypes = new LLVMTypeRef[SpecialRegister.count() + 1];
+                LLVMValueRef[] retValues = new LLVMValueRef[SpecialRegister.count() + 1];
+                for (SpecialRegister reg : SpecialRegister.registers()) {
+                    retTypes[reg.index] = builder.wordType();
+                    retValues[reg.index] = getSpecialRegisterValue(reg);
+                }
+                retTypes[SpecialRegister.count()] = LLVMIRBuilder.typeOf(retVal);
+                retValues[SpecialRegister.count()] = retVal;
+
+                LLVMValueRef retStruct = builder.constantNull(builder.structType(retTypes));
+                for (int i = 0; i < retValues.length; ++i) {
+                    retStruct = builder.buildInsertValue(retStruct, i, retValues[i]);
+                }
+                retVal = retStruct;
             }
             builder.buildRet(retVal);
         }
@@ -1014,7 +1120,25 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /* Special registers */
 
+    private void setSpecialRegisterValue(SpecialRegister reg, LLVMValueRef value) {
+        assert getInitialSpecialRegisterValue(reg, currentBlock) != null;
+        specialRegValues.computeIfAbsent(currentBlock, (b) -> new LLVMValueRef[SpecialRegister.count()])[reg.index] = value;
+    }
+
+    void setInitialSpecialRegisterValue(SpecialRegister reg, LLVMValueRef value) {
+        initialSpecialRegValues.computeIfAbsent(currentBlock, (b) -> new LLVMValueRef[SpecialRegister.count()])[reg.index] = value;
+        setSpecialRegisterValue(reg, value);
+    }
+
+    private void setHandlerSpecialRegisterValue(SpecialRegister reg, LLVMValueRef value) {
+        handlerSpecialRegValues.computeIfAbsent(currentBlock, (b) -> new LLVMValueRef[SpecialRegister.count()])[reg.index] = value;
+    }
+
     public LLVMValueRef getSpecialRegister(SpecialRegister register) {
+        if (LLVMOptions.ReturnSpecialRegs.getValue()) {
+            return getSpecialRegisterValue(register);
+        }
+
         LLVMValueRef specialRegister;
         if (isEntryPoint || canModifySpecialRegisters) {
             LLVMValueRef specialRegisterPointer = getSpecialRegisterPointer(register);
@@ -1026,6 +1150,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private LLVMValueRef getSpecialRegisterPointer(SpecialRegister register) {
+        assert !LLVMOptions.ReturnSpecialRegs.getValue();
         if (isEntryPoint) {
             return stackSlots[register.index];
         } else if (canModifySpecialRegisters) {
@@ -1036,6 +1161,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private LLVMValueRef getSpecialRegisterArgument(SpecialRegister register, ResolvedJavaMethod targetMethod) {
+        if (LLVMOptions.ReturnSpecialRegs.getValue()) {
+            return getSpecialRegisterValue(register);
+        }
+
         LLVMValueRef specialRegisterArg;
         if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
             if (isEntryPoint || canModifySpecialRegisters) {
@@ -1056,6 +1185,25 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         return specialRegisterArg;
+    }
+
+    LLVMValueRef getSpecialRegisterValue(SpecialRegister reg) {
+        return getSpecialRegisterValue(reg, currentBlock);
+    }
+
+    LLVMValueRef getSpecialRegisterValue(SpecialRegister reg, Block block) {
+        return specialRegValues.get(block)[reg.index];
+    }
+
+    LLVMValueRef getInitialSpecialRegisterValue(SpecialRegister reg, Block block) {
+        if (!initialSpecialRegValues.containsKey(block)) {
+            return null;
+        }
+        return initialSpecialRegValues.get(block)[reg.index];
+    }
+
+    LLVMValueRef getHandlerSpecialRegisterValue(SpecialRegister reg, Block block) {
+        return handlerSpecialRegValues.get(block)[reg.index];
     }
 
     /*
@@ -1093,6 +1241,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         SpecialRegister(boolean isPresent) {
             this.isPresent = isPresent;
+        }
+
+        int getIndex() {
+            return index;
         }
 
         static boolean hasRegisters() {
