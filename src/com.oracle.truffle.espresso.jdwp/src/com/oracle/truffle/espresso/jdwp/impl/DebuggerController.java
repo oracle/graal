@@ -946,7 +946,7 @@ public final class DebuggerController implements ContextsListener {
                     continue;
                 }
 
-                Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_ONLY);
+                Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_WRITE);
                 MethodRef method = getContext().getMethodFromRootNode(root);
                 KlassRef klass = method.getDeclaringKlass();
 
