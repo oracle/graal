@@ -60,6 +60,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.Context;
@@ -78,6 +79,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -88,6 +90,7 @@ import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotContextImpl.class);
     private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
     /**
@@ -1326,8 +1329,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             if (languagesToPreinitialize.contains(languageId)) {
                                 PolyglotLanguage language = engine.findLanguage(null, languageId, null, false, true);
                                 if (language != null) {
-                                    final PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
-                                    languageContext.preInitialize();
+                                    if (overridesPatchContext(languageId)) {
+                                        context.getContextInitialized(language, null);
+                                        LOG.log(Level.FINE, "Pre-initialized context for language: {0}", language.getId());
+                                    } else {
+                                        LOG.log(Level.WARNING, "Language {0} cannot be pre-initialized as it does not override TruffleLanguage.patchContext method.", languageId);
+                                    }
                                 }
                             }
                             // Reset language options parsed during preinitialization
@@ -1409,6 +1416,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return true;
         }
         return false;
+    }
+
+    private static boolean overridesPatchContext(String languageId) {
+        try {
+            LanguageCache cache = LanguageCache.languages().get(languageId);
+            cache.loadLanguage().getClass().getDeclaredMethod("patchContext", Object.class, TruffleLanguage.Env.class);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
 }

@@ -1253,7 +1253,7 @@ public class ContextPreInitializationTest {
     }
 
     @Test
-    public void testInstrumentRecreatedAfterFailedContextPatch() throws Exception {
+    public void testInstrumentCreatedAfterFailedContextPatch() throws Exception {
         AtomicInteger instrumentCreateCount = new AtomicInteger();
         ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
             instrumentCreateCount.incrementAndGet();
@@ -1286,7 +1286,7 @@ public class ContextPreInitializationTest {
             assertEquals(0, newFirstLangCtx.disposeContextCount);
             assertEquals(1, newFirstLangCtx.initializeThreadCount);
             assertEquals(0, newFirstLangCtx.disposeThreadCount);
-            assertEquals(2, instrumentCreateCount.get());
+            assertEquals(1, instrumentCreateCount.get());
         }
     }
 
