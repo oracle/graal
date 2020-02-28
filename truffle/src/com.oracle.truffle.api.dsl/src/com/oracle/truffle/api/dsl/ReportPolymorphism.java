@@ -54,7 +54,7 @@ import java.lang.annotation.Target;
  *
  * Polymorphic specializations include, but are not limited to, activating another specialization,
  * increasing the number of instances of an active specialization, excluding a specialization, etc.
- * Individual specializations can be excluded from this consideration buy using the
+ * Individual specializations can be excluded from this consideration by using the
  * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the first
  * specialization.
  *
