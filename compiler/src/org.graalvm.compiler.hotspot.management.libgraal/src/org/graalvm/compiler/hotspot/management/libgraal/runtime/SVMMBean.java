@@ -34,8 +34,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -75,7 +73,6 @@ import org.graalvm.util.OptionsEncoder;
 @Platforms(Platform.HOSTED_ONLY.class)
 class SVMMBean implements DynamicMBean {
 
-    private static final Logger LOG = Logger.getLogger(SVMMBean.class.getName());
     private static final String COMPOSITE_TAG = ".composite";
     private static final Map<Class<?>, OpenType<?>> PRIMITIVE_TO_OPENTYPE;
     static {
@@ -178,11 +175,11 @@ class SVMMBean implements DynamicMBean {
             if (isComposite(attrName)) {
                 try {
                     attrValue = readComposite(attrName, (String) attrValue, it);
-                    attrName = compositeAttrName(attrName);
                 } catch (OpenDataException ex) {
-                    LOG.log(Level.WARNING, "Cannot read composite attribute " + attrName, ex);
-                    continue;
+                    attrValue = null;
+                    TTY.printf("WARNING: Cannot read composite attribute %s due to %s", attrName, ex.getMessage());
                 }
+                attrName = compositeAttrName(attrName);
             }
             res.add(new Attribute(attrName, attrValue));
         }
