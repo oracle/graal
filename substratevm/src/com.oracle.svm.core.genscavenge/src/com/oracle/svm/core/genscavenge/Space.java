@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -136,7 +140,7 @@ public class Space {
     }
 
     boolean isEdenSpace() {
-        return (age == 0);
+        return age == 0;
     }
 
     boolean isYoungSpace() {
@@ -144,11 +148,11 @@ public class Space {
     }
 
     boolean isSurvivorSpace() {
-        return (age > 0 && age <= HeapPolicy.getMaxSurvivorSpaces());
+        return age > 0 && age <= HeapPolicy.getMaxSurvivorSpaces();
     }
 
     boolean isOldSpace() {
-        return (age == (HeapPolicy.getMaxSurvivorSpaces() + 1));
+        return age == (HeapPolicy.getMaxSurvivorSpaces() + 1);
     }
 
     int getAge() {
@@ -156,7 +160,7 @@ public class Space {
     }
 
     int getNextAgeForPromotion() {
-        return (getAge() + 1);
+        return age + 1;
     }
 
     boolean isFrom() {
@@ -193,14 +197,14 @@ public class Space {
      * @return True if all visits returned true, false otherwise.
      */
     public boolean walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
-        final Log trace = Log.noopLog().string("[SpaceImpl.walkDirtyObjects:");
+        final Log trace = Log.noopLog().string("[Space.walkDirtyObjects:");
         trace.string("  space: ").string(getName()).string("  clean: ").bool(clean);
         /* Visit the Objects in the aligned chunks. */
         AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             trace.newline().string("  aChunk: ").hex(aChunk);
             if (!AlignedHeapChunk.walkDirtyObjectsOfAlignedHeapChunk(aChunk, visitor, clean)) {
-                final Log failureLog = Log.log().string("[SpaceImpl.walkDirtyObjects:");
+                final Log failureLog = Log.log().string("[Space.walkDirtyObjects:");
                 failureLog.string("  aChunk.walkDirtyObjects fails").string("]").newline();
                 return false;
             }
@@ -211,7 +215,7 @@ public class Space {
         while (uChunk.isNonNull()) {
             trace.newline().string("  uChunk: ").hex(uChunk);
             if (!UnalignedHeapChunk.walkDirtyObjectsOfUnalignedHeapChunk(uChunk, visitor, clean)) {
-                final Log failureLog = Log.log().string("[SpaceImpl.walkDirtyObjects:");
+                final Log failureLog = Log.log().string("[Space.walkDirtyObjects:");
                 failureLog.string("  uChunk.walkDirtyObjects fails").string("]").newline();
                 return false;
             }
@@ -255,7 +259,7 @@ public class Space {
      * This is "slow-path" memory allocation.
      */
     private Pointer allocateMemory(UnsignedWord objectSize) {
-        final Log trace = Log.noopLog().string("[SpaceImpl.allocateMemory:").string("  space: ").string(getName()).string("  size: ").unsigned(objectSize).newline();
+        final Log trace = Log.noopLog().string("[Space.allocateMemory:").string("  space: ").string(getName()).string("  size: ").unsigned(objectSize).newline();
         Pointer result = WordFactory.nullPointer();
         /* First try allocating in the last chunk. */
         final AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
@@ -292,19 +296,21 @@ public class Space {
      * @return The Object that has been promoted (which is the original Object).
      */
     Object promoteObjectChunk(Object original) {
-        final Log trace = Log.noopLog().string("[SpaceImpl.promoteObjectChunk:").string("  obj: ").object(original);
-        trace.string("  space: ").string(getName()).string("  original: ").object(original).newline();
         /* Move the chunk containing the object from the Space it is in to this Space. */
-        if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
-            trace.string("  aligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
+        if (ObjectHeaderImpl.isAlignedObject(original)) {
             final AlignedHeapChunk.AlignedHeader aChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
-            promoteAlignedHeapChunk(aChunk);
+            Space originalSpace = aChunk.getSpace();
+            if (originalSpace.isFrom()) {
+                promoteAlignedHeapChunk(aChunk, originalSpace);
+            }
         } else {
-            trace.string("  unaligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
-            final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
-            promoteUnalignedHeapChunk(uChunk);
+            assert ObjectHeaderImpl.isUnalignedObject(original);
+            UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+            Space originalSpace = uChunk.getSpace();
+            if (originalSpace.isFrom()) {
+                promoteUnalignedHeapChunk(uChunk, originalSpace);
+            }
         }
-        trace.string("]").newline();
         /* The chunk got moved, so I can return the original. */
         return original;
     }
@@ -324,7 +330,7 @@ public class Space {
     }
 
     private void cleanRememberedSetAlignedHeapChunks() {
-        final Log trace = Log.noopLog().string("[SpaceImpl.cleanAlignedHeapChunks:").string("  space: ").string(getName());
+        final Log trace = Log.noopLog().string("[Space.cleanAlignedHeapChunks:").string("  space: ").string(getName());
         /* Visit the aligned chunks. */
         /* TODO: Should there be a ChunkVisitor? */
         AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
@@ -337,7 +343,7 @@ public class Space {
     }
 
     private void cleanRememberedSetUnalignedHeapChunk() {
-        final Log trace = Log.noopLog().string("[SpaceImpl.cleanUnlignedHeapChunks:").string("  space: ").string(getName());
+        final Log trace = Log.noopLog().string("[Space.cleanUnlignedHeapChunks:").string("  space: ").string(getName());
         /* Visit the unaligned chunks. */
         /* TODO: Should there be a ChunkVisitor? */
         UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
@@ -364,7 +370,7 @@ public class Space {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
-        final Log trace = Log.noopLog().string("[SpaceImpl.appendAlignedHeapChunk:").newline();
+        final Log trace = Log.noopLog().string("[Space.appendAlignedHeapChunk:").newline();
         if (trace.isEnabled()) {
             trace.string("  before space: ").string(getName()).string("  first: ").hex(getFirstAlignedHeapChunk()).string("  last: ").hex(getLastAlignedHeapChunk()).newline();
             trace.string("  before chunk: ").hex(aChunk).string("  .space: ").object(aChunk.getSpace());
@@ -412,7 +418,7 @@ public class Space {
     /** Extract an AlignedHeapChunk from the doubly-linked list of AlignedHeapChunks. */
     /* TODO: HeapChunks should know how to extract themselves from whatever Space they are in. */
     void extractAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
-        VMOperation.guaranteeInProgress("Trying to extract an aligned chunk but no mutual exclusion.");
+        assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
         extractAlignedHeapChunkUninterruptibly(aChunk);
         getAccounting().unnoteAlignedHeapChunk(AlignedHeapChunk.committedObjectMemoryOfAlignedHeapChunk(aChunk));
     }
@@ -494,7 +500,7 @@ public class Space {
 
     /** Extract an UnalignedHeapChunk from the doubly-linked list of UnalignedHeapChunks. */
     void extractUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
-        VMOperation.guaranteeInProgress("Trying to extract an unaligned chunk but not in a VMOperation.");
+        assert VMOperation.isGCInProgress() : "Trying to extract an unaligned chunk but not in a VMOperation.";
         extractUnalignedHeapChunkUninterruptibly(uChunk);
         getAccounting().unnoteUnalignedHeapChunk(UnalignedHeapChunk.committedObjectMemoryOfUnalignedHeapChunk(uChunk));
     }
@@ -585,12 +591,6 @@ public class Space {
         lastUnalignedHeapChunk = chunk;
     }
 
-    private static void setAlignedRememberedSet(Object obj) {
-        /* TODO: Maybe there's a better way to separate the aligned-ness. */
-        final AlignedHeapChunk.AlignedHeader aChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(obj);
-        AlignedHeapChunk.setUpRememberedSetForObjectOfAlignedHeapChunk(aChunk, obj);
-    }
-
     /** Release the AlignedHeapChunks. */
     private void releaseAlignedHeapChunks() {
         /* releasing memory chunks */
@@ -615,63 +615,40 @@ public class Space {
     /**
      * Promote an aligned Object to this Space.
      */
-    Object promoteAlignedObject(Object original) {
-        final Log trace = Log.noopLog().string("[SpaceImpl.promoteAlignedObject:").string("  original: ").object(original).newline();
-        final AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
-        trace.string("  chunk: ").hex(chunk).string("  this: ").string(getName());
-        final Space originalSpace = chunk.getSpace();
-        if (trace.isEnabled()) {
-            /* No other uses of fields of originalSpace, so do not get name unless tracing. */
-            trace.string("  originalSpace: ").string(originalSpace.getName());
+    Object promoteAlignedObject(Object original, Space originalSpace) {
+        assert ObjectHeaderImpl.isAlignedObject(original);
+        assert this != originalSpace && originalSpace.isFrom();
+
+        if (HeapOptions.TraceObjectPromotion.getValue()) {
+            Log.log().string("[promoteAlignedObject:").string("  obj: ").object(original).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
+                            .string("  size: ").unsigned(LayoutEncoding.getSizeFromObject(original)).string("]").newline();
         }
-        if (this == originalSpace) {
-            trace.string("  already in this Space.  returns original: ").object(original).string("]").newline();
-            return original;
-        }
-        trace.newline();
-        /* Copy the contents of the object to this Space. */
-        final Object copy = copyAlignedObject(original);
-        /* Install a forwarding Pointer to the copy in the original Object. */
-        if (trace.isEnabled()) {
-            /* ObjectHeader.readHeaderFromObject(original) is expensive. */
-            trace.string("[Before installing forwarding pointer:");
-            trace.string("  original: ").object(original).string("  header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original));
-            trace.string("  copy: ").object(copy).string("]").newline();
-        }
-        ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
-        if (trace.isEnabled()) {
-            /* ObjectHeader.readHeaderFromObject(original) is expensive. */
-            trace.string("[After installing forwarding pointer:");
-            trace.string("  original header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original));
-            trace.string("  SpaceImpl.promoteAlignedObject returns copy]").newline();
-        }
+
+        Object copy = copyAlignedObject(original);
+        ObjectHeaderImpl.installForwardingPointer(original, copy);
         return copy;
     }
 
     /** Copy an Object into the given memory. */
     private Object copyAlignedObject(Object originalObj) {
-        VMOperation.guaranteeInProgress("Should only be called from the collector.");
-        assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(originalObj);
-        final Log trace = Log.noopLog().string("[SpaceImpl.copyAlignedObject:");
-        trace.string("  originalObj: ").object(originalObj);
-        /* ObjectAccess.writeWord needs an Object as a 0th argument. */
-        /* - Allocate memory for the copy in this Space. */
-        final UnsignedWord copySize = LayoutEncoding.getSizeFromObject(originalObj);
-        trace.string("  copySize: ").unsigned(copySize);
-        final Pointer copyMemory = allocateMemory(copySize);
-        trace.string("  copyMemory: ").hex(copyMemory);
-        if (copyMemory.isNull()) {
+        assert VMOperation.isGCInProgress();
+        assert ObjectHeaderImpl.isAlignedObject(originalObj);
+
+        UnsignedWord size = LayoutEncoding.getSizeFromObject(originalObj);
+        Pointer copyMemory = allocateMemory(size);
+        if (probability(LUDICROUSLY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
             /* I am about to fail, but first log some things about the object. */
-            final Log failureLog = Log.log().string("[! SpaceImpl.copyAlignedObject:").indent(true);
-            failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").newline();
-            ObjectHeaderImpl.getObjectHeaderImpl().logObjectHeader(originalObj, failureLog);
+            Log failureLog = Log.log().string("[! Space.copyAlignedObject:").indent(true);
+            failureLog.string("  failure to allocate ").unsigned(size).string(" bytes").newline();
+            failureLog.string("  object to be promoted: ").object(originalObj).string(" header ").hex(ObjectHeaderImpl.readHeaderFromObject(originalObj)).newline();
             failureLog.string(" !]").indent(false);
             throw VMError.shouldNotReachHere("Promotion failure");
         }
-        /* - Copy the Object. */
+
+        // Copy the Object.
         final Pointer originalMemory = Word.objectToUntrackedPointer(originalObj);
         UnsignedWord offset = WordFactory.zero();
-        while (offset.belowThan(copySize)) {
+        while (probability(FREQUENT_PROBABILITY, offset.belowThan(size))) {
             /*
              * This copies words, without regard to whether they are pointers and so need to dirty
              * remembered sets, etc. That's okay, because when the dust settles, anything the copy
@@ -682,56 +659,51 @@ public class Space {
             copyMemory.writeWord(offset, originalMemory.readWord(offset));
             offset = offset.add(ConfigurationValues.getTarget().wordSize);
         }
-        final Object copyObj = copyMemory.toObject();
-        /* Note that the object needs a remembered set. */
-        setAlignedRememberedSet(copyObj);
-        trace.string("  copyObj: ").object(copyObj).string("]").newline();
-        return copyObj;
+
+        // If the object was promoted to the old gen, we need to take care of the remembered set.
+        Object copy = copyMemory.toObject();
+        AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(copy);
+
+        // We pretty much always need to update the first object table. Even when doing a full GC
+        // that copies from old to old.
+        if (copyChunk.getSpace().isOldSpace()) {
+            AlignedHeapChunk.setUpRememberedSetForObjectOfAlignedHeapChunk(copyChunk, copy);
+        }
+        return copy;
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space, if necessary. */
-    private boolean promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
-        final Log trace = Log.noopLog();
-        trace.string("[SpaceImpl.promoteCardRememberedSetAlignedObjectChunk:");
-        trace.string("  aChunk: ").hex(aChunk);
-        final Space originalSpace = aChunk.getSpace();
-        final boolean promote = (this != originalSpace);
-        if (promote) {
-            originalSpace.extractAlignedHeapChunk(aChunk);
-            appendAlignedHeapChunk(aChunk);
-            /*
-             * If the original chunk is from the young space, then it doesn't have a remembered set,
-             * so build one.
-             */
-            if (HeapImpl.getHeapImpl().isYoungGeneration(originalSpace)) {
-                trace.string("  setting up remembered set");
-                AlignedHeapChunk.constructRememberedSetOfAlignedHeapChunk(aChunk);
-            }
+    private void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        assert this != originalSpace && originalSpace.isFrom();
+
+        if (HeapOptions.TraceObjectPromotion.getValue()) {
+            Log.log().string("[promoteAlignedHeapChunk:").string("  chunk: ").hex(chunk).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
+                            .string("]").newline();
         }
-        trace.string("  returns: ").bool(promote).string("]").newline();
-        return promote;
+
+        originalSpace.extractAlignedHeapChunk(chunk);
+        appendAlignedHeapChunk(chunk);
+
+        if (this.isOldSpace() && originalSpace.isYoungSpace()) {
+            AlignedHeapChunk.constructRememberedSetOfAlignedHeapChunk(chunk);
+        }
     }
 
     /** Promote an UnalignedHeapChunk by moving it to this Space, if necessary. */
-    boolean promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
-        final Log trace = Log.noopLog().string("[SpaceImpl.promoteCardRememberedSetUnalignedObjectChunk:");
-        trace.string("  uChunk: ").hex(uChunk);
-        final Space originalSpace = uChunk.getSpace();
-        final boolean promote = (this != originalSpace);
-        if (promote) {
-            originalSpace.extractUnalignedHeapChunk(uChunk);
-            appendUnalignedHeapChunk(uChunk);
-            /*
-             * If the original chunk is from the young space, then it doesn't have a remembered set,
-             * so build one.
-             */
-            if (HeapImpl.getHeapImpl().isYoungGeneration(originalSpace)) {
-                trace.string("  setting up remembered set");
-                UnalignedHeapChunk.setUpRememberedSetOfUnalignedHeapChunk(uChunk);
-            }
+    void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
+        assert this != originalSpace && originalSpace.isFrom();
+
+        if (HeapOptions.TraceObjectPromotion.getValue()) {
+            Log.log().string("[promoteUnalignedHeapChunk:").string("  chunk: ").hex(chunk).string("  fromSpace: ").string(originalSpace.getName()).string("  toSpace: ").string(this.getName())
+                            .string("]").newline();
         }
-        trace.string("  returns: ").bool(promote).string("]").newline();
-        return promote;
+
+        originalSpace.extractUnalignedHeapChunk(chunk);
+        appendUnalignedHeapChunk(chunk);
+
+        if (this.isOldSpace()) {
+            UnalignedHeapChunk.setUpRememberedSetOfUnalignedHeapChunk(chunk);
+        }
     }
 
     /*
@@ -739,14 +711,14 @@ public class Space {
      */
 
     private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
-        VMOperation.guaranteeInProgress("Should only be called from the collector.");
-        final Log trace = Log.noopLog().string("[SpaceImpl.requestAlignedHeapChunk:").string("  space: ").string(getName()).newline();
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
+        final Log trace = Log.noopLog().string("[Space.requestAlignedHeapChunk:").string("  space: ").string(getName()).newline();
         final AlignedHeapChunk.AlignedHeader aChunk = HeapChunkProvider.get().produceAlignedChunk();
         trace.string("  aChunk: ").hex(aChunk);
         if (aChunk.isNonNull()) {
             appendAlignedHeapChunk(aChunk);
         }
-        trace.string("  SpaceImpl.requestAlignedHeapChunk returns: ").hex(aChunk).string("]").newline();
+        trace.string("  Space.requestAlignedHeapChunk returns: ").hex(aChunk).string("]").newline();
         return aChunk;
     }
 

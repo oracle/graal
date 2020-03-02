@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -201,30 +202,22 @@ public class AlignedHeapChunk extends HeapChunk {
         trace.string("]").newline();
     }
 
-    /**
-     * Initialize the remembered set for a particular object, if this chunk has a remembered set.
-     */
+    @AlwaysInline("GC performance")
     static void setUpRememberedSetForObjectOfAlignedHeapChunk(AlignedHeader that, Object obj) {
-        VMOperation.guaranteeInProgress("Should only be called from the collector.");
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
+        assert !that.getSpace().isYoungSpace();
         /*
-         * There is only a remembered set maintained in the old To-Space. Testing against the Young
-         * space compiles to a test against a constant.
+         * The card remembered set table should already be clean, but the first object table needs
+         * to be set up.
          */
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        if (!heap.isYoungGeneration(that.getSpace())) {
-            /*
-             * The card remembered set table should already be clean, but the first object table
-             * needs to be set up.
-             */
-            final Pointer fotStart = getFirstObjectTableStart(that);
-            final Pointer memoryStart = getAlignedHeapChunkStart(that);
-            final Pointer objStart = Word.objectToUntrackedPointer(obj);
-            /* Interruptible does not apply because I am in the collector. */
-            final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-            FirstObjectTable.setTableForObject(fotStart, memoryStart, objStart, objEnd);
-            /* Note that the object is aligned, and that it has a card remembered set. */
-            ObjectHeaderImpl.getObjectHeaderImpl().setCardRememberedSetAligned(obj);
-        }
+        final Pointer fotStart = getFirstObjectTableStart(that);
+        final Pointer memoryStart = getAlignedHeapChunkStart(that);
+        final Pointer objStart = Word.objectToUntrackedPointer(obj);
+        /* Interruptible does not apply because I am in the collector. */
+        final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
+        FirstObjectTable.setTableForObject(fotStart, memoryStart, objStart, objEnd);
+        /* Note that the object is aligned, and that it has a card remembered set. */
+        ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
     /** Construct the remembered set for all the objects in this chunk. */
@@ -236,15 +229,10 @@ public class AlignedHeapChunk extends HeapChunk {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Whitelisted because other ObjectVisitors are allowed to allocate.")
     static void constructRememberedSetOfAlignedHeapChunk(AlignedHeader that) {
-        final GCImpl.RememberedSetConstructor constructor = getRememberedSetConstructor();
+        final GCImpl.RememberedSetConstructor constructor = GCImpl.getGCImpl().getRememberedSetConstructor();
         constructor.initialize(that);
-        walkObjectsOfAlignedHeapChunk(that, constructor);
+        walkObjectsFromInline(that, getAlignedHeapChunkStart(that), constructor);
         constructor.reset();
-    }
-
-    /** Retrieve the remembered set constructor that is stored in the Heap object. */
-    private static GCImpl.RememberedSetConstructor getRememberedSetConstructor() {
-        return HeapImpl.getHeapImpl().getGCImpl().getRememberedSetConstructor();
     }
 
     /**
@@ -401,7 +389,7 @@ public class AlignedHeapChunk extends HeapChunk {
         while (current.belowThan(that.getTop())) {
             trace.newline().string("  current: ").hex(current);
             final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(current);
-            if (!ObjectHeaderImpl.getObjectHeaderImpl().isAlignedHeader(header)) {
+            if (!ObjectHeaderImpl.isAlignedHeader(current, header)) {
                 trace.string("  does not have an aligned header: ").hex(header).string("  returns: false").string("]").newline();
                 return false;
             }

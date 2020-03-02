@@ -178,7 +178,7 @@ public final class FirstObjectTable {
      * UninitializedEntry at 127, I think that means ExponentBias could be 71, leaving room for 8
      * special entry values in the open interval (LinearOffsetMax..ExponentBias), or at the high end
      * next to UninitializedEntry.
-     * 
+     *
      * In fact, the current largest object that can be allocated is an array of long (or double, or
      * Object) of size Integer.MAX_VALUE, so the largest skip back is (2^35)/512 or 2^24. That
      * leaves lots of room for special values.
@@ -223,7 +223,7 @@ public final class FirstObjectTable {
      * @param end A pointer to just past the end of the object.
      */
     protected static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {
-        VMOperation.guaranteeInProgress("Should only be called from the collector.");
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         setTableForObjectUnchecked(table, memory, start, end);
     }
 

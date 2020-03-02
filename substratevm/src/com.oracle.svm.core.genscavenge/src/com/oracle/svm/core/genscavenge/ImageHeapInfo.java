@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 
@@ -109,5 +110,37 @@ public class ImageHeapInfo {
 
     public boolean isObjectInWritableReferencePartition(Object obj) {
         return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    /**
+     * This method only returns the correct result for pointers that point to the the start of an
+     * object. This is sufficient for all our current use cases. This code must be as fast as
+     * possible at the GC uses it for every visited reference.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInImageHeap(Pointer objectPointer) {
+        boolean result;
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+        } else {
+            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject)) &&
+                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject)) ||
+                            objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstWritablePrimitiveObject)) &&
+                                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+        }
+
+        assert result == isInImageHeapSlow(objectPointer);
+        return result;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInImageHeapSlow(Pointer objectPointer) {
+        boolean result = false;
+        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        result |= imageHeapInfo.isInReadOnlyPrimitivePartition(objectPointer);
+        result |= imageHeapInfo.isInReadOnlyReferencePartition(objectPointer);
+        result |= imageHeapInfo.isInWritablePrimitivePartition(objectPointer);
+        result |= imageHeapInfo.isInWritableReferencePartition(objectPointer);
+        return result;
     }
 }

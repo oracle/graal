@@ -24,10 +24,15 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.FeebleReference;
@@ -41,30 +46,34 @@ public class DiscoverableReferenceProcessing {
     /*
      * Public methods for collectors.
      */
+    @AlwaysInline("GC performance")
     public static void discoverDiscoverableReference(Object object) {
         final Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
         /* TODO: What's the cost of this type test, since it will be a concrete subtype? */
-        if (obj instanceof DiscoverableReference) {
-            final Log trace = Log.noopLog().string("[DiscoverableReference.discoverDiscoverableReference:");
-            final DiscoverableReference dr = (DiscoverableReference) obj;
-            trace.string("  dr: ").object(dr);
-            /*
-             * If the DiscoverableReference has been allocated but not initialized, do not do
-             * anything with it. The referent will be strongly-reachable because it is on the call
-             * stack to the constructor so the DiscoveredReference does not need to be put on the
-             * discovered list.
-             */
-            if (dr.isDiscoverableReferenceInitialized()) {
-                /* Add this DiscoverableReference to the discovered list. */
-                if (trace.isEnabled()) {
-                    trace.string("  referent: ").hex(DiscoverableReference.TestingBackDoor.getReferentPointer(dr));
-                }
-                addToDiscoveredReferences(dr);
-            } else {
-                trace.string("  uninitialized");
-            }
-            trace.string("]").newline();
+        if (probability(SLOW_PATH_PROBABILITY, obj instanceof DiscoverableReference)) {
+            handleDiscoverableReference(obj);
         }
+    }
+
+    private static void handleDiscoverableReference(final Object obj) {
+        final Log trace = Log.noopLog().string("[DiscoverableReference.discoverDiscoverableReference:");
+        final DiscoverableReference dr = (DiscoverableReference) obj;
+        trace.string("  dr: ").object(dr);
+        /*
+         * If the DiscoverableReference has been allocated but not initialized, do not do anything
+         * with it. The referent will be strongly-reachable because it is on the call stack to the
+         * constructor so the DiscoveredReference does not need to be put on the discovered list.
+         */
+        if (dr.isDiscoverableReferenceInitialized()) {
+            /* Add this DiscoverableReference to the discovered list. */
+            if (trace.isEnabled()) {
+                trace.string("  referent: ").hex(DiscoverableReference.TestingBackDoor.getReferentPointer(dr));
+            }
+            addToDiscoveredReferences(dr);
+        } else {
+            trace.string("  uninitialized");
+        }
+        trace.string("]").newline();
     }
 
     /** The first element of the discovered list, or null. */
@@ -118,7 +127,7 @@ public class DiscoverableReferenceProcessing {
                 /* The referent will not survive the collection: put it on the new list. */
                 trace.string("  unpromoted current: ").object(current).newline();
                 newList = current.prependToDiscoveredReference(newList);
-                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, current.getNextRefPointer(), newList);
+                HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, newList);
             } else {
                 /* Referent will survive the collection: don't add it to the new list. */
                 trace.string("  promoted current: ").object(current).newline();
@@ -134,33 +143,29 @@ public class DiscoverableReferenceProcessing {
      * Returns true if the referent will survive the collection, false otherwise.
      */
     private static boolean processReferent(DiscoverableReference dr) {
-        final Log trace = Log.noopLog().string("[DiscoverableReference.processReferent:").string("  this: ").object(dr);
         final Pointer refPointer = dr.getReferentPointer();
-        trace.string("  referent: ").hex(refPointer);
         if (refPointer.isNull()) {
-            /* If the referent is null don't look at it further. */
-            trace.string("  null referent").string("]").newline();
             return false;
         }
-        /* Read the header. */
-        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(refPointer);
-        /* It might be a forwarding pointer. */
-        if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeader(header)) {
-            /* If the referent got forwarded, then update the referent. */
-            final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(refPointer);
-            dr.setReferentPointer(forwardedPointer);
-            trace.string("  forwarded header: updated referent: ").hex(forwardedPointer).string("]").newline();
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refPointer, forwardedPointer.toObject());
+
+        if (HeapImpl.getHeapImpl().isInImageHeap(refPointer)) {
             return true;
         }
-        /*
-         * It's a real object. See if the referent has survived.
-         */
+
+        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(refPointer);
+        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+            /* If the referent got forwarded, then update the referent. */
+            Pointer forwardedPointer = Word.objectToUntrackedPointer(ObjectHeaderImpl.getForwardedObject(refPointer));
+            dr.setReferentPointer(forwardedPointer);
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, forwardedPointer.toObject());
+            return true;
+        }
+
+        // It's a real object. See if the referent has survived.
         final Object refObject = refPointer.toObject();
-        if (HeapImpl.getHeapImpl().hasSurvivedThisCollection(refObject)) {
+        if (hasSurvivedThisCollection(refObject)) {
             /* The referent has survived, it does not need to be updated. */
-            trace.string("  referent will survive: not updated").string("]").newline();
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refPointer, refObject);
+            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
             return true;
         }
         /*
@@ -171,8 +176,14 @@ public class DiscoverableReferenceProcessing {
          * barrier for this store.
          */
         dr.clear();
-        trace.string("  has not survived: nulled referent").string("]").newline();
         return false;
+    }
+
+    private static boolean hasSurvivedThisCollection(Object obj) {
+        assert !HeapImpl.getHeapImpl().isInImageHeap(obj);
+        HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
+        Space space = chunk.getSpace();
+        return !space.isFrom();
     }
 
     /** Pop the first element off the discovered references list. */
@@ -207,7 +218,7 @@ public class DiscoverableReferenceProcessing {
         final YoungGeneration youngGen = heap.getYoungGeneration();
         final OldGeneration oldGen = heap.getOldGeneration();
         final boolean refNull = refPointer.isNull();
-        final boolean refBootImage = (!refNull) && HeapVerifierImpl.slowlyFindPointerInBootImage(refPointer);
+        final boolean refBootImage = (!refNull) && heap.isInImageHeapSlow(refPointer);
         final boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
         final boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
         final boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);

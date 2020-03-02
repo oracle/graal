@@ -45,11 +45,6 @@ public interface ObjectReferenceVisitor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
     boolean visitObjectReference(Pointer objRef, boolean compressed);
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    default boolean visitObjectReference(Pointer objRef, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
-        return visitObjectReference(objRef, compressed);
-    }
-
     /** Like visitObjectReference(Pointer), but always inlined for performance. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
     default boolean visitObjectReferenceInline(Pointer objRef, boolean compressed) {

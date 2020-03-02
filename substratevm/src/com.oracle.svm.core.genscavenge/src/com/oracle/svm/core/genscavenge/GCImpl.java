@@ -105,6 +105,7 @@ public class GCImpl implements GC {
 
     private static final int DECIMALS_IN_TIME_PRINTING = 7;
 
+    private final RememberedSetConstructor rememberedSetConstructor;
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor;
     /**
      * A visitor for a frame that walks all the Object references in the frame.
@@ -145,9 +146,9 @@ public class GCImpl implements GC {
         this.sizeBefore = WordFactory.zero();
 
         this.policy = CollectionPolicy.getInitialPolicy(access);
-        this.greyToBlackObjRefVisitor = GreyToBlackObjRefVisitor.factory();
+        this.greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
         this.frameWalker = new FramePointerMapWalker(greyToBlackObjRefVisitor);
-        this.greyToBlackObjectVisitor = GreyToBlackObjectVisitor.factory(greyToBlackObjRefVisitor);
+        this.greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
         this.alwaysCompletelyInstance = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
         this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
@@ -219,7 +220,7 @@ public class GCImpl implements GC {
                         .string("  cause: ").string(cause.getName())
                         .string("  requestingEpoch: ").unsigned(requestingEpoch)
                         .newline();
-        VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
+        assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(requestingEpoch);
 
         /* Stop the mutator timer. */
@@ -264,9 +265,6 @@ public class GCImpl implements GC {
     @SuppressWarnings("try")
     private void collectImpl(String cause) {
         final Log trace = Log.noopLog().string("[GCImpl.collectImpl:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
-
-        VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
-
         final HeapImpl heap = HeapImpl.getHeapImpl();
 
         precondition();
@@ -522,37 +520,39 @@ public class GCImpl implements GC {
      */
     @SuppressWarnings("try")
     private void scavenge(boolean fromDirtyRoots) {
-        final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
+        try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
+            final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
 
-        /* Empty the list of DiscoveredReferences before walking the heap. */
-        DiscoverableReferenceProcessing.clearDiscoveredReferences();
+            /* Empty the list of DiscoveredReferences before walking the heap. */
+            DiscoverableReferenceProcessing.clearDiscoveredReferences();
 
-        try (Timer rst = rootScanTimer.open()) {
-            trace.string("  Cheney scan: ");
-            if (fromDirtyRoots) {
-                cheneyScanFromDirtyRoots();
-            } else {
-                cheneyScanFromRoots();
+            try (Timer rst = rootScanTimer.open()) {
+                trace.string("  Cheney scan: ");
+                if (fromDirtyRoots) {
+                    cheneyScanFromDirtyRoots();
+                } else {
+                    cheneyScanFromRoots();
+                }
             }
+
+            trace.string("  Discovered references: ");
+            /* Process the list of DiscoveredReferences after walking the heap. */
+            try (Timer drt = discoverableReferenceTimer.open()) {
+                DiscoverableReferenceProcessing.processDiscoveredReferences();
+            }
+
+            trace.string("  Release spaces: ");
+            /* Release any memory in the young and from Spaces. */
+            try (Timer rst = releaseSpacesTimer.open()) {
+                releaseSpaces();
+            }
+
+            trace.string("  Swap spaces: ");
+            /* Exchange the from and to Spaces. */
+            swapSpaces();
+
+            trace.string("]").newline();
         }
-
-        trace.string("  Discovered references: ");
-        /* Process the list of DiscoveredReferences after walking the heap. */
-        try (Timer drt = discoverableReferenceTimer.open()) {
-            DiscoverableReferenceProcessing.processDiscoveredReferences();
-        }
-
-        trace.string("  Release spaces: ");
-        /* Release any memory in the young and from Spaces. */
-        try (Timer rst = releaseSpacesTimer.open()) {
-            releaseSpaces();
-        }
-
-        trace.string("  Swap spaces: ");
-        /* Exchange the from and to Spaces. */
-        swapSpaces();
-
-        trace.string("]").newline();
     }
 
     /**
@@ -789,18 +789,16 @@ public class GCImpl implements GC {
     private void blackenBootImageRoots() {
         final Log trace = Log.noopLog().string("[blackenBootImageRoots:").newline();
         try (Timer bbirt = blackenBootImageRootsTimer.open()) {
-            try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
-                /* Walk through the native image heap roots. */
-                ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-                Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
-                final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
-                while (cur.belowOrEqual(last)) {
-                    Object obj = cur.toObject();
-                    if (obj != null) {
-                        greyToBlackObjectVisitor.visitObjectInline(obj);
-                    }
-                    cur = LayoutEncoding.getObjectEnd(obj);
+            /* Walk through the native image heap roots. */
+            ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+            Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
+            final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
+            while (cur.belowOrEqual(last)) {
+                Object obj = cur.toObject();
+                if (obj != null) {
+                    greyToBlackObjectVisitor.visitObjectInline(obj);
                 }
+                cur = LayoutEncoding.getObjectEnd(obj);
             }
         }
         trace.string("]").newline();
@@ -815,8 +813,7 @@ public class GCImpl implements GC {
              * Promote any referenced young objects.
              */
             final HeapImpl heap = HeapImpl.getHeapImpl();
-            final OldGeneration oldGen = heap.getOldGeneration();
-            oldGen.walkDirtyObjects(greyToBlackObjectVisitor, true);
+            heap.getOldGeneration().walkDirtyObjects(greyToBlackObjectVisitor, true);
         }
         trace.string("]").newline();
     }
@@ -866,16 +863,15 @@ public class GCImpl implements GC {
         final Log trace = Log.noopLog().string("[GCImpl.promotePinnedObject").string("  pinned: ").object(pinned);
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGen = heap.getOldGeneration();
-        final Space toSpace = oldGen.getToSpace();
         /* Find the chunk the object is in, and if necessary, move it to To space. */
         final Object referent = pinned.getObject();
-        if (referent != null && ObjectHeaderImpl.getObjectHeaderImpl().isHeapAllocated(referent)) {
+        if (referent != null && !heap.isInImageHeap(referent)) {
             trace.string("  referent: ").object(referent);
             /*
              * The referent doesn't move, so I can ignore the result of the promotion because I
              * don't have to update any pointers to it.
              */
-            toSpace.promoteObjectChunk(referent);
+            oldGen.promoteObjectChunk(referent);
         }
         trace.string("]").newline();
     }
@@ -1518,9 +1514,6 @@ public class GCImpl implements GC {
         long closeNanos;
         long collectedNanos;
     }
-
-    /** A constructor of remembered sets. */
-    private final RememberedSetConstructor rememberedSetConstructor;
 
     RememberedSetConstructor getRememberedSetConstructor() {
         return rememberedSetConstructor;
