@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 
-public final class ReentrantBlockIterator {
+public final class ReentrantBlockIterator2 {
 
     public static class LoopInfo<StateT> {
 
@@ -60,7 +60,7 @@ public final class ReentrantBlockIterator {
 
         protected abstract StateT getInitialState();
 
-        protected abstract StateT processBlock(Block block, StateT currentState);
+        protected abstract StateT processBlock(Block block, StateT currentState, EconomicMap<FixedNode, StateT> states);
 
         protected abstract StateT merge(Block merge, List<StateT> states);
 
@@ -69,7 +69,7 @@ public final class ReentrantBlockIterator {
         protected abstract List<StateT> processLoop(Loop<Block> loop, StateT initialState);
     }
 
-    private ReentrantBlockIterator() {
+    private ReentrantBlockIterator2() {
         // no instances allowed
     }
 
@@ -122,12 +122,12 @@ public final class ReentrantBlockIterator {
             if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);
             } else {
-                state = closure.processBlock(current, state);
+                state = closure.processBlock(current, state, states);
 
                 Block[] successors = current.getSuccessors();
                 if (successors.length == 0) {
                     // nothing to do...
-               } else if (successors.length == 1) {
+                } else if (successors.length == 1) {
                     Block successor = successors[0];
                     if (successor.isLoopHeader()) {
                         if (current.isLoopEnd()) {
