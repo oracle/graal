@@ -51,7 +51,7 @@ import org.junit.Test;
 
 public class MatcherBuilderTest {
 
-    private static final int MAX_VALUE = Character.MAX_VALUE;
+    private static final int MAX_VALUE = CodePointSet.getFull().getMaxValue();
 
     private static CodePointSet single(int i) {
         return range(i, i);
