@@ -166,6 +166,10 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return forward ? isUnAnchoredInitialState() : isUnAnchoredFinalState();
     }
 
+    public boolean isInitialState(boolean forward) {
+        return forward ? isInitialState() : isFinalState();
+    }
+
     public boolean isFinalState(boolean forward) {
         return forward ? isFinalState() : isInitialState();
     }
