@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -64,8 +65,9 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -344,7 +346,12 @@ public final class SVMHost implements HostVM {
                 return HubType.ObjectArray;
             }
         } else if (type.isInstanceClass()) {
-            // in the future, we will need to distinguish references as well
+            if (SubstrateOptions.UseCardRememberedSetHeap.getValue()) {
+                if (Reference.class.isAssignableFrom(type.getJavaClass())) {
+                    return HubType.InstanceReference;
+                }
+                assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
+            }
             return HubType.Instance;
         } else {
             return HubType.Other;
