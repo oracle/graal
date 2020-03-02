@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.ref.Reference;
+
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -31,7 +33,6 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
-import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -152,8 +153,8 @@ public class HeapVerifierImpl implements HeapVerifier {
                 getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  contains references to forwarded objects").string("]").newline();
                 return false;
             }
-            if (!verifyDiscoverableReference(obj)) {
-                getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  DiscoverableReference fails to verify.").string("]").newline();
+            if (!verifyReferenceObject(obj)) {
+                getWitnessLog().string("[HeapVerifierImpl.verifyObjectAt(objRef: ").hex(ptr).string(")").string("  Reference object fails to verify.").string("]").newline();
                 return false;
             }
         }
@@ -427,14 +428,12 @@ public class HeapVerifierImpl implements HeapVerifier {
 
     private static final HeapVerifierImpl.NoReferencesToForwardedObjectsVisitor noReferencesToForwardedObjectsVisitor = new NoReferencesToForwardedObjectsVisitor();
 
-    private static boolean verifyDiscoverableReference(Object object) {
-        boolean result = true;
+    private static boolean verifyReferenceObject(Object object) {
         Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
-        if (obj instanceof DiscoverableReference) {
-            final DiscoverableReference dr = (DiscoverableReference) obj;
-            result = DiscoverableReferenceProcessing.verify(dr);
+        if (obj instanceof Reference) {
+            return ReferenceObjectProcessing.verify((Reference<?>) obj);
         }
-        return result;
+        return true;
     }
 
     public enum ChunkLimit {

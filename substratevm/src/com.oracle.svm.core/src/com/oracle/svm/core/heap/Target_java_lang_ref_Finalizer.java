@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
+/** SubstrateVM does not support Finalizer references. */
+@TargetClass(className = "java.lang.ref.Finalizer")
+@Delete
+final class Target_java_lang_ref_Finalizer {
+}
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
-public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
-
-    public final ResolvedJavaField referenceFieldRawReferent = findField(lookupType(Target_java_lang_ref_Reference.class), "rawReferent");
-
-    public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
-        super(metaAccess);
-    }
+/** SubstrateVM does not run a Finalizer thread. */
+@TargetClass(className = "java.lang.ref.Finalizer", innerClass = "FinalizerThread")
+@Delete
+final class Target_java_lang_ref_Finalizer_FinalizerThread {
 }
