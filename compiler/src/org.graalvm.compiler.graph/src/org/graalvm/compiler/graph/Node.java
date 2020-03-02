@@ -427,10 +427,28 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Checks whether this node has exactly one usgae.
+     * Checks whether this node has exactly one usage.
      */
     public final boolean hasExactlyOneUsage() {
         return hasUsages() && !hasMoreThanOneUsage();
+    }
+
+    /**
+     * Checks whether this node has only usages of that type.
+     *
+     * @param type the type of usages to look for
+     */
+    public final boolean hasOnlyUsagesOfType(InputType type) {
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() != type) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     /**
