@@ -40,6 +40,6 @@
  *
  * @see com.oracle.truffle.llvm.Runner.resolveRenamedSymbols
  */
-#define _SULONG_IMPORT_SYMBOL(libname,symname) __##libname##_##symname
+#define _SULONG_IMPORT_SYMBOL(libname, symname) ___sulong_import_##libname##_##symname
 
 #endif
