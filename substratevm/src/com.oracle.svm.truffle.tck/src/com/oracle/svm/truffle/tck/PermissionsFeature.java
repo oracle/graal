@@ -31,7 +31,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -88,7 +87,6 @@ import org.graalvm.nativeimage.hosted.Feature;
  * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option. You also need to disable
  * folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter} option.
  */
-@AutomaticFeature
 public class PermissionsFeature implements Feature {
 
     private static final String CONFIG = "truffle-language-permissions-config.json";

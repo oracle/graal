@@ -31,6 +31,7 @@ import mx_unittest
 import mx_sdk_vm_impl
 
 import functools
+import re
 from mx_gate import Task
 
 from os import environ, listdir, remove
@@ -57,6 +58,7 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
+    svm_truffle_tck = 'svm_truffle_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
 
 
@@ -134,6 +136,7 @@ def gate_body(args, tasks):
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
+    gate_svm_truffle_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
 
 def graalvm_svm():
@@ -222,6 +225,7 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
         report_file = join(svmbuild, "language_permissions.log")
         options = [
             '--language:{}'.format(language_id),
+            '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
@@ -254,3 +258,64 @@ def gate_svm_truffle_tck_js(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
+
+def gate_svm_truffle_tck(tasks):
+    with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck]) as t:
+        if t:
+            #Blacklist check in Truffle and tools
+            tools_suite = mx.suite('tools')
+            if not tools_suite:
+                mx.abort("Cannot resolve tools suite.")
+            native_image_context, svm = graalvm_svm()
+            for dist in svm.suite.dists:
+                if dist.name == 'SVM_TRUFFLE_TCK':
+                    cp = dist.classpath_repr()
+                    break
+            if not cp:
+                mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svmbuild = mkdtemp()
+                try:
+                    options = [
+                        '--macro:truffle',
+                        '--tool:chromeinspector',
+                        '--tool:coverage',
+                        '--tool:profiler',
+                        '--tool:profiler',
+                        '--tool:agentscript',
+                        '-H:Path={}'.format(svmbuild),
+                        '-H:+TruffleCheckBlackListedMethods',
+                        '-cp',
+                        cp,
+                        'com.oracle.svm.truffle.tck.MockMain'
+                    ]
+                    native_image(options)
+                finally:
+                    mx.rmtree(svmbuild)
+
+                #Truffle TCK on SVM
+                svmbuild = mkdtemp()
+                try:
+                    import mx_compiler
+                    unittest_deps = []
+                    unittest_file = join(svmbuild, 'truffletck.tests')
+                    mx_unittest._run_tests([], lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps), mx_unittest._VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, [], [re.compile('com.oracle.truffle.tck.tests')], None, mx.suite('truffle'))
+                    if not exists(unittest_file):
+                        mx.abort('TCK tests not found.')
+                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
+                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_TCK_INSTRUMENTATION'))
+                    vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
+                    options = [
+                        '--macro:truffle',
+                        '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
+                        '-H:Path={}'.format(svmbuild),
+                        '-H:Class=org.junit.runner.JUnitCore',
+                        '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
+                        '-H:MaxRuntimeCompileMethods=3000'
+                    ]
+                    tests_image = native_image(vm_image_args + options)
+                    with open(unittest_file) as f:
+                        test_classes = [l.rstrip() for l in f.readlines()]
+                    mx.run([tests_image] + test_classes)
+                finally:
+                    mx.rmtree(svmbuild)

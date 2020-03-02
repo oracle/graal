@@ -158,6 +158,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         @Option(help = "Enforce that the Truffle runtime provides the only implementation of Frame")//
         public static final HostedOptionKey<Boolean> TruffleCheckFrameImplementation = new HostedOptionKey<>(true);
 
+        @Option(help = "Fail if a method known as not suitable for partial evaluation is reachable for runtime compilation")//
+        public static final HostedOptionKey<Boolean> TruffleCheckBlackListedMethods = new HostedOptionKey<>(false);
+
         @Option(help = "Inline trivial methods in Truffle graphs during native image generation")//
         public static final HostedOptionKey<Boolean> TruffleInlineDuringParsing = new HostedOptionKey<>(true);
     }
@@ -765,7 +768,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void beforeCompilation(BeforeCompilationAccess config) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) config;
 
-        if (GraalFeature.Options.PrintRuntimeCompileMethods.getValue() && blacklistViolations.size() > 0) {
+        boolean failBlackListViolations = Options.TruffleCheckBlackListedMethods.getValue();
+        boolean printBlackListViolations = GraalFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlackListViolations;
+        if (printBlackListViolations && blacklistViolations.size() > 0) {
             System.out.println();
             System.out.println("=== Found " + blacklistViolations.size() + " compilation blacklist violations ===");
             System.out.println();
@@ -776,6 +781,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 for (GraalFeature.CallTreeNode cur = node; cur != null; cur = cur.getParent()) {
                     System.out.println("  " + cur.getSourceReference());
                 }
+            }
+            if (failBlackListViolations) {
+                throw VMError.shouldNotReachHere("Blacklisted methods are reachable for runtime compilation");
             }
         }
 
