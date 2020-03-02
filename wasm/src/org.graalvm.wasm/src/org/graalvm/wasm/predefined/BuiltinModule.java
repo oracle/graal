@@ -52,7 +52,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.memory.MemoryModule;
@@ -73,7 +73,7 @@ public abstract class BuiltinModule {
     public static WasmModule createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
-            throw new WasmException("Unknown predefined module: " + predefinedModuleName);
+            throw new WasmValidationException("Unknown predefined module: " + predefinedModuleName);
         }
         return builtinModule.createModule(language, context, name);
     }

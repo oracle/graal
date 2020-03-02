@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.nodes.WasmEmptyRootNode;
 import org.graalvm.options.OptionDescriptors;
 
@@ -93,10 +93,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             try {
                 parsingThread.join();
                 if (handler.parsingException() != null) {
-                    throw new WasmException("Asynchronous parsing failed.", handler.parsingException());
+                    throw new WasmValidationException("Asynchronous parsing failed.", handler.parsingException());
                 }
             } catch (InterruptedException e) {
-                throw new WasmException("Asynchronous parsing interrupted.", e);
+                throw new WasmValidationException("Asynchronous parsing interrupted.", e);
             }
         }
     }

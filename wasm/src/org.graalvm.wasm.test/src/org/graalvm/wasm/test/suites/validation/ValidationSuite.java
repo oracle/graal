@@ -67,7 +67,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: SymbolTable.allocateFunctionType
                     binaryCase(
                                     "Function: cannot return more than one value",
-                                    "org.graalvm.wasm.exception.WasmException: A function can return at most one result.",
+                                    "A function can return at most one result.",
                                     // (module
                                     // (func $f (result i32) i32.const 42 i32.const 42)
                                     // )
@@ -79,15 +79,15 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Note: Limit is lowered to `2^31 - 1` due to Java indices limit.
                     stringCase(
                                     "Table: initial size out of bounds",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid initial table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
+                                    "Invalid initial table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 2147483648 funcref)"),
                     stringCase(
                                     "Table: initial size out of bounds",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid max table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
+                                    "Invalid max table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 1 2147483648 funcref)"),
                     stringCase(
                                     "Table: max size lower than initial size",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid initial table size, must be less than max table size: 2 should be <= 1.",
+                                    "Invalid initial table size, must be less than max table size: 2 should be <= 1.",
                                     "(table $table1 2 1 funcref)"),
 
                     // ## 3.2.4 Memory types
@@ -95,15 +95,15 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: BinaryParser.readMemoryLimits
                     stringCase(
                                     "Memory: initial size out of bounds",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid initial memory size, must be less than upper bound: 2147483648 should be <= 65536.",
+                                    "Invalid initial memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 2147483648)"),
                     stringCase(
                                     "Memory: max size out of bounds",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid max memory size, must be less than upper bound: 2147483648 should be <= 65536.",
+                                    "Invalid max memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 1 2147483648)"),
                     stringCase(
                                     "Memory: max size lower than initial size",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid initial memory size, must be less than max memory size: 2 should be <= 1.",
+                                    "Invalid initial memory size, must be less than max memory size: 2 should be <= 1.",
                                     "(memory $memory1 2 1)"),
 
                     // ## 3.2.5 Global types
@@ -116,11 +116,11 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: SymbolTable.allocateFunction
                     stringCase(
                                     "Function: invalid type index",
-                                    "org.graalvm.wasm.exception.WasmException: Function type out of bounds: 1 should be < 1.",
+                                    "Function type out of bounds: 1 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 1))"),
                     stringCase(
                                     "Function: invalid type index",
-                                    "org.graalvm.wasm.exception.WasmException: Function type out of bounds: 4294967254 should be < 1.",
+                                    "Function type out of bounds: 4294967254 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 4294967254))"),
 
                     // Under the context `C'`, the expression `express` must be valid with type
@@ -150,7 +150,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: BinaryParser.readElementSection
                     binaryCase(
                                     "Element segment: invalid table index",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid table index: 5 should = 0.",
+                                    "Invalid table index: 5 should = 0.",
                                     // (module
                                     // (table 1 funcref)
                                     // (elem 5 (i32.const 0) $f1)
@@ -174,7 +174,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: SymbolTable.function
                     stringCase(
                                     "Element segments: invalid function index",
-                                    "org.graalvm.wasm.exception.WasmException: Function index out of bounds: 1 should be < 1.",
+                                    "Function index out of bounds: 1 should be < 1.",
                                     "(table 1 funcref) (elem (i32.const 0) 1)"),
 
                     // ## 3.4.6 Data Segments
@@ -182,7 +182,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: BinaryParser.readDataSection
                     binaryCase(
                                     "Data segment: invalid memory index",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Invalid memory index, only the memory index 0 is currently supported.: 5 should = 0.",
+                                    "Invalid memory index, only the memory index 0 is currently supported.: 5 should = 0.",
                                     // (module
                                     // (memory 1)
                                     // (data 5 (i32.const 0) "Hi")
@@ -200,50 +200,50 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: SymbolTable.function
                     stringCase(
                                     "Start function: invalid index",
-                                    "org.graalvm.wasm.exception.WasmException: Function index out of bounds: 1 should be < 1.",
+                                    "Function index out of bounds: 1 should be < 1.",
                                     "(start 1)"),
 
                     // The type of `C.funcs[x]` must be [] -> [].
                     // Validated in SymbolTable.startFunction
                     stringCase(
                                     "Start function: returns a value",
-                                    "org.graalvm.wasm.exception.WasmException: Start function cannot return a value.",
+                                    "Start function cannot return a value.",
                                     "(start 0) (func (result i32) i32.const 42)"),
                     stringCase(
                                     "Start function: takes arguments",
-                                    "org.graalvm.wasm.exception.WasmException: Start function cannot take arguments.",
+                                    "Start function cannot take arguments.",
                                     "(start 0) (func (param i32))"),
 
                     // The length of `C.tables` must not be larger than 1.
                     // Validated in: BinaryParser.readTableSection
                     stringCase(
                                     "Module: two tables (2 locals)",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module: 2 should be <= 1.",
+                                    "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table1 1 funcref) (table $table2 1 funcref)"),
                     stringCase(
                                     "Module: two tables (1 local and 1 import)",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one table per module: 2 should be <= 1.",
+                                    "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table2 (import \"some\" \"table\") 1 funcref) (table $table1 1 funcref)"),
                     // Validated in: SymbolTable.validateSingleTable
                     stringCase(
                                     "Module: two tables (2 imports)",
-                                    "org.graalvm.wasm.exception.WasmException: A table has been already imported in the module.",
+                                    "A table has been already imported in the module.",
                                     "(table $table1 (import \"some\" \"table\") 1 funcref) (table $table2 (import \"some\" \"table\") 1 funcref)"),
 
                     // The length of `C.mems` must not be larger than 1.
                     // Validated in: BinaryParser.readMemorySection
                     stringCase(
                                     "Module: two memories (2 locals)",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one memory per module: 2 should be <= 1.",
+                                    "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 1) (memory $mem2 1)"),
                     stringCase(
                                     "Module: two memories (1 local and 1 import)",
-                                    "org.graalvm.wasm.exception.BinaryParserException: Can import or declare at most one memory per module: 2 should be <= 1.",
+                                    "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 1)"),
                     // Validated in: SymbolTable.validateSingleMemory
                     stringCase(
                                     "Module: two memories (2 imports)",
-                                    "org.graalvm.wasm.exception.WasmException: Memory has been already imported in the module.",
+                                    "Memory has been already imported in the module.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 (import \"some\" \"memory\") 1)"),
 
                     // All export names `export_i.name` must be different.
