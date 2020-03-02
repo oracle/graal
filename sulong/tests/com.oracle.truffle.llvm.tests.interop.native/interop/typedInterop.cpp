@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -122,8 +122,8 @@ struct BitFields {
 POLYGLOT_DECLARE_STRUCT(BitFields)
 
 extern "C" int accessBitFields(void *arg) {
-	struct BitFields *obj = polyglot_as_BitFields(arg);
-	return obj->x + obj->y + obj->z;
+        struct BitFields *obj = polyglot_as_BitFields(arg);
+        return obj->x + obj->y + obj->z;
 }
 
 struct FusedArray {
