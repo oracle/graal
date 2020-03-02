@@ -185,10 +185,14 @@ public class JavaMainWrapper {
         return runCore(paramArgc, paramArgv);
     }
 
-    private static void checkArgumentBlockAvailable() {
-        if (argv.isNull() || argc <= 0) {
-            throw new UnsupportedOperationException("Argument vector not accessible (called from shared library image?)");
+    private static void checkArgumentBlockSupported() {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
+            if (argv.isNull() || argc <= 0) {
+                throw new UnsupportedOperationException("Argument vector not accessible (called from shared library image?)");
+            }
+            return;
         }
+        throw new UnsupportedOperationException("Argument vector manipulation unsupported for platform " + ImageSingletons.lookup(Platform.class).getClass().getName());
     }
 
     /**
@@ -206,7 +210,7 @@ public class JavaMainWrapper {
      *         contiguous memory block without writing into the environment variables part.
      */
     public static int getCRuntimeArgumentBlockLength() {
-        checkArgumentBlockAvailable();
+        checkArgumentBlockSupported();
 
         CCharPointer firstArgPos = argv.read(0);
         if (argvLength.equal(WordFactory.zero())) {
@@ -221,7 +225,7 @@ public class JavaMainWrapper {
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
-        checkArgumentBlockAvailable();
+        checkArgumentBlockSupported();
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -247,7 +251,7 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
-        checkArgumentBlockAvailable();
+        checkArgumentBlockSupported();
         return CTypeConversion.toJavaString(argv.read(0));
     }
 
