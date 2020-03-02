@@ -54,9 +54,6 @@ import java.lang.annotation.Target;
  *
  * Polymorphic specializations include, but are not limited to, activating another specialization,
  * increasing the number of instances of an active specialization, excluding a specialization, etc.
- * Individual specializations can be excluded from this consideration buy using the
- * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the first
- * specialization.
  *
  * Additional information on the effect of {@link ReportPolymorphism} can be found in <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/splitting/ReportingPolymorphism.md">
@@ -73,6 +70,10 @@ public @interface ReportPolymorphism {
      * Nodes (and their subclasses) or specializations annotated with this annotation will be
      * excluded from consideration when {@link Node#reportPolymorphicSpecialize() reporting
      * polymorphic specializations}.
+     *
+     * Individual specializations can be excluded from this consideration buy using the
+     * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the
+     * first specialization.
      *
      * @since 0.33
      */
