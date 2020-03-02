@@ -222,7 +222,7 @@ def registered_graalvm_components(stage1=False):
                 mx_sdk_vm.register_graalvm_component(polyglot_component)
                 add_dependencies([polyglot_component])
 
-            if _with_polyglot_lib_project() and libpoly_has_entrypoints:
+            if _with_polyglot_lib_project() and libpoly_has_entrypoints and _get_svm_support().is_supported():
                 libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
                     suite=_suite,
                     name='Polyglot Library',
@@ -2177,9 +2177,9 @@ def get_standalone_distribution(comp_dir_name):
 
 
 def has_svm_polyglot_lib():
-    if not _get_svm_support().is_supported() or not _with_polyglot_lib_project():
-        return False
-    return any(c.has_polyglot_lib_entrypoints for c in registered_graalvm_components(stage1=False))
+    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary) and p.component.name == 'Polyglot Library']
+    assert not libraries or len(libraries) == 1
+    return libraries and not libraries[0].is_skipped()
 
 
 _native_image_configs = {}
@@ -2277,8 +2277,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
                     assert with_svm
                     register_project(GraalVmNativeProperties(component, library_config))
-                    if not _skip_libraries(library_config.destination):
-                        needs_stage1 = True
+                    needs_stage1 = True  # library configs need a stage1 even when they are skipped
         if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
 
@@ -2306,9 +2305,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 with_debuginfo.append(standalone)
 
     if register_project:
-        if has_svm_polyglot_lib():
-            needs_stage1 = True
-
         if _src_jdk_version == 8 and jvmci_parent_jars:
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
