@@ -45,32 +45,29 @@ public final class DefaultLoader extends Loader {
     private volatile List<LLVMParserResult> cachedDefaultDependencies;
     private volatile ExternalLibrary[] cachedSulongLibraries;
 
-    private synchronized void parseDefaultDependencies(Runner runner) {
-        if (cachedDefaultDependencies == null) {
-            ParseContext parseContext = ParseContext.create();
-            cachedSulongLibraries = runner.parseDefaultLibraries(parseContext);
-            cachedDefaultDependencies = parseContext.getParserResults();
-        }
-    }
-
-    ExternalLibrary[] getDefaultDependencies(Runner runner, ParseContext parseContext) {
-        if (cachedDefaultDependencies == null) {
-            parseDefaultDependencies(runner);
-        }
-        parseContext.parserResultsAddAll(cachedDefaultDependencies);
-        return cachedSulongLibraries;
-    }
-
     @Override
     public void loadDefaults(LLVMContext context, Path internalLibraryPath) {
-        new Runner(context, this, context.getLanguage().getRawRunnerID()).loadDefaults(internalLibraryPath);
+        Runner.loadDefaults(context, this, context.getLanguage().getRawRunnerID(), internalLibraryPath);
     }
 
     @Override
     public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
-            return new Runner(context, this, id).parseWithDependencies(source);
+            return Runner.parse(context, this, id, source);
         }
+    }
+
+    List<LLVMParserResult> getCachedDefaultDependencies() {
+        return cachedDefaultDependencies;
+    }
+
+    ExternalLibrary[] getCachedSulongLibraries() {
+        return cachedSulongLibraries;
+    }
+
+    void setDefaultLibraries(ExternalLibrary[] defaultLibraries, List<LLVMParserResult> parserResults) {
+        cachedDefaultDependencies = parserResults;
+        cachedSulongLibraries = defaultLibraries;
     }
 }

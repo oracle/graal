@@ -134,7 +134,26 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
+/**
+ * Drives a parsing request.
+ *
+ * @see #parse
+ */
 final class Runner {
+
+    /**
+     * Parses a {@code source} and all its (explicit and implicit) dependencies.
+     *
+     * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
+     *         constructors, etc.) the module represented by {@code source} and all dependencies.
+     */
+    public static CallTarget parse(LLVMContext context, DefaultLoader loader, AtomicInteger id, Source source) {
+        return new Runner(context, loader, id).parseWithDependencies(source);
+    }
+
+    public static void loadDefaults(LLVMContext context, DefaultLoader loader, AtomicInteger id, Path internalLibraryPath) {
+        new Runner(context, loader, id).loadDefaults(internalLibraryPath);
+    }
 
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
@@ -151,7 +170,7 @@ final class Runner {
     private final LLVMLanguage language;
     private final AtomicInteger id;
 
-    Runner(LLVMContext context, DefaultLoader loader, AtomicInteger id) {
+    private Runner(LLVMContext context, DefaultLoader loader, AtomicInteger id) {
         this.context = context;
         this.loader = loader;
         this.language = context.getLanguage();
@@ -161,7 +180,7 @@ final class Runner {
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    CallTarget parseWithDependencies(Source source) {
+    private CallTarget parseWithDependencies(Source source) {
         ByteSequence bytes;
         ExternalLibrary library;
         if (source.hasBytes()) {
@@ -652,7 +671,7 @@ final class Runner {
         return type instanceof PointerType;
     }
 
-    ExternalLibrary[] parseDefaultLibraries(ParseContext parseContext) {
+    private ExternalLibrary[] parseDefaultLibraries(ParseContext parseContext) {
         // There could be conflicts between Sulong's default libraries and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later
         // on.
@@ -665,8 +684,7 @@ final class Runner {
         // parse all libraries that were passed on the command-line
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String external : externals) {
-            // assume that the library is a native one until we parsed it and can say for sure
-            ExternalLibrary lib = context.addExternalLibrary(external, true, "<command line>");
+            ExternalLibrary lib = context.addExternalLibraryDefaultLocator(external, "<command line>");
             if (lib != null) {
                 parseLibrary(lib, parseContext);
             }
@@ -704,7 +722,7 @@ final class Runner {
         }
 
         // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibraries = loader.getDefaultDependencies(this, parseContext);
+        ExternalLibrary[] sulongLibraries = getDefaultDependencies(parseContext);
 
         // finally we are dealing with all indirect dependencies
         while (!parseContext.dependencyQueueIsEmpty()) {
@@ -712,6 +730,26 @@ final class Runner {
             parseLibrary(lib, parseContext);
         }
         return sulongLibraries;
+    }
+
+    /**
+     * Returns the default dependencies (as {@link ExternalLibrary} and adds their
+     * {@link LLVMParserResult parser results} to the current {@link ParseContext}. The default
+     * dependencies are cached in the {@link #loader}.
+     */
+    private ExternalLibrary[] getDefaultDependencies(ParseContext parseContext) {
+        if (loader.getCachedDefaultDependencies() == null) {
+            synchronized (loader) {
+                if (loader.getCachedDefaultDependencies() == null) {
+                    ParseContext newParseContext = ParseContext.create();
+                    ExternalLibrary[] defaultLibraries = parseDefaultLibraries(newParseContext);
+                    List<LLVMParserResult> parserResults = newParseContext.getParserResults();
+                    loader.setDefaultLibraries(defaultLibraries, parserResults);
+                }
+            }
+        }
+        parseContext.parserResultsAddAll(loader.getCachedDefaultDependencies());
+        return loader.getCachedSulongLibraries();
     }
 
     private static void resolveRenamedSymbols(LLVMParserResult[] sulongLibraryResults) {
@@ -821,7 +859,7 @@ final class Runner {
     }
 
     @SuppressWarnings("unchecked")
-    public void loadDefaults(Path internalLibraryPath) {
+    private void loadDefaults(Path internalLibraryPath) {
         ExternalLibrary polyglotMock = ExternalLibrary.createFromPath(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
         LLVMParserResult polyglotMockResult = parseLibrary(polyglotMock, ParseContext.create());
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
@@ -908,25 +946,10 @@ final class Runner {
     private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ParseContext parseContext) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
-            library.setIsNative(false);
+            library.makeBitcodeLibrary();
             context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            List<String> libraries = binaryParserResult.getLibraries();
-            ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
-            for (String lib : libraries) {
-                boolean added = false;
-                ExternalLibrary dependency = context.findExternalLibrary(lib, true, library, binaryParserResult.getLocator());
-                if (dependency == null) {
-                    dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
-                    added = true;
-                }
-                if (dependency != null) {
-                    dependencies.add(dependency);
-                    if (added) {
-                        parseContext.dependencyQueueAddLast(dependency);
-                    }
-                }
-            }
+            ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
             parserResult.setDependencies(dependencies);
             parseContext.parserResultsAdd(parserResult);
@@ -937,6 +960,28 @@ final class Runner {
             LibraryLocator.traceDelegateNative(context, library);
             return null;
         }
+    }
+
+    /**
+     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
+     * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the
+     * {@link ParseContext#dependencyQueueAddLast dependency queue} if not already in there.
+     */
+    private ArrayList<ExternalLibrary> processDependencies(BinaryParserResult binaryParserResult, ParseContext parseContext, Object reason) {
+        ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
+        for (String lib : binaryParserResult.getLibraries()) {
+            ExternalLibrary dependency = context.findExternalLibrary(lib, reason, binaryParserResult.getLocator());
+            if (dependency != null) {
+                dependencies.add(dependency);
+            } else {
+                dependency = context.addExternalLibrary(lib, reason, binaryParserResult.getLocator());
+                if (dependency != null) {
+                    parseContext.dependencyQueueAddLast(dependency);
+                    dependencies.add(dependency);
+                }
+            }
+        }
+        return dependencies;
     }
 
     private void addExternalSymbolsToScopes(List<LLVMParserResult> parserResults) {
