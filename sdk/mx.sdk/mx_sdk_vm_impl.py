@@ -184,19 +184,21 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
-                    if not stage1:
-                        libpoly_build_args.extend(component.polyglot_lib_build_args)
-                        libpoly_jar_dependencies.extend(component.polyglot_lib_jar_dependencies)
-                        libpoly_build_dependencies.extend(component.polyglot_lib_build_dependencies)
-                        if component.has_polyglot_lib_entrypoints:
-                            libpoly_has_entrypoints.append(component.name)
+                    libpoly_build_args.extend(component.polyglot_lib_build_args)
+                    libpoly_jar_dependencies.extend(component.polyglot_lib_jar_dependencies)
+                    libpoly_build_dependencies.extend(component.polyglot_lib_build_dependencies)
+                    if component.has_polyglot_lib_entrypoints:
+                        libpoly_has_entrypoints.append(component.name)
 
         # Expand dependencies
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
 
-        if not stage1:
-            if _with_polyglot_launcher_project():
+        registered_components_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
+        if _with_polyglot_launcher_project():
+            if 'poly' in registered_components_short_names:
+                polyglot_component = mx_sdk_vm.graalvm_component_by_name('poly')
+            else:
                 polyglot_component = mx_sdk_vm.GraalVmJreComponent(
                     suite=_suite,
                     name='Polyglot Launcher',
@@ -220,9 +222,12 @@ def registered_graalvm_components(stage1=False):
                     )],
                 )
                 mx_sdk_vm.register_graalvm_component(polyglot_component)
-                add_dependencies([polyglot_component])
+            add_dependencies([polyglot_component])
 
-            if _with_polyglot_lib_project() and libpoly_has_entrypoints and _get_svm_support().is_supported():
+        if _with_polyglot_lib_project() and libpoly_has_entrypoints:
+            if 'libpoly' in registered_components_short_names:
+                libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly')
+            else:
                 libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
                     suite=_suite,
                     name='Polyglot Library',
@@ -243,10 +248,10 @@ def registered_graalvm_components(stage1=False):
                     )],
                 )
                 mx_sdk_vm.register_graalvm_component(libpolyglot_component)
-                add_dependencies([libpolyglot_component])
+            add_dependencies([libpolyglot_component])
 
-                if libpoly_build_dependencies:
-                    mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
+            if libpoly_build_dependencies:
+                mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
 
         # If we are going to build native launchers or libraries, i.e., if SubstrateVM is included,
         # we need native-image in stage1 to build them, even if the Native Image component is excluded.
@@ -2178,8 +2183,8 @@ def get_standalone_distribution(comp_dir_name):
 
 def has_svm_polyglot_lib():
     libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary) and p.component.name == 'Polyglot Library']
-    assert not libraries or len(libraries) == 1
-    return libraries and not libraries[0].is_skipped()
+    assert len(libraries) <= 1
+    return len(libraries) == 1 and not libraries[0].is_skipped()
 
 
 _native_image_configs = {}
@@ -2530,7 +2535,6 @@ def graalvm_show(args):
             print(" - {}".format(s))
     else:
         print("No standalone")
-
 
 def _get_dists(dist_class):
     """
