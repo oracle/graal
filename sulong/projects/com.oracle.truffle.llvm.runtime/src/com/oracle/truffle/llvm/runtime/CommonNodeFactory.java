@@ -313,6 +313,29 @@ public class CommonNodeFactory {
         }
     }
 
+    public static LLVMStoreNode getUncachedStoreNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1StoreNodeGen.getUncached();
+            case I8:
+                return LLVMI8StoreNodeGen.getUncached();
+            case I16:
+                return LLVMI16StoreNodeGen.getUncached();
+            case I32:
+                return LLVMI32StoreNodeGen.getUncached();
+            case I64:
+                return LLVMI64StoreNodeGen.getUncached();
+            case FLOAT:
+                return LLVMFloatStoreNodeGen.getUncached();
+            case DOUBLE:
+                return LLVMDoubleStoreNodeGen.getUncached();
+            case POINTER:
+                return LLVMPointerStoreNodeGen.getUncached();
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
     public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value, DataLayout dataLayout) {
         final TruffleObject complexObject = asDebuggerIRValue(llvmType, value, dataLayout);
         if (complexObject != null) {
