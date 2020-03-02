@@ -599,7 +599,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
      * <pre>
      * /(\ud800)\1/.exec("\ud800\ud800\udc00")
      * </pre>
-     * 
+     *
      * Here, the referenced group matches a lone surrogate, but the back-reference must decode the
      * {@code "\ud800\udc00"} to {@code \u10000}, and therefore must not match.
      *

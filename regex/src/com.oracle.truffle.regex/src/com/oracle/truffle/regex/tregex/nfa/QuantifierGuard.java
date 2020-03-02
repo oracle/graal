@@ -60,8 +60,9 @@ public final class QuantifierGuard {
          */
         loop,
         /**
-         * Transition represents a back-edge in a quantifier loop without upper bound
-         * ({@link Quantifier#isInfiniteLoop()}). Just increase the loop count.
+         * Transition represents a back-edge in a quantifier loop without upper bound, i.e.
+         * quantifiers where {@link Quantifier#isInfiniteLoop()} is {@code true}. Just increase the
+         * loop count.
          */
         loopInc,
         /**
@@ -70,8 +71,8 @@ public final class QuantifierGuard {
          */
         exit,
         /**
-         * Transition is leaving a quantified expression without lower bound
-         * ({@link Quantifier#getMin()} == 0). Just reset the loop count.
+         * Transition is leaving a quantified expression without lower bound, i.e. quantifiers where
+         * {@link Quantifier#getMin()} {@code == 0}. Just reset the loop count.
          */
         exitReset,
         /**
