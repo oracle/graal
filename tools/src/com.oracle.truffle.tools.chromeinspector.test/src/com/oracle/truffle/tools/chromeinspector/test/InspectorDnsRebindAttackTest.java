@@ -66,6 +66,11 @@ public class InspectorDnsRebindAttackTest {
     }
 
     @Test
+    public void testMissingHost() throws IOException {
+        testDnsRebindForInvalidHost(null);
+    }
+
+    @Test
     public void testInvalidHostWithoutPort() throws IOException {
         testDnsRebindForInvalidHost("evil.example.com");
     }
@@ -154,7 +159,7 @@ public class InspectorDnsRebindAttackTest {
             // header by default. So, we use raw sockets.
             out.write("GET " + path + " HTTP/1.1\r\n" +
                             "User-Agent: Test\r\n" +
-                            hostCapitalization + ": " + host + "\r\n" +
+                            (host != null ? (hostCapitalization + ": " + host + "\r\n") : "") +
                             "Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2\r\n" +
                             "\r\n");
             out.flush();
