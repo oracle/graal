@@ -31,10 +31,10 @@ import org.graalvm.compiler.jtt.JTTTest;
 //@formatter:off
 
 /**
+ * int / long arithmetic seems to be broken in 1.6.0_14 HotSpot Server VM (Win XP).
+ *
  * @test
  * @bug 6850611
- * @summary int / long arithmetic seems to be broken in 1.6.0_14 HotSpot Server VM (Win XP)
- *
  * @run main Test6850611
  */
 
