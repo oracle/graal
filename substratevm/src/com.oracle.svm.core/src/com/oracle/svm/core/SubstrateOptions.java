@@ -426,6 +426,9 @@ public class SubstrateOptions {
             if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
                 TrackNodeSourcePosition.update(values, true);
             }
+            if (newValue > 0 && !Boolean.FALSE.equals(values.get(DeleteLocalSymbols))) {
+                DeleteLocalSymbols.update(values, false);
+            }
         }
     };
 
