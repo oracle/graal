@@ -141,6 +141,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
+import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
@@ -768,6 +769,11 @@ public class NativeImageGenerator {
              * are reported or the analysis fails due to any other reasons.
              */
             if (bigbang != null) {
+                if (AnalysisReportsOptions.PrintAnalysisStatistics.getValue(options)) {
+                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
+                    StatisticsPrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                }
+
                 if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
                     String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
                     CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
@@ -778,7 +784,7 @@ public class NativeImageGenerator {
                     ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
                 }
 
-                if (PointstoOptions.ReportAnalysisStatistics.getValue(options)) {
+                if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
                     PointsToStats.report(bigbang, imageName.replace("images/", ""));
                 }
 
