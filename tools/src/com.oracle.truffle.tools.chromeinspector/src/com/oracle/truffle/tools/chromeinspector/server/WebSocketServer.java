@@ -161,6 +161,32 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         }
     }
 
+    /**
+     * DNS rebind attack uses victim's web browser as a proxy in order to access servers in local
+     * network or even on localhost. The web browser works with a DNS name the attacker can control
+     * (say evil.example.com), which suddenly starts being resolved to a local IP (even to
+     * 127.0.0.1). This technique allows the attacker to partially circumvent the same-origin
+     * policy. That is, the attacker will be able to connect to the server, but the browser will
+     * consider it as evil.example.com. As a result, the browser sends the attacker's domain name
+     * (e.g., evil.example.com) in the Host header. Also, the attacker does not get access to
+     * cookies or other locally-stored data for the website, as the browser considers it as a
+     * different domain.
+     *
+     * So, the attacker circumvents just the network restriction, and even this is limited: The
+     * protocol has to be based on HTTP (or HTTPS with likely invalid certificate) and the Host
+     * header will point to an attacker-controlled domain. Note that browsers prevent webpages to
+     * override values of this header: https://fetch.spec.whatwg.org/#forbidden-header-name
+     *
+     * In order to prevent the attack, we check the Host header:
+     * <ul>
+     * <li>If there is a valid IP address (IPv4 or IPv6), it can't be a DNS rebind attack, as no DNS
+     * name was used.</li>
+     * <li>If there is a whitelisted domain name (one that attacker can't control), it is OK. We
+     * assume that the attacker can control DNS records for everything but localhost. This matches
+     * both standard practice and RFC 6761.</li>
+     * <li>For everything else (including missing host header), we deny the request.</li>
+     * </ul>
+     */
     private class DNSRebindProtectionHandler implements IHandler<IHTTPSession, Response> {
 
         @Override
