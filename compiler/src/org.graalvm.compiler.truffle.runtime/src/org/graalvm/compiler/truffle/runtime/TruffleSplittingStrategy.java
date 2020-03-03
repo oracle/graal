@@ -89,11 +89,11 @@ final class TruffleSplittingStrategy {
             return false;
         }
         if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
-            maybeTraceFail(engine, call, "Not enough budget. " + engine.splitCount + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splitLimit);
+            maybeTraceFail(engine, call, "Not enough budget. " + (engine.splitCount + call.getCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit);
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > engine.splittingMaxCalleeSize) {
-            maybeTraceFail(engine, call, "Target too big.");
+            maybeTraceFail(engine, call, "Target too big: " + callTarget.getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize);
             return false;
         }
         return true;
@@ -101,7 +101,7 @@ final class TruffleSplittingStrategy {
 
     private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, String message) {
         if (engine.traceSplits) {
-            GraalTruffleRuntime.getRuntime().logEvent(0, "split failed: " + message, call.toString(), new HashMap<>());
+            GraalTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, message);
         }
     }
 

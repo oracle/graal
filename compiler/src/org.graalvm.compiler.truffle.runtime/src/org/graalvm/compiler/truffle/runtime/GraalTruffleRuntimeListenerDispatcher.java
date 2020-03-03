@@ -55,6 +55,13 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
+    public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
+        for (GraalTruffleRuntimeListener l : this) {
+            l.onCompilationSplitFailed(callNode, reason);
+        }
+    }
+
+    @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
         for (GraalTruffleRuntimeListener l : this) {
             l.onCompilationQueued(target);

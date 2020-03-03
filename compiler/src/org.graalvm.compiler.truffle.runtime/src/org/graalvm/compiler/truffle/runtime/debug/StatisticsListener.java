@@ -511,6 +511,14 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
+        public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
+            StatisticsListener listener = callNode.getCallTarget().engine.statisticsListener;
+            if (listener != null) {
+                listener.onCompilationSplitFailed(callNode, reason);
+            }
+        }
+
+        @Override
         public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
