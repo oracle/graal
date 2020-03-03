@@ -68,7 +68,7 @@ import com.oracle.truffle.tools.chromeinspector.client.InspectWSClient;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
-import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
+import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
 /**
@@ -422,7 +422,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 }
                 if (serverEndpoint == null) {
                     interceptor.close(wsspath);
-                    wss = WebSocketServer.get(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    wss = InspectorServer.get(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
                     String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
                     String address = DEV_TOOLS_PREFIX + wsStr;
                     wsURL = wsStr.replace("=", "://");
