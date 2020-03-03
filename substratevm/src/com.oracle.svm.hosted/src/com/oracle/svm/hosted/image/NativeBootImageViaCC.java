@@ -265,6 +265,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("ws2_32.lib");
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
+	    cmd.add("legacy_stdio_definitions.lib");
             cmd.add("userenv.lib");
 
             Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
