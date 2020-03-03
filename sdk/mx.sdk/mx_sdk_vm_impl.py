@@ -194,9 +194,9 @@ def registered_graalvm_components(stage1=False):
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
 
-        registered_components_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
+        registered_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
         if _with_polyglot_launcher_project():
-            if 'poly' in registered_components_short_names:
+            if 'poly' in registered_short_names:
                 polyglot_component = mx_sdk_vm.graalvm_component_by_name('poly')
             else:
                 polyglot_component = mx_sdk_vm.GraalVmJreComponent(
@@ -225,7 +225,7 @@ def registered_graalvm_components(stage1=False):
             add_dependencies([polyglot_component])
 
         if _with_polyglot_lib_project() and libpoly_has_entrypoints:
-            if 'libpoly' in registered_components_short_names:
+            if 'libpoly' in registered_short_names:
                 libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly')
             else:
                 libpolyglot_component = mx_sdk_vm.GraalVmJreComponent(
@@ -2296,11 +2296,12 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Create standalones
     for components in installables.values():
         main_component = _get_main_component(components)
+        # pylint: disable=too-many-boolean-expressions
         if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) \
                 and (len(main_component.launcher_configs) == 0 or has_svm_launcher(main_component)) \
                 and (len(main_component.library_configs) == 0 or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))):
             dependencies = main_component.standalone_dependencies.keys()
-            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (len(get_component(dep).library_configs) and not _get_svm_support().is_supported() )]
+            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (len(get_component(dep).library_configs) and not _get_svm_support().is_supported())]
             if missing_dependencies:
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
@@ -2308,6 +2309,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), get_final_graalvm_distribution())
                 register_distribution(standalone)
                 with_debuginfo.append(standalone)
+        # pylint: enable=too-many-boolean-expressions
 
     if register_project:
         if _src_jdk_version == 8 and jvmci_parent_jars:
