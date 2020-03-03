@@ -44,6 +44,8 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
     private static final int CV_STRINGTABLE_DEFAULT_SIZE = 200;
 
     private CVSections cvSections;
+    private CVFileRecord fileRecord;
+
     private ArrayList<CVSymbolRecord> cvRecords = new ArrayList<>(CV_VECTOR_DEFAULT_SIZE);
     private CVStringTable stringTable = new CVStringTable(CV_STRINGTABLE_DEFAULT_SIZE);
 
@@ -127,12 +129,16 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
     }
 
     private void addFileRecords() {
-        CVSymbolRecord fileChecksums = new CVSymbolRecord.CVFileRecord(cvSections, stringTable);
-        addRecord(fileChecksums);
+        this.fileRecord = new CVFileRecord(cvSections, stringTable);
+        addRecord(fileRecord);
+    }
+
+    public CVFileRecord getFileRecord() {
+        return fileRecord;
     }
 
     private void addStringTableRecord() {
-        CVSymbolRecord stringTableRecord = new CVSymbolRecord.CVStringTableRecord(cvSections, stringTable);
+        CVSymbolRecord stringTableRecord = new CVStringTableRecord(cvSections, stringTable);
         addRecord(stringTableRecord);
     }
 

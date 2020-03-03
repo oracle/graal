@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.FileEntry;
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.PrimaryEntry;
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.Range;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.Range;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.skipGraalInternals;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.skipGraalIntrinsics;
@@ -105,15 +105,12 @@ public class CVLineRecordBuilder {
 
         /* should we merge this range with the previous entry? */
         if (shouldMerge(previousRange, range)) {
-            Range newRange = new Range(previousRange);
-            newRange.setLo(range.getLo());
-            newRange.setHi(range.getHi());
-            range = newRange;
+            range = new Range(previousRange, range.getLo(), range.getHi());
         } else if (range.getLine() == -1) {
             return;
         }
 
-        boolean wantNewFile = previousRange == null || !previousRange.sameFileName(range);
+        boolean wantNewFile = previousRange == null || !previousRange.getFileName().equals(range.getFileName());
         if (wantNewFile) {
             FileEntry file = cvSections.ensureFileEntry(range);
             previousRange =  null;
@@ -140,7 +137,7 @@ public class CVLineRecordBuilder {
         if (skipGraalIntrinsics && isGraalIntrinsic(range.getClassName())) {
             return true;
         }
-        return previousRange.sameFileName(range) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
+        return previousRange.getFileName().equals(range.getFileName()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
     }
 
     private boolean wantNewRange(Range previous, Range range) {

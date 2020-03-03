@@ -26,10 +26,9 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.ClassEntry;
-
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.objectfile.debugentry.ClassEntry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +36,7 @@ import java.util.Map;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /*
- * a CVSymbolSubrecord is a record in a DEBUG_S_SYMBOL record within a debug$S section
+ * a CVSymbolSubrecord is a record in a DEBUG_S_SYMBOL record within a .debug$S section within a PECOFF file
  */
 abstract class CVSymbolSubrecord {
 
@@ -76,7 +75,7 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVObjectNameRecord extends CVSymbolSubrecord {
 
-        String objName;  /* TODO: how to find this?  full path to object file we will produce */
+        String objName;  /* TODO: how to find the full path to object file we will produce */
 
         CVObjectNameRecord(CVSections cvSections, String objName) {
             super(cvSections, CVDebugConstants.S_OBJNAME);
@@ -211,7 +210,7 @@ abstract class CVSymbolSubrecord {
             /* argument list */
             //map.put("cmd", "-Zi -MT -wishfulthinking");
 
-            /* find first source file */
+            /* find first source file - which, for Graal would be a class file on the command line */
             String fn = findFirstFile(cvSections);
             if (fn != null) {
                 map.put("src", fn);

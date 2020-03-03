@@ -26,8 +26,8 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.FileEntry;
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.PrimaryEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.ObjectFile;
 
 import java.util.ArrayList;
@@ -60,9 +60,11 @@ final class CVLineRecord extends CVSymbolRecord {
         ArrayList<LineEntry> lineEntries = new ArrayList<>(DEFAULT_LINE_ENTRY_COUNT);
         int highAddr = 0;
         FileEntry file;
+        int fileId;
 
-        FileBlock(FileEntry file) {
+        FileBlock(FileEntry file, int fileId) {
             this.file = file;
+            this.fileId = fileId;
         }
 
         void addEntry(LineEntry le) {
@@ -72,7 +74,7 @@ final class CVLineRecord extends CVSymbolRecord {
 
         int computeContents(byte[] buffer, int initialPos) {
             int pos = initialPos;
-            pos = CVUtil.putInt(file.getFileId(), buffer, pos);
+            pos = CVUtil.putInt(fileId, buffer, pos);
             pos = CVUtil.putInt(lineEntries.size(), buffer, pos);
             /* if HAS_COLUMNS is true, this formula is incorrect */
             assert !HAS_COLUMNS;
@@ -134,7 +136,9 @@ final class CVLineRecord extends CVSymbolRecord {
     }
 
     void addNewFile(FileEntry file) {
-        fileBlocks.add(new FileBlock(file));
+        CVFileRecord fr = cvSections.getCVSymbolSection().getFileRecord();
+        int fileId = fr.getFileEntryOffset(file);
+        fileBlocks.add(new FileBlock(file, fileId));
     }
 
     void addNewLine(int addr, int line) {

@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.ClassEntry;
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.PrimaryEntry;
-import com.oracle.objectfile.pecoff.cv.DebugInfoBase.Range;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.Range;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.functionNamesHashArgs;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.replaceMainFunctionName;
@@ -50,6 +50,15 @@ final class CVSymbolRecordBuilder {
 
     private boolean noMainFound = true;
 
+    /**
+     * renames a method name ot something user friendly in the debugger
+     * (does not affect external symbols
+     * first main function becomes class.main (unless replaceMainFunctionName is non-null)
+     * if functionNamesHashArgs is true (which it must be for the linker to work properly)
+     * all other functions become class.function.999 (where 999 is a hash of the arglist)
+     * @param range Range contained in the method of interest
+     * @return user debugger friendly method name
+     */
     private String fixMethodName(Range range) {
         final String methodName;
         if (replaceMainFunctionName != null && noMainFound && range.getMethodName().equals("main")) {
@@ -63,9 +72,9 @@ final class CVSymbolRecordBuilder {
             long hash = ((long) range.getParamNames().hashCode()) & 0xffffffffL;
             methodName = range.getClassAndMethodName() + "." + hash;
         } else {
-            methodName = range.getClassAndMethodNameWithParams();
+            methodName = range.getFullMethodName();
         }
-        CVUtil.debug("replacing %s with %s\n", range.getClassAndMethodNameWithParams(), methodName);
+        CVUtil.debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
         return methodName;
     }
 

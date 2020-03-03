@@ -36,6 +36,10 @@ import java.nio.file.Paths;
  */
 
 public class Range {
+
+    /* TODO this should be '.' for PECOFF files */
+    private static final String CLASS_DELIMITER = "::";
+
     private String fileName;
     private Path filePath;
     private String className;
@@ -77,6 +81,26 @@ public class Range {
         this.hi = hi;
         this.line = line;
         this.primary = primary;
+    }
+
+    /*
+     * Create a slightly different copy of a previously constructed range.
+     * Because the previous range was constructed by one of the other constructors,
+     * a valid assumption is that all the strings have previously been inserted int he stringTable,
+     * and we can avoid doing that again.
+     */
+    public Range(Range other, int lo, int hi) {
+        this.fileName = other.fileName;
+        this.filePath =  other.filePath;
+        this.className = other.className;
+        this.methodName = other.methodName;
+        this.paramNames = other.paramNames;
+        this.returnTypeName = other.returnTypeName;
+        this.fullMethodName = other.fullMethodName;
+        this.lo = lo;
+        this.hi = hi;
+        this.line = other.line;
+        this.primary = other.primary;
     }
 
     public boolean contains(Range other) {
@@ -131,6 +155,19 @@ public class Range {
         return fullMethodName;
     }
 
+    public String getParamNames() {
+        return paramNames;
+    }
+
+    public String getClassAndMethodName() {
+        StringBuilder builder = new StringBuilder();
+        if (className != null) {
+            builder.append(className).append(CLASS_DELIMITER);
+        }
+        builder.append(methodName);
+        return builder.toString();
+    }
+
     public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
@@ -139,7 +176,7 @@ public class Range {
         }
         if (className != null) {
             builder.append(className);
-            builder.append("::");
+            builder.append(CLASS_DELIMITER);
         }
         builder.append(methodName);
         if (includeParams && !paramNames.isEmpty()) {

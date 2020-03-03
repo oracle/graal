@@ -26,56 +26,46 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.FileEntry;
-
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.NoSuchFileException;
-import java.security.MessageDigest;
 
-import static com.oracle.objectfile.pecoff.cv.CVConstants.GRAAL_SOURCE_BASE;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.JDK_SOURCE_BASE;
+final class CVStringTableRecord extends CVSymbolRecord {
 
-/*
- * A Symbol record is a top-level record in the CodeView .debug$S section
- */
-abstract class CVSymbolRecord implements CVDebugConstants {
+    private final CVSymbolSectionImpl.CVStringTable stringTable;
 
-    CVSections cvSections;
-    protected int pos;
-    protected final int type;
-
-    CVSymbolRecord(CVSections cvSections, int type) {
-        this.cvSections = cvSections;
-        this.type = type;
+    CVStringTableRecord(CVSections cvSections, CVSymbolSectionImpl.CVStringTable stringTable) {
+        super(cvSections, DEBUG_S_STRINGTABLE);
+        this.stringTable = stringTable;
     }
 
-    int computeFullSize(int pos) {
-        this.pos = pos;
-        pos += Integer.BYTES * 2;
-        return computeSize(pos);
+    int add(String string) {
+        return stringTable.add(string);
     }
 
-    int computeFullContents(byte[] buffer, int pos) {
-        pos = CVUtil.putInt(type, buffer, pos);
-        int lenPos = pos;
-        pos = computeContents(buffer, pos + Integer.BYTES);
-        /* length does not include debug record header (4 bytes record id + 4 bytes length) */
-        CVUtil.putInt(pos - lenPos - Integer.BYTES, buffer, lenPos);
+    @Override
+    public int computeSize(int pos) {
+        return computeContents(null, pos);
+    }
+
+    @Override
+    public int computeContents(byte[] buffer, int pos) {
+        for (CVSymbolSectionImpl.CVStringTable.StringTableEntry entry : stringTable.values()) {
+            pos = CVUtil.putUTF8StringBytes(entry.text, buffer, pos);
+        }
         return pos;
     }
 
-    protected abstract int computeSize(int pos);
-    protected abstract int computeContents(byte[] buffer, int pos);
-
     @Override
     public String toString() {
-        return "CVSymbolRecord(type=" + type + ",pos=" + pos + ")";
+        return String.format("CVStringTableRecord(type=0x%04x pos=0x%06x size=%d)", type, pos, stringTable.size());
     }
 
+    @Override
     public void dump(PrintStream out) {
-        out.format("%s\n", this);
+        int idx = 0;
+        out.format("%s:\n", this);
+        for (CVSymbolSectionImpl.CVStringTable.StringTableEntry entry : stringTable.values()) {
+            out.format("%4d 0x%08x %s\n", idx, entry.offset, entry.text);
+            idx += 1;
+        }
     }
-
 }
