@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import java.util.HashMap;
 import java.util.Iterator;

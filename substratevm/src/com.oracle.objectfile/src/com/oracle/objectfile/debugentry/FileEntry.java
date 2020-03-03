@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 /**
  * Tracks debug info associated with a Java source file.

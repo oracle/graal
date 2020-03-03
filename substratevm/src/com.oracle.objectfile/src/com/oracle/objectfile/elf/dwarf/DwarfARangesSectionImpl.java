@@ -29,6 +29,9 @@ package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.Range;
 
 import java.util.LinkedList;
 import java.util.Map;

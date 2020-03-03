@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
+import com.oracle.objectfile.debugentry.StringEntry;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_STR_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.TEXT_SECTION_NAME;

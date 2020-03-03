@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
@@ -117,7 +117,7 @@ public class ClassEntry {
         this.totalSize = -1;
     }
 
-    PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
@@ -127,7 +127,7 @@ public class ClassEntry {
         return null;
     }
 
-    void addSubRange(Range subrange, FileEntry subFileEntry) {
+    public void addSubRange(Range subrange, FileEntry subFileEntry) {
         Range primary = subrange.getPrimary();
         /*
          * the subrange should belong to a primary range
@@ -163,7 +163,7 @@ public class ClassEntry {
         return localFilesIndex.get(fileEntry);
     }
 
-    String getFileName() {
+    public String getFileName() {
         return fileEntry.getFileName();
     }
 
@@ -175,24 +175,24 @@ public class ClassEntry {
         return fileEntry.getPathName();
     }
 
-    void setCUIndex(int cuIndex) {
+    public void setCUIndex(int cuIndex) {
         // should only get set once to a non-negative value
         assert cuIndex >= 0;
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
 
-    int getCUIndex() {
+    public int getCUIndex() {
         // should have been set before being read
         assert cuIndex >= 0;
         return cuIndex;
     }
 
-    int getLineIndex() {
+    public int getLineIndex() {
         return lineIndex;
     }
 
-    void setLineIndex(int lineIndex) {
+    public void setLineIndex(int lineIndex) {
         this.lineIndex = lineIndex;
     }
 

@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 /**
  * Used to retain a unique (up to equals) copy of a

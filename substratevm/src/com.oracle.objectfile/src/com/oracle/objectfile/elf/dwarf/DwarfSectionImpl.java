@@ -31,6 +31,7 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.ELFObjectFile;
 
 import java.nio.ByteOrder;

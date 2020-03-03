@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -54,14 +54,14 @@ public class Range {
     /*
      * create a primary range
      */
-    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
         this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
     }
 
     /*
      * create a primary or secondary range
      */
-    Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
         /*
          * currently file name and full method name need to go into the debug_str section
          * other strings just need to be deduplicated to save space
