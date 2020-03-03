@@ -192,8 +192,8 @@ public final class ProcessProperties {
      * If the running image is an executable the total size of the argument vector of the running
      * process gets returned.
      *
-     * @throws UnsupportedOperationException if called from a platform that does not support
-     *             argument vector manipulation (Windows) or if called from a shared library image.
+     * @return the total size of the argument vector. Returns -1 if not supported on platform or
+     *         called from a shared library image.
      *
      * @since 20.1
      */

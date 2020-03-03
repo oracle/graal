@@ -210,7 +210,11 @@ public class JavaMainWrapper {
      *         contiguous memory block without writing into the environment variables part.
      */
     public static int getCRuntimeArgumentBlockLength() {
-        checkArgumentBlockSupported();
+        try {
+            checkArgumentBlockSupported();
+        } catch (UnsupportedOperationException e) {
+            return -1;
+        }
 
         CCharPointer firstArgPos = argv.read(0);
         if (argvLength.equal(WordFactory.zero())) {

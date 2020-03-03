@@ -83,6 +83,9 @@ public final class BinUtil {
         String binPathName = System.getProperty("org.graalvm.launcher.executablename");
 
         if (binPathName == null) {
+            if (ProcessProperties.getArgumentVectorBlockSize() <= 0) {
+                return null;
+            }
             binPathName = ProcessProperties.getArgumentVectorProgramName();
 
             if (binPathName == null) {
