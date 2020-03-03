@@ -189,10 +189,10 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                  */
                 if (nfa.getAnchoredInitialState(isForward()) != nfa.getUnAnchoredInitialState(isForward()) && inputAtBegin(locals)) {
                     ip = nfa.getAnchoredInitialState(isForward()).getId();
-                    continue outer;
+                    continue;
                 } else {
                     ip = nfa.getUnAnchoredInitialState(isForward()).getId();
-                    continue outer;
+                    continue;
                 }
             } else if (ip == IP_BACKTRACK) {
                 if (locals.canPopResult()) {
@@ -234,7 +234,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                         locals.setLastInitialStateIndex(nextIndex);
                         locals.resetToInitialState(nextIndex);
                         ip = nfa.getUnAnchoredInitialState(isForward()).getId();
-                        continue outer;
+                        continue;
                     } else {
                         break;
                     }
@@ -276,7 +276,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
             }
             if (nextIp == IP_BACKTRACK) {
                 ip = IP_BACKTRACK;
-                continue outer;
+                continue;
             }
             assert nextIp == IP_END;
             break;

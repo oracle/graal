@@ -87,7 +87,7 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         this.words = createBitSetArray(nbits);
     }
 
-    public CompilationFinalBitSet(long[] words) {
+    private CompilationFinalBitSet(long[] words) {
         this.words = words;
     }
 
@@ -101,6 +101,9 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
 
     /**
      * Static shared instances for deduplication of common immutable bit sets.
+     *
+     * @param i The integer value of the static bit set's content, i.e. 0 is the empty bit set, 1
+     *            has words <code>{0x0..., 0x1}</code>, 2 has <code>{0x0..., 0x2}</code>, and so on.
      */
     public static CompilationFinalBitSet getStaticInstance(int i) {
         return STATIC_INSTANCES[i];
