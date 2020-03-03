@@ -131,6 +131,8 @@ def remove_extension(filename):
         return filename[:-2]
     if filename.endswith(".wat"):
         return filename[:-4]
+    if filename.endswith(".wasm"):
+        return filename[:-5]
     else:
         mx.abort("Unknown extension: " + filename)
 
@@ -153,6 +155,8 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
                 if filename.endswith(".c"):
                     yield (root, filename)
                 if filename.endswith(".wat"):
+                    yield (root, filename)
+                if filename.endswith(".wasm"):
                     yield (root, filename)
 
     def getSources(self):
@@ -185,19 +189,25 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             # Some benchmarks may specify custom options.
             if os.path.isfile(opts_path):
                 yield build_output_name(".opts")
-            # Textual WebAssembly file is included for convenience.
-            yield build_output_name(".wat")
+
             # A binary WebAssembly file contains the program.
             yield build_output_name(".wasm")
+
+            if filename.endswith(".c") or filename.endswith(".wat"):
+                # Textual WebAssembly file is included for convenience.
+                yield build_output_name(".wat")
+
             if filename.endswith(".c"):
                 # C-compiled sources generate an initialization file.
                 yield build_output_name(".init")
-            if self.isBenchmarkProject():
-                # The JS file and the WebAssembly binary are used by Node.
-                yield node_build_output_name(".js")
-                yield node_build_output_name(".wasm")
-                # The raw binary is used to run the program directly.
-                yield native_build_output_name(mx.exe_suffix(""))
+
+                # If benchmark is compiled from C code, we will produce Node and GCC binaries.
+                if self.isBenchmarkProject():
+                    # The JS file and the WebAssembly binary are used by Node.
+                    yield node_build_output_name(".js")
+                    yield node_build_output_name(".wasm")
+                    # The raw binary is used to run the program directly.
+                    yield native_build_output_name(mx.exe_suffix(""))
         for subdir in subdirs:
             yield os.path.join(output_dir, subdir, "wasm_test_index")
 
@@ -289,6 +299,9 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     build_cmd_line = [wat2wasm_cmd, "-o", output_wasm_path, source_path]
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not translate " + filename + " to binary format.")
+                elif filename.endswith(".wasm"):
+                    shutil.copyfile(source_path, output_wasm_path)
+
             else:
                 mx.logv("skipping, file is up-to-date: " + source_path)
 
@@ -318,8 +331,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
 
             # Step 5: if this is a benchmark project, create native binaries too.
             if mustRebuild:
-                mx.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                 if filename.endswith(".c"):
+                    mx.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
                     link_flags = ["-lm"]
                     gcc_cmd_line = [gcc_cmd] + cc_flags + disable_test_api_flags + [source_path, "-o", output_path] + include_flags + link_flags
