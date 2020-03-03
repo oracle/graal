@@ -308,6 +308,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> isAuthorized = StaticSymbols.putName("isAuthorized");
         public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
         public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
+        public static final Symbol<Name> doPrivileged = StaticSymbols.putName("doPrivileged");
 
         // sun.reflect.ConstantPool
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
@@ -409,6 +410,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_security_ProtectionDomain = StaticSymbols.putType(java.security.ProtectionDomain.class);
         public static final Symbol<Type> java_security_ProtectionDomain_array = StaticSymbols.putType(java.security.ProtectionDomain[].class);
         public static final Symbol<Type> java_security_AccessControlContext = StaticSymbols.putType(java.security.AccessControlContext.class);
+        public static final Symbol<Type> java_security_AccessController = StaticSymbols.putType(java.security.AccessController.class);
         public static final Symbol<Type> java_lang_SecurityManager = StaticSymbols.putType(SecurityManager.class);
         public static final Symbol<Type> java_security_CodeSource = StaticSymbols.putType(java.security.CodeSource.class);
         public static final Symbol<Type> java_security_PermissionCollection = StaticSymbols.putType(java.security.PermissionCollection.class);
