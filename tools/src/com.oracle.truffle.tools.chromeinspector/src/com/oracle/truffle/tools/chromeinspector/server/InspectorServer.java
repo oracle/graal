@@ -81,14 +81,14 @@ import sun.net.util.IPAddressUtil;
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class WebSocketServer extends NanoWSD implements InspectorWSConnection {
+public final class InspectorServer extends NanoWSD implements InspectorWSConnection {
 
-    private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
+    private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
     private final int port;
     private final Map<String, ServerPathSession> sessions = new ConcurrentHashMap<>();
 
-    private WebSocketServer(InetSocketAddress isa) {
+    private InspectorServer(InetSocketAddress isa) {
         super(isa.getHostName(), isa.getPort());
         this.port = isa.getPort();
         // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
@@ -100,15 +100,15 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         addHTTPInterceptor(new JSONHandler());
     }
 
-    public static WebSocketServer get(InetSocketAddress isa, String path, InspectorExecutionContext context, boolean debugBrk,
+    public static InspectorServer get(InetSocketAddress isa, String path, InspectorExecutionContext context, boolean debugBrk,
                     boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
                     InspectServerSession initialSession) throws IOException {
-        WebSocketServer wss;
+        InspectorServer wss;
         boolean startServer = false;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                wss = new WebSocketServer(isa);
+                wss = new InspectorServer(isa);
                 context.logMessage("", "New WebSocketServer at " + isa);
                 if (secure) {
                     if (TruffleOptions.AOT) {
@@ -378,7 +378,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     public void stop() {
         super.stop();
         synchronized (SERVERS) {
-            Iterator<Map.Entry<InetSocketAddress, WebSocketServer>> entries = SERVERS.entrySet().iterator();
+            Iterator<Map.Entry<InetSocketAddress, InspectorServer>> entries = SERVERS.entrySet().iterator();
             while (entries.hasNext()) {
                 if (entries.next().getValue() == this) {
                     entries.remove();
