@@ -34,9 +34,30 @@ truffleWeekly: ${truffle-weekly-notifications} {
   targets: ["weekly"]
 }
 
+simpleToolMavenProjectGate:  {
+    run : [
+        ["mx", "build"],
+        ["set-export", "JAVA_HOME", ["mx", "graalvm-home"]],
+        ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/simpletool"]],
+        ["rm", "-rf", "simpletool/*"],
+        ["cp", "src/com.oracle.truffle.st/repo_ingredients/*", "simpletool"],
+        ["cp", "-rf", "src/com.oracle.truffle.st/src/", "simpletool/src/main/java/"],
+        ["cp", "-rf", "src/com.oracle.truffle.st.test/src/", "simpletool/src/test/java/"],
+        ["mx", "maven-deploy", "--all-suites" "--all-distribution-types", "--version-string", "GATE"],
+        ["cd", "simpletool"],
+        ["mvn", "-Dgraalvm.version=GATE", "package"],
+        ["./simpletool", "js", "example.js"]
+    ],
+    targets : [gate],
+}
+
 builds += [
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-11"},
+
+  # simple tool tests
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-simpletool"},
+
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
