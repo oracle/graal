@@ -78,6 +78,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
@@ -491,6 +492,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return classInitializationInfo.isInitialized();
     }
 
+    @NeverInline("Called once per class. NeverInlined because of further optimisation.")
     public void ensureInitialized() {
         if (!classInitializationInfo.isInitialized()) {
             classInitializationInfo.initialize(this);
