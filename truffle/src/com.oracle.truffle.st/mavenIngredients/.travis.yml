@@ -1,0 +1,27 @@
+os:
+    - linux
+    - osx
+
+language: java
+
+env:
+    - GRAALVM_VERSION="19.2.0"
+
+install:
+    - |
+        cd .. && mv simpletool "simple tool" && cd "simple tool"
+        if [[ "$GRAALVM_VERSION" != "NONE" ]]; then
+          if [[ "$TRAVIS_OS_NAME" == "osx" ]];   then DOWNLOAD_OS_NAME="darwin"; fi
+          if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then DOWNLOAD_OS_NAME="linux"; fi
+          curl -LJ "https://github.com/oracle/graal/releases/download/vm-$GRAALVM_VERSION/graalvm-ce-$DOWNLOAD_OS_NAME-amd64-$GRAALVM_VERSION.tar.gz" --output graalvm.tar.gz
+          tar -xzf graalvm.tar.gz
+          export JAVA_HOME="$(pwd)/graalvm-ce-$GRAALVM_VERSION"
+          if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export JAVA_HOME="$JAVA_HOME/Contents/Home"; fi
+          "$JAVA_HOME/bin/gu" install native-image
+        else
+          if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export JAVA_HOME=$(/usr/libexec/java_home); fi
+        fi
+
+script:
+    - mvn package
+	- ./simpletool js example.js

@@ -40,7 +40,7 @@ simpleToolMavenProjectGate:  {
         ["set-export", "JAVA_HOME", ["mx", "graalvm-home"]],
         ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/simpletool"]],
         ["rm", "-rf", "simpletool/*"],
-        ["cp", "src/com.oracle.truffle.st/repo_ingredients/*", "simpletool"],
+        ["cp", "src/com.oracle.truffle.st/mavenIngredients//*", "simpletool"],
         ["cp", "-rf", "src/com.oracle.truffle.st/src/", "simpletool/src/main/java/"],
         ["cp", "-rf", "src/com.oracle.truffle.st.test/src/", "simpletool/src/test/java/"],
         ["mx", "maven-deploy", "--all-suites" "--all-distribution-types", "--version-string", "GATE"],
