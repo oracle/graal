@@ -74,6 +74,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
+import sun.net.util.IPAddressUtil;
 
 /**
  * Server of the
@@ -90,6 +91,12 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     private WebSocketServer(InetSocketAddress isa) {
         super(isa.getHostName(), isa.getPort());
         this.port = isa.getPort();
+        // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
+        // handled with a higher-priority HTTP interceptor. We probably could add the protection in
+        // openWebSocket method, but it is not needed, because WebSockets are already protected by
+        // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
+        // since they are not protected by same-origin policy.
+        addHTTPInterceptor(new DNSRebindProtectionHandler());
         addHTTPInterceptor(new JSONHandler());
     }
 
@@ -152,6 +159,40 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         } else {
             throw new IOException("Use options to specify the keystore");
         }
+    }
+
+    private class DNSRebindProtectionHandler implements IHandler<IHTTPSession, Response> {
+
+        @Override
+        public Response handle(IHTTPSession ihttpSession) {
+            return handleDnsRebind(ihttpSession);
+        }
+
+    }
+
+    private static Response handleDnsRebind(IHTTPSession ihttpSession) {
+        if (!isHostOk(ihttpSession)) {
+            return Response.newFixedLengthResponse(
+                            Status.BAD_REQUEST,
+                            "text/plain; charset=UTF-8",
+                            "Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.");
+        } else {
+            return null;
+        }
+    }
+
+    private static boolean isHostOk(IHTTPSession ihttpSession) {
+        final String host = ihttpSession.getHeaders().get("host").replaceFirst(":([0-9]+)$", "");
+        return (host != null) && (host.equals("localhost") || isValidIp(host));
+
+    }
+
+    private static boolean isValidIp(String host) {
+        return IPAddressUtil.isIPv4LiteralAddress(host) || isValidIpv6(host);
+    }
+
+    private static boolean isValidIpv6(String host) {
+        return host.startsWith("[") && host.endsWith("]") && IPAddressUtil.isIPv6LiteralAddress(host.substring(1, host.length() - 1));
     }
 
     private class JSONHandler implements IHandler<IHTTPSession, Response> {
