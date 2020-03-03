@@ -49,6 +49,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+import static org.graalvm.compiler.options.OptionType.User;
 
 public class SubstrateOptions {
 
@@ -394,12 +395,18 @@ public class SubstrateOptions {
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
+    @APIOption(name = "native-compiler-path")//
     @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
+    @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
 
-    @Option(help = "Provide a path for the libmusl bundle so the resulting object file is linked against it.", type = OptionType.Expert)//
+    @APIOption(name = "native-image-info")//
+    @Option(help = "Show native-toolchain information and image-build settings", type = User)//
+    public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
+
+    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
     /**
