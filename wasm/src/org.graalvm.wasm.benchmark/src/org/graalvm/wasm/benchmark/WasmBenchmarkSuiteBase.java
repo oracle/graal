@@ -45,13 +45,10 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.cases.WasmCase;
-import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
@@ -64,6 +61,7 @@ import java.io.IOException;
 public abstract class WasmBenchmarkSuiteBase {
     public abstract static class WasmBenchmarkState {
         private WasmCase benchmarkCase;
+        private Context context;
         private Value benchmarkSetupEach;
         private Value benchmarkTeardownEach;
         private Value benchmarkRun;
@@ -80,7 +78,7 @@ public abstract class WasmBenchmarkSuiteBase {
         public void setup() throws IOException, InterruptedException {
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
-            final Context context = contextBuilder.build();
+            context = contextBuilder.build();
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
             benchmarkCase.getSources().forEach(context::eval);
 
@@ -103,6 +101,11 @@ public abstract class WasmBenchmarkSuiteBase {
             if (benchmarkSetupOnce != null) {
                 benchmarkSetupOnce.execute();
             }
+        }
+
+        @TearDown(Level.Trial)
+        public void teardown() {
+            context.close();
         }
 
         @Setup(Level.Iteration)
