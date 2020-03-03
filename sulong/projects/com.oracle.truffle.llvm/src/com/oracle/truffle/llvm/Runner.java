@@ -548,6 +548,7 @@ final class Runner {
             LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             for (FunctionSymbol global : res.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(global.getName());
+                assert function != null;
                 if (isSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
                     allocFunctionsList.add(new AllocIntrinsicFunctionNode(function, nodeFactory));
                 } else if (lazyParsing) {
@@ -600,6 +601,10 @@ final class Runner {
             for (int i = 0; i < allocGlobals.length; i++) {
                 AllocGlobalNode allocGlobal = allocGlobals[i];
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
+                if (descriptor == null) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(String.format("Global variable %s not found", allocGlobal.name));
+                }
                 if (!checkGlobals.execute(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
                     // already bound before to a different target location
@@ -779,6 +784,7 @@ final class Runner {
                         if (scope != null) {
                             String originalName = name.substring(idx + 1);
                             LLVMFunction originalSymbol = scope.getFunction(originalName);
+                            assert originalSymbol != null;
                             LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
                             parserResult.getRuntime().getFileScope().register(alias);
                             it.remove();
@@ -1260,6 +1266,7 @@ final class Runner {
                  * the file scope because we are initializing the globals of the current file.
                  */
                 LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
+                assert globalDescriptor != null;
                 final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
                 if (size != 0) {
                     if (type instanceof ArrayType || type instanceof StructureType) {

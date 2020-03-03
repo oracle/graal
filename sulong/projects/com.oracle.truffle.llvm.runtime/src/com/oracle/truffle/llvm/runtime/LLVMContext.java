@@ -230,6 +230,9 @@ public final class LLVMContext {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
             LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
+            if (function == null) {
+                throw new IllegalStateException("Context cannot be initialized: _sulong_init_context was not found");
+            }
             LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
             RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
@@ -412,6 +415,9 @@ public final class LLVMContext {
         if (cleanupNecessary) {
             try {
                 LLVMFunction function = globalScope.getFunction("__sulong_dispose_context");
+                if (function == null) {
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context was not found");
+                }
                 AssumedValue<LLVMPointer>[] functions = findSymbolTable(function.getBitcodeID(false));
                 int index = function.getSymbolIndex(false);
                 LLVMPointer pointer = functions[index].get();
