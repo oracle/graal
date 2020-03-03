@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
 
 import java.nio.file.Paths;
@@ -360,6 +362,10 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                /*
+                 * The LLVM backend doesn't support speculative execution attack mitigation
+                 */
+                MitigateSpeculativeExecutionAttacks.update(values, None);
             }
         }
     };

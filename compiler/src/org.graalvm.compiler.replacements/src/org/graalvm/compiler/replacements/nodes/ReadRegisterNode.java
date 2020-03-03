@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -88,7 +89,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
         LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
         Value result = register.asValue(kind);
         if (incoming) {
-            generator.getLIRGeneratorTool().emitIncomingValues(new Value[]{result});
+            ((LIRGenerator) generator.getLIRGeneratorTool()).emitIncomingValues(new Value[]{result});
         }
         if (!directUse) {
             result = generator.getLIRGeneratorTool().emitReadRegister(register, kind);

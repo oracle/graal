@@ -29,7 +29,6 @@ import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,7 +47,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -593,10 +591,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             return null;
         }
 
-        if (gen.needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null);
-        }
-
         FrameState state;
         if (deopt instanceof DeoptimizingNode.DeoptBefore) {
             assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
@@ -616,37 +610,17 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        throw unimplemented();
+        throw unimplemented("the LLVM backend doesn't support deoptimization");
     }
 
     @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
-        throw unimplemented();
+        throw unimplemented("the LLVM backend doesn't support debug info generation");
     }
 
     @Override
     public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability) {
-        throw unimplemented();
-    }
-
-    /*
-     * The following methods can be moved to NodeLIRBackend, as they are not used in the LLVM
-     * backend or by nodes.
-     */
-
-    @Override
-    public void setSourcePosition(NodeSourcePosition position) {
-        throw unimplemented();
-    }
-
-    @Override
-    public Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments) {
-        throw unimplemented();
-    }
-
-    @Override
-    public void matchBlock(Block b, StructuredGraph graph, StructuredGraph.ScheduleResult blockMap) {
-        throw unimplemented();
+        throw unimplemented("the LLVM backend doesn't support deoptimization");
     }
 
     /* Value map */
