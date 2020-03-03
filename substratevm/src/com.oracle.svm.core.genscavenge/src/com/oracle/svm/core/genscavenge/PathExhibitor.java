@@ -60,10 +60,6 @@ import com.oracle.svm.core.thread.VMThreads;
  */
 public class PathExhibitor {
 
-    public static PathExhibitor factory() {
-        return new PathExhibitor();
-    }
-
     @NeverInline("Starting a stack walk in the caller frame")
     public void findPathToRange(Pointer rangeBegin, Pointer rangeEnd) {
         assert VMOperation.isInProgressAtSafepoint();
@@ -80,11 +76,6 @@ public class PathExhibitor {
             // Add the rest of the path
             findPathToRoot(fromObj, edge, KnownIntrinsics.readCallerStackPointer());
         }
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    public void findPathToRoot(Object leaf) {
-        findPathToRoot(leaf, new PathEdge(), KnownIntrinsics.readCallerStackPointer());
     }
 
     void findPathToRoot(Object leaf, PathEdge currentEdge, Pointer currentThreadWalkStackPointer) {
@@ -105,28 +96,27 @@ public class PathExhibitor {
                     path.add(currentEdge.getTo());
                 }
             }
-            // Look for reasons to stop walking.
-            // - I didn't find a path to the current object.
             if (currentElement == null) {
                 // No pointer to current object: The path ends here.
                 break;
             }
-            // Update the current object.
             currentTargetObj = KnownIntrinsics.convertUnknownValue(currentElement.getObject(), Object.class);
-            // - The current element is a root.
             if (currentTargetObj == null) {
-                // Add element to path and stop.
+                // Current element is a root: Add element to path and stop.
                 path.add(currentElement);
                 break;
             }
-            // - I have seen this object before.
-            if (checkForCycles(currentTargetObj)) {
-                final CyclicElement cyclic = CyclicElement.factory(currentTargetObj);
+            if (checkForCycles(currentTargetObj)) { // seen before
+                final CyclicElement cyclic = new CyclicElement(currentTargetObj);
                 path.add(cyclic);
                 break;
             }
             path.add(currentElement);
         }
+    }
+
+    public boolean hasPath() {
+        return path.size() > 1;
     }
 
     public PathElement[] getPath() {
@@ -142,7 +132,6 @@ public class PathExhibitor {
 
     protected void findPathToTarget(TargetMatcher target, PathEdge edge, Pointer currentThreadWalkStackPointer) {
         assert target != null && !edge.isFilled();
-        // Look in all the roots.
         findPathInHeap(target, edge);
         findPathInBootImageHeap(target, edge);
         findPathInStack(target, edge, currentThreadWalkStackPointer);
@@ -203,20 +192,17 @@ public class PathExhibitor {
         return result;
     }
 
-    protected PathExhibitor() {
+    public PathExhibitor() {
         this.path = new ArrayList<>();
     }
 
-    // Immutable state.
     protected final ArrayList<PathElement> path;
 
-    // Immutable static state.
-    // - For walking the stack.
     protected static final FrameSlotVisitor frameSlotVisitor = new FrameSlotVisitor();
     protected static final FrameVisitor stackFrameVisitor = new FrameVisitor();
-    // - For walking the native image heap.
+
     protected static final BootImageHeapObjRefVisitor bootImageHeapObjRefVisitor = new BootImageHeapObjRefVisitor();
-    // - For walking the heap.
+
     protected static final HeapObjRefVisitor heapObjRefVisitor = new HeapObjRefVisitor();
     protected static final HeapObjectVisitor heapObjectVisitor = new HeapObjectVisitor();
 
@@ -225,7 +211,7 @@ public class PathExhibitor {
         /** Report this path element. */
         public abstract Log toLog(Log log);
 
-        /** Return the base object for this path element, or null. */
+        /** Return the base object for this path element, or null for roots. */
         public abstract Object getObject();
 
         @Override
@@ -317,7 +303,7 @@ public class PathExhibitor {
             Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
             trace.string("  referentPointer: ").hex(referentPointer);
             if (target.matches(referentPointer.toObject())) {
-                result.fill(StackElement.factory(stackSlot, ip, deoptFrame), LeafElement.factory(referentPointer.toObject()));
+                result.fill(new StackElement(stackSlot, ip, deoptFrame), new LeafElement(referentPointer.toObject()));
                 return false;
             }
             return true;
@@ -343,7 +329,7 @@ public class PathExhibitor {
             Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (target.matches(referent)) {
                 final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
-                result.fill(BootImageHeapElement.factory(container, offset), LeafElement.factory(referent));
+                result.fill(new BootImageHeapElement(container, offset), new LeafElement(referent));
                 return false;
             }
             return true;
@@ -383,7 +369,7 @@ public class PathExhibitor {
                 Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
                 if (target.matches(referentPointer.toObject())) {
                     UnsignedWord offset = objRef.subtract(containerPointer);
-                    result.fill(HeapElement.factory(containerObject, offset), LeafElement.factory(referentPointer.toObject()));
+                    result.fill(new HeapElement(containerObject, offset), new LeafElement(referentPointer.toObject()));
                     return false;
                 }
             }
@@ -398,10 +384,6 @@ public class PathExhibitor {
 
     /** A path element for a leaf. */
     public static class LeafElement extends PathElement {
-
-        public static LeafElement factory(final Object leaf) {
-            return new LeafElement(leaf);
-        }
 
         @Override
         public Object getObject() {
@@ -420,16 +402,11 @@ public class PathExhibitor {
             this.leaf = leaf;
         }
 
-        // Immutable state.
         protected final Object leaf;
     }
 
     /** A path element for a reference from a Object field. */
     public static class HeapElement extends PathElement {
-
-        public static HeapElement factory(final Object base, final UnsignedWord offset) {
-            return new HeapElement(base, offset);
-        }
 
         @Override
         public Object getObject() {
@@ -454,17 +431,12 @@ public class PathExhibitor {
             this.offset = offset;
         }
 
-        // Immutable state.
         protected final Object base;
         protected final UnsignedWord offset;
     }
 
     /** A path element for a reference from a stack frame. */
     public static class StackElement extends PathElement {
-
-        public static StackElement factory(final Pointer frameSlot, final CodePointer ip, final DeoptimizedFrame deoptFrame) {
-            return new StackElement(frameSlot, ip, deoptFrame);
-        }
 
         @Override
         public Object getObject() {
@@ -484,15 +456,12 @@ public class PathExhibitor {
         }
 
         protected StackElement(final Pointer stackSlot, final CodePointer ip, final DeoptimizedFrame deoptFrame) {
-            // Turn the arguments into the data I need to for the log.
             this.stackSlot = stackSlot;
             this.deoptSourcePC = deoptFrame != null ? deoptFrame.getSourcePC() : WordFactory.nullPointer();
             this.ip = ip;
             this.slotValue = stackSlot.readWord(0);
         }
 
-        // Immutable state.
-        // - Supplied by the caller.
         protected final Pointer stackSlot;
         protected final CodePointer ip;
         protected final CodePointer deoptSourcePC;
@@ -501,10 +470,6 @@ public class PathExhibitor {
 
     /** A path element for a reference from the native image heap. */
     public static class BootImageHeapElement extends PathElement {
-
-        public static BootImageHeapElement factory(final Object base, final UnsignedWord offset) {
-            return new BootImageHeapElement(base, offset);
-        }
 
         @Override
         public Object getObject() {
@@ -526,17 +491,12 @@ public class PathExhibitor {
             this.offset = offset;
         }
 
-        // Immutable state.
         protected final Object base;
         protected final UnsignedWord offset;
     }
 
     /** A path element for a cyclic reference. */
     public static class CyclicElement extends PathElement {
-
-        public static CyclicElement factory(final Object previous) {
-            return new CyclicElement(previous);
-        }
 
         @Override
         public Object getObject() {
@@ -556,22 +516,17 @@ public class PathExhibitor {
             this.previous = previous;
         }
 
-        // Immutable state.
         protected final Object previous;
     }
 
-    /** For debugging. */
     public static final class TestingBackDoor {
-
         private TestingBackDoor() {
-            // No instances.
         }
 
-        public static PathElement findPathToObject(PathExhibitor exhibitor, Object obj) {
+        public static void findPathToObject(PathExhibitor exhibitor, Object obj) {
             PathEdge result = new PathEdge();
             FindPathToObjectOperation op = new FindPathToObjectOperation(exhibitor, obj, result);
             op.enqueue();
-            return result.isFilled() ? result.getFrom() : null;
         }
     }
 
@@ -621,11 +576,6 @@ public class PathExhibitor {
         public void reset() {
             from = null;
             to = null;
-        }
-
-        public void toLog(Log log) {
-            from.toLog(log);
-            to.toLog(log);
         }
     }
 }
