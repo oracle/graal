@@ -888,7 +888,7 @@ final class Runner {
      * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
      * results}. The {@code lib} parameter is add to the {@link LLVMContext#addExternalLibrary
      * context}.
-     * 
+     *
      * @param lib the library to be parsed
      * @param parseContext
      * @return the parser result corresponding to {@code lib}
@@ -936,7 +936,7 @@ final class Runner {
      * {@link LLVMParserResult} is also added to the {@link ParseContext#parserResultsAdd parser
      * results}. This method adds {@code library} parameter to the
      * {@link LLVMContext#addExternalLibrary context}.
-     * 
+     *
      * @param source the {@link Source} of the library to be parsed
      * @param library the {@link ExternalLibrary} corresponding to the library to be parsed
      * @param bytes the bytes of the library to be parsed

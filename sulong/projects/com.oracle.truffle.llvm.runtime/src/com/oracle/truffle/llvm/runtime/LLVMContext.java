@@ -531,7 +531,7 @@ public final class LLVMContext {
     /**
      * Adds a new library to the context (if not already added). It is assumed that the library is a
      * native one until it is parsed and we know for sure.
-     * 
+     *
      * @see ExternalLibrary#makeBitcodeLibrary
      * @return null if already added
      */
@@ -553,7 +553,7 @@ public final class LLVMContext {
     /**
      * Finds an already added library. Note that this might return
      * {@link ExternalLibrary#isInternal() internal libraries}.
-     * 
+     *
      * @return null if not yet loaded
      */
     public ExternalLibrary findExternalLibrary(String lib, Object reason, LibraryLocator locator) {
@@ -570,7 +570,7 @@ public final class LLVMContext {
     /**
      * Creates a new external library. It is assumed that the library is a native one until it is
      * parsed and we know for sure.
-     * 
+     *
      * @see ExternalLibrary#makeBitcodeLibrary
      */
     private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator) {
