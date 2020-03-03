@@ -174,7 +174,7 @@ public final class ProcessProperties {
 
     /**
      * If the running image is an executable the program name that is stored in the argument vector
-     * of the running process gets replaced with the give name. If the size of the argument vector
+     * of the running process gets replaced with the given name. If the size of the argument vector
      * is too small for the given name it gets truncated so that the environment vector next to the
      * argument vector does not get corrupted.
      *
