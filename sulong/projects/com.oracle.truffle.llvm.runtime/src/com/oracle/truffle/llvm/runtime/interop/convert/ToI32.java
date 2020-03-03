@@ -94,7 +94,7 @@ public abstract class ToI32 extends ForeignToLLVM {
             return interop.asInt(obj);
         } catch (UnsupportedMessageException ex) {
             exception.enter();
-            throw new LLVMPolyglotException(this, "Polyglot number can't be converted to int.");
+            throw new LLVMPolyglotException(this, String.format("Polyglot number %s cannot be converted to i32", obj));
         }
     }
 
