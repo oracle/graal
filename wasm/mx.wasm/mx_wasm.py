@@ -43,6 +43,7 @@ import mx_benchmark
 import mx_sdk_vm
 import mx_truffle
 import mx_wasm_benchmark  # pylint: disable=unused-import
+import mx_wasm_benchmark_memory  # pylint: disable=unused-import
 
 import os
 import re
