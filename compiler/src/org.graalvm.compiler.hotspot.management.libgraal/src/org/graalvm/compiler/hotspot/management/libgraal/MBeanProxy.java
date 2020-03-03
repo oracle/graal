@@ -219,26 +219,28 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.DefineClasses, env)) {
             JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
-
-            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-                throw throwDefineClassError(HS_BEAN_CLASS_NAME);
-            }
-
-            if (defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS).isNull()) {
-                throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
-            }
-
-            if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
-                throw throwDefineClassError(HS_PUSHBACK_ITER_CLASS_NAME);
-            }
-
-            if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
-                throw throwDefineClassError(HS_SVM_CALLS_CLASS_NAME);
-            }
-
-            JNI.JClass svmHsEntryPoints = defineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
+            JNI.JClass svmHsEntryPoints = SVMToHotSpotCalls.findClass(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME);
             if (svmHsEntryPoints.isNull()) {
-                throw throwDefineClassError(SVM_HS_ENTRYPOINTS_CLASS_NAME);
+                if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
+                    throw throwDefineClassError(HS_BEAN_CLASS_NAME);
+                }
+
+                if (defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS).isNull()) {
+                    throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
+                }
+
+                if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
+                    throw throwDefineClassError(HS_PUSHBACK_ITER_CLASS_NAME);
+                }
+
+                if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
+                    throw throwDefineClassError(HS_SVM_CALLS_CLASS_NAME);
+                }
+
+                svmHsEntryPoints = defineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
+                if (svmHsEntryPoints.isNull()) {
+                    throw throwDefineClassError(SVM_HS_ENTRYPOINTS_CLASS_NAME);
+                }
             }
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
         }

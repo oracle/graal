@@ -39,6 +39,7 @@ import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
@@ -551,7 +552,7 @@ class SVMMBean implements DynamicMBean {
         /**
          * Main loop waiting for {@link DynamicMBean} creation in SVM heap. When a new
          * {@link DynamicMBean} is created in the SVM heap this thread creates a new
-         * {@link SVMMBean} encapsulation the {@link DynamicMBean} and registers it to
+         * {@link SVMMBean} encapsulating the {@link DynamicMBean} and registers it to
          * {@link MBeanServer}.
          */
         @Override
@@ -630,11 +631,21 @@ class SVMMBean implements DynamicMBean {
                 long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(LibGraalScope.getIsolateThread());
                 if (svmRegistrations.length > 0) {
                     for (long svmRegistration : svmRegistrations) {
+                        SVMMBean bean = new SVMMBean(svmRegistration);
+                        String name = HotSpotToSVMCalls.getObjectName(LibGraalScope.getIsolateThread(), svmRegistration);
                         try {
-                            SVMMBean bean = new SVMMBean(svmRegistration);
-                            String name = HotSpotToSVMCalls.getObjectName(LibGraalScope.getIsolateThread(), svmRegistration);
-                            platformMBeanServer.registerMBean(bean, new ObjectName(name));
-                        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
+                            ObjectName objectName = new ObjectName(name);
+                            try {
+                                platformMBeanServer.registerMBean(bean, objectName);
+                            } catch (InstanceAlreadyExistsException e) {
+                                if (platformMBeanServer.isInstanceOf(objectName, SVMMBean.class.getName())) {
+                                    e.printStackTrace(TTY.out);
+                                } else {
+                                    platformMBeanServer.unregisterMBean(objectName);
+                                    platformMBeanServer.registerMBean(bean, objectName);
+                                }
+                            }
+                        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | InstanceNotFoundException | MBeanRegistrationException | NotCompliantMBeanException e) {
                             e.printStackTrace(TTY.out);
                         }
                     }
