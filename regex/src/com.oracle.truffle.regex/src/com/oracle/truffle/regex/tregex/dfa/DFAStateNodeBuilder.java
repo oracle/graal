@@ -74,14 +74,15 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
-    DFAStateNodeBuilder(short id, TransitionSet<NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
+    DFAStateNodeBuilder(int id, TransitionSet<NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
         super(id, EMPTY_TRANSITIONS);
+        assert id <= Short.MAX_VALUE;
         this.nfaTransitionSet = nfaStateSet;
         setFlag(FLAG_BACKWARD_PREFIX_STATE, isBackwardPrefixState);
         setFlag(FLAG_FORWARD, forward);
         setUnAnchoredInitialState(isInitialState);
         if (isBackwardPrefixState) {
-            this.backwardPrefixState = id;
+            this.backwardPrefixState = (short) id;
         }
     }
 

@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
-    private final short id;
+    private final int id;
     private final PureNFAState source;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
@@ -62,7 +62,7 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
     private final boolean dollarGuard;
     @CompilationFinal(dimensions = 1) private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, QuantifierGuard[] quantifierGuards) {
+    public PureNFATransition(int id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, QuantifierGuard[] quantifierGuards) {
         this.id = id;
         this.source = source;
         this.target = target;

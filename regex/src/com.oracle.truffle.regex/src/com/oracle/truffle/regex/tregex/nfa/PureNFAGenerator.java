@@ -106,7 +106,7 @@ public final class PureNFAGenerator {
         if (lookup != null) {
             return lookup;
         } else {
-            PureNFAState state = new PureNFAState((short) stateID.inc(), t);
+            PureNFAState state = new PureNFAState(stateID.inc(), t);
             expansionQueue.push(state);
             nfaStates[t.getId()] = state;
             return state;
@@ -118,7 +118,7 @@ public final class PureNFAGenerator {
         Arrays.fill(nfaStates, null);
         stateID.reset();
         transitionID.reset();
-        PureNFAState dummyInitialState = new PureNFAState((short) stateID.inc(), ast.getWrappedRoot());
+        PureNFAState dummyInitialState = new PureNFAState(stateID.inc(), ast.getWrappedRoot());
         nfaStates[ast.getWrappedRoot().getId()] = dummyInitialState;
         if (!root.hasDollar()) {
             anchoredFinalState = null;
@@ -172,7 +172,7 @@ public final class PureNFAGenerator {
     }
 
     private PureNFAState createFinalState(Term astNode, boolean enqueue) {
-        PureNFAState state = new PureNFAState((short) stateID.inc(), astNode);
+        PureNFAState state = new PureNFAState(stateID.inc(), astNode);
         assert nfaStates[astNode.getId()] == null;
         nfaStates[astNode.getId()] = state;
         if (enqueue) {
@@ -182,6 +182,6 @@ public final class PureNFAGenerator {
     }
 
     private PureNFATransition createEmptyTransition(PureNFAState src, PureNFAState tgt) {
-        return new PureNFATransition((short) transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(), false, false, QuantifierGuard.NO_GUARDS);
+        return new PureNFATransition(transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(), false, false, QuantifierGuard.NO_GUARDS);
     }
 }

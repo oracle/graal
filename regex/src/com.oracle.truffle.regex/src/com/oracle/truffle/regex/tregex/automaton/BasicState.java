@@ -61,7 +61,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
      */
     protected static final int N_FLAGS = 4;
 
-    private final short id;
+    private final int id;
     @CompilationFinal private byte flags;
     @CompilationFinal(dimensions = 1) private T[] successors;
     @CompilationFinal(dimensions = 1) private T[] predecessors;
@@ -72,11 +72,11 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
      * @param emptyTransitions static final empty array of transitions. This will be shared for all
      *            empty transition arrays.
      */
-    protected BasicState(short id, T[] emptyTransitions) {
+    protected BasicState(int id, T[] emptyTransitions) {
         this(id, (byte) 0, emptyTransitions);
     }
 
-    protected BasicState(short id, byte flags, T[] emptyTransitions) {
+    protected BasicState(int id, byte flags, T[] emptyTransitions) {
         this.id = id;
         this.flags = flags;
         this.successors = emptyTransitions;
@@ -84,7 +84,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     }
 
     @Override
-    public short getId() {
+    public int getId() {
         return id;
     }
 

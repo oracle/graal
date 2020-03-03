@@ -372,10 +372,11 @@ public final class TRegexCompilationRequest {
 
     private void logAutomatonSizes(RegexExecRootNode result) {
         LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
-                        Json.prop("pattern", source.getPattern()),
+                        Json.prop("pattern", source.getPattern().length() > 200 ? source.getPattern().substring(0, 200) + "..." : source.getPattern()),
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
                         Json.prop("astNodes", ast == null ? 0 : ast.getNumberOfNodes()),
+                        Json.prop("pureNfaStates", pureNFA == null ? 0 : pureNFA.getRoot().getNumberOfStates()),
                         Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
                         Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
                         Json.prop("dfaStatesFwd", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),

@@ -56,7 +56,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
  */
 final class GraphNode implements Comparable<GraphNode> {
 
-    private static final short[] NO_DOM_CHILDREN = new short[0];
+    private static final int[] NO_DOM_CHILDREN = new int[0];
 
     private DFAAbstractStateNode originalDfaNode;
     private DFAAbstractStateNode dfaNode;
@@ -65,7 +65,7 @@ final class GraphNode implements Comparable<GraphNode> {
     private final StateSet<GraphNode> predecessorSet;
     private final StateSet<GraphNode> backEdges;
 
-    private short[] domChildren;
+    private int[] domChildren;
     private int nDomChildren;
     private int domTreeDepth;
     private int postOrderIndex;
@@ -116,7 +116,7 @@ final class GraphNode implements Comparable<GraphNode> {
         return getId() - o.getId();
     }
 
-    public short getId() {
+    public int getId() {
         return dfaNode.getId();
     }
 
@@ -187,7 +187,7 @@ final class GraphNode implements Comparable<GraphNode> {
     void addDomChild(GraphNode child) {
         if (nDomChildren == domChildren.length) {
             if (domChildren == NO_DOM_CHILDREN) {
-                domChildren = new short[10];
+                domChildren = new int[10];
             } else {
                 domChildren = Arrays.copyOf(domChildren, domChildren.length * 2);
             }

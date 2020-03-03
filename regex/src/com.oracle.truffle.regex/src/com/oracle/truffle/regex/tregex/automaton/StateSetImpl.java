@@ -54,9 +54,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 abstract class StateSetImpl<S> implements StateSet<S> {
 
-    private static final int SWITCH_TO_BACKING_SET_THRESHOLD = 4;
-
-    private static final long SHORT_MASK = 0xffff;
+    private static final int ELEMENT_SIZE = Integer.SIZE;
+    private static final int SWITCH_TO_BACKING_SET_THRESHOLD = 2;
+    private static final long ELEMENT_MASK = 0xffffffff;
 
     private final StateIndex<? super S> stateIndex;
     private StateSetBackingSet backingSet;
@@ -138,11 +138,11 @@ abstract class StateSetImpl<S> implements StateSet<S> {
     }
 
     private static short stateListElement(long stateList, int i) {
-        return stateListElement(stateList >>> (Short.SIZE * i));
+        return stateListElement(stateList >>> (ELEMENT_SIZE * i));
     }
 
     private static short stateListElement(long stateList) {
-        return (short) (stateList & SHORT_MASK);
+        return (short) (stateList & ELEMENT_MASK);
     }
 
     @SuppressWarnings("unchecked")
@@ -151,7 +151,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
         return contains(stateIndex.getId((S) state));
     }
 
-    private boolean contains(short id) {
+    private boolean contains(int id) {
         if (useBackingSet()) {
             return backingSet.contains(id);
         }
@@ -160,7 +160,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
             if (stateListElement(sl) == id) {
                 return true;
             }
-            sl >>>= Short.SIZE;
+            sl >>>= ELEMENT_SIZE;
         }
         return false;
     }
@@ -183,7 +183,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
         return add(stateIndex.getId(state));
     }
 
-    private boolean add(short id) {
+    private boolean add(int id) {
         if (useBackingSet()) {
             if (backingSet.add(id)) {
                 size++;
@@ -200,7 +200,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
                 if (stateListElement(sl) > id) {
                     break;
                 }
-                sl >>>= Short.SIZE;
+                sl >>>= ELEMENT_SIZE;
             }
             if (size() == SWITCH_TO_BACKING_SET_THRESHOLD) {
                 if (backingSet == null) {
@@ -208,7 +208,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
                 }
                 for (int j = 0; j < size(); j++) {
                     backingSet.addBatch(stateListElement(stateList));
-                    stateList >>>= Short.SIZE;
+                    stateList >>>= ELEMENT_SIZE;
                 }
                 backingSet.addBatchFinish();
             }
@@ -216,7 +216,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
             if (useBackingSet()) {
                 backingSet.add(id);
             } else {
-                stateList = (((sl << Short.SIZE) | id) << (i * Short.SIZE)) | (stateList & ~((~0L) << i * Short.SIZE));
+                stateList = (((sl << ELEMENT_SIZE) | id) << (i * ELEMENT_SIZE)) | (stateList & ~((~0L) << i * ELEMENT_SIZE));
             }
             return true;
         }
@@ -266,7 +266,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
         return remove(stateIndex.getId((S) o));
     }
 
-    private boolean remove(short id) {
+    private boolean remove(int id) {
         if (useBackingSet()) {
             if (backingSet.remove(id)) {
                 size--;
@@ -275,7 +275,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
                     int shift = 0;
                     for (int i : backingSet) {
                         stateList |= (long) i << shift;
-                        shift += Short.SIZE;
+                        shift += ELEMENT_SIZE;
                     }
                     backingSet.clear();
                 }
@@ -290,29 +290,18 @@ abstract class StateSetImpl<S> implements StateSet<S> {
                     size--;
                     return true;
                 }
-                sl >>>= Short.SIZE;
+                sl >>>= ELEMENT_SIZE;
             }
             return false;
         }
     }
 
     private void removeStateListElement(int i) {
-        switch (i) {
-            case 0:
-                stateList >>>= Short.SIZE;
-                break;
-            case 1:
-                stateList = ((stateList >>> Short.SIZE) & 0xffff_ffff_0000L) | (stateList & 0xffffL);
-                break;
-            case 2:
-                stateList = ((stateList >>> Short.SIZE) & 0xffff_0000_0000L) | (stateList & 0xffff_ffffL);
-                break;
-            case 3:
-                stateList &= 0xffff_ffff_ffffL;
-                break;
-            default:
-                throw new IllegalArgumentException("stateList cannot be larger than 4 elements!");
-        }
+        // clears all elements < i
+        long maskClrLo = (~0L) << (i * ELEMENT_SIZE);
+        // clears all elements >= i;
+        long maskClrHi = ~maskClrLo;
+        stateList = ((stateList >>> ELEMENT_SIZE) & maskClrLo) | (stateList & maskClrHi);
     }
 
     @Override
@@ -352,7 +341,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
                 if (o.contains(stateListElement(sl))) {
                     return false;
                 }
-                sl >>>= Short.SIZE;
+                sl >>>= ELEMENT_SIZE;
             }
             return true;
         }
@@ -361,7 +350,7 @@ abstract class StateSetImpl<S> implements StateSet<S> {
             if (contains(stateListElement(sl))) {
                 return false;
             }
-            sl >>>= Short.SIZE;
+            sl >>>= ELEMENT_SIZE;
         }
         return true;
     }

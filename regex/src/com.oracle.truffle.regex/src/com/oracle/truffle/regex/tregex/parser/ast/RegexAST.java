@@ -79,7 +79,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private final RegexSource source;
     private final RegexFlags flags;
     private final RegexOptions options;
-    private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxParseTreeSize, "parse tree explosion");
+    private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final Counter zeroWidthQuantifierCount = new Counter();
@@ -197,7 +197,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     }
 
     @Override
-    public short getId(RegexASTNode state) {
+    public int getId(RegexASTNode state) {
         return state.getId();
     }
 

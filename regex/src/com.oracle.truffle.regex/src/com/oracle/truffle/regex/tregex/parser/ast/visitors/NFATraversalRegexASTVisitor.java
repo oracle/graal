@@ -594,8 +594,8 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /**
-     * First field: group alternation index. This value is used to iterate the alternations of
-     * groups referenced in a group-enter path element. <br>
+     * First field: (short) group alternation index. This value is used to iterate the alternations
+     * of groups referenced in a group-enter path element. <br>
      * Since the same group can appear multiple times on the path, we cannot reuse {@link Group}'s
      * implementation of {@link RegexASTVisitorIterable}. Therefore, every occurrence of a group on
      * the path has its own index for iterating and back-tracking over its alternatives. <br>
@@ -603,7 +603,7 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private static final int PATH_GROUP_ALT_INDEX_OFFSET = 0;
     /**
-     * Second field: id of the path element's {@link RegexASTNode}.
+     * Second field: (int) id of the path element's {@link RegexASTNode}.
      */
     private static final int PATH_NODE_OFFSET = Short.SIZE;
     /**
@@ -615,12 +615,12 @@ public abstract class NFATraversalRegexASTVisitor {
      * <li>group pass through</li>
      * </ul>
      */
-    private static final int PATH_GROUP_ACTION_OFFSET = Short.SIZE * 2;
+    private static final int PATH_GROUP_ACTION_OFFSET = Short.SIZE + Integer.SIZE;
+    private static final long PATH_GROUP_ACTION_CLEAR_MASK = 0x0000ffffffffffffL;
     private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
     private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
     private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
     private static final long PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_PASS_THROUGH;
-    private static final long PATH_GROUP_ACTION_CLEAR_MASK = 0xffff0000ffffffffL;
     private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH;
 
     /**
@@ -639,7 +639,7 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private static int pathGetNodeId(long pathElement) {
-        return (short) (pathElement >>> PATH_NODE_OFFSET);
+        return (int) (pathElement >>> PATH_NODE_OFFSET);
     }
 
     /**

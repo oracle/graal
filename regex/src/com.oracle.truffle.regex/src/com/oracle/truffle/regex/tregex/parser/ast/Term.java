@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.AbstractState;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 
@@ -52,7 +54,7 @@ import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
  */
 public abstract class Term extends RegexASTNode implements AbstractState<Term, ASTTransition> {
 
-    private short seqIndex = 0;
+    private int seqIndex = 0;
 
     Term() {
     }
@@ -69,7 +71,10 @@ public abstract class Term extends RegexASTNode implements AbstractState<Term, A
     }
 
     public void setSeqIndex(int seqIndex) {
-        this.seqIndex = (short) seqIndex;
+        this.seqIndex = seqIndex;
+        if (seqIndex > TRegexOptions.TRegexParserTreeMaxNumberOfTermsInSequence) {
+            throw new UnsupportedRegexException("too many terms in a single sequence");
+        }
     }
 
     @Override

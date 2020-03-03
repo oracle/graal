@@ -48,5 +48,5 @@ public interface AbstractState<S extends AbstractState<S, T>, T extends Abstract
     /**
      * Unique ID of this state. Uniqueness holds only for the automaton the state belongs to.
      */
-    short getId();
+    int getId();
 }

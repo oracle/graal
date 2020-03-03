@@ -139,7 +139,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private List<DFAStateTransitionBuilder[]> bfsTraversalCur;
     private List<DFAStateTransitionBuilder[]> bfsTraversalNext;
-    private EconomicMap<Short, DFAAbstractStateNode> stateReplacements;
+    private EconomicMap<Integer, DFAAbstractStateNode> stateReplacements;
 
     public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, RegexOptions engineOptions) {
         this.compilationReqest = compilationReqest;
@@ -321,7 +321,7 @@ public final class DFAGenerator implements JsonConvertible {
             if (entryStates[i] == null) {
                 entryStateIDs[i] = -1;
             } else {
-                entryStateIDs[i] = entryStates[i].getId();
+                entryStateIDs[i] = (short) entryStates[i].getId();
             }
         }
         states[0] = new DFAInitialStateNode(entryStateIDs, isSearching(), isGenericCG());
@@ -394,14 +394,14 @@ public final class DFAGenerator implements JsonConvertible {
         }
         if (!isForward() && anyPrefixStateSuccessors) {
             if (allPrefixStateSuccessors) {
-                state.setBackwardPrefixState(state.getId());
+                state.setBackwardPrefixState((short) state.getId());
             } else {
                 assert !state.isBackwardPrefixState();
                 DFAStateNodeBuilder lookup = lookupState(state.getNfaTransitionSet(), true);
                 if (lookup == null) {
                     lookup = createState(state.getNfaTransitionSet(), true, false);
                 }
-                state.setBackwardPrefixState(lookup.getId());
+                state.setBackwardPrefixState((short) lookup.getId());
             }
         }
         DFAStateTransitionBuilder[] transitions = canonicalizer.run(compilationBuffer);
@@ -721,8 +721,8 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
             }
 
-            registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode(unanchoredInitialState.getId(),
-                            new short[]{literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(compilationBuffer), prefixMatcher));
+            registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode((short) unanchoredInitialState.getId(),
+                            new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral(compilationBuffer), prefixMatcher));
         }
     }
 
@@ -755,14 +755,14 @@ public final class DFAGenerator implements JsonConvertible {
         return true;
     }
 
-    private void registerStateReplacement(short id, DFAAbstractStateNode replacement) {
+    private void registerStateReplacement(int id, DFAAbstractStateNode replacement) {
         if (stateReplacements == null) {
             stateReplacements = EconomicMap.create();
         }
         stateReplacements.put(id, replacement);
     }
 
-    private DFAAbstractStateNode getReplacement(short id) {
+    private DFAAbstractStateNode getReplacement(int id) {
         return stateReplacements == null ? null : stateReplacements.get(id);
     }
 
@@ -779,9 +779,11 @@ public final class DFAGenerator implements JsonConvertible {
         }
         DFAAbstractStateNode[] ret = new DFAAbstractStateNode[stateMap.values().size() + 1];
         for (DFAStateNodeBuilder s : stateMap.values()) {
-            DFAAbstractStateNode replacement = getReplacement(s.getId());
+            assert s.getId() <= Short.MAX_VALUE;
+            short id = (short) s.getId();
+            DFAAbstractStateNode replacement = getReplacement(id);
             if (replacement != null) {
-                ret[s.getId()] = replacement;
+                ret[id] = replacement;
                 continue;
             }
             CharMatcher[] matchers = (s.getSuccessors().length > 0) ? new CharMatcher[s.getSuccessors().length] : CharMatcher.EMPTY;
@@ -837,8 +839,8 @@ public final class DFAGenerator implements JsonConvertible {
             char[] indexOfChars = null;
             short loopToSelf = -1;
             for (int i = 0; i < successors.length - (s.hasBackwardPrefixState() ? 1 : 0); i++) {
-                successors[i] = s.getSuccessors()[i].getTarget().getId();
-                if (successors[i] == s.getId()) {
+                successors[i] = (short) s.getSuccessors()[i].getTarget().getId();
+                if (successors[i] == id) {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = s.getSuccessors()[i].getMatcherBuilder();
                     if (coversCharSpace && !loopMB.matchesEverything() && loopMB.inverseValueCount() <= 4) {
@@ -868,18 +870,18 @@ public final class DFAGenerator implements JsonConvertible {
             }
             DFAStateNode stateNode;
             if (isGenericCG()) {
-                stateNode = new CGTrackingDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher, cgTransitions, cgPrecedingTransitions,
+                stateNode = new CGTrackingDFAStateNode(id, flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher, cgTransitions, cgPrecedingTransitions,
                                 createCGFinalTransition(s.getAnchoredFinalStateTransition()),
                                 createCGFinalTransition(s.getUnAnchoredFinalStateTransition()));
             } else if (nfa.isTraceFinderNFA()) {
-                stateNode = new TraceFinderDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers,
+                stateNode = new TraceFinderDFAStateNode(id, flags, loopOptimizationNode, successors, matchers,
                                 allTransitionsInOneTreeMatcher, s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
             } else if (isForward()) {
-                stateNode = new DFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+                stateNode = new DFAStateNode(id, flags, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
             } else {
-                stateNode = new BackwardDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+                stateNode = new BackwardDFAStateNode(id, flags, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
             }
-            ret[s.getId()] = stateNode;
+            ret[id] = stateNode;
         }
         return ret;
     }

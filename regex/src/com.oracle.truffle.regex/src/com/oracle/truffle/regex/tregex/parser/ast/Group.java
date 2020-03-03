@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -282,6 +283,7 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     public void add(Sequence sequence) {
         sequence.setParent(this);
         alternatives.add(sequence);
+        checkMaxSize();
     }
 
     /**
@@ -294,6 +296,13 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     public void insertFirst(Sequence sequence) {
         sequence.setParent(this);
         alternatives.add(0, sequence);
+        checkMaxSize();
+    }
+
+    private void checkMaxSize() {
+        if (alternatives.size() > TRegexOptions.TRegexParserTreeMaxNumberOfSequencesInGroup) {
+            throw new UnsupportedRegexException("too many sequences in a single group");
+        }
     }
 
     /**

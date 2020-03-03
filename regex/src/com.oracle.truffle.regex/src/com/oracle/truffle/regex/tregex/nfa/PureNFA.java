@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
-import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -58,7 +57,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public class PureNFA implements StateIndex<PureNFAState> {
 
-    private final short subTreeId;
+    private final int subTreeId;
     @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
     @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
 
@@ -68,7 +67,7 @@ public class PureNFA implements StateIndex<PureNFAState> {
                     Counter.ThresholdCounter transitionIDCounter) {
         this.subTreeId = astSubRoot.getSubTreeId();
         this.states = new PureNFAState[stateIDCounter.getCount()];
-        this.transitions = new PureNFATransition[transitionIDCounter.getCount() + (astSubRoot.isRoot() ? 1 : 0)];
+        this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
         for (PureNFAState s : states) {
             if (s == null) {
                 continue;
@@ -84,23 +83,13 @@ public class PureNFA implements StateIndex<PureNFAState> {
                 this.transitions[t.getId()] = t;
             }
         }
-        if (astSubRoot.isRoot()) {
-            // initialize loopback transition
-            transitions[transitionIDCounter.getCount()] = new PureNFATransition(
-                            (short) transitionIDCounter.getCount(),
-                            getUnAnchoredInitialState(),
-                            getUnAnchoredInitialState(),
-                            GroupBoundaries.getEmptyInstance(),
-                            false,
-                            false, QuantifierGuard.NO_GUARDS);
-        }
     }
 
     /**
      * {@link RegexASTSubtreeRootNode#getSubTreeId() Subtree ID} of the
      * {@link RegexASTSubtreeRootNode} this NFA was generated from.
      */
-    public short getSubTreeId() {
+    public int getSubTreeId() {
         return subTreeId;
     }
 
@@ -176,7 +165,7 @@ public class PureNFA implements StateIndex<PureNFAState> {
     }
 
     @Override
-    public short getId(PureNFAState state) {
+    public int getId(PureNFAState state) {
         assert states[state.getId()] == state;
         return state.getId();
     }
@@ -184,31 +173,6 @@ public class PureNFA implements StateIndex<PureNFAState> {
     @Override
     public PureNFAState getState(int id) {
         return states[id];
-    }
-
-    private PureNFATransition getInitialLoopBackTransition() {
-        PureNFATransition t = transitions[transitions.length - 1];
-        assert t.getSource() == getUnAnchoredInitialState();
-        assert t.getTarget() == getUnAnchoredInitialState();
-        return t;
-    }
-
-    public void setInitialLoopBack(boolean enable) {
-        PureNFAState initialState = getUnAnchoredInitialState();
-        if (initialState.getSuccessors().length == 0) {
-            return;
-        }
-        PureNFATransition loopBack = getInitialLoopBackTransition();
-        PureNFATransition lastInitTransition = initialState.getSuccessors()[initialState.getSuccessors().length - 1];
-        if (enable) {
-            if (lastInitTransition != loopBack) {
-                initialState.addLoopBackNext(loopBack);
-            }
-        } else {
-            if (lastInitTransition == loopBack) {
-                initialState.removeLoopBackNext();
-            }
-        }
     }
 
     public void materializeGroupBoundaries() {

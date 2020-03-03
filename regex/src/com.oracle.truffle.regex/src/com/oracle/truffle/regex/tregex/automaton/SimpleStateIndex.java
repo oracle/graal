@@ -67,14 +67,14 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
 
     public void add(T state) {
         assert !states.contains(state);
-        setStateId(state, (short) states.size());
+        setStateId(state, states.size());
         states.add(state);
         assert states.get(getStateId(state)) == state;
     }
 
-    protected abstract short getStateId(T state);
+    protected abstract int getStateId(T state);
 
-    protected abstract void setStateId(T state, short id);
+    protected abstract void setStateId(T state, int id);
 
     @Override
     public int getNumberOfStates() {
@@ -82,8 +82,8 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
     }
 
     @Override
-    public short getId(T state) {
-        short id = getStateId(state);
+    public int getId(T state) {
+        int id = getStateId(state);
         assert states.get(id) == state;
         return id;
     }

@@ -149,7 +149,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     }
 
     @Override
-    public short getId(GraphNode state) {
+    public int getId(GraphNode state) {
         return state.getId();
     }
 
