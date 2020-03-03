@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Properties;
-
-public class SystemProperties {
-    public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
-    public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
-
-    public static final String BENCHMARK_NAME_PROPERTY_NAME = "wasmbench.benchmarkName";
-    public static final String BENCHMARK_NAME = System.getProperty(BENCHMARK_NAME_PROPERTY_NAME);
-
-    public static final String DISABLE_COMPILATION_FLAG_NAME = "wasmbench.disableCompilation";
-    public static final String DISABLE_COMPILATION_FLAG = System.getProperty(DISABLE_COMPILATION_FLAG_NAME);
-
-    public static Properties createFromOptions(String optsContent) {
-        Properties options = new Properties();
-        if (optsContent == null) {
-            return options;
-        }
-
-        try {
-            options.load(new StringReader(optsContent));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return options;
-    }
-}
+#define DATA_COUNT (1000)
+#include "qsort.c"
