@@ -37,8 +37,8 @@ truffleWeekly: ${truffle-weekly-notifications} {
 simpleToolMavenProjectGate:  {
     run : [
         ["mx", "build"],
-        ["set-export", "JAVA_HOME", ["mx", "graalvm-home"]],
         ["mx", "maven-deploy", "--all-suites" "--all-distribution-types", "--version-string", "GATE"],
+        ["set-export", "JAVA_HOME", ["mx", "graalvm-home"]],
         ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/simpletool"]],
         ["rm", "-rf", "simpletool/*"],
         ["cp", "src/com.oracle.truffle.st/mavenIngredients//*", "simpletool"],
