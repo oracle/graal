@@ -83,7 +83,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.NativeRootNode;
+import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -139,6 +139,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @CompilationFinal private byte usesMonitors = -1;
 
     // can have a different constant pool than it's declaring class
+
     public ConstantPool getConstantPool() {
         return pool;
     }
@@ -404,7 +405,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
                                 try {
                                     TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                    callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true)));
+                                    callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
                                     return callTarget;
                                 } catch (UnknownIdentifierException e) {
                                     // native method not found in libjava, safe to ignore
@@ -454,7 +455,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         // BCI slot is always the latest.
                         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
                         EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, bciSlot));
-
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
                 }
@@ -504,7 +504,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeRootNode(nativeMethod, this, true)));
+        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
     }
 
     public boolean isConstructor() {
