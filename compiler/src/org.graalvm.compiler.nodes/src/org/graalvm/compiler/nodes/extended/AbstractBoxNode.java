@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.word.LocationIdentity;
@@ -71,14 +71,14 @@ public abstract class AbstractBoxNode extends FixedWithNextNode implements Virtu
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
-    @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
+    @OptionalInput(InputType.Memory) MemoryKill lastLocationAccess;
 
     @Override
-    public void setLastLocationAccess(MemoryNode newlla) {
+    public void setLastLocationAccess(MemoryKill newlla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(newlla));
         lastLocationAccess = newlla;
     }

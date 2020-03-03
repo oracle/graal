@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -41,7 +42,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory})
 public final class CEntryPointEnterNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<CEntryPointEnterNode> TYPE = NodeClass.create(CEntryPointEnterNode.class);
@@ -102,7 +103,9 @@ public final class CEntryPointEnterNode extends FixedWithNextNode implements Low
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            tool.getLowerer().lower(this, tool);
+        }
     }
 
     @Override

@@ -39,6 +39,8 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.StructuredGraph.CompilationType;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -257,5 +259,17 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
                 }
             }
         }
+    }
+
+    public static final boolean STATE_ON_MERGE_INVARIANT = false;
+
+    @Override
+    public boolean verify() {
+        if (STATE_ON_MERGE_INVARIANT) {
+            assertTrue(this.graph().getCompType() != CompilationType.ROOT_COMPILATION ||
+                            this.graph().getGuardsStage() != GuardsStage.FLOATING_GUARDS || this.stateAfter() != null,
+                            "Merge nodes before FSA must have a framestate associated %s", this);
+        }
+        return super.verify();
     }
 }

@@ -78,7 +78,9 @@ public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            tool.getLowerer().lower(this, tool);
+        }
     }
 
     @Override

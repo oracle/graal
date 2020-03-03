@@ -122,7 +122,7 @@ public abstract class BoxNode extends AbstractBoxNode implements VirtualizableAl
     private static class PureBoxNode extends BoxNode {
         public static final NodeClass<PureBoxNode> TYPE = NodeClass.create(PureBoxNode.class);
 
-        public PureBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+        protected PureBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
             super(TYPE, value, resultType, boxingKind);
         }
 
@@ -132,7 +132,7 @@ public abstract class BoxNode extends AbstractBoxNode implements VirtualizableAl
     private static class AllocatingBoxNode extends BoxNode implements SingleMemoryKill {
         public static final NodeClass<AllocatingBoxNode> TYPE = NodeClass.create(AllocatingBoxNode.class);
 
-        public AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
+        protected AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
             super(TYPE, value, resultType, boxingKind);
         }
 

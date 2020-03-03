@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.nodes;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -41,7 +42,7 @@ import org.graalvm.word.LocationIdentity;
 /**
  * See comments in {@link CFunctionPrologueNode} for details.
  */
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
 public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
@@ -67,7 +68,9 @@ public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            tool.getLowerer().lower(this, tool);
+        }
     }
 
     @Override

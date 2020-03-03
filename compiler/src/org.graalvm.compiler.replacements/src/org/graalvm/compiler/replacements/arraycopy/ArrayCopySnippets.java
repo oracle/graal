@@ -587,7 +587,8 @@ public abstract class ArrayCopySnippets implements Snippets {
                 } else if (originalNode instanceof ArrayCopyWithDelayedLoweringNode) {
                     ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) replacements.get(originalNode);
                     assert arraycopy.stateAfter() != null : arraycopy;
-                    assert slowPath.stateAfter() == arraycopy.stateAfter();
+                    assert slowPath.stateAfter() == arraycopy.stateAfter() : "States do not match for slowpath=" + slowPath + " and array copy=" + arraycopy + " slowPathState=" +
+                                    slowPath.stateAfter() + " and arraycopyState=" + arraycopy.stateAfter();
                     slowPath.setBci(arraycopy.getBci());
                 }
             }

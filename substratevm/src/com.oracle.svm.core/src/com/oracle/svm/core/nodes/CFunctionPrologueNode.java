@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.nodes;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -56,7 +57,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  * class CFunctionSnippets. Other parts are emitted in the backend when the call instruction is
  * emitted.
  */
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
 public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {
     public static final NodeClass<CFunctionPrologueNode> TYPE = NodeClass.create(CFunctionPrologueNode.class);
 
@@ -89,7 +90,9 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            tool.getLowerer().lower(this, tool);
+        }
     }
 
     @Override
@@ -103,4 +106,5 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
 
     @NodeIntrinsic
     public static native void cFunctionPrologue(@ConstantNodeParameter int newThreadStatus);
+
 }

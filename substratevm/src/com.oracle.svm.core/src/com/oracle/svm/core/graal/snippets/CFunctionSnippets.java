@@ -162,7 +162,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("newThreadStatus", newThreadStatus);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(node, args);
+            template.setMayRemoveLocation(true);
+            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -177,7 +179,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(node, args);
+            template.setMayRemoveLocation(true);
+            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

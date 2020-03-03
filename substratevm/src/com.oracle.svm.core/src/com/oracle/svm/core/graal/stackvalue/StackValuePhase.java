@@ -28,15 +28,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotHolder;
 
-public class StackValuePhase extends BasePhase<HighTierContext> {
+public class StackValuePhase extends Phase {
 
     @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
+    protected void run(StructuredGraph graph) {
         Map<Object, StackSlotHolder> slots = new HashMap<>();
 
         for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {

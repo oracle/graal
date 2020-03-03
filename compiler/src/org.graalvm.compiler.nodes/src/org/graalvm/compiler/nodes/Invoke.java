@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
+public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptDuring, FixedNodeInterface, BCISupplier, Invokable {
 
     FixedNode next();
 

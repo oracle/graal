@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.CompilationType;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -519,7 +520,7 @@ public class InliningUtil extends ValueMergeUtil {
                     StructuredGraph inlineGraph) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
-        assert stateAfter == null || stateAfter.isAlive();
+        assert graph.getCompType() != CompilationType.ROOT_COMPILATION || stateAfter != null : "Invoke " + invokeNode + " must have a valid state after";
 
         invokeNode.replaceAtPredecessor(firstNode);
 

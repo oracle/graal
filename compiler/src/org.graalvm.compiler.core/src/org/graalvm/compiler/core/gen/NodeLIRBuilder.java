@@ -760,7 +760,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (gen.needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null);
         }
-        assert state != null : deopt;
+        assert state != null : "Deopt node=" + deopt + " needs a state ";
         return getDebugInfoBuilder().build(deopt, state, exceptionEdge);
     }
 

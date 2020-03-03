@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -32,8 +33,10 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -41,8 +44,8 @@ import jdk.vm.ci.meta.JavaKind;
  * Retrieves an argument of a specific kind from a C {@code va_list} structure, modifying the
  * structure so that the argument is consumed.
  */
-@NodeInfo(size = SIZE_8, cycles = CYCLES_8)
-public final class VaListNextArgNode extends FixedWithNextNode implements Lowerable {
+@NodeInfo(size = SIZE_8, cycles = CYCLES_8, allowedUsageTypes = {Memory})
+public final class VaListNextArgNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
     public static final NodeClass<VaListNextArgNode> TYPE = NodeClass.create(VaListNextArgNode.class);
 
     @Input protected ValueNode vaList;
@@ -59,6 +62,13 @@ public final class VaListNextArgNode extends FixedWithNextNode implements Lowera
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            tool.getLowerer().lower(this, tool);
+        }
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }
