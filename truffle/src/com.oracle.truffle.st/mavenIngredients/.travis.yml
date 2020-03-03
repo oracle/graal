@@ -5,7 +5,7 @@ os:
 language: java
 
 env:
-    - GRAALVM_VERSION="19.2.0"
+    - GRAALVM_VERSION="20.0.0"
 
 install:
     - |
