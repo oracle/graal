@@ -171,7 +171,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     }
 
     private static Response handleDnsRebind(IHTTPSession ihttpSession) {
-        if (!isHostOk(ihttpSession)) {
+        if (!isHostOk(ihttpSession.getHeaders().get("host"))) {
             return Response.newFixedLengthResponse(
                             Status.BAD_REQUEST,
                             "text/plain; charset=UTF-8",
@@ -181,10 +181,13 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         }
     }
 
-    private static boolean isHostOk(IHTTPSession ihttpSession) {
-        final String host = ihttpSession.getHeaders().get("host").replaceFirst(":([0-9]+)$", "");
-        return (host != null) && (host.equals("localhost") || isValidIp(host));
-
+    private static boolean isHostOk(String host) {
+        if (host == null) {
+            return false;
+        } else {
+            final String bareHost = host.replaceFirst(":([0-9]+)$", "");
+            return (bareHost.equals("localhost") || isValidIp(bareHost));
+        }
     }
 
     private static boolean isValidIp(String host) {
