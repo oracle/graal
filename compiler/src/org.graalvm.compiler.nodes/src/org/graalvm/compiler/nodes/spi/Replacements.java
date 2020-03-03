@@ -129,8 +129,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     /**
      * Gets a graph that is a substitution for a given method.
      *
-     * @param invokeBci the call site BCI if this request is made for inlining a substitute
-     *            otherwise {@code -1}
+     * @param invokeBci the call site BCI for the substitution
      * @param trackNodeSourcePosition
      * @param replaceePosition
      * @param allowAssumptions
@@ -158,16 +157,13 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      * {@linkplain #getSubstitution(ResolvedJavaMethod, int, boolean, NodeSourcePosition, AllowAssumptions, OptionValues)
      * substitution graph} for a given method.
      *
-     * A call to {@link #getSubstitution} may still return {@code null} for {@code method} and
-     * {@code invokeBci}. A substitution may be based on an {@link InvocationPlugin} that returns
-     * {@code false} for {@link InvocationPlugin#execute} making it impossible to create a
-     * substitute graph.
+     * A call to {@link #getSubstitution} may still return {@code null} for {@code method}. A
+     * substitution may be based on an {@link InvocationPlugin} that returns {@code false} for
+     * {@link InvocationPlugin#execute} making it impossible to create a substitute graph.
      *
-     * @param invokeBci the call site BCI if this request is made for inlining a substitute
-     *            otherwise {@code -1}
      * @return true iff there may be a substitution graph available for {@code method}
      */
-    boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci);
+    boolean hasSubstitution(ResolvedJavaMethod method);
 
     /**
      * Gets the provider for accessing the bytecode of a substitution method if no other provider is

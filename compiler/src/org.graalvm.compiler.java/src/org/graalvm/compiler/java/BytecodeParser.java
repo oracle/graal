@@ -282,7 +282,6 @@ import org.graalvm.compiler.bytecode.BytecodeSwitch;
 import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.Bytes;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -1165,34 +1164,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (intrinsicContext.isPostParseInlined()) {
             stateAfterStart = graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
         } else {
-            ResolvedJavaMethod original = intrinsicContext.getOriginalMethod();
-            ValueNode[] locals;
-            if (original.getMaxLocals() == frameState.localsSize() || original.isNative()) {
-                locals = new ValueNode[original.getMaxLocals()];
-                for (int i = 0; i < locals.length; i++) {
-                    ValueNode node = frameState.locals[i];
-                    if (node == FrameState.TWO_SLOT_MARKER) {
-                        node = null;
-                    }
-                    locals[i] = node;
-                }
-            } else {
-                locals = new ValueNode[original.getMaxLocals()];
-                int parameterCount = original.getSignature().getParameterCount(!original.isStatic());
-                for (int i = 0; i < parameterCount; i++) {
-                    ValueNode param = frameState.locals[i];
-                    if (param == FrameState.TWO_SLOT_MARKER) {
-                        param = null;
-                    }
-                    locals[i] = param;
-                    assert param == null || param instanceof ParameterNode || param.isConstant();
-                }
-            }
-            ValueNode[] stack = {};
-            int stackSize = 0;
-            ValueNode[] locks = {};
-            List<MonitorIdNode> monitorIds = Collections.emptyList();
-            stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, locals, stack, stackSize, locks, monitorIds, false, false));
+            stateAfterStart = frameState.createInitialIntrinsicFrameState(intrinsicContext.getOriginalMethod());
         }
         return stateAfterStart;
     }
