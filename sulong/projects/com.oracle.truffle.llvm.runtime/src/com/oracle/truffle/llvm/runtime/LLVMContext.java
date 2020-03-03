@@ -393,7 +393,7 @@ public final class LLVMContext {
             this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
         } else {
-            throw new NullPointerException("The default datalayout cannot be overrwitten.");
+            throw new NullPointerException("The default datalayout cannot be overrwitten");
         }
     }
 
@@ -422,7 +422,7 @@ public final class LLVMContext {
                         disposeContext.call(stackPointer);
                     }
                 } else {
-                    throw new IllegalStateException("Context cannot be disposed: Function _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer.");
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined
@@ -512,7 +512,7 @@ public final class LLVMContext {
     @TruffleBoundary
     private Path locateInternalLibrary(String lib) {
         if (internalLibraryPath == null) {
-            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set.", lib));
+            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set", lib));
         }
         Path absPath = internalLibraryPath.resolve(lib);
         if (absPath.toFile().exists()) {
