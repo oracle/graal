@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -137,7 +138,7 @@ public final class StaticObject implements TruffleObject {
         }
         return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
     }
-    
+
     public static final String CLASS_TO_STATIC = "static";
 
     @ExportMessage
