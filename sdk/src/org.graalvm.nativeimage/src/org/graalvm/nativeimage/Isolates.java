@@ -113,7 +113,7 @@ public final class Isolates {
              * Sets the file path to an auxiliary image which should be loaded in addition to the
              * main image, or {@code null} if no such image should be loaded.
              *
-             * @since 20.0
+             * @since 20.1
              */
             public Builder auxiliaryImagePath(String filePath) {
                 this.auxiliaryImagePath = filePath;
@@ -124,7 +124,7 @@ public final class Isolates {
              * Sets the size in bytes of an address space to reserve for loading an auxiliary image
              * in addition to the main image, or 0 if no space should be reserved.
              *
-             * @since 20.0
+             * @since 20.1
              */
             public Builder auxiliaryImageReservedSpaceSize(UnsignedWord size) {
                 this.auxiliaryImageReservedSpaceSize = size;
@@ -176,7 +176,7 @@ public final class Isolates {
          * Returns the file path to an auxiliary image which should be loaded in addition to the
          * main image, or {@code null} if no such image should be loaded.
          *
-         * @since 20.0
+         * @since 20.1
          */
         public String getAuxiliaryImagePath() {
             return auxiliaryImagePath;
@@ -186,7 +186,7 @@ public final class Isolates {
          * Returns the size in bytes of an address space to reserve for loading an auxiliary image
          * in addition to the main image, or 0 if no space should be reserved.
          *
-         * @since 20.0
+         * @since 20.1
          */
         public UnsignedWord getAuxiliaryImageReservedSpaceSize() {
             return auxiliaryImageReservedSpaceSize;
