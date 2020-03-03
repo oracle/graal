@@ -49,7 +49,7 @@ public class SecureInspectorPathGenerator {
         final byte[] tokenRaw = generateSecureRawToken();
         // base64url (see https://tools.ietf.org/html/rfc4648 ) without padding
         // For a fixed-length token, there is no ambiguity in paddingless
-        return Base64.getEncoder().encodeToString(tokenRaw).replace('/', '_').replace('+', '-').replace("=", "");
+        return Base64.getEncoder().withoutPadding().encodeToString(tokenRaw).replace('/', '_').replace('+', '-');
     }
 
     private static byte[] generateSecureRawToken() {
