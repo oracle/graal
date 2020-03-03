@@ -681,14 +681,16 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 graalvm_dists.update(_library_config.jar_distributions)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
-                    _svm_library_dest = _jvm_library_dest
+                    _svm_library_home = _jvm_library_dest
                 else:
-                    _svm_library_dest = _component_base
-                _svm_library_dest += _library_config.destination
+                    _svm_library_home = _component_base
+                _svm_library_dest = _svm_library_home + _library_config.destination
                 if not stage1 and _get_svm_support().is_supported():
-                    source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
-                    # add `LibraryConfig.destination` to the layout
-                    _add(layout, _svm_library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
+                    _source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
+                    _library_project_name = GraalVmNativeImage.project_name(_library_config)
+                    # add `LibraryConfig.destination` and the generated header files to the layout
+                    _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
+                    _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 _add_native_image_macro(_library_config, _component)
 
             if _src_jdk_version == 8:
