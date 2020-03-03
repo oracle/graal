@@ -33,14 +33,26 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.JDK;
+
 public class JDKSourceCache extends SourceCache {
     /**
-     * Create a JDK runtime class source cache.
+     * Create a JDK runtime class source cache..
      */
     protected JDKSourceCache() {
-        super(SourceCache.JDK_CACHE_KEY);
         initSrcRoots();
     }
+
+    @Override
+    protected final SourceCacheType getType() {
+        return JDK;
+    }
+
+    /*
+     * properties needed to locate relevant JDK and app source roots
+     */
+    private static final String JAVA_HOME_PROP = "java.home";
+    private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
 
     private void initSrcRoots() {
         String javaHome = System.getProperty(JAVA_HOME_PROP);
@@ -68,3 +80,4 @@ public class JDKSourceCache extends SourceCache {
         }
     }
 }
+

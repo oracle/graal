@@ -24,24 +24,38 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.image.sources;
+package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+/**
+ * Tracks debug info associated with a Java source file.
+ */
+public class FileEntry {
+    private String fileName;
+    private DirEntry dirEntry;
 
-public enum SourceCacheType {
-    JDK("jdk"),
-    GRAALVM("graal"),
-    APPLICATION("src");
-
-    final Path subdir;
-
-    SourceCacheType(String subdir) {
-        this.subdir = Paths.get(subdir);
+    public FileEntry(String fileName, DirEntry dirEntry) {
+        this.fileName = fileName;
+        this.dirEntry = dirEntry;
     }
 
-    public Path getSubdir() {
-        return subdir;
+    /**
+     * The name of the associated file excluding path elements.
+     */
+    public String getFileName() {
+        return fileName;
     }
 
+    public String getPathName() {
+        return getDirEntry().getPathString();
+    }
+
+    public String getFullName() {
+        return getDirEntry().getPath().resolve(getFileName()).toString();
+    }
+    /**
+     * The directory entry associated with this file entry.
+     */
+    public DirEntry getDirEntry() {
+        return dirEntry;
+    }
 }

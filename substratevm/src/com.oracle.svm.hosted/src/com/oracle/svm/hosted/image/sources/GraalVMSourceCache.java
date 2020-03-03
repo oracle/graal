@@ -35,14 +35,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.GRAALVM;
 import static com.oracle.svm.hosted.image.sources.SourceManager.GRAALVM_SRC_PACKAGE_PREFIXES;
 public class GraalVMSourceCache extends SourceCache {
     /**
      * Create a GraalVM source cache.
      */
     protected GraalVMSourceCache() {
-        super(SourceCache.GRAALVM_CACHE_KEY);
         initSrcRoots();
+    }
+
+    @Override
+    protected final SourceCacheType getType() {
+        return GRAALVM;
     }
 
     private static final String JAVA_CLASSPATH_PROP = "java.class.path";
@@ -52,37 +57,60 @@ public class GraalVMSourceCache extends SourceCache {
         assert javaClassPath != null;
         String[] classPathEntries = javaClassPath.split(File.pathSeparator);
         for (String classPathEntry : classPathEntries) {
-            Path entryPath = Paths.get(classPathEntry);
-            String fileNameString = entryPath.getFileName().toString();
-            if (fileNameString.endsWith(".jar")) {
-                // GraalVM jar /path/to/xxx.jar should have
-                // sources /path/to/xxx.src.zip.jar
+            tryClassPathRoot(classPathEntry);
+        }
+        for (String sourcePathEntry : sourcePathEntries) {
+            tryClassPathRoot(sourcePathEntry);
+        }
+    }
+    private void tryClassPathRoot(String classPathEntry) {
+        trySourceRoot(classPathEntry, true);
+    }
+    private void trySourceRoot(String sourcePathEntry) {
+        trySourceRoot(sourcePathEntry, false);
+    }
+    private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
+        Path sourcePath = Paths.get(sourceRoot);
+        String fileNameString = sourcePath.getFileName().toString();
+        if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
+            if (fromClassPath && fileNameString.endsWith(".jar")) {
+                /*
+                 * GraalVM jar /path/to/xxx.jar in classpath should
+                 * have sources /path/to/xxx.src.zip
+                 */
                 int length = fileNameString.length();
-                String srcFileNameString = fileNameString.substring(0, length - 3) + "src.zip";
-                Path srcPath = entryPath.getParent().resolve(srcFileNameString);
-                if (srcPath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            if (filterSrcRoot(root)) {
-                                srcRoots.add(root);
-                            }
+                fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
+            }
+            Path srcPath = sourcePath.getParent().resolve(fileNameString);
+            if (srcPath.toFile().exists()) {
+                try {
+                    FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
+                    for (Path root : fileSystem.getRootDirectories()) {
+                        if (filterSrcRoot(root)) {
+                            srcRoots.add(root);
                         }
-                    } catch (IOException ioe) {
-                        /* ignore this entry */
-                    } catch (FileSystemNotFoundException fnfe) {
-                        /* ignore this entry */
                     }
+                } catch (IOException ioe) {
+                    /* ignore this entry */
+                } catch (FileSystemNotFoundException fnfe) {
+                    /* ignore this entry */
                 }
-            } else  {
+            }
+        } else  {
+            if (fromClassPath) {
                 /* graal classpath dir entries should have a src and/or src_gen subdirectory */
-                Path srcPath = entryPath.resolve("src");
+                Path srcPath = sourcePath.resolve("src");
                 if (filterSrcRoot(srcPath)) {
                     srcRoots.add(srcPath);
                 }
-                srcPath = entryPath.resolve("src_gen");
+                srcPath = sourcePath.resolve("src_gen");
                 if (filterSrcRoot(srcPath)) {
                     srcRoots.add(srcPath);
+                }
+            } else {
+                // try the path as provided
+                if (filterSrcRoot(sourcePath)) {
+                    srcRoots.add(sourcePath);
                 }
             }
         }

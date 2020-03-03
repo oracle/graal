@@ -50,7 +50,12 @@ public class SourceManager {
      * null if a source file cannot be found or cached.
      */
     public Path findAndCacheSource(ResolvedJavaType resolvedType) {
-        Path path = null;
+        /* short circuit if we have already seen this type */
+        Path path = verifiedPaths.get(resolvedType);
+        if (path != null) {
+            return (path != INVALID_PATH ? path : null);
+        }
+
         String fileName = computeBaseName(resolvedType);
         /*
          * null for the name means this class
@@ -91,6 +96,9 @@ public class SourceManager {
                 }
             }
         }
+        /* memoize the lookup */
+        verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
+
         return path;
     }
 
@@ -240,6 +248,21 @@ public class SourceManager {
      * of the associated type of source file.
      */
     private static HashMap<SourceCacheType, SourceCache> caches = new HashMap<>();
+
+    /**
+     * A map from a Java type to an associated source paths which
+     * is known to have an up to date entry in the relevant source
+     * file cache. This is used to memoize previous lookups.
+     */
+    private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
+
+    /**
+     * An invalid path used as a marker to track failed lookups
+     * so we don't waste time looking up the source again.
+     * Note that all legitimate paths will end with a ".java"
+     * suffix.
+     */
+    private static final Path INVALID_PATH = Paths.get("invalid");
 
     /**
      * Retrieve the source cache used to locate and cache sources

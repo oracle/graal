@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +26,13 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +42,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * An abstract cache manager for some subspace of the
  * JDK, GraalVM or application source file space. This class
@@ -49,35 +58,35 @@ import java.util.List;
 
 public abstract class SourceCache {
 
-    /*
-     * properties needed to locate relevant JDK and app source roots
-     */
-    protected static final String JAVA_CLASSPATH_PROP = "java.class.path";
-    protected static final String JAVA_HOME_PROP = "java.home";
-    protected static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
-
     /**
-     * Set to true to avoid building the source code cache.
+     * A list of all entries in the classpath used
+     * by the native image classloader
      */
-    protected static final boolean DONT_CACHE = false;
-
+    protected static final List<String> classPathEntries = new ArrayList<>();
     /**
-     * A list of root directories which may contain source files.
-     * files in these directories are used to populate this cache.
+     * A list of all entries in the classpath used
+     * by the native image classloader
+     */
+    protected static final List<String> sourcePathEntries = new ArrayList<>();
+    /**
+     * A list of root directories which may contain source files
+     * from which this cache can be populated
      */
     protected List<Path> srcRoots;
 
     /**
-     * Create a source cache with a specific base type.
-     * @param key a String identifying the subdir under
-     * which sources should be cached which should also
-     * match the type of content being cached
+     * Create some flavour of source cache.
      */
-    protected SourceCache(String key) {
-        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR, key);
+    protected SourceCache() {
+        basePath = Paths.get(SOURCE_CACHE_ROOT_DIR).resolve(getType().getSubdir());
         srcRoots = new ArrayList<>();
-
     }
+
+    /**
+     * Identify the specific type of this source cache
+     * @return the source cache type
+     */
+    protected abstract SourceCacheType getType();
 
     /**
      * A local directory serving as the root for all
@@ -90,44 +99,7 @@ public abstract class SourceCache {
      * under which files belonging to this specific cache
      * are located.
      */
-    private Path basePath;
-    /**
-     * JDK runtime code sources are cached using this key as a
-     * leading path prefix with a module name as a sub-path
-     * prefix when we have a modular JDK.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be jdk/java/lang/Throwable.java on jdk8 or
-     * jdk/java.base/java/lang/Throwable.java on jdk11
-     */
-    protected static final String JDK_CACHE_KEY = "jdk";
-    /**
-     * GraalVM code sources are cached using this key as a
-     * leading path prefix with an enclosing package name
-     * and the name src or src_gen forming a sub-path prefix.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be
-     * graal/com/oracle/svm/core/Isolates.java
-     * or
-     * graal/org/graalvm/compiler/core/phases/LowTier_OptionDescriptors.java
-     */
-    protected static final String GRAALVM_CACHE_KEY = "graal";
-    /**
-     * Application code sources are cached using this key as
-     * a leading path prefix with a name or sequence of
-     * names derived from a classpath jar or dir entry
-     * employed as a sub-path prefix.
-     *
-     * For example, the full file path to a file under the cache
-     * root directory might be
-     * src/Hello.java
-     * or
-     * src/hello/impl/HelloImpl.java
-     * or
-     * src/hibernate-core-5.4.4.Final/org/hibernate/annotations/Entity.java
-     */
-    protected static final String APPLICATION_CACHE_KEY = "src";
+    private final Path basePath;
     /**
      * Cache the source file identified by the supplied prototype
      * path if a legitimate candidate for inclusion in this cache
@@ -158,7 +130,7 @@ public abstract class SourceCache {
      * in the cache derived from the name of some associated class.
      * @return a File identifying a cached candidate or null.
      */
-    private File findCandidate(Path filePath) {
+    public File findCandidate(Path filePath) {
         /*
          * JDK source candidates are stored in the src.zip file
          * using the path we are being asked for. A cached version
@@ -171,7 +143,18 @@ public abstract class SourceCache {
         }
         return null;
     }
-    private Path tryCacheFile(Path filePath) {
+    /**
+     * Attempt to copy a source file from one of this cache's
+     * source roots to the local sources directory storing
+     * it in the subdirectory that belongs to this cache.
+     * @param filePath a path appended to each of the cache's
+     * source roots in turn until an acceptable source file
+     * is found and copied to the local source directory.
+     * @return the supplied path if the file has been located
+     * and copied to the local sources directory or null if
+     * it was not found or the copy failed.
+     */
+    public Path tryCacheFile(Path filePath) {
         for (Path root : srcRoots) {
             Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
@@ -188,9 +171,21 @@ public abstract class SourceCache {
         }
         return null;
     }
-    private Path checkCacheFile(Path filePath) {
+    /**
+     * Check whether the copy of a given source file in the
+     * local source cache is up to date with respect to any
+     * original located in this cache's and if not copy the
+     * original to the subdirectory that belongs to this cache.
+     * @param filePath a path appended to each of the cache's
+     * source roots in turn until an matching original source
+     * is found for comparison against the local source directory.
+     * @return the supplied path if the file is up to date or if
+     * an updated version has been copied to the local sources
+     * directory or null if was not found or the copy failed.
+     */
+    public Path checkCacheFile(Path filePath) {
+        Path targetPath = cachedPath(filePath);
         for (Path root : srcRoots) {
-            Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
             try {
                 if (checkSourcePath(sourcePath)) {
@@ -200,19 +195,23 @@ public abstract class SourceCache {
                         try {
                             Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                         } catch (IOException e) {
+                            /* delete the target file as it is invalid */
+                            targetPath.toFile().delete();
                             return null;
                         }
                     }
                     return filePath;
-                } else {
-                    /* delete the target file as it is out of date */
-                    targetPath.toFile().delete();
                 }
             } catch (IOException e) {
-                // hmm last modified time blew up?
+                /* delete the target file as it is invalid */
+                targetPath.toFile().delete();
+                /* have another go at caching it */
                 return tryCacheFile(filePath);
             }
         }
+        /* delete the target file as it is invalid */
+        targetPath.toFile().delete();
+
         return null;
     }
     /**
@@ -227,13 +226,13 @@ public abstract class SourceCache {
         SourceCache sourceCache = null;
         switch (type) {
             case JDK:
-                sourceCache = DONT_CACHE ? new NullSourceCache(JDK_CACHE_KEY) : new JDKSourceCache();
+                sourceCache = new JDKSourceCache();
                 break;
             case GRAALVM:
-                sourceCache = DONT_CACHE ? new NullSourceCache(GRAALVM_CACHE_KEY) : new GraalVMSourceCache();
+                sourceCache = new GraalVMSourceCache();
                 break;
             case APPLICATION:
-                sourceCache = DONT_CACHE ? new NullSourceCache(APPLICATION_CACHE_KEY) : new ApplicationSourceCache();
+                sourceCache = new ApplicationSourceCache();
                 break;
             default:
                 assert false;
@@ -242,7 +241,7 @@ public abstract class SourceCache {
     }
     /**
      * Extend a root path form one file system using a path potentially derived
-     * from another file system by converting the latter to a text string and
+     * from another file system by converting he latter to a text string and
      * replacing the file separator if necessary.
      * @param root the path to be extended
      * @param filePath the subpath to extend it with
@@ -259,7 +258,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * convert a potential resolved candidate path to
+     * Convert a potential resolved candidate path to
      * the corresponding local Path in this cache.
      * @param candidate a resolved candidate path for
      * some given resolution request
@@ -269,7 +268,7 @@ public abstract class SourceCache {
         return basePath.resolve(candidate);
     }
     /**
-     * convert a potential resolved candidate path to
+     * Convert a potential resolved candidate path to
      * the corresponding local File in this cache.
      * @param candidate a resolved candidate path for
      * some given resolution request
@@ -279,17 +278,20 @@ public abstract class SourceCache {
         return cachedPath(candidate).toFile();
     }
     /**
-     * indicate whether a source path identifies a file in the associated file system.
+     * Indicate whether a source path identifies a
+     * file in the associated file system.
      * @param sourcePath
-     * @return true if the path identifies a file or false if no such file can be found
-     * @throws IOException if there is some error in resolving the path
+     * @return true if the path identifies a file or
+     * false if no such file can be found.
+     * @throws IOException if there is some error in
+     * resolving the path.
      */
     private boolean checkSourcePath(Path sourcePath) throws IOException {
         return Files.isRegularFile(sourcePath);
     }
     /**
-     * Ensure the directory hierarchy for a path exists.
-     * Create any missing directories if needed.
+     * Ensure the directory hierarchy for a path exists
+     * creating any missing directories if needed.
      * @param targetDir a path to the desired directory
      * @throws IOException if it is not possible to create
      * one or more directories in the path
@@ -299,6 +301,43 @@ public abstract class SourceCache {
             File targetFile = targetDir.toFile();
             if (!targetFile.exists()) {
                 targetDir.toFile().mkdirs();
+            }
+        }
+    }
+    /**
+     * Add a path to the list of classpath entries
+     * @param path The path to add.
+     */
+    private static void addClassPathEntry(String path) {
+        classPathEntries.add(path);
+    }
+
+    /**
+     * Add a path to the list of source path entries
+     * @param path The path to add.
+     */
+    private static void addSourcePathEntry(String path) {
+        sourcePathEntries.add(path);
+    }
+
+    /**
+     * An automatic feature class which acquires the image
+     * loader class path via the  afterAnalysis callback.
+     */
+    @AutomaticFeature
+    public static class SourceCacheFeature implements Feature {
+        @Override
+        public void afterAnalysis(AfterAnalysisAccess access) {
+            FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+            ImageClassLoader loader = accessImpl.getImageClassLoader();
+            for (String entry : loader.getClasspath()) {
+                addClassPathEntry(entry);
+            }
+            // also add any necessary source path entries
+            if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
+                for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
+                    addSourcePathEntry(searchPathEntry);
+                }
             }
         }
     }

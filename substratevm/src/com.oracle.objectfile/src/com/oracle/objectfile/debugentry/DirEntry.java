@@ -24,24 +24,33 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.image.sources;
+package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
-public enum SourceCacheType {
-    JDK("jdk"),
-    GRAALVM("graal"),
-    APPLICATION("src");
+/**
+ * Tracks the directory associated with one or
+ * more source files.
+ *
+ * This is identified separately from each FileEntry
+ * idenityfing files that reside in the directory.
+ * That is necessary because the line info generator
+ * needs to collect and write out directory names
+ * into directory tables once only rather than once
+ * per file.
+ */
+public class DirEntry {
+    private Path path;
 
-    final Path subdir;
-
-    SourceCacheType(String subdir) {
-        this.subdir = Paths.get(subdir);
+    public DirEntry(Path path) {
+        this.path = path;
     }
 
-    public Path getSubdir() {
-        return subdir;
+    public Path getPath() {
+        return path;
     }
 
+    public String getPathString() {
+        return path.toString();
+    }
 }

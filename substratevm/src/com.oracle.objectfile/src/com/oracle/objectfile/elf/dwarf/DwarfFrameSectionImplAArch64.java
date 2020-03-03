@@ -24,24 +24,42 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.image.sources;
+package com.oracle.objectfile.elf.dwarf;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+/**
+ * AArch64-specific section generator for debug_frame section
+ * that knows details of AArch64 registers and frame layout.
+ */
+public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
+    public static final int DW_CFA_FP_IDX = 29;
+    public static final int DW_CFA_LR_IDX = 30;
+    public static final int DW_CFA_SP_IDX = 31;
+    public static final int DW_CFA_PC_IDX = 32;
 
-public enum SourceCacheType {
-    JDK("jdk"),
-    GRAALVM("graal"),
-    APPLICATION("src");
-
-    final Path subdir;
-
-    SourceCacheType(String subdir) {
-        this.subdir = Paths.get(subdir);
+    public DwarfFrameSectionImplAArch64(DwarfSections dwarfSections) {
+        super(dwarfSections);
     }
 
-    public Path getSubdir() {
-        return subdir;
+    @Override
+    public int getPCIdx() {
+        return DW_CFA_PC_IDX;
     }
 
+    @Override
+    public int getSPIdx() {
+        return DW_CFA_SP_IDX;
+    }
+
+    @Override
+    public int writeInitialInstructions(byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * rsp has not been updated
+         * caller pc is in lr
+         * register r32 (rpc), r30 (lr)
+         */
+        pos = writeRegister(DW_CFA_PC_IDX, DW_CFA_LR_IDX, buffer, pos);
+        return pos;
+    }
 }
+

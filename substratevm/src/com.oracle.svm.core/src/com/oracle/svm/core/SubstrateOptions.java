@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static org.graalvm.compiler.options.OptionType.User;
-
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
@@ -396,18 +394,12 @@ public class SubstrateOptions {
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
-    @APIOption(name = "native-compiler-path")//
     @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
-    @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
 
-    @APIOption(name = "native-image-info")//
-    @Option(help = "Show native-toolchain information and image-build settings", type = User)//
-    public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
-
-    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
+    @Option(help = "Provide a path for the libmusl bundle so the resulting object file is linked against it.", type = OptionType.Expert)//
     public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
 
     /**
@@ -430,4 +422,7 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
+    public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
+    };
 }

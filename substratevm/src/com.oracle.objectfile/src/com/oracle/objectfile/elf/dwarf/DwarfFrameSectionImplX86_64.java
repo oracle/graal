@@ -24,24 +24,45 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.image.sources;
+package com.oracle.objectfile.elf.dwarf;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+/**
+ * x86_64-specific section generator for debug_frame section
+ * that knows details of x86_64 registers and frame layout.
+ */
+public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
+    public static final int DW_CFA_RSP_IDX = 7;
+    public static final int DW_CFA_RIP_IDX = 16;
 
-public enum SourceCacheType {
-    JDK("jdk"),
-    GRAALVM("graal"),
-    APPLICATION("src");
-
-    final Path subdir;
-
-    SourceCacheType(String subdir) {
-        this.subdir = Paths.get(subdir);
+    public DwarfFrameSectionImplX86_64(DwarfSections dwarfSections) {
+        super(dwarfSections);
     }
 
-    public Path getSubdir() {
-        return subdir;
+    @Override
+    public int getPCIdx() {
+        return DW_CFA_RIP_IDX;
     }
 
+    @Override
+    public int getSPIdx() {
+        return DW_CFA_RSP_IDX;
+    }
+
+    @Override
+    public int writeInitialInstructions(byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * rsp points at the word containing the saved rip
+         * so the frame base (cfa) is at rsp + 8 (why not - ???)
+         * def_cfa r7 (sp) offset 8
+         */
+        pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
+        /*
+         * and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
+         * (why not -1 ???)
+         * offset r16 (rip) cfa - 8
+         */
+        pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
+        return pos;
+    }
 }

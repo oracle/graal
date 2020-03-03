@@ -60,7 +60,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
 
     @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
-    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+    public static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);

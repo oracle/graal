@@ -59,7 +59,6 @@ import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedType;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.LineNumberTable;
-
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
