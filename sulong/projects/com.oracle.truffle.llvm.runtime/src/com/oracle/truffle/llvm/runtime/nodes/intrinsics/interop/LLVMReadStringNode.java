@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNodeGen.PointerReadStringNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -121,7 +121,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
     abstract static class PointerReadStringNode extends LLVMNode {
 
-        @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create(null);
+        @Child private LLVMLoadNode read = LLVMI8LoadNode.create();
 
         protected abstract String execute(Object address);
 

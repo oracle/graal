@@ -29,26 +29,36 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    public static LLVMI16LoadNode create() {
+        return LLVMI16LoadNodeGen.create((LLVMExpressionNode) null);
+    }
+
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected short doShortNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
         return language.getLLVMMemory().getI16(addr);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected short doShortDerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doShortManaged(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doShortManaged(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3")

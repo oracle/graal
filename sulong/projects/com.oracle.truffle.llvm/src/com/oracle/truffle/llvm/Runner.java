@@ -56,6 +56,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,6 +65,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.RunnerFactory.StaticInitsNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -1126,12 +1129,11 @@ final class Runner {
         initializationOrder.add(module);
     }
 
-    private static final class StaticInitsNode extends LLVMStatementNode {
+    abstract static class StaticInitsNode extends LLVMStatementNode {
 
         @Children final LLVMStatementNode[] statements;
         final Object moduleName;
         final String prefix;
-        @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
         StaticInitsNode(LLVMStatementNode[] statements, String prefix, Object moduleName) {
             this.statements = statements;
@@ -1140,13 +1142,9 @@ final class Runner {
         }
 
         @ExplodeLoop
-        @Override
-        public void execute(VirtualFrame frame) {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.ctxRef = lookupContextReference(LLVMLanguage.class);
-            }
-            LLVMContext ctx = ctxRef.get();
+        @Specialization
+        public void doInit(VirtualFrame frame,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             if (ctx.loaderTraceStream() != null) {
                 traceExecution(ctx);
             }
@@ -1241,7 +1239,7 @@ final class Runner {
             }
         }
         LLVMStatementNode[] initNodes = globalNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
-        return new StaticInitsNode(initNodes, "global variable initializers", moduleName);
+        return StaticInitsNodeGen.create(initNodes, "global variable initializers", moduleName);
     }
 
     private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
@@ -1278,13 +1276,13 @@ final class Runner {
     }
 
     private static StaticInitsNode createConstructor(LLVMParserResult parserResult, Object moduleName) {
-        return new StaticInitsNode(createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY), "init", moduleName);
+        return StaticInitsNodeGen.create(createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY), "init", moduleName);
     }
 
     private RootCallTarget createDestructor(LLVMParserResult parserResult, Object moduleName) {
         LLVMStatementNode[] destructor = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructor.length > 0) {
-            LLVMStatementRootNode root = new LLVMStatementRootNode(language, new StaticInitsNode(destructor, "fini", moduleName), StackManager.createRootFrame());
+            LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructor, "fini", moduleName), StackManager.createRootFrame());
             return Truffle.getRuntime().createCallTarget(root);
         } else {
             return null;

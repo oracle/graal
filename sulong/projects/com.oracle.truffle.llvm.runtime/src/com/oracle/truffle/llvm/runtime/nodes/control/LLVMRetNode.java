@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,6 +82,18 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     }
 
     public abstract Object execute(VirtualFrame frame);
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1RetNode extends LLVMRetNode {

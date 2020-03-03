@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue.ManagedToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.spi.ReferenceLibrary;
@@ -196,29 +197,24 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
     }
 
-    public static final class LLVMNegateNode extends LLVMAbstractCompareNode {
+    public abstract static class LLVMNegateNode extends LLVMAbstractCompareNode {
         @Child private LLVMAbstractCompareNode booleanExpression;
 
-        private LLVMNegateNode(LLVMAbstractCompareNode booleanExpression) {
+        LLVMNegateNode(LLVMAbstractCompareNode booleanExpression) {
             this.booleanExpression = booleanExpression;
         }
 
         public static LLVMAbstractCompareNode create(LLVMAbstractCompareNode booleanExpression) {
-            return new LLVMNegateNode(booleanExpression);
+            return LLVMNegateNodeGen.create(booleanExpression);
         }
 
         @Override
-        public boolean executeWithTarget(Object a, Object b) {
+        public final boolean executeWithTarget(Object a, Object b) {
             return !booleanExpression.executeWithTarget(a, b);
         }
 
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeGenericBoolean(frame);
-        }
-
-        @Override
-        public boolean executeGenericBoolean(VirtualFrame frame) {
+        @Specialization
+        public boolean doNegate(VirtualFrame frame) {
             return !booleanExpression.executeGenericBoolean(frame);
         }
     }

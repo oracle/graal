@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,20 +30,25 @@
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNodeFactory.LLVMConditionalBranchNodeImplNodeGen;
 
 @GenerateWrapper
+@NodeField(name = "trueSuccessor", type = int.class)
+@NodeField(name = "falseSuccessor", type = int.class)
+@NodeChild(value = "condition", type = LLVMExpressionNode.class)
 public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     public static LLVMConditionalBranchNode create(int trueSuccessor, int falseSuccessor, LLVMStatementNode truePhi, LLVMStatementNode falsePhi, LLVMExpressionNode condition) {
-        return new LLVMConditionalBranchNodeImpl(trueSuccessor, falseSuccessor, truePhi, falsePhi, condition);
+        return LLVMConditionalBranchNodeImplNodeGen.create(truePhi, falsePhi, condition, trueSuccessor, falseSuccessor);
     }
 
     public static final int TRUE_SUCCESSOR = 0;
@@ -60,20 +65,26 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     public abstract int getFalseSuccessor();
 
-    private static final class LLVMConditionalBranchNodeImpl extends LLVMConditionalBranchNode {
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
 
-        @Child private LLVMExpressionNode condition;
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
+
+    abstract static class LLVMConditionalBranchNodeImpl extends LLVMConditionalBranchNode {
+
         @Child private LLVMStatementNode truePhi;
         @Child private LLVMStatementNode falsePhi;
-        private final int trueSuccessor;
-        private final int falseSuccessor;
 
-        private LLVMConditionalBranchNodeImpl(int trueSuccessor, int falseSuccessor, LLVMStatementNode truePhi, LLVMStatementNode falsePhi, LLVMExpressionNode condition) {
-            this.trueSuccessor = trueSuccessor;
-            this.falseSuccessor = falseSuccessor;
+        LLVMConditionalBranchNodeImpl(LLVMStatementNode truePhi, LLVMStatementNode falsePhi) {
             this.truePhi = truePhi;
             this.falsePhi = falsePhi;
-            this.condition = condition;
         }
 
         @Override
@@ -97,24 +108,9 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
             }
         }
 
-        @Override
-        public boolean executeCondition(VirtualFrame frame) {
-            try {
-                return condition.executeI1(frame);
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-
-        @Override
-        public int getTrueSuccessor() {
-            return trueSuccessor;
-        }
-
-        @Override
-        public int getFalseSuccessor() {
-            return falseSuccessor;
+        @Specialization
+        public boolean doCondition(boolean condition) {
+            return condition;
         }
     }
 }

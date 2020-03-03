@@ -116,31 +116,39 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVM80BitFloatLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMDoubleLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMFloatLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI16LiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMNativePointerLiteralNode;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVM80BitFloatLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMFloatLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI16LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI1LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI32LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI64LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI8LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMIVarBitLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMNativePointerLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNode.LLVMPointerDirectLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMStructDirectLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
@@ -239,21 +247,44 @@ public class CommonNodeFactory {
     public static LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
-                return LLVMI1LoadNodeGen.create(null);
+                return LLVMI1LoadNode.create();
             case I8:
-                return LLVMI8LoadNodeGen.create(null);
+                return LLVMI8LoadNode.create();
             case I16:
-                return LLVMI16LoadNodeGen.create(null);
+                return LLVMI16LoadNode.create();
             case I32:
-                return LLVMI32LoadNodeGen.create(null);
+                return LLVMI32LoadNode.create();
             case I64:
-                return LLVMI64LoadNodeGen.create(null);
+                return LLVMI64LoadNode.create();
             case FLOAT:
-                return LLVMFloatLoadNodeGen.create(null);
+                return LLVMFloatLoadNode.create();
             case DOUBLE:
-                return LLVMDoubleLoadNodeGen.create(null);
+                return LLVMDoubleLoadNode.create();
             case POINTER:
-                return LLVMPointerDirectLoadNodeGen.create(null);
+                return LLVMPointerDirectLoadNode.create();
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
+    public static LLVMLoadNode getUncachedLoadNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1LoadNodeGen.getUncached();
+            case I8:
+                return LLVMI8LoadNodeGen.getUncached();
+            case I16:
+                return LLVMI16LoadNodeGen.getUncached();
+            case I32:
+                return LLVMI32LoadNodeGen.getUncached();
+            case I64:
+                return LLVMI64LoadNodeGen.getUncached();
+            case FLOAT:
+                return LLVMFloatLoadNodeGen.getUncached();
+            case DOUBLE:
+                return LLVMDoubleLoadNodeGen.getUncached();
+            case POINTER:
+                return LLVMPointerDirectLoadNodeGen.getUncached();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
@@ -277,6 +308,29 @@ public class CommonNodeFactory {
                 return LLVMDoubleStoreNodeGen.create(null, null);
             case POINTER:
                 return LLVMPointerStoreNodeGen.create(null, null);
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
+    public static LLVMStoreNode getUncachedStoreNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1StoreNodeGen.getUncached();
+            case I8:
+                return LLVMI8StoreNodeGen.getUncached();
+            case I16:
+                return LLVMI16StoreNodeGen.getUncached();
+            case I32:
+                return LLVMI32StoreNodeGen.getUncached();
+            case I64:
+                return LLVMI64StoreNodeGen.getUncached();
+            case FLOAT:
+                return LLVMFloatStoreNodeGen.getUncached();
+            case DOUBLE:
+                return LLVMDoubleStoreNodeGen.getUncached();
+            case POINTER:
+                return LLVMPointerStoreNodeGen.getUncached();
             default:
                 throw new IllegalStateException("unexpected interop kind " + kind);
         }
@@ -573,12 +627,12 @@ public class CommonNodeFactory {
     }
 
     public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type) {
-        LLVMExpressionNode callNode = new LLVMCallNode(type, functionNode, argNodes, true);
+        LLVMExpressionNode callNode = LLVMCallNode.create(type, functionNode, argNodes, true);
         return LLVMValueProfilingNode.create(callNode, type.getReturnType());
     }
 
     public static LLVMStatementNode createDebugTrap() {
-        return new LLVMDebugTrapNode();
+        return LLVMDebugTrapNodeGen.create();
     }
 
     public static LLVMDebugValue.Builder createDebugDeclarationBuilder() {
@@ -743,46 +797,46 @@ public class CommonNodeFactory {
             Number c = (Number) constant;
             try {
                 if (Long.compareUnsigned(type.getBitSize(), Long.SIZE) <= 0) {
-                    return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(((VariableBitWidthType) type).getBitSizeInt(), c.longValue()));
+                    return LLVMIVarBitLiteralNodeGen.create(LLVMIVarBit.fromLong(((VariableBitWidthType) type).getBitSizeInt(), c.longValue()));
                 } else {
-                    return new LLVMIVarBitLiteralNode(LLVMIVarBit.fromBigInteger(((VariableBitWidthType) type).getBitSizeInt(), (BigInteger) c));
+                    return LLVMIVarBitLiteralNodeGen.create(LLVMIVarBit.fromBigInteger(((VariableBitWidthType) type).getBitSizeInt(), (BigInteger) c));
                 }
             } catch (TypeOverflowException e) {
                 return Type.handleOverflowExpression(e);
             }
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             if (constant == null) {
-                return new LLVMNativePointerLiteralNode(LLVMNativePointer.create(0));
+                return LLVMNativePointerLiteralNodeGen.create(LLVMNativePointer.create(0));
             } else {
                 throw new AssertionError("Not a Simple Constant: " + constant);
             }
         } else if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
-                    return new LLVMI1LiteralNode((boolean) constant);
+                    return LLVMI1LiteralNodeGen.create((boolean) constant);
                 case I8:
-                    return new LLVMI8LiteralNode((byte) constant);
+                    return LLVMI8LiteralNodeGen.create((byte) constant);
                 case I16:
-                    return new LLVMI16LiteralNode((short) constant);
+                    return LLVMI16LiteralNodeGen.create((short) constant);
                 case I32:
-                    return new LLVMI32LiteralNode((int) constant);
+                    return LLVMI32LiteralNodeGen.create((int) constant);
                 case FLOAT:
-                    return new LLVMFloatLiteralNode((float) constant);
+                    return LLVMFloatLiteralNodeGen.create((float) constant);
                 case DOUBLE:
-                    return new LLVMDoubleLiteralNode((double) constant);
+                    return LLVMDoubleLiteralNodeGen.create((double) constant);
                 case X86_FP80:
                     if (constant == null) {
-                        return new LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromLong(0));
+                        return LLVM80BitFloatLiteralNodeGen.create(LLVM80BitFloat.fromLong(0));
                     } else {
-                        return new LLVM80BitFloatLiteralNode(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
+                        return LLVM80BitFloatLiteralNodeGen.create(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
                     }
                 case I64:
-                    return new LLVMI64LiteralNode((long) constant);
+                    return LLVMI64LiteralNodeGen.create((long) constant);
                 default:
                     throw new AssertionError(type);
             }
         } else if (type == MetaType.DEBUG) {
-            return new LLVMNativePointerLiteralNode(LLVMNativePointer.createNull());
+            return LLVMNativePointerLiteralNodeGen.create(LLVMNativePointer.createNull());
         } else {
             throw new AssertionError(type);
         }

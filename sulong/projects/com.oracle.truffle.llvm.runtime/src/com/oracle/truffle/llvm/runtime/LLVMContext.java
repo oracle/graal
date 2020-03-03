@@ -53,6 +53,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -65,6 +66,7 @@ import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
+import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -219,7 +221,7 @@ public final class LLVMContext {
         return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
     }
 
-    private static final class InitializeContextNode extends LLVMStatementNode {
+    abstract static class InitializeContextNode extends LLVMStatementNode {
 
         @CompilationFinal private ContextReference<LLVMContext> ctxRef;
         private final FrameSlot stackPointer;
@@ -235,8 +237,8 @@ public final class LLVMContext {
             this.initContext = DirectCallNode.create(initContextFunction);
         }
 
-        @Override
-        public void execute(VirtualFrame frame) {
+        @Specialization
+        public void doInit(VirtualFrame frame) {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ctxRef = lookupContextReference(LLVMLanguage.class);
@@ -333,7 +335,7 @@ public final class LLVMContext {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
-        return new InitializeContextNode(this, rootFrame);
+        return InitializeContextNodeGen.create(this, rootFrame);
     }
 
     public Toolchain getToolchain() {

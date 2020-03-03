@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,31 +29,31 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode leftNode;
     @Child private LLVMExpressionNode rightNode;
 
+    @Child private ShortCircuitOpNode op;
+
     private final ConditionProfile evaluateRightProfile = ConditionProfile.createCountingProfile();
 
-    public DebugExprShortCircuitEvaluationNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode) {
+    public DebugExprShortCircuitEvaluationNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode, ShortCircuitOpNode op) {
         this.leftNode = leftNode;
         this.rightNode = rightNode;
+        this.op = op;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeI1(frame);
-    }
-
-    @Override
-    public final boolean executeI1(VirtualFrame frame) {
+    @Specialization
+    public final boolean doShortCircuit(VirtualFrame frame) {
         boolean leftValue;
         try {
             leftValue = leftNode.executeI1(frame);
@@ -62,7 +62,7 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
         }
         boolean rightValue;
         try {
-            if (evaluateRightProfile.profile(shouldEvaluateRight(leftValue))) {
+            if (evaluateRightProfile.profile(op.shouldEvaluateRight(leftValue))) {
                 rightValue = rightNode.executeI1(frame);
             } else {
                 rightValue = false;
@@ -70,19 +70,21 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
         } catch (UnexpectedResultException e) {
             throw DebugExprException.typeError(this, leftValue, e.getResult());
         }
-        return execute(leftValue, rightValue);
+        return op.execute(leftValue, rightValue);
     }
 
-    /**
-     * Based on the value of the first term (='leftValue'), this method tells if the second term
-     * (='rightValue') is needed for the (short circuit) evaluation of the expression.
-     */
-    protected abstract boolean shouldEvaluateRight(boolean leftValue);
+    abstract static class ShortCircuitOpNode extends LLVMNode {
 
-    /**
-     * Calculates the result of the short circuit operation. If 'shouldEvaluateRight(leftValue)'
-     * returns false, then this method will be called with rightValue=false.
-     */
-    protected abstract boolean execute(boolean leftValue, boolean rightValue);
+        /**
+         * Based on the value of the first term (='leftValue'), this method tells if the second term
+         * (='rightValue') is needed for the (short circuit) evaluation of the expression.
+         */
+        protected abstract boolean shouldEvaluateRight(boolean leftValue);
 
+        /**
+         * Calculates the result of the short circuit operation. If 'shouldEvaluateRight(leftValue)'
+         * returns false, then this method will be called with rightValue=false.
+         */
+        protected abstract boolean execute(boolean leftValue, boolean rightValue);
+    }
 }
