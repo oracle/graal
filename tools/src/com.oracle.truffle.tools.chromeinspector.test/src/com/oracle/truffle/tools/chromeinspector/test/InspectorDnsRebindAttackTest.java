@@ -134,7 +134,6 @@ public class InspectorDnsRebindAttackTest {
         testDnsRebind(host, "/json", valid);
         testDnsRebind(host, "/json/version", valid);
         testDnsRebind(host, "/some-nonsense", valid);
-        testDnsRebind(host, "ws:/testPath-" + SecureInspectorPathGenerator.getToken(), valid);
     }
 
     private void testDnsRebind(String host, String path, boolean valid) throws IOException {
