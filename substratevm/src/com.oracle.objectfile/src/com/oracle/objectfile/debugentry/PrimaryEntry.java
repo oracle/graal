@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
@@ -104,11 +104,11 @@ public class PrimaryEntry {
         return subrangeIndex.get(subrange);
     }
 
-    List<DebugFrameSizeChange> getFrameSizeInfos() {
+    public List<DebugFrameSizeChange> getFrameSizeInfos() {
         return frameSizeInfos;
     }
 
-    int getFrameSize() {
+    public int getFrameSize() {
         return frameSize;
     }
 }
