@@ -35,9 +35,12 @@ truffleWeekly: ${truffle-weekly-notifications} {
 }
 
 simpleToolMavenProjectGate:  {
+    packages : {
+      maven : "==3.3.9"
+    }
     run : [
         ["mx", "build"],
-        ["mx", "maven-deploy", "--all-suites" "--all-distribution-types", "--version-string", "GATE"],
+        ["mx", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", "GATE"],
         ["set-export", "JAVA_HOME", ["mx", "graalvm-home"]],
         ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/simpletool"]],
         ["rm", "-rf", "simpletool/*"],
