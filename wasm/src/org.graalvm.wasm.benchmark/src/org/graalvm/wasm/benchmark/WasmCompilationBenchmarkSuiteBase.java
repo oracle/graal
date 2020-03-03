@@ -48,6 +48,7 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.IOException;
@@ -68,13 +69,18 @@ public abstract class WasmCompilationBenchmarkSuiteBase {
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
         }
 
-        @Setup(Level.Iteration)
-        public void setupIteration() {
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
             context = contextBuilder.build();
         }
 
+        @TearDown(Level.Invocation)
+        public void teardownInvocation() {
+            context.close();
+            context = null;
+        }
 
         public void run() throws IOException, InterruptedException {
             benchmarkCase.getSources().forEach(context::eval);
