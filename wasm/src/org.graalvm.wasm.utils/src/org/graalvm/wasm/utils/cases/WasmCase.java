@@ -101,7 +101,7 @@ public abstract class WasmCase {
             sources.add(source);
         }
         return sources;
-    };
+    }
 
     public abstract Map<String, byte[]> createBinaries() throws IOException, InterruptedException;
 

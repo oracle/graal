@@ -137,7 +137,6 @@ public abstract class WasmBenchmarkSuiteBase {
             benchmarkSetupEach.execute();
         }
 
-
         @TearDown(Level.Invocation)
         public void teardownInvocation() {
             benchmarkTeardownEach.execute();

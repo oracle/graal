@@ -227,7 +227,7 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         parser = argparse.ArgumentParser()
         parser.add_argument("--jvm-config")
         jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
-        return jvm_config == "node" or jvm_config == "native"
+        return jvm_config in ("node", "native")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
