@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
-import java.io.IOException;
+public interface HeapDumpSupport {
 
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
+    void dumpHeap(String outputFile, boolean live) throws java.io.IOException;
 
-/**
- * Used for doing VM runtime operations.
- *
- * @since 19.0
- */
-public final class VMRuntime {
-
-    /**
-     * Initializes the VM: Runs all startup hooks that were registered during image building.
-     * Startup hooks usually depend on option values, so it is recommended (but not required) that
-     * all option values are set before calling this method.
-     * <p>
-     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
-     * the first invocation.
-     *
-     * @since 19.0
-     */
-    public static void initialize() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).executeStartupHooks();
-    }
-
-    /**
-     * Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.
-     *
-     * @since 19.0
-     */
-    public static void shutdown() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).shutdown();
-    }
-
-    /**
-     * Dumps the heap to the {@code outputFile} file in the same format as the hprof heap dump.
-     *
-     * @throws UnsupportedOperationException if this operation is not supported.
-     *
-     * @since 20.1
-     */
-    public static void dumpHeap(String outputFile, boolean live) throws IOException {
-        if (!ImageSingletons.contains(HeapDumpSupport.class)) {
-            throw new UnsupportedOperationException();
-        }
-        ImageSingletons.lookup(HeapDumpSupport.class).dumpHeap(outputFile, live);
-    }
-
-    private VMRuntime() {
-    }
 }

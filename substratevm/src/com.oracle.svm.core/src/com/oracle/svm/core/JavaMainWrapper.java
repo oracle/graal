@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core;
 
+//Checkstyle: allow reflection
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-//Checkstyle: allow reflection
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -48,6 +48,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
@@ -57,7 +58,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -67,7 +67,6 @@ public class JavaMainWrapper {
     /* C runtime argument count and argument vector */
     private static int argc;
     private static CCharPointerPointer argv;
-    /* Remember original argument vector length */
 
     static {
         /* WordFactory.boxFactory is initialized by the static initializer of Word. */
@@ -186,6 +185,16 @@ public class JavaMainWrapper {
         return runCore(paramArgc, paramArgv);
     }
 
+    private static void checkArgumentBlockSupported() {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
+            if (argv.isNull() || argc <= 0) {
+                throw new UnsupportedOperationException("Argument vector not accessible (called from shared library image?)");
+            }
+            return;
+        }
+        throw new UnsupportedOperationException("Argument vector manipulation unsupported for platform " + ImageSingletons.lookup(Platform.class).getClass().getName());
+    }
+
     /**
      * Argv is an array of C strings (i.e. array of pointers to characters). Each entry points to a
      * different C string corresponding to a program argument. The program argument strings
@@ -200,8 +209,12 @@ public class JavaMainWrapper {
      * @return maximum length of C chars that can be stored in the program argument part of the
      *         contiguous memory block without writing into the environment variables part.
      */
-    public static long getCRuntimeArgumentBlockLength() {
-        VMError.guarantee(argv.notEqual(WordFactory.zero()) && argc > 0, "Requires JavaMainWrapper.run(int, CCharPointerPointer) entry point!");
+    public static int getCRuntimeArgumentBlockLength() {
+        try {
+            checkArgumentBlockSupported();
+        } catch (UnsupportedOperationException e) {
+            return -1;
+        }
 
         CCharPointer firstArgPos = argv.read(0);
         if (argvLength.equal(WordFactory.zero())) {
@@ -212,10 +225,11 @@ public class JavaMainWrapper {
             // Determine maximum C string length that can be stored in the program argument part
             argvLength = WordFactory.unsigned(lastArgPos.rawValue()).add(lastArgLength).subtract(WordFactory.unsigned(firstArgPos.rawValue()));
         }
-        return argvLength.rawValue();
+        return Math.toIntExact(argvLength.rawValue());
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
+        checkArgumentBlockSupported();
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -241,6 +255,7 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
+        checkArgumentBlockSupported();
         return CTypeConversion.toJavaString(argv.read(0));
     }
 

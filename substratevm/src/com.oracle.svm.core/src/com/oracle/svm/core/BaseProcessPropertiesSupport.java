@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
+package com.oracle.svm.core;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
-@AutomaticFeature
-public class RuntimeFeature implements Feature {
-
+public abstract class BaseProcessPropertiesSupport implements ProcessPropertiesSupport {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        RuntimeSupport.initializeRuntimeSupport();
-        ImageSingletons.add(VMRuntimeSupport.class, RuntimeSupport.getRuntimeSupport());
+    public int getArgumentVectorBlockSize() {
+        return JavaMainWrapper.getCRuntimeArgumentBlockLength();
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().sortCommandPlugins();
+    public String getArgumentVectorProgramName() {
+        return JavaMainWrapper.getCRuntimeArgument0();
+    }
+
+    @Override
+    public boolean setArgumentVectorProgramName(String name) {
+        return JavaMainWrapper.setCRuntimeArgument0(name);
     }
 }
