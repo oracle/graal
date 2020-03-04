@@ -100,10 +100,26 @@ public class GraalTest {
     }
 
     protected Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        try {
-            return clazz.getMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new RuntimeException("method not found: " + methodName + "" + Arrays.toString(parameterTypes));
+        Method found = null;
+        for (Method m : clazz.getMethods()) {
+            if (m.getName().equals(methodName) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                Assert.assertNull(found);
+                found = m;
+            }
+        }
+        if (found == null) {
+            /* Now look for non-public methods (but this does not look in superclasses). */
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(methodName) && Arrays.equals(m.getParameterTypes(), parameterTypes)) {
+                    Assert.assertNull(found);
+                    found = m;
+                }
+            }
+        }
+        if (found != null) {
+            return found;
+        } else {
+            throw new RuntimeException("method not found: " + methodName + " " + Arrays.toString(parameterTypes));
         }
     }
 
