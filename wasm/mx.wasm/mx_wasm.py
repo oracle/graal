@@ -472,7 +472,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 def wasm(args):
     """Run a WebAssembly program."""
     mx.get_opts().jdk = "jvmci"
-    vmArgs, wasmArgs = mx.extract_VM_args(args)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
     path_args = mx_truffle._path_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",
