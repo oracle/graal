@@ -34,6 +34,7 @@ import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.WordFactory;
 
 /**
  * Calls from SVM to HotSpot.
@@ -56,6 +57,14 @@ final class SVMToHotSpotCalls {
     private static final String[] METHOD_LOAD_CLASS = {
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;"
+    };
+    private static final String[] METHOD_GET_MESSAGE = {
+                    "getMessage",
+                    "()Ljava/lang/String;"
+    };
+    private static final String[] METHOD_GET_CLASS_NAME = {
+                    "getName",
+                    "()Ljava/lang/String;"
     };
 
     private SVMToHotSpotCalls() {
@@ -86,6 +95,22 @@ final class SVMToHotSpotCalls {
         if (JNIUtil.ExceptionCheck(env)) {
             JNIUtil.ExceptionDescribe(env);
         }
+    }
+
+    /**
+     * Calls {@link Class#getName()} on a class in HotSpot heap.
+     */
+    static JNI.JString getClassName(JNI.JNIEnv env, JNI.JClass exception) {
+        JNI.JMethodID getClassNameId = findMethod(env, JNIUtil.GetObjectClass(env, exception), false, METHOD_GET_CLASS_NAME);
+        return (JNI.JString) env.getFunctions().getCallObjectMethodA().call(env, exception, getClassNameId, WordFactory.nullPointer());
+    }
+
+    /**
+     * Calls {@link Throwable#getMessage()} on an exception in HotSpot heap.
+     */
+    static JNI.JString getExceptionMessage(JNI.JNIEnv env, JNI.JThrowable exception) {
+        JNI.JMethodID getMessageId = findMethod(env, JNIUtil.GetObjectClass(env, exception), false, METHOD_GET_MESSAGE);
+        return (JNI.JString) env.getFunctions().getCallObjectMethodA().call(env, exception, getMessageId, WordFactory.nullPointer());
     }
 
     /**

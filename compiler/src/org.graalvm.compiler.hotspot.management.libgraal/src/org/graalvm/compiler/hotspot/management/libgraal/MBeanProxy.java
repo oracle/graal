@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import static org.graalvm.libgraal.jni.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -254,17 +257,52 @@ class MBeanProxy<T extends DynamicMBean> {
      * @param className the class name
      */
     private static JNI.JClass findClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String className) {
-        try {
-            if (classLoader.isNonNull()) {
+        if (classLoader.isNonNull()) {
+            try {
                 return SVMToHotSpotCalls.findClass(env, classLoader, className);
-            } else {
-                try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
-                    return JNIUtil.FindClass(env, name.get());
-                }
+            } finally {
+                checkException(env, className, ClassNotFoundException.class);
             }
-        } finally {
-            // Clear ClassNotFoundException if not found
-            JNIUtil.ExceptionClear(env);
+        } else {
+            try {
+                return findClassImpl(env, className);
+            } finally {
+                checkException(env, className, NoClassDefFoundError.class);
+            }
+        }
+    }
+
+    /**
+     * Checks and clears JNI pending exception. If the pending exception type is not allowed by
+     * {@code allowedExceptions} it throws an {@link InternalError}.
+     */
+    @SafeVarargs
+    private static void checkException(JNI.JNIEnv env, String className, Class<? extends Throwable>... allowedExceptions) {
+        if (JNIUtil.ExceptionCheck(env)) {
+            try {
+                JNI.JThrowable exception = JNIUtil.ExceptionOccurred(env);
+                JNI.JClass exceptionClass = JNIUtil.GetObjectClass(env, exception);
+                for (Class<? extends Throwable> allowedException : allowedExceptions) {
+                    JNI.JClass allowedExceptionClass = findClassImpl(env, getBinaryName(allowedException.getName()));
+                    if (allowedExceptionClass.isNull() || !JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
+                        throw new InternalError(String.format("Failed to load %s due to %s:%s.",
+                                        className,
+                                        createString(env, SVMToHotSpotCalls.getClassName(env, exceptionClass)),
+                                        createString(env, SVMToHotSpotCalls.getExceptionMessage(env, exception))));
+                    }
+                }
+            } finally {
+                JNIUtil.ExceptionClear(env);
+            }
+        }
+    }
+
+    /**
+     * Finds a class in HotSpot using a system class loader.
+     */
+    private static JNI.JClass findClassImpl(JNI.JNIEnv env, String className) {
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
+            return JNIUtil.FindClass(env, name.get());
         }
     }
 
