@@ -76,6 +76,7 @@ public final class DefaultFrameLibrary {
         return null;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static void collectNames(Frame frame, Node where,
                     TruffleInstrument.Env env,
