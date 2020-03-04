@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.Node;
@@ -81,27 +82,45 @@ final class TruffleSplittingStrategy {
             return false;
         }
         if (!canSplit(engine, call)) {
-            maybeTraceFail(engine, call, "Split not possible.");
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::splitNotPossibleMessageFactory);
             return false;
         }
         if (isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
-            maybeTraceFail(engine, call, "Recursive split.");
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::recursiveSplitMessageFactory);
             return false;
         }
         if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
-            maybeTraceFail(engine, call, "Not enough budget. " + (engine.splitCount + call.getCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit);
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::notEnoughBudgetMessageFactory);
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > engine.splittingMaxCalleeSize) {
-            maybeTraceFail(engine, call, "Target too big: " + callTarget.getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize);
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::targetTooBigMessageFactory);
             return false;
         }
         return true;
     }
 
-    private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, String message) {
+    private static String targetTooBigMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
+        return "Target too big: " + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize;
+    }
+
+    private static String notEnoughBudgetMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
+        return "Not enough budget. " + (engine.splitCount + call.getCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit;
+    }
+
+    @SuppressWarnings("unused")
+    private static String splitNotPossibleMessageFactory(OptimizedDirectCallNode node, EngineData data) {
+        return "Split not possible.";
+    }
+
+    @SuppressWarnings("unused")
+    private static String recursiveSplitMessageFactory(OptimizedDirectCallNode node, EngineData data) {
+        return "Recursive split.";
+    }
+
+    private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, BiFunction<OptimizedDirectCallNode, EngineData, String> messageFactory) {
         if (engine.traceSplits) {
-            GraalTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, message);
+            GraalTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, messageFactory.apply(call, engine));
         }
     }
 
@@ -209,6 +228,10 @@ final class TruffleSplittingStrategy {
     }
 
     static class SplitStatisticsReporter extends Thread {
+        static final String D_FORMAT = "[truffle] %-40s: %10d";
+        static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
+        static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
+        static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
         final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
         final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();
         private final EngineData engineData;
@@ -220,16 +243,23 @@ final class TruffleSplittingStrategy {
         int wastedNodeCount;
         int wastedTargetCount;
 
-        static final String D_FORMAT = "[truffle] %-40s: %10d";
-        static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
-        static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
-        static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
-
         SplitStatisticsReporter(EngineData engineData) {
             this.engineData = engineData;
             if (engineData.traceSplittingSummary) {
                 Runtime.getRuntime().addShutdownHook(this);
             }
+        }
+
+        public static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
+            List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
+            list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
+
+            Map<K, Integer> result = new LinkedHashMap<>();
+            for (Entry<K, Integer> entry : list) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+
+            return result;
         }
 
         @Override
@@ -256,18 +286,6 @@ final class TruffleSplittingStrategy {
             for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(polymorphicNodes).entrySet()) {
                 rt.log(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
-        }
-
-        public static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
-            List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
-            list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
-
-            Map<K, Integer> result = new LinkedHashMap<>();
-            for (Entry<K, Integer> entry : list) {
-                result.put(entry.getKey(), entry.getValue());
-            }
-
-            return result;
         }
     }
 
