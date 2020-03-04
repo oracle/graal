@@ -29,8 +29,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-
-import java.util.Set;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -49,6 +48,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
+import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -178,6 +178,29 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        if (IS_IN_NATIVE_IMAGE) {
+            OptionValues options = null;
+            if (getEncodedSnippets(options) == null) {
+                throw GraalError.shouldNotReachHere("encoded snippets not found");
+            }
+            return getEncodedSnippets(options).getSnippetParameterInfo(method);
+        }
+        return super.getSnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        if (IS_IN_NATIVE_IMAGE) {
+            if (encodedSnippets == null) {
+                throw GraalError.shouldNotReachHere("encoded snippets not found");
+            }
+            return encodedSnippets.isSnippet(method);
+        }
+        return super.isSnippet(method);
+    }
+
+    @Override
     public void closeSnippetRegistration() {
         snippetRegistrationClosed = true;
     }
@@ -189,11 +212,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return encodedSnippets;
     }
 
-    public Set<ResolvedJavaMethod> getSnippetMethods() {
-        if (snippetEncoder != null) {
-            return snippetEncoder.getSnippetMethods();
-        }
-        return null;
+    public void clearSnippetParameterNames() {
+        assert snippetEncoder != null;
+        snippetEncoder.clearSnippetParameterNames();
     }
 
     static void setEncodedSnippets(SymbolicSnippetEncoder.EncodedSnippets encodedSnippets) {

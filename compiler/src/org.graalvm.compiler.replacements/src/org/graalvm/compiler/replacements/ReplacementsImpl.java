@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -254,6 +255,16 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
         assert !trackNodeSourcePosition || graph.trackNodeSourcePosition();
         return graph;
+    }
+
+    @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        return new SnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        return method.getAnnotation(Snippet.class) != null;
     }
 
     @Override

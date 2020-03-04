@@ -29,8 +29,6 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -144,8 +142,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
                 StringBuilder sb = new StringBuilder("parsing ");
                 ResolvedJavaMethod method = pos.getMethod();
                 MetaUtil.appendLocation(sb, method, pos.getBCI());
-                if (method.getAnnotation(MethodSubstitution.class) != null ||
-                                method.getAnnotation(Snippet.class) != null) {
+                if (pos.isSubstitution()) {
                     replacementMethodWithProblematicSideEffect = method;
                 }
                 context.add(sb.toString());

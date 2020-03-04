@@ -72,6 +72,16 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        return delegate.getSnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        return delegate.isSnippet(method);
+    }
+
+    @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         delegate.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
     }
