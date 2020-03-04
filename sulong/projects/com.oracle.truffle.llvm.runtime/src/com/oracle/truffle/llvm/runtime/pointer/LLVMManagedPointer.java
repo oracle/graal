@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,6 +82,7 @@ public interface LLVMManagedPointer extends LLVMPointer {
      * Create a new managed pointer, pointing to a particular offset of a managed object.
      */
     static LLVMManagedPointer create(Object object, long offset) {
+        assert object != null;
         return new LLVMPointerImpl(object, offset, null);
     }
 
