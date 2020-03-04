@@ -341,7 +341,7 @@ public final class InterpreterToVM implements ContextAccess {
         obj.setField(field, value);
     }
 
-    public static StaticObject newArray(Klass componentType, int length) {
+    public static StaticObject newReferenceArray(Klass componentType, int length) {
         if (length < 0) {
             // componentType is not always PE constant e.g. when called from the Array#newInstance
             // substitution. The derived context and meta accessor are not PE constant
@@ -384,7 +384,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (component.isPrimitive()) {
                 return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0]);
             } else {
-                return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+                return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
                     @Override
                     public StaticObject apply(int value) {
                         return StaticObject.NULL;
@@ -393,8 +393,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         }
         int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-        return component.allocateArray(dimensions[0], new IntFunction<StaticObject>() {
-
+        return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
                 return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);

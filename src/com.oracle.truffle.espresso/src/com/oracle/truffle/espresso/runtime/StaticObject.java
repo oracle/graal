@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.api.CompilerDirectives.castExact;
+import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -33,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -40,6 +42,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -134,6 +137,47 @@ public final class StaticObject implements TruffleObject {
             return Meta.toHostString(this);
         }
         return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(this));
+    }
+
+    public static final String CLASS_TO_STATIC = "static";
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (notNull(this)) {
+            // Class<T>.static == Klass<T>
+            if (CLASS_TO_STATIC.equals(member)) {
+                if (getKlass() == getKlass().getMeta().java_lang_Class) {
+                    return getMirrorKlass();
+                }
+            }
+            // Class<T>.class == Class<T>
+            if (STATIC_TO_CLASS.equals(member)) {
+                if (getKlass() == getKlass().getMeta().java_lang_Class) {
+                    return this;
+                }
+            }
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return !isNull(this);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        return notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class //
+                        && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
+    }
+
+    private static final KeysArray CLASS_MEMBERS = new KeysArray(new String[]{CLASS_TO_STATIC, STATIC_TO_CLASS});
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return (notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class)
+                        ? KeysArray.EMPTY
+                        : CLASS_MEMBERS; // .static and .class
     }
 
     // endregion Interop

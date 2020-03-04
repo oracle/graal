@@ -343,7 +343,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         EspressoProperties props = context.getVmProperties();
         this.context = context;
         try {
-            nespressoLibrary = loadLibrary(props.espressoLibraryPath(), "nespresso");
+            nespressoLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (string): pointer): sint64");
@@ -1193,7 +1193,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Object[].class) StaticObject NewObjectArray(int length, @Host(Class.class) StaticObject elementClass, @Host(Object.class) StaticObject initialElement) {
         assert !elementClass.getMirrorKlass().isPrimitive();
-        StaticObject arr = elementClass.getMirrorKlass().allocateArray(length);
+        StaticObject arr = elementClass.getMirrorKlass().allocateReferenceArray(length);
         if (length > 0) {
             // Single store check
             getInterpreterToVM().setArrayObject(initialElement, 0, arr);

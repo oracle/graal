@@ -46,10 +46,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
- *
- * Naming convention:
- *
- *
  */
 public final class Meta implements ContextAccess {
 
@@ -1195,7 +1191,7 @@ public final class Meta implements ContextAccess {
 
     // endregion Guest Unboxing
 
-    // region Guest
+    // region Guest boxing
 
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
         return (StaticObject) java_lang_Boolean_valueOf.invokeDirect(null, value);

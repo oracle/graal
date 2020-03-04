@@ -1048,6 +1048,7 @@ public final class Target_sun_misc_Unsafe {
      * Note: This operation is in the Unsafe class only because <tt>unpark</tt> is, so it would be
      * strange to place it elsewhere.
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
@@ -1089,6 +1090,7 @@ public final class Target_sun_misc_Unsafe {
      * @param thread the thread to unpark.
      *
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread) {
         // TODO(tg): inject meta

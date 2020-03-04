@@ -32,6 +32,7 @@ import java.util.Objects;
 
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -46,7 +47,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 public interface EspressoProperties {
     Path javaHome();
 
-    List<Path> espressoLibraryPath();
+    Path espressoLibraryPath();
 
     List<Path> classpath();
 
@@ -60,7 +61,7 @@ public interface EspressoProperties {
 
     abstract class Builder {
         private Path javaHome;
-        private List<Path> espressoLibraryPath;
+        private Path espressoLibraryPath;
         private List<Path> classpath;
         private List<Path> bootClasspath;
         private List<Path> javaLibraryPath;
@@ -69,7 +70,7 @@ public interface EspressoProperties {
 
         abstract Path defaultJavaHome();
 
-        abstract List<Path> defaultEspressoLibraryPath();
+        abstract Path defaultEspressoLibraryPath();
 
         abstract List<Path> defaultClasspath();
 
@@ -135,12 +136,12 @@ public interface EspressoProperties {
             return extDirs != null ? extDirs : defaultExtDirs();
         }
 
-        public Builder espressoLibraryPath(List<Path> newEspressoLibraryPath) {
+        public Builder espressoLibraryPath(Path newEspressoLibraryPath) {
             this.espressoLibraryPath = newEspressoLibraryPath;
             return this;
         }
 
-        public List<Path> espressoLibraryPath() {
+        public Path espressoLibraryPath() {
             return espressoLibraryPath != null ? espressoLibraryPath : defaultEspressoLibraryPath();
         }
 
@@ -152,7 +153,7 @@ public interface EspressoProperties {
                 private final List<Path> javaLibraryPath = Objects.requireNonNull(Builder.this.javaLibraryPath(), "javaLibraryPath not defined");
                 private final List<Path> bootLibraryPath = Objects.requireNonNull(Builder.this.bootLibraryPath(), "bootLibraryPath not defined");
                 private final List<Path> extDirs = Objects.requireNonNull(Builder.this.extDirs(), "extDirs not defined");
-                private final List<Path> espressoLibraryPath = Objects.requireNonNull(Builder.this.espressoLibraryPath(), "espressoLibraryPath not defined");
+                private final Path espressoLibraryPath = Objects.requireNonNull(Builder.this.espressoLibraryPath(), "espressoLibraryPath not defined");
 
                 @Override
                 public Path javaHome() {
@@ -160,7 +161,7 @@ public interface EspressoProperties {
                 }
 
                 @Override
-                public List<Path> espressoLibraryPath() {
+                public Path espressoLibraryPath() {
                     return espressoLibraryPath;
                 }
 
@@ -201,7 +202,7 @@ public interface EspressoProperties {
                         .extDirs(Utils.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(Builder builder, OptionValues options) {
+    static Builder processOptions(EspressoLanguage language, Builder builder, OptionValues options) {
         // Always set JavaHome first.
         if (options.hasBeenSet(EspressoOptions.JavaHome)) {
             builder.javaHome(options.get(EspressoOptions.JavaHome));
@@ -209,6 +210,9 @@ public interface EspressoProperties {
 
         if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
             builder.espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
+        } else {
+            Path espressoHome = Paths.get(language.getEspressoHome());
+            builder.espressoLibraryPath(espressoHome.resolve("lib"));
         }
 
         if (options.hasBeenSet(EspressoOptions.Classpath)) {
@@ -291,12 +295,12 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     @Override
     Path defaultJavaHome() {
-        throw new IllegalStateException("javaHome not defined");
+        throw EspressoError.shouldNotReachHere("Java 8 home not defined, use --java.JavaHome=/path/to/java8/home/jre");
     }
 
     @Override
-    List<Path> defaultEspressoLibraryPath() {
-        throw new IllegalStateException("espressoLibraryPath not defined");
+    Path defaultEspressoLibraryPath() {
+        throw EspressoError.shouldNotReachHere("Espresso library path not defined, use --java.EspressoLibraryPath=/path/to/espresso/lib/");
     }
 }
 
@@ -322,7 +326,7 @@ enum OS {
         if (name.startsWith("Windows")) {
             return OS.Windows;
         }
-        throw new IllegalArgumentException("unknown OS: " + name);
+        throw EspressoError.shouldNotReachHere("unknown OS: " + name);
     }
 
     public static OS getCurrent() {
