@@ -12,6 +12,13 @@ function extractGraalVMVersion() {
         | sed 's/"//g'
 }
 
+function versionCheck() {
+    local -r message="${1:-Wrong GraalVM version.}"
+    if [[ "$SL_SKIP_VERSION_CHECK" != "true" && "$GRAALVM_VERSION" != "$VERSION" ]]; then
+        fail "$message"
+    fi
+}
+
 function fail() {
     local -r message="${1:-Unknown error}"
     local -r exitCode="${2:-1}"
@@ -29,9 +36,7 @@ if [[ "$GRAALVM_VERSION" != "" ]]; then
     # contains paths for both jdk8 and jdk11
     LAUNCHER_PATH="$SCRIPT_HOME/../jre/languages/sl/launcher/sl-launcher.jar:$SCRIPT_HOME/../languages/sl/launcher/sl-launcher.jar"
     JAVACMD="$SCRIPT_HOME/java"
-    if [[ "$GRAALVM_VERSION" != "$VERSION" ]]; then
-        fail "Installed in wrong version of GraalVM. Expected: $VERSION, found $GRAALVM_VERSION"
-    fi
+    versionCheck "Installed in wrong version of GraalVM. Expected: $VERSION, found $GRAALVM_VERSION"
 else
     LANGUAGE_PATH="$SCRIPT_HOME/language/target/simplelanguage.jar"
     LAUNCHER_PATH="$SCRIPT_HOME/launcher/target/launcher-$VERSION-SNAPSHOT.jar"
@@ -39,9 +44,7 @@ else
     if [[ "$JAVA_HOME" != "" ]]; then
         GRAALVM_VERSION=$(extractGraalVMVersion "$JAVA_HOME"/release)
         if [[ "$GRAALVM_VERSION" != "" ]]; then
-            if [[ "$GRAALVM_VERSION" != "$VERSION" ]]; then
-                fail "Wrong version of GraalVM in \$JAVA_HOME. Expected: $VERSION, found $GRAALVM_VERSION"
-            fi
+            versionCheck "Wrong version of GraalVM in \$JAVA_HOME. Expected: $VERSION, found $GRAALVM_VERSION"
         fi
         JAVACMD=${JAVACMD:=$JAVA_HOME/bin/java}
         if [[ ! -f $LANGUAGE_PATH ]]; then
