@@ -47,7 +47,7 @@ import org.openjdk.jmh.annotations.State;
 
 import java.io.IOException;
 
-public class WasmCompilationBenchmarkSuite extends WasmCompilationBenchmarkSuiteBase {
+public class WasmMemoryCompilationBenchmarkSuite extends WasmCompilationBenchmarkSuiteBase {
     @State(Scope.Benchmark)
     public static class CBenchmarkState extends WasmCompilationBenchmarkState {
         @Override
