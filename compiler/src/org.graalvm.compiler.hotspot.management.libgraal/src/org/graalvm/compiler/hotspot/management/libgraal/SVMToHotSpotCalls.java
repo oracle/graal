@@ -89,21 +89,19 @@ final class SVMToHotSpotCalls {
     }
 
     /**
-     * Finds a class in HotSpot heap using JNI.
+     * Finds a class in HotSpot heap using a given {@code ClassLoader}.
      *
      * @param env the {@code JNIEnv}
      * @param className the class name
      */
     static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String className) {
-        try {
-            JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, METHOD_LOAD_CLASS);
-            JNI.JValue params = StackValue.get(1, JNI.JValue.class);
-            params.addressOf(0).setJObject(JNIUtil.createHSString(env, className.replace('/', '.')));
-            return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
-        } finally {
-            // Clear ClassNotFoundException if not found
-            JNIUtil.ExceptionClear(env);
+        if (classLoader.isNull()) {
+            throw new IllegalArgumentException("ClassLoader must be non null.");
         }
+        JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, METHOD_LOAD_CLASS);
+        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
+        params.addressOf(0).setJObject(JNIUtil.createHSString(env, className.replace('/', '.')));
+        return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
     private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, String[] descriptor) {

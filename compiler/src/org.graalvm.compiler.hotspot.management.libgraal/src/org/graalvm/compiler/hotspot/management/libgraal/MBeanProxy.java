@@ -219,7 +219,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.DefineClasses, env)) {
             JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
-            JNI.JClass svmHsEntryPoints = SVMToHotSpotCalls.findClass(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME);
+            JNI.JClass svmHsEntryPoints = findClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME);
             if (svmHsEntryPoints.isNull()) {
                 if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
                     throw throwDefineClassError(HS_BEAN_CLASS_NAME);
@@ -243,6 +243,28 @@ class MBeanProxy<T extends DynamicMBean> {
                 }
             }
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
+        }
+    }
+
+    /**
+     * Finds a class in HotSpot heap using JNI.
+     *
+     * @param env the {@code JNIEnv}
+     * @param classLoader the class loader to define class in.
+     * @param className the class name
+     */
+    private static JNI.JClass findClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String className) {
+        try {
+            if (classLoader.isNonNull()) {
+                return SVMToHotSpotCalls.findClass(env, classLoader, className);
+            } else {
+                try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(className)) {
+                    return JNIUtil.FindClass(env, name.get());
+                }
+            }
+        } finally {
+            // Clear ClassNotFoundException if not found
+            JNIUtil.ExceptionClear(env);
         }
     }
 
