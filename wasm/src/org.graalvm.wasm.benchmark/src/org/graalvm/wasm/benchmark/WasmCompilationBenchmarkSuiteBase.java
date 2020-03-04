@@ -53,6 +53,10 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.IOException;
 
+/**
+ * This benchmark base class runs a workload that compiles the given test case (but does not run
+ * it). This is done by calling `Context.evaluate` on each source.
+ */
 @Warmup(iterations = 2)
 @Measurement(iterations = 6)
 @Fork(1)
