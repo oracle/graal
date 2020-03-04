@@ -25,10 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -36,9 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
-
-import com.oracle.svm.core.CompilerCommandPlugin;
-import com.oracle.svm.core.util.VMError;
 
 public final class RuntimeSupport implements VMRuntimeSupport {
 
@@ -51,20 +45,12 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     /** A list of tear down hooks. */
     private AtomicReference<Runnable[]> tearDownHooks;
 
-    /** A list of CompilerCommandPlugins. */
-    private static final Comparator<CompilerCommandPlugin> PluginComparator = Comparator.comparing(CompilerCommandPlugin::name);
-    private CopyOnWriteArrayList<CompilerCommandPlugin> commandPlugins;
-    @Platforms(Platform.HOSTED_ONLY.class)//
-    private boolean commandPluginsSorted;
-
     /** A constructor for the singleton instance. */
     private RuntimeSupport() {
         super();
         startupHooks = new AtomicReference<>();
         shutdownHooks = new AtomicReference<>();
         tearDownHooks = new AtomicReference<>();
-        commandPlugins = new CopyOnWriteArrayList<>();
-        commandPluginsSorted = false;
     }
 
     /** Construct and register the singleton instance, if necessary. */
@@ -146,45 +132,9 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addCommandPlugin(CompilerCommandPlugin plugin) {
-        assert !commandPluginsSorted;
-        if (commandPlugins.stream().anyMatch(p -> p.name().equals(plugin.name()))) {
-            throw new IllegalArgumentException("CompilerCommandPlugin previously registered");
-        }
-
-        commandPlugins.add(plugin);
-    }
-
-    Object runCommand(String cmd, Object[] args) {
-        CompilerCommandPlugin key = new CompilerCommandPlugin() {
-
-            @Override
-            public String name() {
-                return cmd;
-            }
-
-            @Override
-            public Object apply(Object[] ignore) {
-                throw VMError.shouldNotReachHere();
-            }
-        };
-        int index = Collections.binarySearch(commandPlugins, key, PluginComparator);
-        if (index >= 0) {
-            return commandPlugins.get(index).apply(args);
-        }
-        throw new IllegalArgumentException("Could not find SVM command with the name " + cmd);
-    }
-
     @Override
     public void shutdown() {
         Target_java_lang_Shutdown.shutdown();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    void sortCommandPlugins() {
-        commandPlugins.sort(PluginComparator);
-        assert !commandPluginsSorted;
-        commandPluginsSorted = true;
-    }
 }

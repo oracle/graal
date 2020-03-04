@@ -36,7 +36,6 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.IdentityHashMap;
@@ -521,49 +520,6 @@ final class Target_java_lang_ClassValue {
     @Substitute
     private void remove(Class<?> type) {
         values.remove(type);
-    }
-}
-
-@SuppressWarnings("deprecation")
-@TargetClass(java.lang.Compiler.class)
-final class Target_java_lang_Compiler {
-    @Substitute
-    static Object command(Object arg) {
-        if (arg instanceof Object[]) {
-            Object[] args = (Object[]) arg;
-            if (args.length > 0) {
-                Object arg0 = args[0];
-                if (arg0 instanceof String) {
-                    String cmd = (String) arg0;
-                    Object[] cmdargs = Arrays.copyOfRange(args, 1, args.length);
-                    RuntimeSupport rs = RuntimeSupport.getRuntimeSupport();
-                    return rs.runCommand(cmd, cmdargs);
-                }
-            }
-        }
-        throw new IllegalArgumentException("Argument to java.lang.Compiler.command(Object) must be an Object[] " +
-                        "with the first element being a String providing the name of the SVM command to run " +
-                        "and subsequent elements being the arguments to the command");
-    }
-
-    @SuppressWarnings({"unused"})
-    @Substitute
-    static boolean compileClass(Class<?> clazz) {
-        return false;
-    }
-
-    @SuppressWarnings({"unused"})
-    @Substitute
-    static boolean compileClasses(String string) {
-        return false;
-    }
-
-    @Substitute
-    static void enable() {
-    }
-
-    @Substitute
-    static void disable() {
     }
 }
 
