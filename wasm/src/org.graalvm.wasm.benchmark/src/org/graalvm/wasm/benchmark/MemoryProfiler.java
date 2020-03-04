@@ -1,4 +1,4 @@
-package org.graalvm.wasm.benchcases.bench;
+package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.wasm.utils.cases.WasmCase;

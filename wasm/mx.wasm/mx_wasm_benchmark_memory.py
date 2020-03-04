@@ -47,7 +47,7 @@ from mx_benchmark import add_bm_suite
 _suite = mx.suite("wasm")
 
 
-MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchcases.bench.MemoryProfiler"
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryProfiler"
 
 
 class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
