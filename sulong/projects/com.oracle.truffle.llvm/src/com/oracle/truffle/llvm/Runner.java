@@ -797,7 +797,7 @@ final class Runner {
         for (ExternalLibrary dep : parserResult.getDependencies()) {
             LLVMParserResult depResult = libToRes.get(dep);
             if (depResult != null) {
-                scopes.put(dep.getName(), depResult.getRuntime().getFileScope());
+                scopes.put(getSimpleLibraryName(dep.getName()), depResult.getRuntime().getFileScope());
             }
         }
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
@@ -830,6 +830,17 @@ final class Runner {
                 }
             }
         }
+    }
+
+    /**
+     * Drop everything after the first "{@code .}".
+     */
+    private static String getSimpleLibraryName(String name) {
+        int index = name.indexOf(".");
+        if (index == -1) {
+            return name;
+        }
+        return name.substring(0, index);
     }
 
     private void updateOverriddenSymbols(LLVMParserResult[] sulongLibraryResults) {
