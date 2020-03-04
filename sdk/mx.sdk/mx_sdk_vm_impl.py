@@ -2094,7 +2094,11 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                 })
 
             for launcher_config in launcher_configs:
-                layout.setdefault(path_prefix + launcher_config.destination, []).append('dependency:{}'.format(GraalVmLauncher.launcher_project_name(launcher_config, stage1=False)))
+                launcher_dest = path_prefix + launcher_config.destination
+                layout.setdefault(launcher_dest, []).append('dependency:{}'.format(GraalVmLauncher.launcher_project_name(launcher_config, stage1=False)))
+                for link in launcher_config.links:
+                    link_dest = path_prefix + link
+                    layout.setdefault(link_dest, []).append('link:{}'.format(relpath(launcher_dest, start=dirname(link_dest))))
 
             for library_config in library_configs:
                 layout.setdefault(path_prefix + library_config.destination, []).append('dependency:{}'.format(GraalVmLibrary.project_name(library_config)))
