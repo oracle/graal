@@ -714,6 +714,8 @@ final class Runner {
             ExternalLibrary lib = context.addExternalLibraryDefaultLocator(external, "<command line>");
             if (lib != null) {
                 parseLibrary(lib, parseContext);
+            } else {
+                throw new LLVMLinkerException(String.format("Cannot load \"%s\".", external));
             }
         }
 
