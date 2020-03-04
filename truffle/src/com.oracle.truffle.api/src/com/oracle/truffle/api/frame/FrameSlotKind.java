@@ -58,6 +58,7 @@ public enum FrameSlotKind {
     Boolean,
     /** @since 0.8 or earlier */
     Byte;
+
     /** @since 0.8 or earlier */
     public final byte tag;
 

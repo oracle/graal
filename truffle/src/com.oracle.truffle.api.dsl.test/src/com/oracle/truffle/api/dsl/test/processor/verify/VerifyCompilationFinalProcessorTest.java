@@ -83,6 +83,7 @@ public class VerifyCompilationFinalProcessorTest {
     public enum ECJ451 {
         A,
         B;
+
         @CompilerDirectives.CompilationFinal(dimensions = 0) private static final ECJ451[] VALUES = ECJ451.values();
     }
 }
