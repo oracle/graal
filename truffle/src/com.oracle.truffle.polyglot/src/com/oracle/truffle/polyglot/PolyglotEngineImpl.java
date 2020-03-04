@@ -401,7 +401,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
         }
 
-        createInstruments(instrumentsOptions, newAllowExperimentalOptions);
+        // Set instruments options but do not call onCreate. OnCreate is called only in case of
+        // successful context patch.
+        for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
+            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), newAllowExperimentalOptions);
+        }
         registerShutDownHook();
         return true;
     }
@@ -1417,6 +1421,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 patchResult = context.patch(config);
             } finally {
                 if (patchResult) {
+                    Collection<PolyglotInstrument> toCreate = null;
+                    for (PolyglotInstrument instrument : idToInstrument.values()) {
+                        if (instrument.getOptionValuesIfExists() != null) {
+                            if (toCreate == null) {
+                                toCreate = new HashSet<>();
+                            }
+                            toCreate.add(instrument);
+                        }
+                    }
+                    if (toCreate != null) {
+                        ensureInstrumentsCreated(toCreate);
+                    }
                     synchronized (this) {
                         addContext(context);
                     }
