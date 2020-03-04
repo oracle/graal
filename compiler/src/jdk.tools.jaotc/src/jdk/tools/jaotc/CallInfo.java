@@ -40,7 +40,8 @@ final class CallInfo {
 
     private static boolean isStaticOpcode(Call call) {
         int opcode = getByteCode(call) & 0xFF;
-        return opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEDYNAMIC || opcode == Bytecodes.INVOKEVIRTUAL /* invokehandle */;
+        return opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEDYNAMIC ||
+                        opcode == Bytecodes.INVOKEVIRTUAL /* invokehandle */;
     }
 
     static boolean isStaticCall(Call call) {

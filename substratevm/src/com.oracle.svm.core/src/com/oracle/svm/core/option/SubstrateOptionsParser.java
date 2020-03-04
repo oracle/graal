@@ -120,6 +120,7 @@ public class SubstrateOptionsParser {
     public enum BooleanOptionFormat {
         NAME_VALUE("<name>=<value>"),
         PLUS_MINUS("+/-<name>");
+
         BooleanOptionFormat(String help) {
             this.help = help;
         }

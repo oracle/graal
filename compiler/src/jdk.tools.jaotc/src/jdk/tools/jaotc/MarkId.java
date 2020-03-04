@@ -64,6 +64,7 @@ enum MarkId {
             lookup.put(e.value, e);
         }
     }
+
     MarkId(String name) {
         this.value = (int) (long) HotSpotJVMCIRuntime.runtime().getConfigStore().getConstants().get(name);
     }
