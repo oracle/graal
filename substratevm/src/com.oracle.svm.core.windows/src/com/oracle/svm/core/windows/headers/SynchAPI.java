@@ -57,7 +57,7 @@ public class SynchAPI {
     public static native int WaitForSingleObjectNoTransition(WinBase.HANDLE hEvent, int dwMilliseconds);
 
     @CFunction
-    public static native int Sleep(int dwMilliseconds);
+    public static native void Sleep(int dwMilliseconds);
 
     /** Infinite timeout for WaitForSingleObject */
     @CConstant
