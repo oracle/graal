@@ -1949,7 +1949,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
-        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(/* returns */Type._void,
+        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(
+                        /* returns */Type._void,
                         /* t */ Type.java_lang_Thread,
                         /* state */ Type._int,
                         /* lockObj */ Type.java_lang_Object,
@@ -2103,7 +2104,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
+    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
+                    /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
                 return getContext().initVMDoneMs;
