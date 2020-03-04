@@ -120,35 +120,35 @@ public class InspectorDnsRebindAttackTest {
         testDnsRebindForValidAddress("[2001:0db8:85a3::0370:7334]");
     }
 
-    private void testDnsRebindForValidAddress(String address) throws IOException {
+    private static void testDnsRebindForValidAddress(String address) throws IOException {
         testDnsRebindForValidHost(address);
         testDnsRebindForValidHost(address + ":9229");
         testDnsRebindForValidHost(address + ":9228");
     }
 
-    private void testDnsRebindForInvalidHost(String host) throws IOException {
+    private static void testDnsRebindForInvalidHost(String host) throws IOException {
         testDnsRebindForHost(host, false);
     }
 
-    private void testDnsRebindForValidHost(String host) throws IOException {
+    private static void testDnsRebindForValidHost(String host) throws IOException {
         testDnsRebindForHost(host, true);
     }
 
-    private void testDnsRebindForHost(String host, boolean valid) throws IOException {
+    private static void testDnsRebindForHost(String host, boolean valid) throws IOException {
         testDnsRebind(host, "/", valid);
         testDnsRebind(host, "/json", valid);
         testDnsRebind(host, "/json/version", valid);
         testDnsRebind(host, "/some-nonsense", valid);
     }
 
-    private void testDnsRebind(String host, String path, boolean valid) throws IOException {
+    private static void testDnsRebind(String host, String path, boolean valid) throws IOException {
         testDnsRebindForHostCapitalization("host", host, path, valid);
         testDnsRebindForHostCapitalization("Host", host, path, valid);
         testDnsRebindForHostCapitalization("HoSt", host, path, valid);
         testDnsRebindForHostCapitalization("HOST", host, path, valid);
     }
 
-    private void testDnsRebindForHostCapitalization(String hostCapitalization, String host, String path, boolean valid) throws IOException {
+    private static void testDnsRebindForHostCapitalization(String hostCapitalization, String host, String path, boolean valid) throws IOException {
         // We try to connect localhost with various Host headers. If the DNS rebind protection works
         // properly, foreign domains are rejected.
         try (
