@@ -354,9 +354,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceSplittingSummary = new OptionKey<>(false);
 
-    @Option(help = "Used for debugging the splitting implementation. Prints the reason a split that should happen failed.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> TraceFailedSplits = new OptionKey<>(false);
-
     @Option(help = "Trace details of splitting events and decisions.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> SplittingTraceEvents = new OptionKey<>(false);
 
