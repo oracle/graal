@@ -146,5 +146,13 @@ public abstract class WasmBenchmarkSuiteBase {
         public void run() {
             this.result = benchmarkRun.execute();
         }
+
+        public Value benchmarkRun() {
+            return benchmarkRun;
+        }
+
+        public void setResult(Value result) {
+            this.result = result;
+        }
     }
 }
