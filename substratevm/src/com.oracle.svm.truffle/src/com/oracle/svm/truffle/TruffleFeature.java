@@ -688,6 +688,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         blacklistAllMethods(metaAccess, ListIterator.class);
         blacklistAllMethods(metaAccess, ReentrantLock.class);
 
+        whitelistMethod(metaAccess, ReentrantLock.class, "isLocked");
+        whitelistMethod(metaAccess, ReentrantLock.class, "isHeldByCurrentThread");
+
         /* Methods with synchronization are currently not supported as deoptimization targets. */
         blacklistAllMethods(metaAccess, StringBuffer.class);
         blacklistAllMethods(metaAccess, Vector.class);
@@ -714,6 +717,19 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private void blacklistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
             blacklistMethods.add(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)));
+        } catch (NoSuchMethodException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    /**
+     * Removes a previously blacklisted method from the blacklist.
+     */
+    private void whitelistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
+        try {
+            if (!blacklistMethods.remove(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)))) {
+                throw VMError.shouldNotReachHere();
+            }
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
