@@ -232,6 +232,9 @@ public final class LLVMContext {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
             LLVMFunction function = ctx.globalScope.getFunction("__sulong_init_context");
+            if (function == null) {
+                throw new IllegalStateException("Context cannot be initialized: _sulong_init_context was not found");
+            }
             LLVMFunctionDescriptor initContextDescriptor = ctx.createFunctionDescriptor(function);
             RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
@@ -395,7 +398,7 @@ public final class LLVMContext {
             this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
         } else {
-            throw new NullPointerException("The default datalayout cannot be overrwitten.");
+            throw new NullPointerException("The default datalayout cannot be overrwitten");
         }
     }
 
@@ -414,6 +417,9 @@ public final class LLVMContext {
         if (cleanupNecessary) {
             try {
                 LLVMFunction function = globalScope.getFunction("__sulong_dispose_context");
+                if (function == null) {
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context was not found");
+                }
                 AssumedValue<LLVMPointer>[] functions = findSymbolTable(function.getBitcodeID(false));
                 int index = function.getSymbolIndex(false);
                 LLVMPointer pointer = functions[index].get();
@@ -424,7 +430,7 @@ public final class LLVMContext {
                         disposeContext.call(stackPointer);
                     }
                 } else {
-                    throw new IllegalStateException("Context cannot be disposed: Function _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer.");
+                    throw new IllegalStateException("Context cannot be disposed: _sulong_dispose_context is not a function or enclosed inside a LLVMManagedPointer");
                 }
             } catch (ControlFlowException e) {
                 // nothing needs to be done as the behavior is not defined
@@ -514,7 +520,7 @@ public final class LLVMContext {
     @TruffleBoundary
     private Path locateInternalLibrary(String lib) {
         if (internalLibraryPath == null) {
-            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set.", lib));
+            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set", lib));
         }
         Path absPath = internalLibraryPath.resolve(lib);
         if (absPath.toFile().exists()) {
@@ -533,7 +539,7 @@ public final class LLVMContext {
     /**
      * Adds a new library to the context (if not already added). It is assumed that the library is a
      * native one until it is parsed and we know for sure.
-     * 
+     *
      * @see ExternalLibrary#makeBitcodeLibrary
      * @return null if already added
      */
@@ -555,7 +561,7 @@ public final class LLVMContext {
     /**
      * Finds an already added library. Note that this might return
      * {@link ExternalLibrary#isInternal() internal libraries}.
-     * 
+     *
      * @return null if not yet loaded
      */
     public ExternalLibrary findExternalLibrary(String lib, Object reason, LibraryLocator locator) {
@@ -572,7 +578,7 @@ public final class LLVMContext {
     /**
      * Creates a new external library. It is assumed that the library is a native one until it is
      * parsed and we know for sure.
-     * 
+     *
      * @see ExternalLibrary#makeBitcodeLibrary
      */
     private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator) {

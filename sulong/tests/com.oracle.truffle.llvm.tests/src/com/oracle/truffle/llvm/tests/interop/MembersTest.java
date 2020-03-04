@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.tests.interop;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-public final class LLVMBitcodeLibraryFunctions {
+import com.oracle.truffle.tck.TruffleRunner;
 
-    protected abstract static class LibraryFunctionNode extends LLVMNode {
+@RunWith(TruffleRunner.class)
+public class MembersTest extends InteropTestBase {
 
-        @Child protected DirectCallNode callNode;
+    private static Value testLibrary;
 
-        protected LibraryFunctionNode(LLVMContext context, String name) {
-            LLVMFunction function = context.getGlobalScope().getFunction(name);
-            assert function != null;
-            LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
-            callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
-        }
-
-        protected Object execute(Object... args) {
-            return callNode.call(args);
-        }
+    @BeforeClass
+    public static void loadTestBitcode() {
+        testLibrary = InteropTestBase.loadTestBitcodeValue("stringTest");
     }
 
-    public static final class SulongCanCatchNode extends LibraryFunctionNode {
+    @Test
+    public void testMemberExists() {
+        Assert.assertTrue(testLibrary.hasMember("test_as_string_utf8"));
+    }
 
-        public SulongCanCatchNode(LLVMContext context) {
-            super(context, "sulong_eh_canCatch");
-        }
-
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
-            return (int) execute(stack, unwindHeader, catchType.copy());
-        }
+    @Test
+    public void testMemberDoesNotExist() {
+        Assert.assertFalse(testLibrary.hasMember("abc"));
     }
 }
