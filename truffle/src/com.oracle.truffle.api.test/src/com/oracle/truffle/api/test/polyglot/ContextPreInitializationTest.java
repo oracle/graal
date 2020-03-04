@@ -1453,6 +1453,23 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    @SuppressWarnings("try")
+    public void testFailToLookupInstrumentDuringContextPreInitialization() throws Exception {
+        setPatchable(FIRST);
+        ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
+            InstrumentInfo instrumentInfo = env.getInstruments().get(ContextPreInitializationSecondInstrument.ID);
+            assertNotNull("Cannot find instrument " + ContextPreInitializationSecondInstrument.ID, instrumentInfo);
+            try {
+                env.lookup(instrumentInfo, Service.class);
+                Assert.fail("Expected IllegalStateException");
+            } catch (IllegalStateException ise) {
+                // Expected exception
+            }
+        };
+        doContextPreinitialize(FIRST);
+    }
+
     private static com.oracle.truffle.api.source.Source createSource(TruffleLanguage.Env env, Path resource, boolean cached) {
         try {
             TruffleFile file = env.getInternalTruffleFile(resource.toString());

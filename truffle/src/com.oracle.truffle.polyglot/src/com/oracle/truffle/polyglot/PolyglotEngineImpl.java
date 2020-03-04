@@ -1421,13 +1421,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 patchResult = context.patch(config);
             } finally {
                 if (patchResult) {
-                    Collection<PolyglotInstrument> toCreate = new HashSet<>();
+                    Collection<PolyglotInstrument> toCreate = null;
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
                         if (instrument.getOptionValuesIfExists() != null) {
+                            if (toCreate == null) {
+                                toCreate = new HashSet<>();
+                            }
                             toCreate.add(instrument);
                         }
                     }
-                    ensureInstrumentsCreated(toCreate);
+                    if (toCreate != null) {
+                        ensureInstrumentsCreated(toCreate);
+                    }
                     synchronized (this) {
                         addContext(context);
                     }
