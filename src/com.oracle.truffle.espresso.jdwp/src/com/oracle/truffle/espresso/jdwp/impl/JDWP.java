@@ -2646,11 +2646,14 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (!controller.popFrames(thread, frame)) {
+                if (!controller.popFrames(thread, frame, packet.id)) {
                     reply.errorCode(ErrorCodes.INVALID_FRAMEID);
                     return new CommandResult(reply);
                 }
-                return new CommandResult(reply);
+                // don't send a reply before we have completed the pop frames
+                // the reply packet will be sent when thread is suspended after
+                // popping the requested frames
+                return null;
             }
         }
     }
