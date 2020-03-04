@@ -67,7 +67,7 @@ local base = {
 
   eclipse: {
     downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
@@ -76,7 +76,7 @@ local base = {
 
   jdt: {
     downloads+: {
-      JDT: {name: 'ecj', version: '4.6.1', platformspecific: false},
+      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
   },
 };
