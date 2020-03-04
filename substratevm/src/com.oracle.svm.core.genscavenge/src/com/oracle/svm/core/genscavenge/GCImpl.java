@@ -53,15 +53,18 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.AllocationFreeList;
@@ -158,7 +161,7 @@ public class GCImpl implements GC {
         this.runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
         this.runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
-        this.blackenBootImageRootsTimer = new Timer("blackenBootImageRoots");
+        this.blackenImageHeapRootsTimer = new Timer("blackenImageHeapRootsTimer");
         this.blackenDirtyCardRootsTimer = new Timer("blackenDirtyCardRoots");
         this.blackenStackRootsTimer = new Timer("blackenStackRoots");
         this.cheneyScanFromRootsTimer = new Timer("cheneyScanFromRoots");
@@ -336,7 +339,7 @@ public class GCImpl implements GC {
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
-                HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog).newline();
+                HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog).newline();
             }
         }
 
@@ -606,7 +609,7 @@ public class GCImpl implements GC {
              * Native image Objects are grey at the beginning of a collection, so I need to blacken
              * them.
              */
-            blackenBootImageRoots();
+            blackenImageHeapRoots();
 
             /* Visit all the Objects promoted since the snapshot. */
             scanGreyObjects(false);
@@ -679,7 +682,7 @@ public class GCImpl implements GC {
              * Native image Objects are grey at the beginning of a collection, so I need to blacken
              * them.
              */
-            blackenBootImageRoots();
+            blackenImageHeapRoots();
 
             /* Visit all the Objects promoted since the snapshot, transitively. */
             scanGreyObjects(true);
@@ -785,23 +788,44 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    @SuppressWarnings("try")
-    private void blackenBootImageRoots() {
-        final Log trace = Log.noopLog().string("[blackenBootImageRoots:").newline();
-        try (Timer bbirt = blackenBootImageRootsTimer.open()) {
-            /* Walk through the native image heap roots. */
-            ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-            Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
-            final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
-            while (cur.belowOrEqual(last)) {
-                Object obj = cur.toObject();
-                if (obj != null) {
-                    greyToBlackObjectVisitor.visitObjectInline(obj);
-                }
-                cur = LayoutEncoding.getObjectEnd(obj);
-            }
-        }
+    private void blackenImageHeapRoots() {
+        Log trace = Log.noopLog().string("[blackenImageHeapRoots:").newline();
+        HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
         trace.string("]").newline();
+    }
+
+    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
+
+    private class BlackenImageHeapRootsVisitor implements MemoryWalker.Visitor {
+        @Override
+        @SuppressWarnings("try")
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            if (access.containsReferences(region) && access.isWritable(region)) {
+                try (Timer timer = blackenImageHeapRootsTimer.open()) {
+                    ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+                    Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
+                    final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
+                    while (cur.belowOrEqual(last)) {
+                        Object obj = cur.toObject();
+                        if (obj != null) {
+                            greyToBlackObjectVisitor.visitObjectInline(obj);
+                        }
+                        cur = LayoutEncoding.getObjectEnd(obj);
+                    }
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public <T extends PointerBase> boolean visitHeapChunk(T heapChunk, MemoryWalker.HeapChunkAccess<T> access) {
+            throw VMError.shouldNotReachHere();
+        }
+
+        @Override
+        public <T extends CodeInfo> boolean visitCode(T codeInfo, MemoryWalker.CodeAccess<T> access) {
+            throw VMError.shouldNotReachHere();
+        }
     }
 
     @SuppressWarnings("try")
@@ -1076,7 +1100,7 @@ public class GCImpl implements GC {
     /*
      * Timers.
      */
-    private final Timer blackenBootImageRootsTimer;
+    private final Timer blackenImageHeapRootsTimer;
     private final Timer blackenDirtyCardRootsTimer;
     private final Timer blackenStackRootsTimer;
     private final Timer cheneyScanFromRootsTimer;
@@ -1110,7 +1134,7 @@ public class GCImpl implements GC {
         walkThreadLocalsTimer.reset();
         walkRuntimeCodeCacheTimer.reset();
         cleanRuntimeCodeCacheTimer.reset();
-        blackenBootImageRootsTimer.reset();
+        blackenImageHeapRootsTimer.reset();
         blackenDirtyCardRootsTimer.reset();
         scanGreyObjectsTimer.reset();
         referenceObjectsTimer.reset();
@@ -1136,7 +1160,7 @@ public class GCImpl implements GC {
             logOneTimer(log, "          ", walkThreadLocalsTimer);
             logOneTimer(log, "          ", walkRuntimeCodeCacheTimer);
             logOneTimer(log, "          ", cleanRuntimeCodeCacheTimer);
-            logOneTimer(log, "          ", blackenBootImageRootsTimer);
+            logOneTimer(log, "          ", blackenImageHeapRootsTimer);
             logOneTimer(log, "          ", blackenDirtyCardRootsTimer);
             logOneTimer(log, "          ", scanGreyObjectsTimer);
             logOneTimer(log, "      ", referenceObjectsTimer);
