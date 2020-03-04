@@ -54,7 +54,7 @@ public final class NativeRootNode extends EspressoMethodNode {
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
     public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
-        super(method);
+        super(method.getMethodVersion());
         this.boundNative = boundNative;
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
         this.isJni = isJni;

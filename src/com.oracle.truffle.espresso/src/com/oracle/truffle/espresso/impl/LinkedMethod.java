@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class LinkedMethod {
     private final ParserMethod parserMethod;
-    private final LinkedKlass declaringLinkedKlass;
 
     // int vtableSlot; // not all methods have vtable entry
     protected int getFlags() {
@@ -40,24 +39,15 @@ public final class LinkedMethod {
         return parserMethod.getSignature();
     }
 
-    ParserMethod getParserMethod() {
-        return parserMethod;
-    }
-
     protected Symbol<Name> getName() {
         return parserMethod.getName();
     }
 
-    LinkedMethod(ParserMethod parserMethod, LinkedKlass declaringLinkedKlass) {
+    LinkedMethod(ParserMethod parserMethod) {
         this.parserMethod = parserMethod;
-        this.declaringLinkedKlass = declaringLinkedKlass;
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
         return parserMethod.getAttribute(name);
-    }
-
-    public LinkedKlass getDeclaringLinkedKlass() {
-        return declaringLinkedKlass;
     }
 }

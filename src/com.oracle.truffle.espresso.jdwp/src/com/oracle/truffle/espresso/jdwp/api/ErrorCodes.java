@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
 public final class ErrorCodes {
 
@@ -35,6 +35,16 @@ public final class ErrorCodes {
     public static final int INVALID_FRAMEID = 30;
     public static final int OPAQUE_FRAME = 32;
     public static final int INVALID_SLOT = 35;
+    public static final int INVALID_CLASS_FORMAT = 60;
+    public static final int FAILS_VERIFICATION = 62;
+    public static final int ADD_METHOD_NOT_IMPLEMENTED = 63;
+    public static final int SCHEMA_CHANGE_NOT_IMPLEMENTED = 64;
+    public static final int HIERARCHY_CHANGE_NOT_IMPLEMENTED = 66;
+    public static final int DELETE_METHOD_NOT_IMPLEMENTED = 67;
+    public static final int UNSUPPORTED_VERSION = 68;
+    public static final int NAMES_DONT_MATCH = 69;
+    public static final int CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED = 70;
+    public static final int METHOD_MODIFIERS_CHANGE_NOT_IMPLEMENTED = 71;
     public static final int NOT_IMPLEMENTED = 99;
     public static final int ABSENT_INFORMATION = 101;
     public static final int INVALID_EVENT_TYPE = 102;

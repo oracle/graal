@@ -38,6 +38,8 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -47,6 +49,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
@@ -644,5 +647,16 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Class<? extends TruffleLanguage<?>> getLanguageClass() {
         return EspressoLanguage.class;
+    }
+
+    @Override
+    public int redefineClasses(RedefineInfo[] redefineInfos) {
+        for (RedefineInfo redefineInfo : redefineInfos) {
+            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context);
+            if (result != 0) {
+                return result;
+            }
+        }
+        return 0;
     }
 }

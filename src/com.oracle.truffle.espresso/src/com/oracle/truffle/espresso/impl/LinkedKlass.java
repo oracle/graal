@@ -94,7 +94,7 @@ public final class LinkedKlass {
             ParserMethod parserMethod = parserKlass.getMethods()[i];
             // TODO(peterssen): Methods with custom constant pool should spawned here, but not
             // supported.
-            linkedMethods[i] = new LinkedMethod(parserMethod, this);
+            linkedMethods[i] = new LinkedMethod(parserMethod);
         }
 
         // Super interfaces are not checked for finalizers; a default .finalize method will be
@@ -133,6 +133,10 @@ public final class LinkedKlass {
 
     public Symbol<Name> getName() {
         return parserKlass.getName();
+    }
+
+    public ParserKlass getParserKlass() {
+        return parserKlass;
     }
 
     public LinkedKlass getSuperKlass() {

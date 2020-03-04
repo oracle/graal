@@ -310,6 +310,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.REDEFINE_CLASSES.ID:
+                                    result = JDWP.VirtualMachine.REDEFINE_CLASSES.createReply(packet, context);
+                                    break;
                                 case JDWP.VirtualMachine.SET_DEFAULT_STRATUM.ID:
                                     result = JDWP.VirtualMachine.SET_DEFAULT_STRATUM.createReply(packet);
                                     break;
@@ -428,7 +431,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.Methods.BYTECODES.createReply(packet, context);
                                     break;
                                 case JDWP.Methods.IS_OBSOLETE.ID:
-                                    result = JDWP.Methods.IS_OBSOLETE.createReply(packet);
+                                    result = JDWP.Methods.IS_OBSOLETE.createReply(packet, context);
                                     break;
                                 case JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.ID:
                                     result = JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.createReply(packet, context);

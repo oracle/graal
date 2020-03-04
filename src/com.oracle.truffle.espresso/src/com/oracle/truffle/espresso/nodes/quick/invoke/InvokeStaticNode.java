@@ -23,40 +23,48 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 
 public final class InvokeStaticNode extends QuickNode {
 
-    protected final Method method;
+    @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
 
     public InvokeStaticNode(Method method, int top, int curBCI) {
         super(top, curBCI);
         assert method.isStatic();
-        this.method = method;
+        this.method = method.getMethodVersion();
     }
 
     @Override
     public int execute(final VirtualFrame frame) {
+        if (!method.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            directCallNode = null;
+            // update to the latest method version
+            method = method.getMethod().getMethodVersion();
+        }
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // Obtaining call target initializes the declaring klass
             // insert call node though insertion method so that
             // stack frame iteration will see this node as parent
-            directCallNode = insert(DirectCallNode.create(method.getCallTarget()));
+            directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));
         }
         BytecodeNode root = getBytecodesNode();
-        Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getParsedSignature());
+        Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getMethod().getParsedSignature());
 
         Object result = directCallNode.call(args);
-        int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
+        int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()); // no
                                                                                          // receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getMethod().getReturnKind());
     }
 }

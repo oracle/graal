@@ -22,32 +22,41 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 
 public final class InvokeSpecialNode extends QuickNode {
-    protected final Method method;
+    @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
 
     public InvokeSpecialNode(Method method, int top, int callerBCI) {
         super(top, callerBCI);
-        this.method = method;
+        this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
 
     @Override
     public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
+        if (!method.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // update to the latest method verison and grab a new direct call target
+            method = method.getMethod().getMethodVersion();
+            directCallNode = DirectCallNode.create(method.getMethod().getCallTarget());
+        }
         // TODO(peterssen): IsNull Node?
-        Object receiver = nullCheck(root.peekReceiver(frame, top, method));
-        Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getParsedSignature());
+        Object receiver = nullCheck(root.peekReceiver(frame, top, method.getMethod()));
+        Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getMethod().getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = directCallNode.call(args);
-        int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
+        int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getMethod().getReturnKind());
     }
 }

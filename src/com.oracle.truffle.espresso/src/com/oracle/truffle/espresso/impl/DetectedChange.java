@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.impl;
 
-package com.oracle.truffle.espresso.nodes;
+import java.util.HashSet;
+import java.util.Set;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.Substitutor;
+final class DetectedChange {
 
-public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
-    private final Substitutor substitution;
+    private final Set<ParserMethod> changedMethodBodies = new HashSet<>();
+    private final Set<ParserMethod> newMethods = new HashSet<>();
 
-    public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
-        super(method.getMethodVersion());
-        this.substitution = sub;
+    void addMethodBodyChange(ParserMethod newMethod) {
+        changedMethodBodies.add(newMethod);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return substitution.invoke(frame.getArguments());
+    ParserMethod[] getChangedMethodBodies() {
+        return changedMethodBodies.toArray(new ParserMethod[changedMethodBodies.size()]);
     }
 
+    void addNewMethod(ParserMethod newMethod) {
+        newMethods.add(newMethod);
+    }
+
+    ParserMethod[] getNewMethods() {
+        return newMethods.toArray(new ParserMethod[newMethods.size()]);
+    }
 }

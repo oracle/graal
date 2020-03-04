@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 
 public final class PacketStream {
 
@@ -199,6 +200,12 @@ public final class PacketStream {
 
     public double readDouble() {
         return Double.longBitsToDouble(readLong());
+    }
+
+    public byte[] readByteArray(int length) {
+        byte[] result = Arrays.copyOfRange(packet.data, readPosition, readPosition + length);
+        readPosition += length;
+        return result;
     }
 
     public String readString() {

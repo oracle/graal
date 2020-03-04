@@ -103,9 +103,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private final Assumption isLeaf;
 
-    private final LinkedMethod linkedMethod;
-    private final RuntimeConstantPool pool;
-
     private final ObjectKlass declaringKlass;
 
     @CompilationFinal(dimensions = 1) //
@@ -115,18 +112,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @CompilationFinal private int itableIndex = -1;
 
     private final ExceptionsAttribute exceptionsAttribute;
-    private final CodeAttribute codeAttribute;
 
     @CompilationFinal private int refKind;
 
-    @CompilationFinal //
-    private CallTarget callTarget;
+    @CompilationFinal private CallTarget callTarget;
 
     @CompilationFinal(dimensions = 1) //
     private ObjectKlass[] checkedExceptions;
 
     private final Method proxy;
     private String genericSignature;
+
+    // the parts of the method that can change when it's redefined
+    // are encapsulated within the methodVersion
+    @CompilationFinal volatile MethodVersion methodVersion;
+    private ParserMethod redefinedMethod;
+    private ParserKlass redefinedKlass;
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -140,11 +141,34 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
-        return pool;
+        return getRuntimeConstantPool();
     }
 
     public RuntimeConstantPool getRuntimeConstantPool() {
-        return pool;
+        MethodVersion cache = methodVersion;
+        if (!cache.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            methodVersion = updateMethodVersion();
+        }
+        return methodVersion.pool;
+    }
+
+    private LinkedMethod getLinkedMethod() {
+        MethodVersion cache = methodVersion;
+        if (!cache.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            methodVersion = updateMethodVersion();
+        }
+        return methodVersion.linkedMethod;
+    }
+
+    public CodeAttribute getCodeAttribute() {
+        MethodVersion cache = methodVersion;
+        if (!cache.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            methodVersion = updateMethodVersion();
+        }
+        return methodVersion.codeAttribute;
     }
 
     @Override
@@ -166,10 +190,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(Method method) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-        // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = (RuntimeConstantPool) method.getConstantPool();
+        this.callTarget = method.callTarget;
 
-        this.linkedMethod = method.linkedMethod;
+        initMethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -177,9 +200,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
-
-        this.codeAttribute = method.codeAttribute;
-        this.callTarget = method.callTarget;
 
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
 
@@ -194,10 +214,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Method(Method method, CodeAttribute split) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-        // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = (RuntimeConstantPool) method.getConstantPool();
-
-        this.linkedMethod = method.linkedMethod;
+        initMethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -206,7 +223,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
-        this.codeAttribute = split;
         this.callTarget = null;
 
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
@@ -219,17 +235,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         this.isLeaf = method.isLeaf;
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
-        this(declaringKlass, linkedMethod, linkedMethod.getRawSignature());
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
+        this(declaringKlass, linkedMethod, linkedMethod.getRawSignature(), pool);
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature) {
+    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         super(rawSignature, linkedMethod.getName());
+        initMethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
-        // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = declaringKlass.getConstantPool();
-
-        this.linkedMethod = linkedMethod;
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -238,12 +251,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
-        this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
-        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+        this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
 
         initRefKind();
         this.proxy = null;
         this.isLeaf = Truffle.getRuntime().createAssumption();
+    }
+
+    private void initMethodVersion(RuntimeConstantPool runtimeConstantPool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
+        this.methodVersion = new MethodVersion(runtimeConstantPool, linkedMethod, codeAttribute);
     }
 
     public int getRefKind() {
@@ -264,7 +280,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Attribute getAttribute(Symbol<Name> attrName) {
-        return linkedMethod.getAttribute(attrName);
+        return getLinkedMethod().getAttribute(attrName);
     }
 
     @TruffleBoundary
@@ -272,7 +288,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (atBCI < 0) {
             return atBCI;
         }
-        return codeAttribute.bciToLineNumber(atBCI);
+        return getCodeAttribute().bciToLineNumber(atBCI);
     }
 
     @Override
@@ -285,31 +301,23 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public byte[] getCode() {
-        return codeAttribute.getCode();
+        return getCodeAttribute().getCode();
     }
 
     public byte[] getOriginalCode() {
-        return codeAttribute.getOriginalCode();
-    }
-
-    public CodeAttribute getCodeAttribute() {
-        return codeAttribute;
-    }
-
-    public int getCodeSize() {
-        return getCode() != null ? getCode().length : 0;
+        return getCodeAttribute().getOriginalCode();
     }
 
     public int getMaxLocals() {
-        return codeAttribute.getMaxLocals();
+        return getCodeAttribute().getMaxLocals();
     }
 
     public int getMaxStackSize() {
-        return codeAttribute.getMaxStack();
+        return getCodeAttribute().getMaxStack();
     }
 
     public ExceptionHandler[] getExceptionHandlers() {
-        return codeAttribute.getExceptionHandlers();
+        return getCodeAttribute().getExceptionHandlers();
     }
 
     public int[] getSOEHandlerInfo() {
@@ -444,7 +452,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                             }
                         }
                     } else {
-                        if (codeAttribute == null) {
+                        if (getCodeAttribute() == null) {
                             throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                             "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
@@ -453,14 +461,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
                         // BCI slot is always the latest.
                         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, bciSlot));
+                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(methodVersion, frameDescriptor, bciSlot));
 
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
                 }
             }
         }
-
         return callTarget;
     }
 
@@ -472,8 +479,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (isSynchronized()) {
                 return (usesMonitors = 1) != 0;
             }
-            if (codeAttribute != null) {
-                BytecodeStream bs = new BytecodeStream(codeAttribute.getCode());
+            if (getCodeAttribute() != null) {
+                BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
                 int bci = 0;
                 while (bci < bs.endBCI()) {
                     int opcode = bs.currentBC(bci);
@@ -629,11 +636,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public int getModifiers() {
-        return linkedMethod.getFlags();
+        return getLinkedMethod().getFlags();
     }
 
     public int getMethodModifiers() {
-        return linkedMethod.getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+        return getLinkedMethod().getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
 
     @Override
@@ -724,7 +731,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean hasCode() {
-        return codeAttribute != null || isNative();
+        return getCodeAttribute() != null || isNative();
     }
 
     public boolean isVirtualCall() {
@@ -775,7 +782,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasGetterBytecodes() {
-        byte[] code = codeAttribute.getCode();
+        byte[] code = getCodeAttribute().getCode();
         if (isStatic()) {
             if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
@@ -800,7 +807,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private boolean hasSetterBytecodes() {
-        byte[] code = codeAttribute.getCode();
+        byte[] code = getCodeAttribute().getCode();
         if (isStatic()) {
             if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
@@ -902,7 +909,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Spawns a placeholder method for MH intrinsics
     public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
         assert isMethodHandleIntrinsic();
-        return new Method(declaringKlass, linkedMethod, polymorphicRawSignature);
+        return new Method(declaringKlass, getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
@@ -917,7 +924,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         // BCI slot is always the latest.
         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result, frameDescriptor, bciSlot));
+        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
         result.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
 
         return result;
@@ -985,11 +992,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public String getGenericSignatureAsString() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) linkedMethod.getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = (SignatureAttribute) getLinkedMethod().getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
-                genericSignature = pool.symbolAt(attr.getSignatureIndex()).toString();
+                genericSignature = getRuntimeConstantPool().symbolAt(attr.getSignatureIndex()).toString();
             }
         }
         return genericSignature;
@@ -1045,5 +1052,59 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
+    public void redefine(ParserMethod newMethod, ParserKlass newKlass) {
+        redefinedMethod = newMethod;
+        redefinedKlass = newKlass;
+        callTarget = null;
+        methodVersion.getAssumption().invalidate();
+    }
+
+    private MethodVersion updateMethodVersion() {
+        LinkedMethod newLinkedMethod = new LinkedMethod(redefinedMethod);
+        RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), redefinedKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        return new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) redefinedMethod.getAttribute(Name.Code));
+    }
+
+    public MethodVersion getMethodVersion() {
+        if (!methodVersion.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            methodVersion = updateMethodVersion();
+        }
+        return methodVersion;
+    }
+
+    public final class MethodVersion {
+        private final Assumption assumption;
+        private final RuntimeConstantPool pool;
+        private final LinkedMethod linkedMethod;
+        private final CodeAttribute codeAttribute;
+
+        MethodVersion(RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
+            this.assumption = Truffle.getRuntime().createAssumption();
+            this.pool = pool;
+            this.linkedMethod = linkedMethod;
+            this.codeAttribute = codeAttribute;
+        }
+
+        public Method getMethod() {
+            return Method.this;
+        }
+
+        public Assumption getAssumption() {
+            return assumption;
+        }
+
+        public CodeAttribute getCodeAttribute() {
+            return codeAttribute;
+        }
+
+        public RuntimeConstantPool getPool() {
+            return pool;
+        }
+
+        public int getCodeSize() {
+            return codeAttribute.getCode() != null ? codeAttribute.getCode().length : 0;
+        }
+    }
     // endregion jdwp-specific
 }
