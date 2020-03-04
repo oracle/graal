@@ -52,7 +52,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.CompilerBackend.getValue().equals("lir");
+        return !SubstrateOptions.useLLVMBackend();
     }
 
     @Override

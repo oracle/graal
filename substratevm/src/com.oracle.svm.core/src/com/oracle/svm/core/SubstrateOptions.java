@@ -210,7 +210,7 @@ public class SubstrateOptions {
              * Spawning isolates results in a significant performance hit, so we disable them on the
              * LLVM backend unless they were explicitly requested.
              */
-            return (value != null) ? value : !CompilerBackend.getValue().equals("llvm");
+            return (value != null) ? value : !useLLVMBackend();
         }
     };
 
@@ -369,6 +369,11 @@ public class SubstrateOptions {
             }
         }
     };
+
+    @Fold
+    public static boolean useLLVMBackend() {
+        return "llvm".equals(CompilerBackend.getValue());
+    }
 
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);

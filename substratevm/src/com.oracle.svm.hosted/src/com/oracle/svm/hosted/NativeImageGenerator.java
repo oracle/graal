@@ -1173,7 +1173,7 @@ public class NativeImageGenerator {
         }
 
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
-        final boolean arrayEqualsSubstitution = !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
         registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks,
                         arrayEqualsSubstitution);
 

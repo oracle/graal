@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -35,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 /**
@@ -106,7 +105,7 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("llvm");
+        return SubstrateOptions.useLLVMBackend();
     }
 
     @Override
@@ -172,7 +171,7 @@ class LLVMAArch64TargetSpecificFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("llvm");
+        return SubstrateOptions.useLLVMBackend();
     }
 
     @Override

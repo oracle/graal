@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
@@ -63,7 +62,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -164,22 +162,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
 
-    /**
-     * Stores the address of the first isolate created. This is meant for the LLVM backend to
-     * attempt to detect the current isolate when entering the SVM segfault handler. The value is
-     * set to -1 when an additional isolate is created, as there is then no way of knowing in which
-     * isolate a subsequent segfault occurs.
-     */
-    public static final CGlobalData<Pointer> baseIsolate = initializeBaseIsolate();
-
-    @Fold
-    static boolean hasBaseIsolate() {
-        return CompilerBackend.getValue().equals("llvm");
-    }
-
-    @Fold
-    static CGlobalData<Pointer> initializeBaseIsolate() {
-        return CompilerBackend.getValue().equals("llvm") ? CGlobalDataFactory.createWord() : null;
+    public interface IsolateCreationWatcher {
+        void registerIsolate(Isolate isolate);
     }
 
     @Snippet
@@ -213,11 +197,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
-        if (hasBaseIsolate()) {
-            Pointer value = baseIsolate.get().compareAndSwapWord(0, WordFactory.zero(), isolate.read(), LocationIdentity.ANY_LOCATION);
-            if (!value.isNull()) {
-                baseIsolate.get().writeWord(0, WordFactory.signed(-1));
-            }
+        if (ImageSingletons.contains(IsolateCreationWatcher.class)) {
+            ImageSingletons.lookup(IsolateCreationWatcher.class).registerIsolate(isolate.read());
         }
 
         CodeInfoTable.prepareImageCodeInfo();

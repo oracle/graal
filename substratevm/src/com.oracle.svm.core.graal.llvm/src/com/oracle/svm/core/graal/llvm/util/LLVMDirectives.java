@@ -36,7 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 public class LLVMDirectives implements CContext.Directives {
     @Override
     public boolean isInConfiguration() {
-        return SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        return SubstrateOptions.useLLVMBackend();
     }
 
     @Override

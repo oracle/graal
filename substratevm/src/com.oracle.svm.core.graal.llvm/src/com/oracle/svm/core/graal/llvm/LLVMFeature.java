@@ -77,14 +77,14 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (!SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+        if (!SubstrateOptions.useLLVMBackend()) {
             for (HostedOptionKey<?> llvmOption : LLVMOptions.allOptions) {
                 if (llvmOption.hasBeenSet()) {
                     throw UserError.abort("Flag " + llvmOption.getName() + " can only be used together with -H:CompilerBackend=llvm");
                 }
             }
         }
-        return SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        return SubstrateOptions.useLLVMBackend();
     }
 
     @Override
