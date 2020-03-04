@@ -27,18 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-#include <stdio.h>
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-/* The noinline attribute causes clang to not realize that calling this function with NULL
- * would result in undefined behavior and replacing the call to it in main() with an
- * "unreachable" instruction.
+/**
+ * Unpacks and returns the evaluation result of its argument if it's a vararg, otherwise just
+ * returns it.
  */
-__attribute__((noinline)) void call_and_print(const char *(*fun)()) {
-  printf("%s\n", fun());
-}
+@NodeChild(type = LLVMExpressionNode.class, value = "arg")
+public abstract class LLVMUnpackVarargsNode extends LLVMExpressionNode {
+    @Specialization
+    protected Object byValue(LLVMVarArgCompoundValue arg) {
+        return arg.getAddr();
+    }
 
-int main() {
-  call_and_print(NULL);
-  return 0;
+    @Fallback
+    protected Object byValue(Object arg) {
+        return arg;
+    }
 }

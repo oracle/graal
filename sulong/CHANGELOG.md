@@ -8,6 +8,9 @@ Changes:
   dependencies. If the initialization order is important, the suggested approach to
   use ELF/Mach-O files. The [Toolchain](docs/TOOLCHAIN.md) can help creating those.
 
+* Cover more cases when calling functions that receive structs by value across interop
+  boundaries.
+
 # Version 20.0.0
 
 Changes:
