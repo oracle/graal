@@ -68,7 +68,6 @@ public class SingleImplementorInterfaceTest extends GraalCompilerTest {
         i.interfaceMethod();
     }
 
-
     @Test
     public void testSingleImplementorInterfaceDevirtualization1() {
         ResolvedJavaType singleImplementorType = getMetaAccess().lookupJavaType(SingleImplementor1.class);
