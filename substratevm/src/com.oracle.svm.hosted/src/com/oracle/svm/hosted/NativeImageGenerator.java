@@ -565,30 +565,30 @@ public class NativeImageGenerator {
                     throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
                 }
 
-                ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
-                heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
-
-                BeforeCompilationAccessImpl config = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
-                featureHandler.forEachFeature(feature -> feature.beforeCompilation(config));
-
-                runtime.updateLazyState(hMetaAccess);
-
                 bigbang.getUnsupportedFeatures().report(bigbang);
+
+                recordMethodsWithStackValues();
+                recordRestrictHeapAccessCallees(aUniverse.getMethods());
+
+                /*
+                 * After this point, all TypeFlow (and therefore also TypeState) objects are
+                 * unreachable and can be garbage collected. This is important to keep the overall
+                 * memory footprint low. However, this also means we no longer have complete call
+                 * chain information. Only the summarized information stored in the
+                 * StaticAnalysisResult objects is available after this point.
+                 */
+                bigbang.cleanupAfterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
 
-            recordMethodsWithStackValues();
-            recordRestrictHeapAccessCallees(aUniverse.getMethods());
+            ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
+            heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
 
-            /*
-             * After this point, all TypeFlow (and therefore also TypeState) objects are unreachable
-             * and can be garbage collected. This is important to keep the overall memory footprint
-             * low. However, this also means we no longer have complete call chain information. Only
-             * the summarized information stored in the StaticAnalysisResult objects is available
-             * after this point.
-             */
-            bigbang.cleanupAfterAnalysis();
+            BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
+            featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
+
+            runtime.updateLazyState(hMetaAccess);
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
@@ -620,7 +620,6 @@ public class NativeImageGenerator {
                         // Finish building the model of the native image heap.
                         heap.addTrailingObjects();
 
-                        ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
                         heapLayouter.initialize();
                         heapLayouter.assignPartitionRelativeOffsets(heap);
 
