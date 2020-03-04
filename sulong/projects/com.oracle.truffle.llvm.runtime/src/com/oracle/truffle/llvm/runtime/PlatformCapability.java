@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.reflect.Array;
+import java.nio.file.Path;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-
-import java.lang.reflect.Array;
-import java.nio.file.Path;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -85,4 +85,13 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
         return new IllegalArgumentException("Unknown syscall number: " + value);
     }
 
+    /**
+     * Inject implicit dependency for a {@code library}.
+     *
+     * @param context the {@link LLVMContext}
+     * @param library the library for which dependencies might be injected
+     */
+    public String injectDependency(LLVMContext context, ExternalLibrary library) {
+        return null;
+    }
 }

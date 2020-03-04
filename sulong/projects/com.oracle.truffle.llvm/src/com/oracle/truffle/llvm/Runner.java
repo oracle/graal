@@ -1004,7 +1004,7 @@ final class Runner {
             library.makeBitcodeLibrary();
             context.ensureExternalLibraryAdded(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            ArrayList<ExternalLibrary> dependencies = processDependencies(binaryParserResult, parseContext, library);
+            ArrayList<ExternalLibrary> dependencies = processDependencies(library, binaryParserResult, parseContext);
             LLVMParserResult parserResult = parseBinary(binaryParserResult, library);
             parserResult.setDependencies(dependencies);
             parseContext.parserResultsAdd(parserResult);
@@ -1022,14 +1022,14 @@ final class Runner {
      * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the
      * {@link ParseContext#dependencyQueueAddLast dependency queue} if not already in there.
      */
-    private ArrayList<ExternalLibrary> processDependencies(BinaryParserResult binaryParserResult, ParseContext parseContext, Object reason) {
+    private ArrayList<ExternalLibrary> processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ParseContext parseContext) {
         ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
-        for (String lib : binaryParserResult.getLibraries()) {
-            ExternalLibrary dependency = context.findExternalLibrary(lib, reason, binaryParserResult.getLocator());
+        for (String lib : context.injectDependencies(library, binaryParserResult.getLibraries())) {
+            ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
             if (dependency != null) {
                 dependencies.add(dependency);
             } else {
-                dependency = context.addExternalLibrary(lib, reason, binaryParserResult.getLocator());
+                dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency != null) {
                     parseContext.dependencyQueueAddLast(dependency);
                     dependencies.add(dependency);
