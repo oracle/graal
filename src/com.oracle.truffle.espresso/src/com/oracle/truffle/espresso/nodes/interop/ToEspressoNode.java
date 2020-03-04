@@ -107,7 +107,7 @@ abstract class ToEspressoNode extends Node {
     @TruffleBoundary
     @Specialization(replaces = "doPrimitive")
     Object doPrimitiveUncached(Object value, PrimitiveKlass primitiveKlass) throws UnsupportedMessageException, UnsupportedTypeException {
-        return doPrimitive(value, primitiveKlass, InteropLibrary.getFactory().getUncached(), primitiveKlass, BranchProfile.getUncached());
+        return doPrimitive(value, primitiveKlass, InteropLibrary.getFactory().getUncached(value), primitiveKlass, BranchProfile.getUncached());
     }
 
     @Specialization(guards = "!klass.isPrimitive()" /* && isStaticObject(value) */)
