@@ -189,7 +189,7 @@ public class InspectorDnsRebindAttackTest {
         }
     }
 
-    private String readAsciiLine(InputStream in) throws IOException {
+    private static String readAsciiLine(InputStream in) throws IOException {
         final StringBuilder sb = new StringBuilder();
         int c;
         while ((c = in.read()) != '\n') {
@@ -202,7 +202,7 @@ public class InspectorDnsRebindAttackTest {
         return sb.toString();
     }
 
-    private byte[] readBytes(InputStream in, int length) throws IOException {
+    private static byte[] readBytes(InputStream in, int length) throws IOException {
         int missing = length;
         int pos = 0;
         final byte[] buffer = new byte[length];
