@@ -1105,6 +1105,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         public int getCodeSize() {
             return codeAttribute.getCode() != null ? codeAttribute.getCode().length : 0;
         }
+
+        public LineNumberTableAttribute getLineNumberTableAttribute() {
+            if (codeAttribute != null) {
+                LineNumberTableAttribute lineNumberTable = codeAttribute.getLineNumberTableAttribute();
+                return lineNumberTable != null ? lineNumberTable : LineNumberTableAttribute.EMPTY;
+            }
+            return LineNumberTableAttribute.EMPTY;
+        }
     }
     // endregion jdwp-specific
 }

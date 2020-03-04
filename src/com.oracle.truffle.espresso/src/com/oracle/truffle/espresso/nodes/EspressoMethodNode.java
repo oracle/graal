@@ -65,7 +65,7 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
             return null;
         }
 
-        LineNumberTableAttribute lineNumberTable = method.getCodeAttribute().getLineNumberTableAttribute();
+        LineNumberTableAttribute lineNumberTable = method.getLineNumberTableAttribute();
 
         if (lineNumberTable != LineNumberTableAttribute.EMPTY) {
             LineNumberTableAttribute.Entry[] entries = lineNumberTable.getEntries();

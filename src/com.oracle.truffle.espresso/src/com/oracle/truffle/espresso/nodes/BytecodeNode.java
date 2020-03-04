@@ -372,7 +372,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         if (s == null) {
             return null;
         }
-        LineNumberTableAttribute table = getMethodVersion().getCodeAttribute().getLineNumberTableAttribute();
+
+        LineNumberTableAttribute table = getMethodVersion().getLineNumberTableAttribute();
+
         if (table == LineNumberTableAttribute.EMPTY) {
             return null;
         }
@@ -2240,7 +2242,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         InstrumentationSupport(MethodVersion method) {
             this.context = method.getMethod().getContext();
             this.method = method;
-            LineNumberTableAttribute table = method.getCodeAttribute().getLineNumberTableAttribute();
+
+            LineNumberTableAttribute table = method.getLineNumberTableAttribute();
 
             if (table != LineNumberTableAttribute.EMPTY) {
                 LineNumberTableAttribute.Entry[] entries = table.getEntries();
