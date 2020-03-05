@@ -48,6 +48,24 @@ final class CVSymbolRecordBuilder {
         this.typeSection = cvSections.getCVTypeSection();
     }
 
+    void build() {
+        /* A module has a set of (function def, block def, linenumbers) for each function */
+        String previousMethodName = "";
+        for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
+            for (PrimaryEntry primary : classEntry.getPrimaryEntries()) {
+                Range range = primary.getPrimary();
+                // for each function
+                String newMethodName = fixMethodName(range);
+                if (!newMethodName.equals(previousMethodName)) {
+                    previousMethodName = newMethodName;
+                    processFunction(newMethodName, range);
+                    addLineNumberRecords(newMethodName, primary);
+                }
+            }
+        }
+        cvSections.getCVSymbolSection().addRecord(symbolRecord);
+    }
+
     private boolean noMainFound = true;
 
     /**
@@ -76,24 +94,6 @@ final class CVSymbolRecordBuilder {
         }
         CVUtil.debug("replacing %s with %s\n", range.getFullMethodName(), methodName);
         return methodName;
-    }
-
-    void build() {
-        /* A module has a set of (function def, block def, linenumbers) for each function */
-        String previousMethodName = "";
-        for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
-            for (PrimaryEntry primary : classEntry.getPrimaryEntries()) {
-                Range range = primary.getPrimary();
-                // for each function
-                String newMethodName = fixMethodName(range);
-                if (!newMethodName.equals(previousMethodName)) {
-                    previousMethodName = newMethodName;
-                    processFunction(newMethodName, range);
-                    addLineNumberRecords(newMethodName, primary);
-                }
-            }
-        }
-        cvSections.getCVSymbolSection().addRecord(symbolRecord);
     }
 
     private void processFunction(String methodName, Range range) {

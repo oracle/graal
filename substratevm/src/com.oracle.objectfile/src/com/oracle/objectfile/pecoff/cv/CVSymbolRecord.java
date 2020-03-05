@@ -26,16 +26,7 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.FileEntry;
-
 import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.NoSuchFileException;
-import java.security.MessageDigest;
-
-import static com.oracle.objectfile.pecoff.cv.CVConstants.GRAAL_SOURCE_BASE;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.JDK_SOURCE_BASE;
 
 /*
  * A Symbol record is a top-level record in the CodeView .debug$S section

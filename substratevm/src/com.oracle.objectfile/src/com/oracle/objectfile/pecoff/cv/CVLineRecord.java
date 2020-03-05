@@ -137,7 +137,7 @@ final class CVLineRecord extends CVSymbolRecord {
 
     void addNewFile(FileEntry file) {
         CVFileRecord fr = cvSections.getCVSymbolSection().getFileRecord();
-        int fileId = fr.getFileEntryOffset(file);
+        int fileId = fr.addFile(file);
         fileBlocks.add(new FileBlock(file, fileId));
     }
 

@@ -71,6 +71,7 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
         pos += Integer.BYTES;
         /* add sum of all record sizes */
         for (CVSymbolRecord record : cvRecords) {
+            info("CVSymbolSectionImpl.createContent() computeFullSize %s", record);
             pos = CVUtil.align4(pos);
             pos = record.computeFullSize(pos);
         }
@@ -89,6 +90,7 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         /* write all records */
         for (CVSymbolRecord record : cvRecords) {
+            info("CVSymbolSectionImpl.createContent() computeFullContentt %s", record);
             pos = CVUtil.align4(pos);
             pos = record.computeFullContents(buffer, pos);
         }
@@ -129,11 +131,13 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
     }
 
     private void addFileRecords() {
-        this.fileRecord = new CVFileRecord(cvSections, stringTable);
-        addRecord(fileRecord);
+        addRecord(getFileRecord());
     }
 
-    public CVFileRecord getFileRecord() {
+    CVFileRecord getFileRecord() {
+        if (fileRecord == null) {
+            this.fileRecord = new CVFileRecord(cvSections, stringTable);
+        }
         return fileRecord;
     }
 
@@ -142,6 +146,7 @@ public final class CVSymbolSectionImpl extends CVSectionImplBase {
         addRecord(stringTableRecord);
     }
 
+    /* TODO: use ...objectfile.debugentry.StringTable instead */
     static final class CVStringTable {
         static final class StringTableEntry {
             public int offset;
