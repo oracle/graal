@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Arrays;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -41,8 +42,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import java.util.Arrays;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -136,7 +135,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         try {
             return frame.isLong(frameIdSlot) ? frame.getLong(frameIdSlot) : 0L;
         } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
