@@ -208,13 +208,6 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addBundle((String) args.get(2));
                 break;
             }
-            case "getPackageInfo": {
-                assert clazz.equals("java.lang.Package");
-                expectSize(args, 1);
-                String name = (String) args.get(0);
-                configuration.getOrCreateType(name);
-                break;
-            }
         }
     }
 
