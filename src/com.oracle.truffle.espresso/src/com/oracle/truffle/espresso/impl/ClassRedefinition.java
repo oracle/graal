@@ -73,7 +73,7 @@ public final class ClassRedefinition {
                 // primitive klass, should never happen
                 classChange = ClassChange.SCHEMA_CHANGE;
             }
-            System.out.println("found changes: " + classChange);
+
             switch (classChange) {
                 case METHOD_BODY_CHANGE:
                     return redefineChangedMethodBodies(parserKlass, (ObjectKlass) klass, detectedChange);
