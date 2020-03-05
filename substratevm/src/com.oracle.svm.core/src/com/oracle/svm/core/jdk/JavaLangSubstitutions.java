@@ -523,6 +523,35 @@ final class Target_java_lang_ClassValue {
     }
 }
 
+@SuppressWarnings({"deprecation", "unused"})
+@TargetClass(java.lang.Compiler.class)
+final class Target_java_lang_Compiler {
+    @Substitute
+    static Object command(Object arg) {
+        return null;
+    }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClass(Class<?> clazz) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClasses(String string) {
+        return false;
+    }
+
+    @Substitute
+    static void enable() {
+    }
+
+    @Substitute
+    static void disable() {
+    }
+}
+
 final class IsSingleThreaded implements Predicate<Class<?>> {
     @Override
     public boolean test(Class<?> t) {
