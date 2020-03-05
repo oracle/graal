@@ -245,7 +245,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             tester.startEval(source);
             tester.expectSuspended((SuspendedEvent event) -> {
                 DebugValue value = event.getTopStackFrame().eval("var+10");
-                assertEquals(42 + 10, value.as(Number.class));
+                assertEquals(42 + 10, value.asInt());
             });
             tester.expectDone();
         }

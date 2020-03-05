@@ -101,7 +101,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals(10, throwLocation.getCharIndex());
                 assertEquals(21, throwLocation.getCharEndIndex());
-                assertEquals("a: b", exception.getExceptionObject().as(String.class));
+                assertEquals("a: b", exception.getExceptionObject().toDisplayString());
                 assertDebugStackTrace(exception.getDebugStackTrace(), " <1:11, 1:21>");
                 assertStack(exception.getStackTrace(), "<instrumentation-test-language>.(Unnamed:1)");
             });
@@ -132,7 +132,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                 assertEquals("TestExceptionMessage", exception.getMessage());
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals("THROW(IllegalState, TestExceptionMessage)", throwLocation.getCharacters());
-                assertEquals("IllegalState: TestExceptionMessage", exception.getExceptionObject().as(String.class));
+                assertEquals("IllegalState: TestExceptionMessage", exception.getExceptionObject().toDisplayString());
                 assertDebugStackTrace(exception.getDebugStackTrace(), "UncaughtThrow <3:28, 3:68>", " <6:1, 6:19>");
                 assertStack(exception.getStackTrace(), "<instrumentation-test-language>.UncaughtThrow(Unnamed:3)", "<instrumentation-test-language>.(Unnamed:6)");
             });
@@ -160,7 +160,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                 assertEquals(event.getTopStackFrame(), catchLocation.getFrame());
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals("THROW(NPE, TestExceptionMessage)", throwLocation.getCharacters());
-                assertEquals("NPE: TestExceptionMessage", exception.getExceptionObject().as(String.class));
+                assertEquals("NPE: TestExceptionMessage", exception.getExceptionObject().toDisplayString());
                 assertDebugStackTrace(exception.getDebugStackTrace(), " <1:15, 1:46>");
                 assertStack(exception.getStackTrace(), "<instrumentation-test-language>.(Unnamed:1)");
             });
@@ -198,7 +198,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                 assertEquals(nextFrame, catchLocation.getFrame());
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals("THROW(NPE, TestExceptionMessage)", throwLocation.getCharacters());
-                assertEquals("NPE: TestExceptionMessage", exception.getExceptionObject().as(String.class));
+                assertEquals("NPE: TestExceptionMessage", exception.getExceptionObject().toDisplayString());
                 assertDebugStackTrace(exception.getDebugStackTrace(), "ThrownNPE <7:13, 7:44>", "CaughtThrow <3:17, 3:31>", " <9:1, 9:17>");
                 assertStack(exception.getStackTrace(), "<instrumentation-test-language>.ThrownNPE(Unnamed:7)", "<instrumentation-test-language>.CaughtThrow(Unnamed:3)",
                                 "<instrumentation-test-language>.(Unnamed:9)");
@@ -270,7 +270,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                 assertEquals(event.getTopStackFrame(), catchLocation.getFrame());
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals("THROW(a, b)", throwLocation.getCharacters());
-                assertEquals("a: b", exception.getExceptionObject().as(String.class));
+                assertEquals("a: b", exception.getExceptionObject().toDisplayString());
             });
             expectDone();
 
@@ -367,7 +367,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
                     SourceSection throwLocation = dex.getThrowLocation();
                     assertEquals("THROW(NPE, TestExceptionMessage)", throwLocation.getCharacters());
                     assertNull(dex.getCatchLocation());
-                    assertEquals("NPE: TestExceptionMessage", dex.getExceptionObject().as(String.class));
+                    assertEquals("NPE: TestExceptionMessage", dex.getExceptionObject().toDisplayString());
                     List<DebugStackTraceElement> debugStackTrace = dex.getDebugStackTrace();
                     assertEquals(2, debugStackTrace.size());
                     assertEquals("THROW(NPE, TestExceptionMessage)", debugStackTrace.get(0).getSourceSection().getCharacters());

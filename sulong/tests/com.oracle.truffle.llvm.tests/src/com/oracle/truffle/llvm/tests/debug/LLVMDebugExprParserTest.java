@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -228,13 +228,13 @@ public final class LLVMDebugExprParserTest {
             for (Entry<String, String> kv : textExpressionMap.entrySet()) {
                 if (kv.getValue().startsWith("EXCEPTION ")) {
                     try {
-                        String actual = frame.eval(kv.getKey()).as(String.class);
+                        String actual = frame.eval(kv.getKey()).asString();
                         assertTrue("Evaluation of expression \"" + kv.getKey() + "\"  on line " + currentLine + "did evaluate to " + actual + " and did not throw expected " + kv.getValue(), false);
                     } catch (DebugException e) {
                         // OK since expected exception has been thrown
                     }
                 } else {
-                    String actual = frame.eval(kv.getKey()).as(String.class);
+                    String actual = frame.eval(kv.getKey()).toDisplayString();
                     String noNewLineActual = actual.replace("\n", "");
                     if (allowFailure) {
                         if (noNewLineActual.contains(kv.getValue())) {

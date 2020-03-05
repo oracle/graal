@@ -101,7 +101,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 DebugStackFrame frame = stackFrames.next();
                 assertDynamicFrame(frame);
                 DebugValue aValue = frame.getScope().getDeclaredValue("a");
-                String aStringValue = aValue.as(String.class);
+                String aStringValue = aValue.toDisplayString();
 
                 // assert changes to a parent frame
                 frame = stackFrames.next();
@@ -109,7 +109,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
                 // assign from one stack frame to another one
                 frame.getScope().getDeclaredValue("a").set(aValue);
-                assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").as(String.class));
+                assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").toDisplayString());
                 event.prepareContinue();
             });
             expectDone();
@@ -117,34 +117,34 @@ public class DebugStackFrameTest extends AbstractDebugTest {
     }
 
     private static void assertDynamicFrame(DebugStackFrame frame) {
-        assertEquals("42", frame.getScope().getDeclaredValue("a").as(String.class));
-        assertEquals("43", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("44", frame.getScope().getDeclaredValue("c").as(String.class));
+        assertEquals("42", frame.getScope().getDeclaredValue("a").toDisplayString());
+        assertEquals("43", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("44", frame.getScope().getDeclaredValue("c").toDisplayString());
 
         // dynamic value should now be accessible
         DebugValue dStackValue = frame.getScope().getDeclaredValue("d");
         assertNull(dStackValue);
 
         // should change the dynamic value
-        assertEquals("45", frame.eval("VARIABLE(d, 45)").as(String.class));
+        assertEquals("45", frame.eval("VARIABLE(d, 45)").toDisplayString());
         dStackValue = frame.getScope().getDeclaredValue("d");
-        assertEquals("45", dStackValue.as(String.class));
-        assertEquals("45", frame.getScope().getDeclaredValue("d").as(String.class));
+        assertEquals("45", dStackValue.toDisplayString());
+        assertEquals("45", frame.getScope().getDeclaredValue("d").toDisplayString());
 
         // change an existing value
-        assertEquals("45", frame.eval("VARIABLE(c, 45)").as(String.class));
-        assertEquals("45", frame.getScope().getDeclaredValue("c").as(String.class));
+        assertEquals("45", frame.eval("VARIABLE(c, 45)").toDisplayString());
+        assertEquals("45", frame.getScope().getDeclaredValue("c").toDisplayString());
 
         // set an existing value using a constant expression
         DebugValue bValue = frame.getScope().getDeclaredValue("b");
         frame.getScope().getDeclaredValue("b").set(frame.eval("CONSTANT(46)"));
-        assertEquals("46", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("46", bValue.as(String.class));
+        assertEquals("46", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("46", bValue.toDisplayString());
 
         // set an existing value using a constant expression with side effect
         frame.getScope().getDeclaredValue("b").set(frame.eval("VARIABLE(a, 47)"));
-        assertEquals("47", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("47", frame.getScope().getDeclaredValue("a").as(String.class));
+        assertEquals("47", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("47", frame.getScope().getDeclaredValue("a").toDisplayString());
     }
 
     @Test
@@ -193,7 +193,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertInvalidDebugValue(data.stackValueWithGetValue);
                 assertInvalidDebugValue(data.stackValueWithIterator);
 
-                assertEquals("45", data.heapValue.as(String.class));
+                assertEquals("45", data.heapValue.toDisplayString());
                 assertTrue(data.heapValue.isWritable());
                 assertTrue(data.heapValue.isReadable());
             });
@@ -281,7 +281,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     private static void assertInvalidDebugValue(DebugValue value) {
         try {
-            value.as(String.class);
+            value.toDisplayString();
             fail();
         } catch (IllegalStateException s) {
         }
