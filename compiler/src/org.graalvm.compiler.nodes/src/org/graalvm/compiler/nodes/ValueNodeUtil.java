@@ -31,7 +31,7 @@ import java.util.Collection;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -103,7 +103,7 @@ public class ValueNodeUtil {
         return (value == null) ? "-" : ("" + toLowerCase(value.getStackKind().getTypeChar()) + value.toString(Verbosity.Id));
     }
 
-    public static ValueNode asNode(MemoryNode node) {
+    public static ValueNode asNode(MemoryKill node) {
         if (node == null) {
             return null;
         } else {

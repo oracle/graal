@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.memory.MemoryNode;
-import org.graalvm.word.LocationIdentity;
+package com.oracle.svm.core;
 
-public interface MemoryProxy extends Proxy, MemoryNode {
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
-    LocationIdentity getLocationIdentity();
+public abstract class BaseProcessPropertiesSupport implements ProcessPropertiesSupport {
+    @Override
+    public int getArgumentVectorBlockSize() {
+        return JavaMainWrapper.getCRuntimeArgumentBlockLength();
+    }
 
-    MemoryNode getOriginalMemoryNode();
+    @Override
+    public String getArgumentVectorProgramName() {
+        return JavaMainWrapper.getCRuntimeArgument0();
+    }
+
+    @Override
+    public boolean setArgumentVectorProgramName(String name) {
+        return JavaMainWrapper.setCRuntimeArgument0(name);
+    }
 }

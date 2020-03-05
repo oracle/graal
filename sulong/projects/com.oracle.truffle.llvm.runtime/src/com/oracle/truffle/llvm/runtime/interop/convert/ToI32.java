@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -94,8 +95,13 @@ public abstract class ToI32 extends ForeignToLLVM {
             return interop.asInt(obj);
         } catch (UnsupportedMessageException ex) {
             exception.enter();
-            throw new LLVMPolyglotException(this, "Polyglot number can't be converted to int.");
+            throw new LLVMPolyglotException(this, "Polyglot number %s cannot be converted to i32", obj);
         }
+    }
+
+    @Fallback
+    protected int fromForeignObject(Object obj) {
+        throw new LLVMPolyglotException(this, "Polyglot object %s cannot be converted to i32", obj);
     }
 
     @TruffleBoundary

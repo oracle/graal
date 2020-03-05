@@ -29,6 +29,23 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -48,24 +65,8 @@ import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.tests.SulongSuite;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
+import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyObject;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Ignore;
-import org.junit.Test;
 
 public class LLVMInteropTest {
     @Test
@@ -995,8 +996,8 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test073() {
-        try (Runner runner = new Runner("interop073")) {
+    public void testPolyglotGetArg() {
+        try (Runner runner = new Runner("polyglotGetArg")) {
             Assert.assertEquals(42, runner.run());
         }
     }
@@ -1428,6 +1429,44 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testInteropUndefinedToIntConvInt() {
+        try (Runner runner = new Runner("interopUndefinedToIntConv")) {
+            runner.export(new ProxyExecutable() {
+                @Override
+                public Object execute(Value... t) {
+                    try {
+                        /*
+                         * This will always fail because the C code is passing a pointer rather than
+                         * a polyglot object and that's expected here.
+                         */
+                        return t[0].getMember("price");
+                    } catch (UnsupportedOperationException e) {
+                        return -1;
+                    }
+                }
+            }, "getPrice");
+            Assert.assertEquals(-1, runner.run());
+        }
+    }
+
+    @Test
+    public void testInteropUndefinedToIntNull() {
+        try (Runner runner = new Runner("interopUndefinedToIntConv")) {
+            runner.export(new ProxyExecutable() {
+                @Override
+                public Object execute(Value... t) {
+                    return new NullValue();
+                }
+            }, "getPrice");
+            try {
+                runner.run();
+            } catch (PolyglotException e) {
+                Assert.assertEquals(e.getMessage(), "Polyglot object null cannot be converted to i32");
+            }
+        }
+    }
+
     private static Map<String, Object> makeObjectA() {
         HashMap<String, Object> values = new HashMap<>();
         values.put("valueBool", true);
@@ -1506,7 +1545,7 @@ public class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
-    public static final String FILENAME = "O0_MEM2REG." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String FILENAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

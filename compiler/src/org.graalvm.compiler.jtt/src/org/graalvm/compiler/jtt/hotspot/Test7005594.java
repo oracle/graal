@@ -27,10 +27,10 @@ package org.graalvm.compiler.jtt.hotspot;
 //@formatter:off
 
 /**
+ * Array overflow not handled correctly with loop optimzations.
+ *
  * @test
  * @bug 7005594
- * @summary Array overflow not handled correctly with loop optimzations
- *
  * @run shell Test7005594.sh
  */
 public class Test7005594 {

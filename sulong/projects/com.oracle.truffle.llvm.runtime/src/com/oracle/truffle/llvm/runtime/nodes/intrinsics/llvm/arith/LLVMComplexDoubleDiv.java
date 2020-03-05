@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,53 +29,35 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMComplexDoubleDiv extends LLVMExpressionNode {
-
-    @Child private LLVMExpressionNode aNode;
-    @Child private LLVMExpressionNode bNode;
-    @Child private LLVMExpressionNode cNode;
-    @Child private LLVMExpressionNode dNode;
-    @Child private LLVMExpressionNode alloc;
+@NodeChild(value = "result", type = LLVMExpressionNode.class)
+@NodeChild(value = "a", type = LLVMExpressionNode.class)
+@NodeChild(value = "b", type = LLVMExpressionNode.class)
+@NodeChild(value = "c", type = LLVMExpressionNode.class)
+@NodeChild(value = "d", type = LLVMExpressionNode.class)
+public abstract class LLVMComplexDoubleDiv extends LLVMExpressionNode {
 
     @Child private LLVMDoubleStoreNode store;
 
-    public LLVMComplexDoubleDiv(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
-        this.alloc = alloc;
-        this.aNode = a;
-        this.bNode = b;
-        this.cNode = c;
-        this.dNode = d;
+    public LLVMComplexDoubleDiv() {
         this.store = LLVMDoubleStoreNodeGen.create(null, null);
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        try {
-            double a = aNode.executeDouble(frame);
-            double b = bNode.executeDouble(frame);
-            double c = cNode.executeDouble(frame);
-            double d = dNode.executeDouble(frame);
+    @Specialization
+    public Object doDouble(LLVMPointer result, double a, double b, double c, double d) {
+        double denom = c * c + d * d;
+        double zReal = (a * c + b * d) / denom;
+        double zImag = (b * c - a * d) / denom;
 
-            double denom = c * c + d * d;
-            double zReal = (a * c + b * d) / denom;
-            double zImag = (b * c - a * d) / denom;
+        store.executeWithTarget(result, zReal);
+        store.executeWithTarget(result.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
 
-            LLVMPointer allocatedMemory = alloc.executeLLVMPointer(frame);
-            store.executeWithTarget(allocatedMemory, zReal);
-            store.executeWithTarget(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
-
-            return allocatedMemory;
-        } catch (UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+        return result;
     }
 }

@@ -35,10 +35,10 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 public final class RuntimeSupport implements VMRuntimeSupport {
 

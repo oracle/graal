@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,17 +30,20 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 /**
  * Nulls out the given set of frame slots after evaluating the given expression.
  */
-public final class LLVMFrameNullerExpression extends LLVMExpressionNode {
+@NodeInfo(cost = NodeCost.NONE) // this node reduces the compiled code size
+public abstract class LLVMFrameNullerExpression extends LLVMExpressionNode {
 
     @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
 
@@ -49,12 +52,6 @@ public final class LLVMFrameNullerExpression extends LLVMExpressionNode {
     public LLVMFrameNullerExpression(FrameSlot[] frameSlots, LLVMExpressionNode expression) {
         this.frameSlots = frameSlots;
         this.expression = expression;
-    }
-
-    @Override
-    public NodeCost getCost() {
-        // this node reduces the compile code size
-        return NodeCost.NONE;
     }
 
     @Override
@@ -69,8 +66,8 @@ public final class LLVMFrameNullerExpression extends LLVMExpressionNode {
         }
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object doGeneric(VirtualFrame frame) {
         try {
             return expression.executeGeneric(frame);
         } finally {

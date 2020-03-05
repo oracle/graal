@@ -35,7 +35,7 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -44,12 +44,12 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccessible {
+public abstract class DebugExprVarNode extends LLVMExpressionNode implements MemberAccessible {
 
     private final String name;
     private Iterable<Scope> scopes;
 
-    public DebugExprVarNode(String name, Iterable<Scope> scopes) {
+    DebugExprVarNode(String name, Iterable<Scope> scopes) {
         this.name = name;
         this.scopes = scopes;
     }
@@ -97,8 +97,8 @@ public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccess
         return name;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object doVariable() {
         Pair<Object, DebugExprType> pair = findMemberAndType();
         if (pair.getLeft() == null) {
             throw DebugExprException.symbolNotFound(this, name, null);
@@ -115,6 +115,6 @@ public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccess
     }
 
     public DebugExprFunctionCallNode createFunctionCall(List<DebugExpressionPair> arguments, Iterable<Scope> globalScopes) {
-        return new DebugExprFunctionCallNode(name, arguments, globalScopes);
+        return DebugExprFunctionCallNodeGen.create(name, arguments, globalScopes);
     }
 }

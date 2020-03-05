@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.base;
+#include <polyglot.h>
 
-import java.util.List;
+void *global;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+__attribute__((noinline)) int argTest(int a, int b, int c, int d) {
+  return polyglot_as_i32(polyglot_get_arg(2)) + c;
+}
 
-public final class LLVMInlineAssemblyPrologueNode extends LLVMStatementNode {
-
-    @Children private final LLVMStatementNode[] writeNodes;
-
-    public LLVMInlineAssemblyPrologueNode(List<LLVMStatementNode> writeNodes) {
-        this.writeNodes = writeNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
-    }
-
-    @Override
-    @ExplodeLoop
-    public void execute(VirtualFrame frame) {
-        for (LLVMStatementNode n : writeNodes) {
-            n.execute(frame);
-        }
-    }
+int main() {
+  return argTest(1, 2, 21, 4);
 }

@@ -42,6 +42,7 @@ public final class LLVMBitcodeLibraryFunctions {
 
         protected LibraryFunctionNode(LLVMContext context, String name) {
             LLVMFunction function = context.getGlobalScope().getFunction(name);
+            assert function != null;
             LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
             callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,36 +29,31 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
+@GenerateUncached
+public abstract class LLVMDerefHandleGetReceiverNode extends LLVMNode {
 
-    @CompilationFinal private ContextReference<LLVMContext> context;
+    public abstract LLVMManagedPointer execute(LLVMNativePointer addr);
 
-    protected LLVMContext getContext() {
-        if (context == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            context = lookupContextReference(LLVMLanguage.class);
-        }
-        return context.get();
+    public abstract LLVMManagedPointer execute(long addr);
+
+    @Specialization
+    public LLVMManagedPointer doPointer(LLVMNativePointer addr,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        return doLong(addr.asNative(), context);
     }
 
-    public LLVMManagedPointer execute(LLVMNativePointer addr) {
-        return execute(addr.asNative());
-    }
-
-    public LLVMManagedPointer execute(long address) {
-        return getContext().getDerefHandleContainer().getValue(address).copy();
-    }
-
-    public static LLVMDerefHandleGetReceiverNode create() {
-        return new LLVMDerefHandleGetReceiverNode();
+    @Specialization
+    public LLVMManagedPointer doLong(long address,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        return context.getDerefHandleContainer().getValue(address).copy();
     }
 }

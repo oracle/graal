@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,7 +61,7 @@ public class InteropTestBase {
     }
 
     private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
-    public static final String TEST_FILE_NAME = "O0_MEM2REG." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static TruffleObject loadTestBitcodeInternal(String name) {
         File file = Paths.get(testBase.toString(), name, TEST_FILE_NAME).toFile();

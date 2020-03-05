@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,13 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdlib.h>
+#include <stdio.h>
 #include <polyglot.h>
 
-void *global;
+struct Order {
+  int price;
+};
 
-int argTest(int a, int b, int c, int d) {
-	return polyglot_as_i32(polyglot_get_arg(2)) + c;
-}
+POLYGLOT_DECLARE_STRUCT(Order);
+
 int main() {
-  return argTest(1, 2, 21, 4);
+  struct Order o = (struct Order){ .price = 100 };
+
+  /* The following line represents: void *foo = polyglot_eval("js", "(order) => order.price"); */
+  void *foo = polyglot_import("getPrice");
+
+  /* polyglot_from_Order(&o) should be used here for correct operation, but this test is
+     about making sure we throw a PolyglotException rather than an InternalError. */
+  int price = ((int (*)(struct Order *order)) foo)(&o);
+
+  return price;
 }

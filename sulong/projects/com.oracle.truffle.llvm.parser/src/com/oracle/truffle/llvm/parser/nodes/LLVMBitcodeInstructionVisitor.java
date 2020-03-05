@@ -99,8 +99,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpressionNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -727,13 +727,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        LLVMExpressionNode targetAddress;
-        try {
-            targetAddress = symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized);
-        } catch (TypeOverflowException e) {
-            targetAddress = Type.handleOverflowExpression(e);
-        }
-        createFrameWrite(targetAddress, gep);
+        createFrameWrite(symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
     }
 
     @Override
@@ -1007,15 +1001,15 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         nullerInfo = null;
         if (frameSlots != null) {
             if (instructionNodes.isEmpty()) {
-                instructionNodes.add(new LLVMFrameNuller(frameSlots, null));
+                instructionNodes.add(LLVMFrameNullerNodeGen.create(frameSlots, null));
                 instructionTargets.add(null);
             } else {
                 int index = instructionNodes.size() - 1;
                 LLVMNode node = instructionNodes.get(index);
                 if (node instanceof LLVMStatementNode) {
-                    node = new LLVMFrameNuller(frameSlots, (LLVMStatementNode) node);
+                    node = LLVMFrameNullerNodeGen.create(frameSlots, (LLVMStatementNode) node);
                 } else {
-                    node = new LLVMFrameNullerExpression(frameSlots, (LLVMExpressionNode) node);
+                    node = LLVMFrameNullerExpressionNodeGen.create(frameSlots, (LLVMExpressionNode) node);
                 }
                 instructionNodes.set(instructionNodes.size() - 1, node);
             }

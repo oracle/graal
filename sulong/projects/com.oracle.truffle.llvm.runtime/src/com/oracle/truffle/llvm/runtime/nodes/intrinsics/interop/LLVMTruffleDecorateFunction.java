@@ -69,19 +69,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
     @CompilationFinal private ContextReference<LLVMContext> contextRef;
 
     @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
-
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
-        }
-        return derefHandleGetReceiverNode;
-    }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
         if (languageRef == null) {
@@ -164,8 +154,9 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
     @Specialization(guards = "isAutoDerefHandle(func)")
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMNativePointer wrapper,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createBinaryProfile()") ConditionProfile isFunctionDescriptorProfile) {
-        LLVMManagedPointer resolved = getDerefHandleGetReceiverNode().execute(func);
+        LLVMManagedPointer resolved = getReceiver.execute(func);
         if (isFunctionDescriptorProfile.profile(isFunctionDescriptor(resolved.getObject()))) {
             return decorate(resolved, wrapper);
         }
@@ -179,8 +170,9 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
     @Specialization(guards = {"isAutoDerefHandle(func)", "isFunctionDescriptor(wrapper.getObject())"})
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMManagedPointer wrapper,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createBinaryProfile()") ConditionProfile isFunctionDescriptorProfile) {
-        LLVMManagedPointer resolved = getDerefHandleGetReceiverNode().execute(func);
+        LLVMManagedPointer resolved = getReceiver.execute(func);
         if (isFunctionDescriptorProfile.profile(isFunctionDescriptor(resolved.getObject()))) {
             return decorate(resolved, wrapper);
         } else if (isForeignFunction(resolved.getObject())) {

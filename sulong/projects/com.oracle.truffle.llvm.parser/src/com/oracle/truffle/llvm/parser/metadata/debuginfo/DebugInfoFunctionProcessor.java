@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.IRScope;
@@ -46,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
@@ -192,12 +194,59 @@ public final class DebugInfoFunctionProcessor {
         return trap;
     }
 
-    private SourceVariable getVariable(FunctionDefinition function, VoidCallInstruction call, int index) {
-        final SymbolImpl varSymbol = getArg(call, index);
+    /**
+     * Attaches debug information about a particular function argument to the corresponding
+     * function's type. As an example: which struct member this argument actually is in the source
+     * code.
+     *
+     * @param function The corresponding function.
+     * @param call The LLVM metadata.debug "call" (intrinsic).
+     * @param mdLocalArgIndex The debug value reference index for the argument.
+     * @param mdExprArgIndex The argument's index in the debug statement;
+     */
+    private static void attachSourceArgumentInformation(FunctionDefinition function, VoidCallInstruction call, int mdLocalArgIndex, int mdExprArgIndex) {
+        SymbolImpl callTarget = call.getCallTarget();
+        /*
+         * The call target is actually an LLVM bitcode debugging metadata call, so we should attach
+         * argument information to the corresponding function.
+         */
+        try {
+            if (LLVM_DBG_VALUE_NAME.equals(((FunctionDeclaration) callTarget).getName())) {
+                FunctionParameter p = (FunctionParameter) ((MDValue) ((MetadataSymbol) call.getArguments()[LLVM_DBG_INTRINSICS_VALUE_ARGINDEX]).getNode()).getValue();
+                MDLocalVariable v = (MDLocalVariable) ((MetadataSymbol) call.getArguments()[mdLocalArgIndex]).getNode();
+                MDExpression e = (MDExpression) ((MetadataSymbol) call.getArguments()[mdExprArgIndex]).getNode();
+                ValueFragment f = ValueFragment.parse(e);
+                if (!f.isComplete()) {
+                    long sourceArgIndex = v.getArg();
+
+                    if (Long.compareUnsigned(sourceArgIndex, Integer.MAX_VALUE) > 0) {
+                        throw new IndexOutOfBoundsException(String.format("Source argument index (%s) is out of integer range", Long.toUnsignedString(sourceArgIndex)));
+                    }
+
+                    /*
+                     * Attach the argument info to the source function type: sourceArgIndex needs to
+                     * be decremented by 1 because the 0th index belongs to the return type.
+                     */
+                    function.getSourceFunction().getSourceType().attachSourceArgumentInformation(p.getArgIndex(), (int) sourceArgIndex - 1, f.getOffset(), f.getLength());
+                }
+            }
+        } catch (ClassCastException ignored) {
+            /*
+             * Ignore class cast exceptions since we're looking for that particular exact sequence
+             * of types.
+             */
+        }
+    }
+
+    private SourceVariable getVariable(FunctionDefinition function, VoidCallInstruction call, int mdLocalArgIndex, int mdExprArgIndex) {
+        final SymbolImpl varSymbol = getArg(call, mdLocalArgIndex);
         if (varSymbol instanceof MetadataSymbol) {
             MDBaseNode mdLocal = ((MetadataSymbol) varSymbol).getNode();
 
             LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
+
+            attachSourceArgumentInformation(function, call, mdLocalArgIndex, mdExprArgIndex);
+
             return function.getSourceFunction().getLocal(symbol);
         }
 
@@ -233,7 +282,7 @@ public final class DebugInfoFunctionProcessor {
             return call;
         }
 
-        final SourceVariable variable = getVariable(function, call, mdLocalArgIndex);
+        final SourceVariable variable = getVariable(function, call, mdLocalArgIndex, mdExprArgIndex);
         if (variable == null) {
             // invalid or unsupported debug information
             // remove upper indices so we do not need to update the later ones

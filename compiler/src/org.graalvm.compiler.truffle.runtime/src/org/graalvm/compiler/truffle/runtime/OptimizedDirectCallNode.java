@@ -48,6 +48,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
     private boolean inliningForced;
     @CompilationFinal private Class<? extends Throwable> exceptionProfile;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
+    private volatile boolean splitDecided;
 
     /*
      * Should be instantiated with the runtime.
@@ -148,7 +149,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
     private void onInterpreterCall(OptimizedCallTarget target) {
         callCount++;
-        TruffleSplittingStrategy.beforeCall(this, target);
+        if (target.isNeedsSplit() && !splitDecided) {
+            // We intentionally avoid locking here because worst case is a double decision printed
+            // and preventing that is not worth the performance impact of locking
+            splitDecided = true;
+            TruffleSplittingStrategy.beforeCall(this, target);
+        }
     }
 
     /** Used by the splitting strategy to install new targets. */

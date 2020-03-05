@@ -29,29 +29,38 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
 
-    private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
+    public static LLVMI32LoadNode create() {
+        return LLVMI32LoadNodeGen.create((LLVMExpressionNode) null);
+    }
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected int doI32Native(LLVMNativePointer addr,
+                    @Cached("createIdentityProfile()") IntValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
         return profile.profile(language.getLLVMMemory().getI32(addr));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(addr)")
+    @Specialization(guards = "isAutoDerefHandle(language, addr)")
     protected int doI32DerefHandle(LLVMNativePointer addr,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
-        return doI32Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
+        return doI32Managed(getReceiver.execute(addr), nativeRead);
     }
 
     @Specialization(limit = "3")

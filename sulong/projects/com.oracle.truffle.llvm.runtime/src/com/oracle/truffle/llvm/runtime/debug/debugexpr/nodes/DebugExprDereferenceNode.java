@@ -33,6 +33,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
@@ -45,15 +46,15 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprDereferenceNode extends LLVMExpressionNode implements MemberAccessible {
+public abstract class DebugExprDereferenceNode extends LLVMExpressionNode implements MemberAccessible {
     @Child private LLVMExpressionNode pointerNode;
 
     public DebugExprDereferenceNode(LLVMExpressionNode pointerNode) {
         this.pointerNode = pointerNode;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    @Specialization
+    public Object doDereference(VirtualFrame frame) {
         Object executedPointerNode = pointerNode.executeGeneric(frame);
         return getMemberAndType(executedPointerNode).getLeft();
     }

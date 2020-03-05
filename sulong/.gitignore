@@ -66,6 +66,7 @@ tests/benchmarksgame/rvcomp/**
 tests/benchmarksgame/spectralnorm/**
 tests/benchmarksgame/threadring/**
 tests/benchmarksgame/revcomp/**
+tests/support.txt.sha1
 
 output
 /bench-results.json
