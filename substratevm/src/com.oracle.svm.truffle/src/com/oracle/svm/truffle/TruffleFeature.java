@@ -130,6 +130,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
@@ -140,6 +141,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.Profile;
+import java.util.ServiceLoader;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
@@ -321,6 +323,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             truffleRuntime.resetHosted();
         }
         RuntimeClassInitialization.initializeAtBuildTime("com.oracle.truffle");
+        for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
+        for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
     }
 

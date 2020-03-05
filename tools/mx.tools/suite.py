@@ -445,5 +445,12 @@ suite = {
                 "native-image.properties" : "file:mx.tools/tools-lsp.properties",
             },
         },
+        "TOOLS_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Tools support distribution for SVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/macro-tools.properties",
+            },
+        },
     },
 }

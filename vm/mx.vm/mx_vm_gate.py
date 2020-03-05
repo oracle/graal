@@ -58,7 +58,7 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
-    svm_truffle_tck = 'svm_truffle_tck'
+    svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
 
 
@@ -136,7 +136,7 @@ def gate_body(args, tasks):
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
-    gate_svm_truffle_tck(tasks)
+    gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
 
 def graalvm_svm():
@@ -259,41 +259,14 @@ def gate_svm_truffle_tck_js(tasks):
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
 
-def gate_svm_truffle_tck(tasks):
-    with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck]) as t:
+def gate_svm_sl_tck(tasks):
+    with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_sl_tck]) as t:
         if t:
-            #Blacklist check in Truffle and tools
             tools_suite = mx.suite('tools')
             if not tools_suite:
                 mx.abort("Cannot resolve tools suite.")
             native_image_context, svm = graalvm_svm()
-            for dist in svm.suite.dists:
-                if dist.name == 'SVM_TRUFFLE_TCK':
-                    cp = dist.classpath_repr()
-                    break
-            if not cp:
-                mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svmbuild = mkdtemp()
-                try:
-                    options = [
-                        '--macro:truffle',
-                        '--tool:chromeinspector',
-                        '--tool:coverage',
-                        '--tool:profiler',
-                        '--tool:profiler',
-                        '--tool:agentscript',
-                        '-H:Path={}'.format(svmbuild),
-                        '-H:+TruffleCheckBlackListedMethods',
-                        '-cp',
-                        cp,
-                        'com.oracle.svm.truffle.tck.MockMain'
-                    ]
-                    native_image(options)
-                finally:
-                    mx.rmtree(svmbuild)
-
-                #Truffle TCK on SVM
                 svmbuild = mkdtemp()
                 try:
                     import mx_compiler
@@ -307,8 +280,10 @@ def gate_svm_truffle_tck(tasks):
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
                     options = [
                         '--macro:truffle',
+                        '--macro:tools',
                         '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
                         '-H:Path={}'.format(svmbuild),
+                        '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
                         '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
                         '-H:MaxRuntimeCompileMethods=3000'
