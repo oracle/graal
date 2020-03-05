@@ -2089,19 +2089,36 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                 layout.setdefault(path_prefix, []).append({
                     'source_type': 'extracted-dependency',
                     'dependency': support_dist,
-                    'exclude': ['native-image.properties'],
+                    'exclude': excluded_paths,
                     'path': None,
                 })
 
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
-                layout.setdefault(launcher_dest, []).append('dependency:{}'.format(GraalVmLauncher.launcher_project_name(launcher_config, stage1=False)))
-                for link in launcher_config.links:
-                    link_dest = path_prefix + link
-                    layout.setdefault(link_dest, []).append('link:{}'.format(relpath(launcher_dest, start=dirname(link_dest))))
+                if launcher_config.destination not in excluded_paths:
+                    layout.setdefault(launcher_dest, []).append({
+                        'source_type': 'dependency',
+                        'dependency': GraalVmLauncher.launcher_project_name(launcher_config, stage1=False),
+                        'exclude': excluded_paths,
+                        'path': None,
+                    })
+                    for link in launcher_config.links:
+                        if link not in excluded_paths:
+                            link_dest = path_prefix + link
+                            link_target = relpath(launcher_dest, start=dirname(link_dest))
+                            layout.setdefault(link_dest, []).append({
+                                'source_type': 'link',
+                                'path': link_target,
+                            })
 
             for library_config in library_configs:
-                layout.setdefault(path_prefix + library_config.destination, []).append('dependency:{}'.format(GraalVmLibrary.project_name(library_config)))
+                if library_config.destination not in excluded_paths:
+                    layout.setdefault(path_prefix + library_config.destination, []).append({
+                        'source_type': 'dependency',
+                        'dependency': GraalVmLibrary.project_name(library_config),
+                        'exclude': excluded_paths,
+                        'path': None,
+                    })
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination
@@ -2120,7 +2137,8 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             excluded_paths = details[1] if len(details) > 1 else []
             dependency = get_component(dependency_name, fatalIfMissing=True)
             excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
-            add_files_from_component(dependency, base_dir + dependency_path + '/', excluded_paths)
+            dependency_path_prefix = base_dir + ((dependency_path + '/') if dependency_path else '')
+            add_files_from_component(dependency, dependency_path_prefix, excluded_paths)
 
         mx.logvv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
 
