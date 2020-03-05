@@ -227,6 +227,9 @@ public final class JNI {
         @CField("GetStaticMethodID")
         GetStaticMethodID getGetStaticMethodID();
 
+        @CField("GetMethodID")
+        GetMethodID getGetMethodID();
+
         @CField("CallStaticBooleanMethodA")
         CallStaticBooleanMethodA getCallStaticBooleanMethodA();
 
@@ -241,6 +244,9 @@ public final class JNI {
 
         @CField("CallStaticLongMethodA")
         CallStaticLongMethodA getCallStaticLongMethodA();
+
+        @CField("CallObjectMethodA")
+        CallObjectMethodA getCallObjectMethodA();
 
         @CField("ExceptionCheck")
         ExceptionCheck getExceptionCheck();
@@ -287,6 +293,11 @@ public final class JNI {
     public interface CallStaticLongMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         long call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
+    }
+
+    public interface CallObjectMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JObject call(JNIEnv env, JObject object, JMethodID methodID, JValue args);
     }
 
     public interface DeleteGlobalRef extends CFunctionPointer {
