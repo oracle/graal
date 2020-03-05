@@ -110,7 +110,7 @@ def graal_wasm_gate_runner(args, tasks):
 
             # Memory benchmarks
             exitcode = mx_benchmark.benchmark([
-                "wasm-memory", "--",
+                "wasm-memory:*", "--",
                 "--jvm", "server", "--jvm-config", "graal-core"])
             if exitcode != 0:
                 mx.abort("Errors during benchmark tests, aborting.")
