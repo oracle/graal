@@ -623,11 +623,11 @@ public final class LLVMContext {
     }
 
     private boolean isInternalLibraryPath(Path path) {
-        return path.startsWith(internalLibraryPath);
+        return path.normalize().startsWith(internalLibraryPath);
     }
 
     private boolean isInternalLibraryFile(TruffleFile file) {
-        return file.startsWith(internalLibraryPathFile);
+        return file.normalize().startsWith(internalLibraryPathFile);
     }
 
     private ExternalLibrary getExternalLibrary(ExternalLibrary externalLib) {
