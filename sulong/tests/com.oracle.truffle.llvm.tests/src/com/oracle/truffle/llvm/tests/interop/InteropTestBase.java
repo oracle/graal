@@ -64,7 +64,11 @@ public class InteropTestBase {
     public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static TruffleObject loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name, TEST_FILE_NAME).toFile();
+        return loadTestBitcodeInternal(name, ".c.dir");
+    }
+
+    protected static TruffleObject loadTestBitcodeInternal(String name, String ext) {
+        File file = Paths.get(testBase.toString(), name + ext, TEST_FILE_NAME).toFile();
         TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
         Source source;
         try {
@@ -77,7 +81,11 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name, TEST_FILE_NAME).toFile();
+        return loadTestBitcodeValue(name, ".c.dir");
+    }
+
+    protected static Value loadTestBitcodeValue(String name, String ext) {
+        File file = Paths.get(testBase.toString(), name + ext, TEST_FILE_NAME).toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

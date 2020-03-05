@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,27 +57,27 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        runs.put(Paths.get(OTHER_DIR, "callbackTest002", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest002.c.dir", testSuffix),
                         new RunConfiguration(14, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest003", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest003.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest004", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest004.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest005", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest005.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest006", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest006.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest008", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest008.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackTest007", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackTest007.c.dir", testSuffix),
                         new RunConfiguration(0, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackIntrinsic", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackIntrinsic.c.dir", testSuffix),
                         new RunConfiguration(0, "calling f64 callback\n-0.416147\n"));
-        runs.put(Paths.get(OTHER_DIR, "returnNativeCallback", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "returnNativeCallback.c.dir", testSuffix),
                         new RunConfiguration(10, null));
-        runs.put(Paths.get(OTHER_DIR, "nativeCallbackInStruct", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "nativeCallbackInStruct.c.dir", testSuffix),
                         new RunConfiguration(42, null));
-        runs.put(Paths.get(OTHER_DIR, "callbackCast", testSuffix),
+        runs.put(Paths.get(OTHER_DIR, "callbackCast.c.dir", testSuffix),
                         new RunConfiguration(0, "126\n"));
 
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());

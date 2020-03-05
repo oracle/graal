@@ -64,7 +64,7 @@ public class NFIAPITest {
 
     @BeforeClass
     public static void initialize() {
-        sulongObject = loadLibrary("basicTest", SULONG_FILENAME);
+        sulongObject = loadLibrary("basicTest.c.dir", SULONG_FILENAME);
         lookupAndBind = lookupAndBind();
     }
 

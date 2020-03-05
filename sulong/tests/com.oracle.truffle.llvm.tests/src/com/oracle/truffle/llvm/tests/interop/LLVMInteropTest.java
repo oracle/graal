@@ -1250,7 +1250,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocArray() {
-        try (Runner runner = new Runner("virtualMallocArray")) {
+        try (Runner runner = new Runner("virtualMallocArray", ".cpp.dir")) {
             runner.load();
             Value test = runner.findGlobalSymbol("test");
             Assert.assertEquals(test.execute().asInt(), 42);
@@ -1259,7 +1259,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocArray2() {
-        try (Runner runner = new Runner("virtualMallocArray2")) {
+        try (Runner runner = new Runner("virtualMallocArray2", ".cpp.dir")) {
             runner.load();
             Value test = runner.findGlobalSymbol("test");
             Assert.assertEquals(test.execute().asInt(), 42);
@@ -1268,7 +1268,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocArrayPointer() {
-        try (Runner runner = new Runner("virtualMallocArrayPointer")) {
+        try (Runner runner = new Runner("virtualMallocArrayPointer", ".cpp.dir")) {
             runner.load();
             Value test1 = runner.findGlobalSymbol("test1");
             Value test2 = runner.findGlobalSymbol("test2");
@@ -1279,7 +1279,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocGlobal() {
-        try (Runner runner = new Runner("virtualMallocGlobal")) {
+        try (Runner runner = new Runner("virtualMallocGlobal", ".cpp.dir")) {
             runner.load();
             Value test = runner.findGlobalSymbol("test");
             Assert.assertEquals(test.execute().asLong(), 42);
@@ -1288,7 +1288,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocGlobaAssignl() {
-        try (Runner runner = new Runner("virtualMallocGlobalAssign")) {
+        try (Runner runner = new Runner("virtualMallocGlobalAssign", ".cpp.dir")) {
             runner.load();
             Value test = runner.findGlobalSymbol("test");
             Assert.assertEquals(test.execute().asLong(), 42);
@@ -1297,7 +1297,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocObject() {
-        try (Runner runner = new Runner("virtualMallocObject")) {
+        try (Runner runner = new Runner("virtualMallocObject", ".cpp.dir")) {
             runner.load();
             Value setA = runner.findGlobalSymbol("testGetA");
             Value setB = runner.findGlobalSymbol("testGetB");
@@ -1316,7 +1316,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocObjectCopy() {
-        try (Runner runner = new Runner("virtualMallocObjectCopy")) {
+        try (Runner runner = new Runner("virtualMallocObjectCopy", ".cpp.dir")) {
             runner.load();
             Value setA = runner.findGlobalSymbol("testGetA");
             Value setB = runner.findGlobalSymbol("testGetB");
@@ -1335,7 +1335,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testVirtualMallocCompare1() {
-        try (Runner runner = new Runner("virtualMallocCompare1")) {
+        try (Runner runner = new Runner("virtualMallocCompare1", ".cpp.dir")) {
             runner.load();
             Value test1 = runner.findGlobalSymbol("test1");
             Value test2 = runner.findGlobalSymbol("test2");
@@ -1561,11 +1561,15 @@ public class LLVMInteropTest {
         private Value library;
 
         Runner(String testName) {
-            this(testName, getSulongTestLibContextOptions());
+            this(testName, ".c.dir");
         }
 
-        Runner(String testName, Map<String, String> options) {
-            this.testName = testName;
+        Runner(String testName, String ext) {
+            this(testName, ext, getSulongTestLibContextOptions());
+        }
+
+        Runner(String testName, String ext, Map<String, String> options) {
+            this.testName = testName + ext;
             this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }

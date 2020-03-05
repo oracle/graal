@@ -151,6 +151,10 @@ endif
 %.bc: %.dragonegg.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
 
+%.ll.dir/ref.out: %.ll $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
+
 define OPT_RULES
 %.c.dir/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
