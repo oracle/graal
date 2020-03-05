@@ -398,6 +398,10 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyNode arraycopy, LoweringTool tool) {
+            lower(arraycopy, this.expandArraycopyLoop, tool);
+        }
+
+        public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
             JavaKind elementKind = selectComponentKind(arraycopy);
             SnippetInfo snippetInfo;
             ArrayCopyTypeCheck arrayTypeCheck;
@@ -456,7 +460,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 }
             }
 
-            if (this.expandArraycopyLoop && snippetInfo == arraycopyExactStubCallSnippet) {
+            if (this.expandArraycopyLoop && mayExpandThisArraycopy && snippetInfo == arraycopyExactStubCallSnippet) {
                 snippetInfo = arraycopyExactSnippet;
             }
 
