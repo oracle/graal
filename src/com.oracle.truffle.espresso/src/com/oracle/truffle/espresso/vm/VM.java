@@ -54,23 +54,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -150,6 +147,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private @Word long vmPtr;
+
+    public static final class GlobalFrameIDs {
+        private static final AtomicLong id = new AtomicLong();
+
+        public static long getID() {
+            return id.incrementAndGet();
+        }
+    }
 
     private Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
         @Override
@@ -1157,61 +1162,27 @@ public final class VM extends NativeEnv implements ContextAccess {
             Element next;
 
             public Element(FrameInstance frame, StaticObject context, Klass klass, Element next) {
-                this.frameID = initPrivilegedFrame(frame);
+                this.frameID = getFrameId(frame);
                 this.context = context;
                 this.klass = klass;
                 this.next = next;
             }
 
             public boolean compare(FrameInstance other) {
-                try {
-                    FrameSlot slot = privilegedFrameSlots.get(getMethodFromFrame(other).identity());
-                    return slot != null && other.getFrame(FrameInstance.FrameAccess.READ_ONLY).getLong(slot) == frameID;
-                } catch (FrameSlotTypeException e) {
-                    return false;
+                EspressoRootNode rootNode = getEspressoRootFromFrame(other);
+                if (rootNode != null) {
+                    Frame readOnlyFrame = other.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                    long frameIdOrZero = rootNode.readFrameIdOrZero(readOnlyFrame);
+                    return frameIdOrZero != 0 && frameIdOrZero == frameID;
                 }
+                return false;
             }
 
-            // Dummy.
-            private static final Object frameIdSlotIdentifier = new Object();
-
-            private static final EconomicMap<Method, FrameSlot> privilegedFrameSlots = EconomicMap.create(Equivalence.IDENTITY);
-
-            private static long newFrameID = 0L;
-
-            /**
-             * Injects the frame ID in the frame. Spawns a new frame slot in the frame descriptor of
-             * the corresponding RootNode if needed.
-             *
-             * @param frame the current privileged frame.
-             * @return the frame ID of the frame.
-             */
-            private static long initPrivilegedFrame(FrameInstance frame) {
-                Method m = getMethodFromFrame(frame);
-                FrameSlot slot = privilegedFrameSlots.get(m.identity());
-                if (slot == null) {
-                    slot = initSlot(frame, m);
-                }
-                assert slot == privilegedFrameSlots.get(m.identity());
-                long id = ++newFrameID;
-                frame.getFrame(FrameInstance.FrameAccess.READ_WRITE).setLong(slot, id);
-                return id;
-            }
-
-            /**
-             * Responsible for spawning the frame slot of root nodes that haven't yet been
-             * encountered by JVM_doPrivileged.
-             */
-            private static FrameSlot initSlot(FrameInstance frame, Method m) {
-                synchronized (privilegedFrameSlots) {
-                    FrameSlot result = privilegedFrameSlots.get(m.identity());
-                    if (result != null) {
-                        return result;
-                    }
-                    result = getEspressoRootFromFrame(frame).getFrameDescriptor().addFrameSlot(frameIdSlotIdentifier, FrameSlotKind.Long);
-                    privilegedFrameSlots.put(m, result);
-                    return result;
-                }
+            private static long getFrameId(FrameInstance frame) {
+                EspressoRootNode rootNode = getEspressoRootFromFrame(frame);
+                Frame readOnlyFrame = frame.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                long frameIdOrZero = rootNode.readFrameIdOrZero(readOnlyFrame);
+                return frameIdOrZero;
             }
         }
     }

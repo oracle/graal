@@ -314,6 +314,7 @@ public final class Meta implements ContextAccess {
         java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.java_security_AccessControlContext);
         java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
         java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
+        java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
         java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
@@ -649,6 +650,7 @@ public final class Meta implements ContextAccess {
     public final Field java_security_AccessControlContext_privilegedContext;
     public final Field java_security_AccessControlContext_isPrivileged;
     public final Field java_security_AccessControlContext_isAuthorized;
+    public final ObjectKlass java_security_AccessController;
 
     public final ObjectKlass java_lang_invoke_MethodType;
     public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
