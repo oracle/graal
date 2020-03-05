@@ -47,12 +47,12 @@ import org.openjdk.jmh.annotations.State;
 
 import java.io.IOException;
 
-public class CMicroCompilationBenchmarkSuite extends WasmCompilationBenchmarkSuiteBase {
+public class CInterpreterBenchmarkSuite extends WasmCompilationBenchmarkSuiteBase {
     @State(Scope.Benchmark)
     public static class CBenchmarkState extends WasmCompilationBenchmarkState {
         @Override
         protected String benchmarkResource() {
-            return "c/micro";
+            return "c/interpreter";
         }
     }
 
