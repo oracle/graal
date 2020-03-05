@@ -97,6 +97,8 @@ def graal_wasm_gate_runner(args, tasks):
         if t:
             unittest(["CSuite"])
             unittest(["WatSuite"])
+    # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
+    # and does not run on a dedicated machine.
     with Task("BenchTest", tasks, tags=[GraalWasmDefaultTags.wasmbenchtest]) as t:
         if t:
             for b in microbenchmarks:
@@ -107,13 +109,6 @@ def graal_wasm_gate_runner(args, tasks):
                         "CMicroBenchmarkSuite", "-wi", "1", "-i", "1"])
                 if exitcode != 0:
                     mx.abort("Errors during benchmark tests, aborting.")
-
-            # Memory benchmarks
-            exitcode = mx_benchmark.benchmark([
-                "wasm-memory:*", "--",
-                "--jvm", "server", "--jvm-config", "graal-core"])
-            if exitcode != 0:
-                mx.abort("Errors during benchmark tests, aborting.")
 
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
