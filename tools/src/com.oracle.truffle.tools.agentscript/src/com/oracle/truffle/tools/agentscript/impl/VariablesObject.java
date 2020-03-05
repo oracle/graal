@@ -63,7 +63,7 @@ final class VariablesObject implements TruffleObject {
     Object getMembers(boolean includeInternal, @CachedLibrary(limit = "1") FrameLibrary frameLibrary) {
         Set<String> names = new TreeSet<>();
         try {
-            frameLibrary.collectNames(frame, where, env, names);
+            frameLibrary.collectNames(frame, AccessorFrameLibrary.DEFAULT.create(where, frame, env), names);
         } catch (InteropException ex) {
             throw AgentException.raise(ex);
         }
@@ -72,7 +72,7 @@ final class VariablesObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member, @CachedLibrary(limit = "1") FrameLibrary frameLibrary) throws UnknownIdentifierException {
-        return frameLibrary.readMember(frame, where, env, member);
+        return frameLibrary.readMember(frame, AccessorFrameLibrary.DEFAULT.create(where, frame, env), member);
     }
 
     @ExportMessage

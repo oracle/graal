@@ -24,30 +24,20 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tools.agentscript.FrameLibrary;
-import com.oracle.truffle.tools.agentscript.FrameLibrary.Env;
-import java.util.Set;
 
-@ExportLibrary(value = FrameLibrary.class, receiverType = Frame.class)
-public final class DefaultFrameLibrary {
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static Object readMember(
-                    Frame frame, Env env,
-                    String member) throws UnknownIdentifierException {
-        return FrameLibrary.defaultReadMember(env, member);
+public abstract class AccessorFrameLibrary {
+    public static AccessorFrameLibrary DEFAULT;
+
+    protected AccessorFrameLibrary() {
+        if (DEFAULT != null) {
+            throw new IllegalStateException();
+        }
+        DEFAULT = this;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static void collectNames(Frame frame, Env env,
-                    Set<String> names) throws InteropException {
-        FrameLibrary.defaultCollectNames(env, names);
-    }
+    protected abstract FrameLibrary.Env create(Node where, Frame frame, TruffleInstrument.Env env);
 }

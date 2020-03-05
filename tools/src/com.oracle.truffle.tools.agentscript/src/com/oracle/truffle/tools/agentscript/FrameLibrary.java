@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tools.agentscript.impl.AccessorFrameLibrary;
 import com.oracle.truffle.tools.agentscript.impl.DefaultFrameLibrary;
 import java.util.Set;
 
@@ -41,22 +42,17 @@ import java.util.Set;
 @GenerateLibrary.DefaultExport(DefaultFrameLibrary.class)
 public abstract class FrameLibrary extends Library {
     public abstract Object readMember(
-                    Frame frame, Node where,
-                    TruffleInstrument.Env env,
+                    Frame frame, Env env,
                     String member) throws UnknownIdentifierException;
 
     public abstract void collectNames(
-                    Frame frame, Node where,
-                    TruffleInstrument.Env env,
+                    Frame frame, Env env,
                     Set<String> names) throws InteropException;
 
     @CompilerDirectives.TruffleBoundary
-    public static Object defaultReadMember(
-                    Frame frame, Node where,
-                    TruffleInstrument.Env env,
-                    String member) throws UnknownIdentifierException {
+    public static Object defaultReadMember(Env env, String member) throws UnknownIdentifierException {
         InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        for (Scope scope : env.findLocalScopes(where, frame)) {
+        for (Scope scope : env.findLocalScopes()) {
             if (scope == null) {
                 continue;
             }
@@ -87,11 +83,9 @@ public abstract class FrameLibrary extends Library {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static void defaultCollectNames(Frame frame, Node where,
-                    TruffleInstrument.Env env,
-                    Set<String> names) throws InteropException {
+    public static void defaultCollectNames(Env env, Set<String> names) throws InteropException {
         InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        for (Scope scope : env.findLocalScopes(where, frame)) {
+        for (Scope scope : env.findLocalScopes()) {
             if (scope == null) {
                 continue;
             }
@@ -115,5 +109,31 @@ public abstract class FrameLibrary extends Library {
                 }
             }
         }
+    }
+
+    public static final class Env {
+        private final Node where;
+        private final Frame frame;
+        private final TruffleInstrument.Env env;
+
+        Env(Node where, Frame frame, TruffleInstrument.Env env) {
+            this.where = where;
+            this.frame = frame;
+            this.env = env;
+        }
+
+        public Iterable<Scope> findLocalScopes() {
+            return env.findLocalScopes(where, frame);
+        }
+    }
+
+    static {
+        AccessorFrameLibrary accessor = new AccessorFrameLibrary() {
+            @Override
+            protected Env create(Node where, Frame frame, TruffleInstrument.Env env) {
+                return new Env(where, frame, env);
+            }
+        };
+        assert AccessorFrameLibrary.DEFAULT == accessor;
     }
 }
