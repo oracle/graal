@@ -40,14 +40,12 @@
  */
 package org.graalvm.wasm.benchmark;
 
-import joptsimple.internal.Strings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
