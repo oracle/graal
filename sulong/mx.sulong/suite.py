@@ -772,7 +772,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0", "O0_MISC_OPTS", "O1"],
+      "variants" : ["O0_OUT", "O1_OUT"],
       "buildEnv" : {
         "OS" : "<os>",
       },
@@ -905,7 +905,7 @@ suite = {
       "fileExts" : [".cpp", ".C", ".cc"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
@@ -977,7 +977,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
@@ -999,7 +999,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m", ".gcc", ".cint", ".gpp"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O1"],
+      "variants" : ["O1_OUT"],
       "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
