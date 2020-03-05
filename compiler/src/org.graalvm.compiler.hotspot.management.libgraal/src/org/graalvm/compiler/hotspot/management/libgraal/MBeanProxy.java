@@ -211,10 +211,6 @@ class MBeanProxy<T extends DynamicMBean> {
         return instance;
     }
 
-    private static RuntimeException throwDefineClassError(String name) {
-        throw new InternalError(String.format("Failed to define %s.", name));
-    }
-
     /**
      * Uses JNI to define the classes in HotSpot heap.
      */
@@ -225,24 +221,24 @@ class MBeanProxy<T extends DynamicMBean> {
             JNI.JClass svmHsEntryPoints = findClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME);
             if (svmHsEntryPoints.isNull()) {
                 if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-                    throw throwDefineClassError(HS_BEAN_CLASS_NAME);
+                    checkDefineClassException(env, HS_BEAN_CLASS_NAME);
                 }
 
                 if (defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS).isNull()) {
-                    throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
+                    checkDefineClassException(env, HS_BEAN_FACTORY_CLASS_NAME);
                 }
 
                 if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
-                    throw throwDefineClassError(HS_PUSHBACK_ITER_CLASS_NAME);
+                    checkDefineClassException(env, HS_PUSHBACK_ITER_CLASS_NAME);
                 }
 
                 if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
-                    throw throwDefineClassError(HS_SVM_CALLS_CLASS_NAME);
+                    checkDefineClassException(env, HS_SVM_CALLS_CLASS_NAME);
                 }
 
                 svmHsEntryPoints = defineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
                 if (svmHsEntryPoints.isNull()) {
-                    throw throwDefineClassError(SVM_HS_ENTRYPOINTS_CLASS_NAME);
+                    checkDefineClassException(env, SVM_HS_ENTRYPOINTS_CLASS_NAME);
                 }
             }
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
@@ -261,15 +257,24 @@ class MBeanProxy<T extends DynamicMBean> {
             try {
                 return SVMToHotSpotCalls.findClass(env, classLoader, className);
             } finally {
-                checkException(env, className, ClassNotFoundException.class);
+                checkFindClassException(env, className, ClassNotFoundException.class);
             }
         } else {
             try {
                 return findClassImpl(env, className);
             } finally {
-                checkException(env, className, NoClassDefFoundError.class);
+                checkFindClassException(env, className, NoClassDefFoundError.class);
             }
         }
+    }
+
+    private static void checkDefineClassException(JNI.JNIEnv env, String className) {
+        checkException(env, "Failed to define" + className);
+    }
+
+    @SafeVarargs
+    private static void checkFindClassException(JNI.JNIEnv env, String className, Class<? extends Throwable>... allowedExceptions) {
+        checkException(env, "Failed to load" + className, allowedExceptions);
     }
 
     /**
@@ -277,19 +282,25 @@ class MBeanProxy<T extends DynamicMBean> {
      * {@code allowedExceptions} it throws an {@link InternalError}.
      */
     @SafeVarargs
-    private static void checkException(JNI.JNIEnv env, String className, Class<? extends Throwable>... allowedExceptions) {
+    private static void checkException(JNI.JNIEnv env, String message, Class<? extends Throwable>... allowedExceptions) {
         if (JNIUtil.ExceptionCheck(env)) {
             try {
                 JNI.JThrowable exception = JNIUtil.ExceptionOccurred(env);
+                JNIUtil.ExceptionClear(env);
                 JNI.JClass exceptionClass = JNIUtil.GetObjectClass(env, exception);
+                boolean allowed = false;
                 for (Class<? extends Throwable> allowedException : allowedExceptions) {
                     JNI.JClass allowedExceptionClass = findClassImpl(env, getBinaryName(allowedException.getName()));
-                    if (allowedExceptionClass.isNull() || !JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
-                        throw new InternalError(String.format("Failed to load %s due to %s:%s.",
-                                        className,
-                                        createString(env, SVMToHotSpotCalls.getClassName(env, exceptionClass)),
-                                        createString(env, SVMToHotSpotCalls.getExceptionMessage(env, exception))));
+                    if (allowedExceptionClass.isNonNull() && JNIUtil.IsSameObject(env, exceptionClass, allowedExceptionClass)) {
+                        allowed = true;
+                        break;
                     }
+                }
+                if (!allowed) {
+                    throw new InternalError(String.format("%s due to %s:%s.",
+                                    message,
+                                    createString(env, SVMToHotSpotCalls.getClassName(env, exceptionClass)),
+                                    createString(env, SVMToHotSpotCalls.getExceptionMessage(env, exception))));
                 }
             } finally {
                 JNIUtil.ExceptionClear(env);
@@ -338,9 +349,8 @@ class MBeanProxy<T extends DynamicMBean> {
     private static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.GetFactory, env)) {
             JNI.JObject factory = SVMToHotSpotCalls.getFactory(env, svmHsEntryPoints);
-            if (factory.isNull()) {
-                throw new InternalError("Failed to instantiate MBean factory on HotSpot side.");
-            }
+            checkException(env, "Failed to instantiate MBean factory on HotSpot side");
+            assert factory.isNonNull() : "Factory cannot be null.";
             return factory;
         }
     }
@@ -352,6 +362,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void signal(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints, JNI.JObject factory) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.NewMBean, env)) {
             SVMToHotSpotCalls.signal(env, svmHsEntryPoints, factory);
+            checkException(env, "Failed to register MBean");
         }
     }
 }
