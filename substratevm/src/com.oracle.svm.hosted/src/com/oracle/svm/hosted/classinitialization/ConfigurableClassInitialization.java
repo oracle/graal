@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.jdk.jfr.JavaJfrUtils;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -654,6 +655,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (specifiedInitKindFor(clazz) != null) {
             return specifiedInitKindFor(clazz);
+        } else if (JavaJfrUtils.isJFRClass(clazz)) {
+            return InitKind.BUILD_TIME;
         } else {
             /* The default value. */
             return InitKind.RUN_TIME;

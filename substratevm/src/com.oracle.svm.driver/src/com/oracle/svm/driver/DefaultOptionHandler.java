@@ -179,6 +179,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
         if (headArg.startsWith(NativeImage.oH) || headArg.startsWith(NativeImage.oR)) {
+            if (headArg.equals("-H:+FlightRecorder")) {
+                nativeImage.addCustomJavaArgs("-XX:FlightRecorderOptions=retransform=false");
+            }
             args.poll();
             nativeImage.addCustomImageBuilderArgs(headArg);
             return true;
@@ -224,6 +227,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
             return true;
         }
+
         return false;
     }
 

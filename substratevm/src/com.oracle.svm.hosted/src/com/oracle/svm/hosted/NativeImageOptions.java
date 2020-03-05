@@ -38,6 +38,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.jdk.jfr.JfrAvailability;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -106,6 +107,17 @@ public class NativeImageOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PointstoOptions.UnresolvedIsError.update(values, !newValue);
+        }
+    };
+
+    @Option(help = "Enable flight recorder system")
+    public static final HostedOptionKey<Boolean> FlightRecorder = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                AllowIncompleteClasspath.update(values, true);
+                JfrAvailability.withJfr = true;
+            }
         }
     };
 

@@ -42,6 +42,7 @@ import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.jdk.jfr.support.JfrThreadLocal;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -58,6 +59,9 @@ final class Target_java_lang_Thread {
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = JfrThreadLocal.class)//
+    JfrThreadLocal jfrThreadLocal;
 
     /**
      * Every thread has a {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
@@ -158,6 +162,7 @@ final class Target_java_lang_Thread {
 
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
+        this.jfrThreadLocal = new JfrThreadLocal();
 
         tid = nextThreadID();
         threadStatus = ThreadStatus.RUNNABLE;
@@ -181,6 +186,7 @@ final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
+        this.jfrThreadLocal = new JfrThreadLocal();
         /* Initialize the rest of the Thread object. */
         JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
     }
@@ -200,6 +206,7 @@ final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
+        this.jfrThreadLocal = new JfrThreadLocal();
         /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
         JavaThreads.initializeNewThread(this, g, target, name, stackSize);
     }

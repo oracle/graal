@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.jdk.jfr.recorder.checkpoint.types.traceid.JfrTraceId;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -63,6 +64,7 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.jfr.support.JfrThreadLocal;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -161,6 +163,10 @@ public abstract class JavaThreads {
 
     public static int getThreadStatus(Thread thread) {
         return toTarget(thread).threadStatus;
+    }
+
+    public static JfrThreadLocal getThreadLocal(Thread thread) {
+        return toTarget(thread).jfrThreadLocal;
     }
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
@@ -300,6 +306,8 @@ public abstract class JavaThreads {
     public static void assignJavaThread(Thread thread, boolean manuallyStarted) {
         VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
         currentThread.set(thread);
+
+        JfrTraceId.assign(thread);
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
@@ -449,6 +457,9 @@ public abstract class JavaThreads {
          * allows Thread.join() to complete once we notify all the waiters below.
          */
         setThreadStatus(thread, ThreadStatus.TERMINATED);
+
+        JfrTraceId.unassign(thread);
+
         /*
          * And finally, wake up any threads waiting to join this one.
          *
