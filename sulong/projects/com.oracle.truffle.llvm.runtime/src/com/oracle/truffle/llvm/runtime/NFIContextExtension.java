@@ -174,10 +174,6 @@ public final class NFIContextExtension implements ContextExtension {
         if (fileName.startsWith("libc.") || fileName.startsWith("libSystem.")) {
             // nothing to do, since libsulong.so already links against libc.so/libSystem.B.dylib
             return true;
-        } else if (fileName.startsWith("libpolyglot-mock.")) {
-            // special mock library for polyglot intrinsics
-            // TODO (je) should we remove this?
-            return true;
         } else {
             return false;
         }
