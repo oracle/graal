@@ -241,20 +241,8 @@ add_bm_suite(WasmBenchmarkSuite())
 _suite = mx.suite("wasm")
 
 
-MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryProfiler"
-LIST_TEST_CASES_CLASS_NAME = "org.graalvm.wasm.utils.ListTestCases"
-BENCHMARKCASES_RESOURCE = "WASM_BENCHMARKCASES"
-MEMORY_BENCHMARKCASES_PATH = "bench/wasm/memory"
-
-
-def list_test_cases(dist, resource):
-    jdk = mx.get_jdk(mx.distribution(dist).javaCompliance)
-    jvm_args = mx.get_runtime_jvm_args([dist], jdk=jdk)
-    args = jvm_args + [LIST_TEST_CASES_CLASS_NAME, resource]
-
-    out = mx.OutputCapture()
-    jdk.run_java(args, out=out)
-    return [resource + "/" + test_case for test_case in out.data.split()]
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
 
 
 class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -272,12 +260,18 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return "wasm-memory"
 
     def benchmarkList(self, _):
-        return list_test_cases(BENCHMARKCASES_RESOURCE, MEMORY_BENCHMARKCASES_PATH)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_PROFILER_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
 
     def createCommandLineArgs(self, benchmarks, bm_suite_args):
         benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
-        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_RESOURCE).javaCompliance)
-        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_RESOURCE], jdk=jdk)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
         run_args = self.runArgs(bm_suite_args)
         return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
 

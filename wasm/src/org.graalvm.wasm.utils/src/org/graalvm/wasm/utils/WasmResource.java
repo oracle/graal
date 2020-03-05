@@ -88,4 +88,8 @@ public class WasmResource {
         }
         return null;
     }
+
+    public static String getResourceIndex(String resourcePath) throws IOException {
+        return WasmResource.getResourceAsString(resourcePath + "/" + "wasm_test_index", true);
+    }
 }

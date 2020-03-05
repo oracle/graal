@@ -40,7 +40,9 @@
  */
 package org.graalvm.wasm.benchmark;
 
+import joptsimple.internal.Strings;
 import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
 import java.io.IOException;
@@ -51,58 +53,59 @@ import java.util.List;
 
 import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
 
-public class MemoryProfiler {
+/**
+ * For each benchmark case in {@code args}, measures the difference in heap size after forced GC
+ * before and after the parsing phase. This corresponds to the memory allocated by the parser that
+ * is needed to run the program.
+ *
+ * <p>
+ * Example usage:
+ * </p>
+ *
+ * <pre>
+ * $ java org.graalvm.wasm.benchmark.MemoryProfiler bench/wasm/memory/go-hello
+ * </pre>
+ *
+ * <p>
+ * Example result:
+ * </p>
+ *
+ * <pre>
+ * go-hello: warmup_iteration[0]: 50.863 MB
+ * go-hello: warmup_iteration[1]: 12.708 MB
+ * ...
+ * go-hello: iteration[0]: 16.902 MB
+ * go-hello: iteration[1]: 17.161 MB
+ * ...
+ * go-hello: median: 17.057 MB
+ * go-hello: min: 17.161 MB
+ * go-hello: max: 16.902 MB
+ * go-hello: average: 17.044 MB
+ * </pre>
+ *
+ * <p>
+ * This class is used by the <code>memory</code> mx benchmark suite, runnable with
+ * <code>mx --dy /compiler benchmark memory -- --jvm=server --jvm-config=graal-core</code>. The
+ * suite is defined in <code>MemoryBenchmarkSuite</code> in <code>mx_benchmark.py</code>.
+ * </p>
+ */
+public class MemoryFootprintBenchmarkRunner {
+    // We currently hardcode the path to memory-footprint-related tests. We might in the future
+    // generalize this to include more paths, if that turns out necessary.
+    private static String BENCHCASES_TYPE = "bench";
+    private static String BENCHCASES_RESOURCE = "wasm/memory";
     private static int WARMUP_ITERATIONS = 10;
     private static int ITERATIONS = 10;
 
-    /**
-     * For each benchmark case in {@code paths}, measures the difference in heap size after forced
-     * GC before and after the parsing phase. This corresponds to the memory allocated by the parser
-     * that is needed to run the program.
-     *
-     * <p>
-     * Example usage:
-     * </p>
-     * 
-     * <pre>
-     * $ java org.graalvm.wasm.benchmark.MemoryProfiler bench/wasm/memory/go-hello
-     * </pre>
-     *
-     * <p>
-     * Example result:
-     * </p>
-     * 
-     * <pre>
-     * go-hello: warmup_iteration[0]: 50.863 MB
-     * go-hello: warmup_iteration[1]: 12.708 MB
-     * ...
-     * go-hello: iteration[0]: 16.902 MB
-     * go-hello: iteration[1]: 17.161 MB
-     * ...
-     * go-hello: median: 17.057 MB
-     * go-hello: min: 17.161 MB
-     * go-hello: max: 16.902 MB
-     * go-hello: average: 17.044 MB
-     * </pre>
-     *
-     * <p>
-     * This class is used by the <code>memory</code> mx benchmark suite, runnable with
-     * <code>mx --dy /compiler benchmark memory -- --jvm=server --jvm-config=graal-core</code>. The
-     * suite is defined in <code>MemoryBenchmarkSuite</code> in <code>mx_benchmark.py</code>.
-     * </p>
-     *
-     * @param paths list of benchmark cases paths to profile
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    public static void main(String[] paths) throws IOException, InterruptedException {
-        for (final String path : paths) {
-            final String[] pathParts = path.split("/");
-            final String type = pathParts[0];
-            final String resource = String.join("/", pathParts[1], pathParts[2]);
-            final String caseSpec = String.join("/", Arrays.copyOfRange(pathParts, 3, pathParts.length));
-            final WasmCase benchmarkCase = collectFileCase(type, resource, caseSpec);
-            assert benchmarkCase != null : String.format("Test case %s/%s not found.", resource, caseSpec);
+    public static void main(String[] args) throws IOException, InterruptedException {
+        if (args[0].equals("--list")) {
+            System.out.println(WasmResource.getResourceIndex(String.format("/%s/%s", BENCHCASES_TYPE, BENCHCASES_RESOURCE)));
+            return;
+        }
+
+        for (final String caseSpec : args) {
+            final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
+            assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
