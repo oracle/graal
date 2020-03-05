@@ -529,27 +529,39 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void stepCompleted(SteppingInfo info, CallFrame currentFrame) {
-        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-
-        stream.writeByte(info.getSuspendPolicy());
-        stream.writeInt(1); // # events in reply
-
-        stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
-        stream.writeInt(info.getRequestId());
-        stream.writeLong(currentFrame.getThreadId());
-
-        // location
-        stream.writeByte(currentFrame.getTypeTag());
-        stream.writeLong(currentFrame.getClassId());
-        stream.writeLong(currentFrame.getMethodId());
-        long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
-        stream.writeLong(codeIndex);
-        JDWPLogger.log("Sending step completed event", JDWPLogger.LogLevel.STEPPING);
-
-        if (holdEvents) {
-            heldEvents.add(stream);
+        if (info.isPopFrames()) {
+            // send reply packet when "step" is completed
+            PacketStream reply = new PacketStream().replyPacket().id(info.getRequestId());
+            JDWPLogger.log("Sending pop frames reply packet", JDWPLogger.LogLevel.STEPPING);
+            if (holdEvents) {
+                heldEvents.add(reply);
+            } else {
+                connection.queuePacket(reply);
+            }
         } else {
-            connection.queuePacket(stream);
+            // single step completed events
+            PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+            stream.writeByte(info.getSuspendPolicy());
+            stream.writeInt(1); // # events in reply
+
+            stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
+            stream.writeInt(info.getRequestId());
+            stream.writeLong(currentFrame.getThreadId());
+
+            // location
+            stream.writeByte(currentFrame.getTypeTag());
+            stream.writeLong(currentFrame.getClassId());
+            stream.writeLong(currentFrame.getMethodId());
+            long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
+            stream.writeLong(codeIndex);
+            JDWPLogger.log("Sending step completed event", JDWPLogger.LogLevel.STEPPING);
+
+            if (holdEvents) {
+                heldEvents.add(stream);
+            } else {
+                connection.queuePacket(stream);
+            }
         }
     }
 

@@ -101,6 +101,7 @@ public final class EspressoError extends Error {
      */
     public static void guarantee(boolean condition, String msg, Object... args) {
         if (!condition) {
+            CompilerDirectives.transferToInterpreter();
             throw new EspressoError("failed guarantee: " + msg, args);
         }
     }

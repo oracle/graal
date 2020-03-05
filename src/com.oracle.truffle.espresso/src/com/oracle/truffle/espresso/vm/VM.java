@@ -190,7 +190,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             libjavaSearchPaths.addAll(props.bootLibraryPath());
             libjavaSearchPaths.addAll(props.javaLibraryPath());
 
-            mokapotLibrary = loadLibrary(props.espressoLibraryPath(), "mokapot");
+            mokapotLibrary = loadLibrary(Collections.singletonList(props.espressoLibraryPath()), "mokapot");
 
             assert mokapotLibrary != null;
             javaLibrary = loadLibrary(libjavaSearchPaths, "java");
@@ -1527,7 +1527,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         /* executable */ Type.java_lang_reflect_Executable,
                         /* index */ Type._int));
 
-        return getMeta().java_lang_reflect_Parameter.allocateArray(numParams, new IntFunction<StaticObject>() {
+        return getMeta().java_lang_reflect_Parameter.allocateReferenceArray(numParams, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 MethodParametersAttribute.Entry entry = methodParameters.getEntries()[index];
@@ -1640,10 +1640,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         Meta meta = getMeta();
         StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
         meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirect(instance);
-        meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateArray(0));
-        meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateArray(0));
-        meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateArray(0));
-        meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateArray(0));
+        meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateReferenceArray(0));
+        meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateReferenceArray(0));
+        meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateReferenceArray(0));
+        meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateReferenceArray(0));
         boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
         meta.java_lang_AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
@@ -1794,7 +1794,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
         final StaticObject[] threads = getContext().getActiveThreads();
-        return getMeta().java_lang_Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
+        return getMeta().java_lang_Thread.allocateReferenceArray(threads.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
                 return threads[index];
@@ -1949,7 +1949,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
         }
 
-        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(/* returns */Type._void,
+        Method init = meta.java_lang_management_ThreadInfo.lookupDeclaredMethod(Name._init_, getSignatures().makeRaw(
+                        /* returns */Type._void,
                         /* t */ Type.java_lang_Thread,
                         /* state */ Type._int,
                         /* lockObj */ Type.java_lang_Object,
@@ -2009,7 +2010,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         stackTrace = StaticObject.wrap(unwrapped, meta);
                     }
                 } else {
-                    stackTrace = meta.java_lang_StackTraceElement.allocateArray(0);
+                    stackTrace = meta.java_lang_StackTraceElement.allocateReferenceArray(0);
                 }
 
                 StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance();
@@ -2033,14 +2034,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
-        return getMeta().java_lang_String.allocateArray(0);
+        return getMeta().java_lang_String.allocateReferenceArray(0);
     }
 
     @JniImpl
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused) {
         Klass memoryPoolMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL);
-        return memoryPoolMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+        return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
                 // (String name, boolean isHeap, long uThreshold, long gcThreshold)
@@ -2057,7 +2058,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool) {
         Klass memoryManagerMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL);
-        return memoryManagerMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+        return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
                 // (String name, String type)
@@ -2103,7 +2104,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
+    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
+                    /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
                 return getContext().initVMDoneMs;

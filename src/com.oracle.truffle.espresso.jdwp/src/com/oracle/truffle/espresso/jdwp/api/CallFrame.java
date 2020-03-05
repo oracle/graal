@@ -59,6 +59,10 @@ public final class CallFrame {
         this.debugStackFrame = debugStackFrame;
     }
 
+    public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
+        this(threadId, typeTag, classId, methodId, codeIndex, null, null, null, null);
+    }
+
     public byte getTypeTag() {
         return typeTag;
     }

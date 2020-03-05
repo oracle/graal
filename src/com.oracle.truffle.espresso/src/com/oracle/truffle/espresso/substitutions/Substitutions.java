@@ -97,7 +97,7 @@ public final class Substitutions implements ContextAccess {
 
     private static final TruffleLogger SubstitutionsLogger = TruffleLogger.getLogger(EspressoLanguage.ID, Substitutions.class);
 
-    public static void init() {
+    public static void ensureInitialized() {
         /* nop */
     }
 

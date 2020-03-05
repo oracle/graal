@@ -22,21 +22,19 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.EspressoLanguage.EspressoLogger;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -48,7 +46,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -65,12 +62,12 @@ import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoReference;
+import com.oracle.truffle.espresso.substitutions.JavaVersionUtil;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-
-import static com.oracle.truffle.espresso.EspressoLanguage.EspressoLogger;
 
 public final class EspressoContext {
 
@@ -101,7 +98,6 @@ public final class EspressoContext {
 
     private Classpath bootClasspath;
     private String[] mainArguments;
-    private Source mainSourceFile;
 
     // Must be initialized after the context instance creation.
     @CompilationFinal private InterpreterToVM interpreterToVM;
@@ -112,7 +108,6 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
-    @CompilationFinal private ArrayList<Method> frames;
 
     // Set on calling guest Thread.stop0(), or when closing context.
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
@@ -196,28 +191,19 @@ public final class EspressoContext {
         return vmProperties;
     }
 
-    /**
-     * @return The source code unit of the main function.
-     */
-    public Source getMainSourceFile() {
-        return mainSourceFile;
-    }
-
-    public void setMainSourceFile(Source mainSourceFile) {
-        this.mainSourceFile = mainSourceFile;
-    }
-
     public void initializeContext() {
         assert !this.initialized;
         eventListener = new EmptyListener();
         // Inject PublicFinalReference in the host VM.
-        Target_java_lang_ref_Reference.init();
+        Target_java_lang_ref_Reference.ensureInitialized();
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env);
         eventListener.vmStarted(getMainThread());
-        hostToGuestReferenceDrainThread.start();
+        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.start();
+        }
     }
 
     public VMListener getJDWPListener() {
@@ -469,36 +455,33 @@ public final class EspressoContext {
                         t.join();
                     }
                 } catch (InterruptedException e) {
-                    System.err.println("Interrupted while stopping thread in closing context.");
+                    EspressoLanguage.EspressoLogger.warning("Thread interrupted while stopping thread in closing context.");
                 }
             }
         }
 
-        hostToGuestReferenceDrainThread.interrupt();
-        try {
-            hostToGuestReferenceDrainThread.join();
-        } catch (InterruptedException e) {
-            // ignore
+        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.interrupt();
+            try {
+                hostToGuestReferenceDrainThread.join();
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        } else {
+            assert !hostToGuestReferenceDrainThread.isAlive();
         }
+
         initiatingThread.interrupt();
     }
 
     private void initVmProperties() {
-        EspressoProperties.Builder builder;
-        if (EspressoOptions.RUNNING_ON_SVM) {
-            builder = EspressoProperties.newPlatformBuilder() //
-                            .javaHome(Engine.findHome().resolve("jre")) //
-                            .espressoLibraryPath(Collections.singletonList(Paths.get(getLanguage().getEspressoHome()).resolve("lib")));
-        } else {
-            builder = EspressoProperties.inheritFromHostVM();
-            String espressoLibraryPath = System.getProperty("espresso.library.path");
-            if (espressoLibraryPath != null) {
-                builder.espressoLibraryPath(Utils.parsePaths(espressoLibraryPath));
-            }
+        final EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder();
+        // Only use host VM java.home matching Espresso version (8).
+        // Must explicitly pass '--java.JavaHome=/path/to/java8/home/jre' otherwise.
+        if (JavaVersionUtil.JAVA_SPEC == 8) {
+            builder.javaHome(Engine.findHome().resolve("jre"));
         }
-
-        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
-
+        vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
     }
 
     private void initializeKnownClass(Symbol<Type> type) {

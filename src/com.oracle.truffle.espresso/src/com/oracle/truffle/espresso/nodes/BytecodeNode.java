@@ -1744,7 +1744,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private static StaticObject allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
-        return InterpreterToVM.newArray(componentType, length);
+        return InterpreterToVM.newReferenceArray(componentType, length);
     }
 
     @ExplodeLoop

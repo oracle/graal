@@ -87,7 +87,7 @@ public final class EspressoOptions {
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for user Espresso native libraries.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<List<Path>> EspressoLibraryPath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
+    public static final OptionKey<Path> EspressoLibraryPath = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", //
                     category = OptionCategory.EXPERT) //
@@ -247,8 +247,11 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableManagement = new OptionKey<>(true);
 
-    // Threads are enabled by default.
-    public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
+    @Option(help = "Enable support for threads. " +
+                    "In single-threaded mode, Thread.start is disabled, weak references and finalizers won't be processed. " +
+                    "Lock operations may be optimized away.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(true);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }
