@@ -1244,7 +1244,7 @@ public class UniverseBuilder {
     }
 
     private static boolean excludeFromReferenceMap(HostedField field) {
-        return field.getAnnotation(ExcludeFromReferenceMap.class) != null && SubstrateOptions.UseCardRememberedSetHeap.getValue();
+        return field.getAnnotation(ExcludeFromReferenceMap.class) != null;
     }
 
     private void processFieldLocations() {
