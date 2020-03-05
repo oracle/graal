@@ -289,10 +289,10 @@ final class Target_java_lang_Thread {
             return;
         }
 
-        JavaThreads.interrupt(JavaThreads.fromTarget(this));
-        JavaThreads.unpark(JavaThreads.fromTarget(this));
-
-        JavaThreads.wakeUpVMConditionWaiters();
+        Thread thread = JavaThreads.fromTarget(this);
+        JavaThreads.interrupt(thread);
+        JavaThreads.unpark(thread);
+        JavaThreads.wakeUpVMConditionWaiters(thread);
     }
 
     @Substitute

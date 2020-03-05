@@ -57,6 +57,9 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -535,11 +538,13 @@ public abstract class JavaThreads {
     protected abstract void yield();
 
     /**
-     * Wake any thread which is waiting by other means, such as VM-internal condition variables, so
+     * Wake a thread which is waiting by other means, such as VM-internal condition variables, so
      * that they can check their interrupted status.
      */
-    protected static void wakeUpVMConditionWaiters() {
-        Heap.getHeap().wakeUpReferencePendingListWaiters();
+    protected static void wakeUpVMConditionWaiters(Thread thread) {
+        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadFeature.class).getThread()) {
+            Heap.getHeap().wakeUpReferencePendingListWaiters();
+        }
     }
 
     static StackTraceElement[] getStackTrace(Thread thread) {
