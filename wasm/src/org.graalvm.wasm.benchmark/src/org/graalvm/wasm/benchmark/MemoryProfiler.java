@@ -55,6 +55,46 @@ public class MemoryProfiler {
     private static int WARMUP_ITERATIONS = 10;
     private static int ITERATIONS = 10;
 
+    /**
+     * For each benchmark case in {@code paths}, measures the difference in heap size after forced
+     * GC before and after the parsing phase. This corresponds to the memory allocated by the parser
+     * that is needed to run the program.
+     *
+     * <p>
+     * Example usage:
+     * </p>
+     * 
+     * <pre>
+     * $ java org.graalvm.wasm.benchmark.MemoryProfiler bench/wasm/memory/go-hello
+     * </pre>
+     *
+     * <p>
+     * Example result:
+     * </p>
+     * 
+     * <pre>
+     * go-hello: warmup_iteration[0]: 50.863 MB
+     * go-hello: warmup_iteration[1]: 12.708 MB
+     * ...
+     * go-hello: iteration[0]: 16.902 MB
+     * go-hello: iteration[1]: 17.161 MB
+     * ...
+     * go-hello: median: 17.057 MB
+     * go-hello: min: 17.161 MB
+     * go-hello: max: 16.902 MB
+     * go-hello: average: 17.044 MB
+     * </pre>
+     *
+     * <p>
+     * This class is used by the <code>memory</code> mx benchmark suite, runnable with
+     * <code>mx --dy /compiler benchmark memory -- --jvm=server --jvm-config=graal-core</code>. The
+     * suite is defined in <code>MemoryBenchmarkSuite</code> in <code>mx_benchmark.py</code>.
+     * </p>
+     *
+     * @param paths list of benchmark cases paths to profile
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public static void main(String[] paths) throws IOException, InterruptedException {
         for (final String path : paths) {
             final String[] pathParts = path.split("/");
