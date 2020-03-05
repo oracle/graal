@@ -269,7 +269,7 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return "wasm"
 
     def name(self):
-        return "memory"
+        return "wasm-memory"
 
     def benchmarkList(self, _):
         return list_test_cases(BENCHMARKCASES_RESOURCE, MEMORY_BENCHMARKCASES_PATH)
