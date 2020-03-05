@@ -79,7 +79,45 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     @Input protected NodeInputList<ValueNode> arguments;
     protected ResolvedJavaMethod targetMethod;
+
+    /**
+     *  Receiver type referenced at the interface call site.
+     *
+     *  We need to distinguish the declaring type from the type referenced at the call site. We must use
+     *  the referenced type as lower type bound when doing CHA since interface calls must throw exception
+     *  if the receiver type is not a subtype of the reference type.
+     *
+     *  Example:
+     *  <pre>
+     *      {@code
+     *      interface I1 {
+     *          void foo();
+     *      }
+     *      interface I2 extends I1 { }
+     *
+     *      void bar(I2 o) {
+     *          o.foo();
+     *      }
+     *      }
+     *  </pre>
+     *
+     *  Here at the call site the declaring type for {@code foo()} is {@code I1}, while the referenced type
+     *  is {@code I2}. Only receivers of type {@code T} that is {@code T <: I2} should be allowed at the call site.
+     *  If they are not - an exception should be thrown.
+     *
+     *  Since the interface types are not verified, another way to think about this call site is to rewrite it
+     *  as follows:
+     *  <pre>
+     *      {@code
+     *      void bar(Object o) {
+     *          ((I2) o).foo();
+     *      }
+     *      }
+     *  </pre>
+     *  So, in case the receiver is not a subtype of {@code I2} an exception is thrown.
+     */
     protected ResolvedJavaType referencedType;
+
     protected InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
