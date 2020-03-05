@@ -846,9 +846,9 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
      * start with a fresh profile at run time.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callThreshold;
+    int callCount;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    int callAndLoopThreshold;
+    int callAndLoopCount;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     boolean compilationFailed;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
