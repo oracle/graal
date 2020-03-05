@@ -68,9 +68,9 @@ public class RemovingUnneededClassInitClosure extends ReentrantBlockIterator.Blo
         for (Node node : block.getNodes()) {
             if (node instanceof InvokeWithExceptionNode) {
                 InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) node;
-                if (invokeWithExceptionNode.callTarget() != null && invokeWithExceptionNode.callTarget().targetMethod() != null
-                        && invokeWithExceptionNode.callTarget().targetMethod().getName().equals("ensureInitialized")
-                        && invokeWithExceptionNode.callTarget().targetMethod().getDeclaringClass().getName().equals("Ljava/lang/Class;")) {
+                if (invokeWithExceptionNode.callTarget() != null && invokeWithExceptionNode.callTarget().targetMethod() != null &&
+                        invokeWithExceptionNode.callTarget().targetMethod().getName().equals("ensureInitialized") &&
+                        invokeWithExceptionNode.callTarget().targetMethod().getDeclaringClass().getName().equals("Ljava/lang/Class;")) {
 
                     JavaConstant javaConstant = invokeWithExceptionNode.callTarget().arguments().get(WHICH_CLASS_ARGUMENT_INDEX).asJavaConstant();
                     if (javaConstant != null) {

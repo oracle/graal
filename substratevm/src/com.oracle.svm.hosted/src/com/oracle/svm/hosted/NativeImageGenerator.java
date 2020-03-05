@@ -1300,7 +1300,9 @@ public class NativeImageGenerator {
         }
 
         highTier.appendPhase(new StackValuePhase());
-        highTier.prependPhase(new RemovingUnneededClassInitNodesPhase());
+        if (hosted) {
+            highTier.prependPhase(new RemovingUnneededClassInitNodesPhase());
+        }
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
