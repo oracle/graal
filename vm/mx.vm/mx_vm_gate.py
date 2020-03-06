@@ -281,11 +281,9 @@ def gate_svm_sl_tck(tasks):
                     options = [
                         '--macro:truffle',
                         '--macro:tools',
-                        '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
                         '-H:Path={}'.format(svmbuild),
                         '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
-                        '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
                         '-H:MaxRuntimeCompileMethods=3000'
                     ]
                     tests_image = native_image(vm_image_args + options)
