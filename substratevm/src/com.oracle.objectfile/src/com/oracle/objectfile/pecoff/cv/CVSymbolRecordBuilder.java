@@ -54,12 +54,14 @@ final class CVSymbolRecordBuilder {
         for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
             for (PrimaryEntry primary : classEntry.getPrimaryEntries()) {
                 Range range = primary.getPrimary();
-                // for each function
-                String newMethodName = fixMethodName(range);
-                if (!newMethodName.equals(previousMethodName)) {
-                    previousMethodName = newMethodName;
-                    processFunction(newMethodName, range);
-                    addLineNumberRecords(newMethodName, primary);
+                if (range.getFileName() != null) {
+                    // for each function
+                    String newMethodName = fixMethodName(range);
+                    if (!newMethodName.equals(previousMethodName)) {
+                        previousMethodName = newMethodName;
+                        processFunction(newMethodName, range);
+                        addLineNumberRecords(newMethodName, primary);
+                    }
                 }
             }
         }

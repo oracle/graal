@@ -76,7 +76,7 @@ public class CVLineRecordBuilder {
             CVUtil.debug("  skipping Graal internal class %s\n", primaryRange);
             return null;
         }
-        CVUtil.debug("  DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryEntry.getFileEntry().getFileName(), primaryRange.getLine());
+        CVUtil.debug("  DEBUG_S_LINES linerecord for 0x%05x file: %s:%d\n", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvSections, methodName, primaryEntry);
         CVUtil.debug("     CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
         processRange(primaryRange);

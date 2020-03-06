@@ -38,7 +38,7 @@ import java.nio.file.Paths;
 public class Range {
 
     /* Use '.' for PECOFF files */
-    private static final String CLASS_DELIMITER = System.getProperty("os.name").contains("indows") ? "." : "::";
+    private static final String CLASS_DELIMITER = System.getProperty("os.name").toLowerCase().contains("windows") ? "." : "::";
 
     private String fileName;
     private Path filePath;
