@@ -238,6 +238,7 @@ public class OnStackReplacementPhase extends Phase {
                     MonitorIdNode id = osrState.monitorIdAt(i);
                     ValueNode lockedObject = osrState.lockAt(i);
                     OSRMonitorEnterNode osrMonitorEnter = graph.add(new OSRMonitorEnterNode(lockedObject, id));
+                    osrMonitorEnter.setStateAfter(osrStart.stateAfter());
                     for (Node usage : id.usages()) {
                         if (usage instanceof AccessMonitorNode) {
                             AccessMonitorNode access = (AccessMonitorNode) usage;
