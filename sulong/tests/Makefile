@@ -51,55 +51,6 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 
 include $(TOP)/Makefile.common
 
-ifdef GRAALVM_LLVM_HOME
-%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
-endif
-
-%/ref.out: %.c $(BC_FILE)
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
-
-%/ref.out: %.cpp $(BC_FILE)
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $@ $^
-
-%/ref.out: %.ll $(BC_FILE)
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
-
-%/gcc_O0.bc: %/gcc_O0.ll
-	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
-
-define OPT_RULES
-%/$(1).bc: %.c
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
-
-%/$(1).bc: %.cpp
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
-
-%/gcc_$(1).ll: %.c
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
-
-%/$(1).bc: %.ll
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
-
-endef
-
-$(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
-$(eval $(call OPT_RULES,O1,-O1))
-$(eval $(call OPT_RULES,O2,-O2))
-$(eval $(call OPT_RULES,O3,-O3))
-
-%_MISC_OPTS.bc: %.bc
-	$(QUIETLY) $(OPT) -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
-
-%_MEM2REG.bc: %.bc
-	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
-
 ifeq ($(OS), darwin)
 # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
 #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.

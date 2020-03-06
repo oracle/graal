@@ -115,9 +115,7 @@ tool-info.txt:
 	@cat $@
 
 ifdef GRAALVM_LLVM_HOME
-%.cpp.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
-%.cc.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
-%.C.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
 endif
 
 %.c.dir/ref.out: %.c $(BC_FILE)
@@ -150,6 +148,15 @@ endif
 
 %.bc: %.dragonegg.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
+
+%/gcc_O0.bc: %/gcc_O0.ll
+	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
+
+%_MISC_OPTS.bc: %.bc
+	$(QUIETLY) $(OPT) -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
+
+%_MEM2REG.bc: %.bc
+	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
 %.ll.dir/ref.out: %.ll $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
@@ -191,6 +198,10 @@ define OPT_RULES
 %.ll.dir/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
+
+%.c.dir/gcc_$(1).ll: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
 
 endef
 
