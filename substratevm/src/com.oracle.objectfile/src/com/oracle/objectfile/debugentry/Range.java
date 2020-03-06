@@ -37,8 +37,8 @@ import java.nio.file.Paths;
 
 public class Range {
 
-    /* TODO this should be '.' for PECOFF files */
-    private static final String CLASS_DELIMITER = "::";
+    /* Use '.' for PECOFF files */
+    private static final String CLASS_DELIMITER = System.getProperty("os.name").contains("indows") ? "." : "::";
 
     private String fileName;
     private Path filePath;
@@ -70,7 +70,7 @@ public class Range {
          * currently file name and full method name need to go into the debug_str section
          * other strings just need to be deduplicated to save space
          */
-        this.fileName = stringTable.uniqueDebugString(fileName);
+        this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
         this.filePath =  filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
@@ -126,8 +126,10 @@ public class Range {
     public Path getFileAsPath() {
         if (filePath != null) {
             return filePath.resolve(fileName);
-        } else {
+        } else if (fileName != null) {
             return Paths.get(fileName);
+        } else {
+            return null;
         }
     }
 

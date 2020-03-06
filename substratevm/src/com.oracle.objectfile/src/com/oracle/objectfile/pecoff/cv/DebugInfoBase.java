@@ -92,7 +92,7 @@ public abstract class DebugInfoBase {
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
                 Path filePathAtLine = debugLineInfo.filePath();
-                // switch '$' in class names for '.'
+                /* switch '$' in class names for '.' */
                 String classNameAtLine = debugLineInfo.className().replaceAll("\\$", ".");
                 String methodNameAtLine = debugLineInfo.methodName();
                 int loAtLine = lo + debugLineInfo.addressLo();
@@ -102,11 +102,9 @@ public abstract class DebugInfoBase {
                  * record all subranges even if they have no line or file so we at least get a
                  * symbol for them
                  */
-                if (fileNameAtLine.length() > 0 && primaryLine >= 0) {
-                    //CVUtil.debug("  lineinfo: [0x%08x,0x%08x) %s.%s (%s:%d)\n", loAtLine, hiAtLine, classNameAtLine, methodNameAtLine, fileNameAtLine, line);
-                    Range subRange = new Range(fileNameAtLine, filePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
-                    addSubRange(primaryRange, subRange);
-                }
+                //CVUtil.debug("  lineinfo: [0x%08x,0x%08x) %s.%s (%s:%d)\n", loAtLine, hiAtLine, classNameAtLine, methodNameAtLine, fileNameAtLine, line);
+                Range subRange = new Range(fileNameAtLine, filePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
+                addSubRange(primaryRange, subRange);
             });
         });
         /*

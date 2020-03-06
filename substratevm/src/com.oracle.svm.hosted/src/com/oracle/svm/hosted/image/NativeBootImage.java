@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -1020,21 +1021,21 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     private class NativeImageDebugCodeInfo implements DebugCodeInfo {
         private final HostedMethod method;
+        private final ResolvedJavaType javaType;
         private final CompilationResult compilation;
         private Path fullFilePath;
 
         NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             this.method = method;
+            HostedType declaringClass = method.getDeclaringClass();
+            Class<?> clazz = declaringClass.getJavaClass();
+            this.javaType = declaringClass.getWrapped();
             this.compilation = compilation;
-            this.fullFilePath = null;
+            fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(javaType, clazz);
         }
 
         @Override
         public String fileName() {
-            if (fullFilePath == null) {
-                HostedType declaringClass = method.getDeclaringClass();
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
-            }
             if (fullFilePath != null) {
                 return fullFilePath.getFileName().toString();
             }
@@ -1042,10 +1043,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
         @Override
         public Path filePath() {
-            if (fullFilePath == null) {
-                HostedType declaringClass = method.getDeclaringClass();
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
-            }
             if (fullFilePath != null) {
                 return fullFilePath.getParent();
             }
@@ -1054,7 +1051,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public String className() {
-            return method.format("%H");
+            return javaType.toClassName();
         }
 
         @Override
@@ -1134,7 +1131,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         private final ResolvedJavaMethod method;
         private final int lo;
         private final int hi;
-        private Path fullFilePath = null;
+        private Path fullFilePath;
 
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
             NodeSourcePosition position = sourceMapping.getSourcePosition();
@@ -1143,25 +1140,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
             this.method = position.getMethod();
             this.lo = sourceMapping.getStartOffset();
             this.hi = sourceMapping.getEndOffset();
+            computeFullFilePath();
         }
 
         @Override
         public String fileName() {
-            if (fullFilePath == null) {
-                ResolvedJavaType declaringClass = method.getDeclaringClass();
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
-            }
-            if (fullFilePath != null) {
+           if (fullFilePath != null) {
                 return fullFilePath.getFileName().toString();
             }
             return null;
         }
 
         public Path filePath() {
-            if (fullFilePath == null) {
-                ResolvedJavaType declaringClass = method.getDeclaringClass();
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass);
-            }
             if (fullFilePath != null) {
                 return fullFilePath.getParent();
             }
@@ -1196,6 +1186,28 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return -1;
         }
+
+        private void computeFullFilePath() {
+            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            Class<?> clazz = null;
+            if (declaringClass instanceof OriginalClassProvider) {
+                clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
+            }
+            /*
+             * HostedType and AnalysisType punt calls to
+             * getSourceFilename to the wrapped class so
+             * for consistency we need to do the path lookup
+             * relative to the wrapped class
+             */
+            if (declaringClass instanceof HostedType) {
+                declaringClass = ((HostedType) declaringClass).getWrapped();
+            }
+            if (declaringClass instanceof AnalysisType) {
+                declaringClass = ((AnalysisType) declaringClass).getWrapped();
+            }
+            fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass, clazz);
+        }
+
     }
 
     /**

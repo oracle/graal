@@ -104,12 +104,14 @@ public class ClassEntry {
         this.localFilesIndex = new HashMap<>();
         this.localDirs = new LinkedList<>();
         this.localDirsIndex = new HashMap<>();
-        localFiles.add(fileEntry);
-        localFilesIndex.put(fileEntry, localFiles.size());
-        DirEntry dirEntry = fileEntry.getDirEntry();
-        if (dirEntry != null) {
-            localDirs.add(dirEntry);
-            localDirsIndex.put(dirEntry, localDirs.size());
+        if (fileEntry != null) {
+            localFiles.add(fileEntry);
+            localFilesIndex.put(fileEntry, localFiles.size());
+            DirEntry dirEntry = fileEntry.getDirEntry();
+            if (dirEntry != null) {
+                localDirs.add(dirEntry);
+                localDirsIndex.put(dirEntry, localDirs.size());
+            }
         }
         this.cuIndex = -1;
         this.lineIndex = -1;
@@ -140,14 +142,16 @@ public class ClassEntry {
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
         primaryEntry.addSubRange(subrange, subFileEntry);
-        if (localFilesIndex.get(subFileEntry) == null) {
-            localFiles.add(subFileEntry);
-            localFilesIndex.put(subFileEntry, localFiles.size());
-        }
-        DirEntry dirEntry = subFileEntry.getDirEntry();
-        if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
-            localDirs.add(dirEntry);
-            localDirsIndex.put(dirEntry, localDirs.size());
+        if (subFileEntry != null) {
+            if (localFilesIndex.get(subFileEntry) == null) {
+                localFiles.add(subFileEntry);
+                localFilesIndex.put(subFileEntry, localFiles.size());
+            }
+            DirEntry dirEntry = subFileEntry.getDirEntry();
+            if (dirEntry != null && localDirsIndex.get(dirEntry) == null) {
+                localDirs.add(dirEntry);
+                localDirsIndex.put(dirEntry, localDirs.size());
+            }
         }
     }
 
@@ -164,15 +168,27 @@ public class ClassEntry {
     }
 
     public String getFileName() {
-        return fileEntry.getFileName();
+        if (fileEntry != null) {
+            return fileEntry.getFileName();
+        } else {
+            return "";
+        }
     }
 
     String getFullFileName() {
-        return fileEntry.getFullName();
+        if (fileEntry != null) {
+            return fileEntry.getFullName();
+        } else {
+            return null;
+        }
     }
 
     String getDirName() {
-        return fileEntry.getPathName();
+        if (fileEntry != null) {
+            return fileEntry.getPathName();
+        } else {
+            return "";
+        }
     }
 
     public void setCUIndex(int cuIndex) {

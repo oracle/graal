@@ -92,10 +92,6 @@ public class PrimaryEntry {
         return classEntry;
     }
 
-    public FileEntry getFileEntry() {
-        return classEntry.getFileEntry();
-    }
-
     public List<Range> getSubranges() {
         return subranges;
     }
