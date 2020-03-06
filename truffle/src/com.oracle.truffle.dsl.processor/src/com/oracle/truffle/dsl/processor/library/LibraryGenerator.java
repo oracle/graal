@@ -282,8 +282,18 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 }
 
                 builder.startCall("lib", "send").string("receiver_").field(null, message.messageField);
-                for (VariableElement param : executeImpl.getParameters().subList(1, executeImpl.getParameters().size())) {
+
+                List<VariableElement> executeParameters = executeImpl.getParameters();
+                for (VariableElement param : executeParameters.subList(1, executeParameters.size())) {
+                    builder.startGroup();
+                    if (executeImpl.isVarArgs() && executeParameters.size() == 2 && param == executeParameters.get(executeParameters.size() - 1) &&
+                                    ElementUtils.typeEquals(context.getType(Object[].class), param.asType())) {
+                        // force cast varargs library message to pass their varargs as object to the
+                        // varargs send.
+                        builder.string("(Object) ");
+                    }
                     builder.string(param.getSimpleName().toString());
+                    builder.end();
                 }
                 builder.end();
                 builder.end();
