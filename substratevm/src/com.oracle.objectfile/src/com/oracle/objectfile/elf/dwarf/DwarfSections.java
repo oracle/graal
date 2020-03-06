@@ -406,6 +406,9 @@ public class DwarfSections {
 
     public FileEntry ensureFileEntry(Range range) {
         String fileName = range.getFileName();
+        if (fileName == null) {
+            return null;
+        }
         Path filePath = range.getFilePath();
         Path fileAsPath = range.getFileAsPath();
         /*
@@ -448,7 +451,9 @@ public class DwarfSections {
          * and associated with a primary class entry
          */
         assert classEntry.primaryIndexFor(primaryRange) != null;
-        classEntry.addSubRange(subrange, subrangeEntry);
+        if (subrangeEntry != null) {
+            classEntry.addSubRange(subrange, subrangeEntry);
+        }
     }
 
     public DirEntry ensureDirEntry(Path filePath) {

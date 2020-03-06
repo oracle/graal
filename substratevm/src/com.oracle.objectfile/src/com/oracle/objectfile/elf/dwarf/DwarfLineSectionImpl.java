@@ -226,6 +226,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              */
             String baseName = localEntry.getFileName();
             int length = baseName.length();
+            /* we should never have a null or zero length entry in local files */
+            assert length > 0;
             fileSize += length + 1;
             DirEntry dirEntry = localEntry.getDirEntry();
             int idx = classEntry.localDirsIdx(dirEntry);
@@ -416,10 +418,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     public int writeLineNumberTable(ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
+        FileEntry fileEntry = classEntry.getFileEntry();
+        if (fileEntry == null) {
+            return pos;
+        }
         /*
          * the primary file entry should always be first in the local files list
          */
-        assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
+        assert classEntry.localFilesIdx(fileEntry) == 1;
         String primaryClassName = classEntry.getClassName();
         String primaryFileName = classEntry.getFileName();
         String file = primaryFileName;
@@ -475,6 +481,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 assert subrange.getLo() >= primaryRange.getLo();
                 assert subrange.getHi() <= primaryRange.getHi();
                 FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subrange);
+                if (subFileEntry == null) {
+                    continue;
+                }
                 String subfile = subFileEntry.getFileName();
                 int subFileIdx = classEntry.localFilesIdx(subFileEntry);
                 long subLine = subrange.getLine();

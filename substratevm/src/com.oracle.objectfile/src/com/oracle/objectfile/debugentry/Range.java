@@ -66,7 +66,7 @@ public class Range {
          * currently file name and full method name need to go into the debug_str section
          * other strings just need to be deduplicated to save space
          */
-        this.fileName = stringTable.uniqueDebugString(fileName);
+        this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
         this.filePath =  filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
@@ -102,8 +102,10 @@ public class Range {
     public Path getFileAsPath() {
         if (filePath != null) {
             return filePath.resolve(fileName);
-        } else {
+        } else if (fileName != null) {
             return Paths.get(fileName);
+        } else {
+            return null;
         }
     }
 
