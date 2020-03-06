@@ -173,7 +173,6 @@ public class DwarfSections {
     // public static final byte DW_CFA_def_cfa_register = 0xd;
     public static final byte DW_CFA_def_cfa_offset = 0xe;
 
-    private ELFMachine elfMachine;
     private ByteOrder byteOrder;
     private DwarfStrSectionImpl dwarfStrSection;
     private DwarfAbbrevSectionImpl dwarfAbbrevSection;
@@ -183,7 +182,6 @@ public class DwarfSections {
     private DwarfFrameSectionImpl dwarfFameSection;
 
     public DwarfSections(ELFMachine elfMachine, ByteOrder byteOrder) {
-        this.elfMachine = elfMachine;
         this.byteOrder = byteOrder;
         dwarfStrSection = new DwarfStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
