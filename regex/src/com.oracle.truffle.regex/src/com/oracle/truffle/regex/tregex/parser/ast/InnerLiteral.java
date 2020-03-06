@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.automaton;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-public interface StateSetBackingSetFactory {
+/**
+ * Represents a literal string inside the regular expression that can be searched for before
+ * starting the actual regular expression matcher.
+ */
+public class InnerLiteral {
 
-    StateSetBackingSet create(int stateIndexSize);
+    private final String literal;
+    private final String mask;
+    private final int maxPrefixSize;
 
-    StateSetBackingSetFactory BIT_SET = new StateSetBackingSetFactory() {
+    public InnerLiteral(String literal, String mask, int maxPrefixSize) {
+        this.literal = literal;
+        this.mask = mask;
+        this.maxPrefixSize = maxPrefixSize;
+    }
 
-        @Override
-        public StateSetBackingSet create(int stateIndexSize) {
-            return new StateSetBackingBitSet(stateIndexSize);
-        }
-    };
+    /**
+     * The literal string.
+     */
+    public String getLiteral() {
+        return literal;
+    }
 
-    StateSetBackingSetFactory SORTED_ARRAY = new StateSetBackingSetFactory() {
+    /**
+     * An optional mask for matching the string in ignore-case mode.
+     */
+    public String getMask() {
+        return mask;
+    }
 
-        @Override
-        public StateSetBackingSet create(int stateIndexSize) {
-            return new StateSetBackingSortedArray();
-        }
-    };
+    /**
+     * The maximum number of code points the regular expression may match before matching this
+     * literal. Example: the inner literal of {@code /a?b/} is {@code "b"}, with a max prefix size
+     * of {@code 1}.
+     */
+    public int getMaxPrefixSize() {
+        return maxPrefixSize;
+    }
 }

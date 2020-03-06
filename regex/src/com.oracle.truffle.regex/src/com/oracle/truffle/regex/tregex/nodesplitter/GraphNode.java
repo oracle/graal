@@ -46,7 +46,6 @@ import java.util.Set;
 
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
@@ -57,7 +56,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
  */
 final class GraphNode implements Comparable<GraphNode> {
 
-    private static final short[] NO_DOM_CHILDREN = new short[0];
+    private static final int[] NO_DOM_CHILDREN = new int[0];
 
     private DFAAbstractStateNode originalDfaNode;
     private DFAAbstractStateNode dfaNode;
@@ -66,7 +65,7 @@ final class GraphNode implements Comparable<GraphNode> {
     private final StateSet<GraphNode> predecessorSet;
     private final StateSet<GraphNode> backEdges;
 
-    private short[] domChildren;
+    private int[] domChildren;
     private int nDomChildren;
     private int domTreeDepth;
     private int postOrderIndex;
@@ -79,7 +78,7 @@ final class GraphNode implements Comparable<GraphNode> {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = StateSet.create(graph, StateSetBackingSetFactory.SORTED_ARRAY);
+        predecessorSet = StateSet.createWithBackingSortedArray(graph);
         backEdges = StateSet.create(graph);
         domChildren = NO_DOM_CHILDREN;
     }
@@ -117,7 +116,7 @@ final class GraphNode implements Comparable<GraphNode> {
         return getId() - o.getId();
     }
 
-    public short getId() {
+    public int getId() {
         return dfaNode.getId();
     }
 
@@ -188,7 +187,7 @@ final class GraphNode implements Comparable<GraphNode> {
     void addDomChild(GraphNode child) {
         if (nDomChildren == domChildren.length) {
             if (domChildren == NO_DOM_CHILDREN) {
-                domChildren = new short[10];
+                domChildren = new int[10];
             } else {
                 domChildren = Arrays.copyOf(domChildren, domChildren.length * 2);
             }

@@ -52,6 +52,7 @@ public class RegexProperties implements JsonConvertible {
     private boolean backReferences = false;
     private boolean captureGroups = false;
     private boolean charClasses = false;
+    private boolean loneSurrogates = false;
     private boolean quantifiers = false;
     private boolean lookAheadAssertions = false;
     private boolean complexLookAheadAssertions = false;
@@ -95,6 +96,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setCharClasses() {
         charClasses = true;
+    }
+
+    public boolean hasLoneSurrogates() {
+        return loneSurrogates;
+    }
+
+    public void setLoneSurrogates() {
+        loneSurrogates = true;
     }
 
     public boolean hasQuantifiers() {

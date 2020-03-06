@@ -41,13 +41,14 @@
 package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class ASTTransition implements JsonConvertible {
+public class ASTTransition implements AbstractTransition<Term, ASTTransition>, JsonConvertible {
 
     private Term target;
     private GroupBoundaries groupBoundaries = GroupBoundaries.getEmptyInstance();
@@ -59,6 +60,17 @@ public class ASTTransition implements JsonConvertible {
         this.target = target;
     }
 
+    @Override
+    public int getId() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Term getSource() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Term getTarget() {
         return target;
     }

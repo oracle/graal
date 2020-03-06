@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,48 +40,78 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.automaton.AbstractState;
-import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
 /**
- * A common supertype for all {@link RegexASTNode}s except {@link Sequence}s.
- * <p>
- * Roughly corresponds to the goal symbol <em>Term</em> in the ECMAScript RegExp syntax. A
- * <em>Term</em> ({@link Term}) can be either an <em>Assertion</em> ({@link PositionAssertion} or
- * {@link LookAroundAssertion}) or an <em>Atom</em> ({@link QuantifiableTerm}.
+ * Roughly corresponds to the goal symbol <em>Atom</em> in the ECMAScript RegExp syntax. An
+ * <em>Atom</em> ({@link QuantifiableTerm}) can be either a {@link CharacterClass}, a
+ * {@link BackReference} or a {@link Group}). <em>Quantifier</em>s ({@link Quantifier}) are attached
+ * directly to the quantified term.
  */
-public abstract class Term extends RegexASTNode implements AbstractState<Term, ASTTransition> {
+public abstract class QuantifiableTerm extends Term {
 
-    private int seqIndex = 0;
+    private Token.Quantifier quantifier;
 
-    Term() {
+    QuantifiableTerm() {
     }
 
-    Term(Term copy) {
+    QuantifiableTerm(QuantifiableTerm copy) {
         super(copy);
+        this.quantifier = copy.quantifier;
     }
 
     @Override
-    public abstract Term copy(RegexAST ast, boolean recursive);
+    public abstract QuantifiableTerm copy(RegexAST ast, boolean recursive);
 
-    public int getSeqIndex() {
-        return seqIndex;
+    public boolean hasQuantifier() {
+        return quantifier != null;
     }
 
-    public void setSeqIndex(int seqIndex) {
-        this.seqIndex = seqIndex;
-        if (seqIndex > TRegexOptions.TRegexParserTreeMaxNumberOfTermsInSequence) {
-            throw new UnsupportedRegexException("too many terms in a single sequence");
-        }
+    /**
+     * Returns {@code true} iff this term has a quantifier that was not unrolled by the parser.
+     */
+    public boolean hasNotUnrolledQuantifier() {
+        return hasQuantifier() && !isExpandedQuantifier();
+    }
+
+    /**
+     * Returns {@code true} iff the parser should try to unroll this term's quantifier.
+     */
+    public abstract boolean isUnrollingCandidate();
+
+    public Token.Quantifier getQuantifier() {
+        return quantifier;
+    }
+
+    public void setQuantifier(Token.Quantifier quantifier) {
+        this.quantifier = quantifier;
+    }
+
+    boolean quantifierEquals(QuantifiableTerm o) {
+        return Objects.equals(quantifier, o.quantifier);
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj) {
+        return equalsSemantic(obj, false);
+    }
+
+    public abstract boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier);
+
+    @TruffleBoundary
+    protected String quantifierToString() {
+        return hasNotUnrolledQuantifier() ? quantifier.toString() : "";
     }
 
     @Override
     public RegexASTSubtreeRootNode getSubTreeParent() {
         RegexASTNode current = this;
         while (current.getParent() != null) {
-            assert current instanceof Term;
+            assert current instanceof QuantifiableTerm;
             if (current.getParent() instanceof RegexASTSubtreeRootNode) {
                 return (RegexASTSubtreeRootNode) current.getParent();
             }

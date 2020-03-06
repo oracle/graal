@@ -71,8 +71,8 @@ public final class DFASimpleCGTransition implements JsonConvertible {
             return getEmptyInstance();
         }
         t.getGroupBoundaries().materializeArrays();
-        return new DFASimpleCGTransition(t.getGroupBoundaries().isEmpty() ? EMPTY_ARRAY : t.getGroupBoundaries().getUpdateIndicesArray(),
-                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().getClearIndicesArray());
+        return new DFASimpleCGTransition(t.getGroupBoundaries().isEmpty() ? EMPTY_ARRAY : t.getGroupBoundaries().updatesToByteArray(),
+                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().clearsToByteArray());
     }
 
     public static DFASimpleCGTransition getEmptyInstance() {

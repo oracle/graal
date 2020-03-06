@@ -112,6 +112,10 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         return terms.get(0);
     }
 
+    public Term get(int i) {
+        return terms.get(i);
+    }
+
     public Term getLastTerm() {
         return terms.get(terms.size() - 1);
     }
@@ -146,7 +150,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     }
 
     public boolean isFirstInGroup() {
-        return getParent().getAlternatives().get(0) == this;
+        return getParent().getFirstAlternative() == this;
     }
 
     public boolean isLastInGroup() {
@@ -163,7 +167,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             return false;
         }
         for (Term t : terms) {
-            if (!(t instanceof CharacterClass) || t.hasQuantifier()) {
+            if (!(t.isCharacterClass()) || t.asCharacterClass().hasNotUnrolledQuantifier()) {
                 return false;
             }
         }

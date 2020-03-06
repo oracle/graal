@@ -50,26 +50,23 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * This class represents a power-set automaton state transition fragment to be used by
  * {@link StateTransitionCanonicalizer}.<br>
  * A transition in a power-set automaton consists of a set of transitions of the NFA that the
- * power-set automaton is being built from.
- *
- * @param <TS> a type that should represent the set of NFA transitions currently contained in this
- *            fragment.
+ * power-set automaton is being built from, and the set of characters it can match.
  */
-public class TransitionBuilder<TS extends TransitionSet> implements JsonConvertible {
+public class TransitionBuilder<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> implements JsonConvertible {
 
-    private final TS transitionSet;
+    private final TransitionSet<S, T> transitionSet;
     private CodePointSet matcherBuilder;
-    private TransitionBuilder<TS> next;
 
-    public TransitionBuilder(TS transitionSet, CodePointSet matcherBuilder) {
+    public TransitionBuilder(T[] transitions, StateSet<S> targetStateSet, CodePointSet matcherBuilder) {
+        this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder);
+    }
+
+    public TransitionBuilder(TransitionSet<S, T> transitionSet, CodePointSet matcherBuilder) {
         this.transitionSet = transitionSet;
         this.matcherBuilder = matcherBuilder;
     }
 
-    /**
-     * Represents the set of NFA transitions currently contained in this transition fragment.
-     */
-    public TS getTransitionSet() {
+    public TransitionSet<S, T> getTransitionSet() {
         return transitionSet;
     }
 
@@ -84,41 +81,9 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
         this.matcherBuilder = matcherBuilder;
     }
 
-    /**
-     * Used by {@link StateTransitionCanonicalizer} for creating linked lists of
-     * {@link TransitionBuilder} instances on the fly.
-     */
-    public TransitionBuilder<TS> getNext() {
-        return next;
-    }
-
-    /**
-     * Used by {@link StateTransitionCanonicalizer} for creating linked lists of
-     * {@link TransitionBuilder} instances on the fly.
-     */
-    public void setNext(TransitionBuilder<TS> next) {
-        this.next = next;
-    }
-
-    /**
-     * Merge {@code this} and {@code other} into a newly created {@link TransitionBuilder} . The new
-     * {@code transitionSet} is created by calling {@link TransitionSet#createMerged(TransitionSet)}
-     * on {@code this.transitionSet} with {@code other.transitionSet} as parameter. The
-     * {@code matcherBuilder} of the new {@link TransitionBuilder} will be set to
-     * {@code mergedMatcher} directly.
-     *
-     * @return the newly created {@link TransitionBuilder}. Overriding classes are expected to
-     *         return an instance of their own type!
-     */
-    @SuppressWarnings("unchecked")
-    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, CodePointSet mergedMatcher) {
-        return new TransitionBuilder<>((TS) transitionSet.createMerged(other.transitionSet), mergedMatcher);
-    }
-
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()),
-                        Json.prop("transitionSet", getTransitionSet()));
+        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()));
     }
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -122,7 +123,7 @@ public class Token implements JsonConvertible {
         return new BackReference(groupNr);
     }
 
-    public static Token createQuantifier(int min, int max, boolean greedy) {
+    public static Quantifier createQuantifier(int min, int max, boolean greedy) {
         return new Quantifier(min, max, greedy);
     }
 
@@ -168,6 +169,8 @@ public class Token implements JsonConvertible {
         private final int min;
         private final int max;
         private final boolean greedy;
+        @CompilationFinal private int index = -1;
+        @CompilationFinal private int zeroWidthIndex = -1;
 
         public Quantifier(int min, int max, boolean greedy) {
             super(Kind.quantifier);
@@ -196,6 +199,46 @@ public class Token implements JsonConvertible {
 
         public boolean isGreedy() {
             return greedy;
+        }
+
+        public boolean hasIndex() {
+            return index >= 0;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public void setIndex(int index) {
+            this.index = index;
+        }
+
+        public boolean hasZeroWidthIndex() {
+            return zeroWidthIndex >= 0;
+        }
+
+        public int getZeroWidthIndex() {
+            return zeroWidthIndex;
+        }
+
+        public void setZeroWidthIndex(int zeroWidthIndex) {
+            this.zeroWidthIndex = zeroWidthIndex;
+        }
+
+        /**
+         * Returns {@code true} iff both {@link #getMin()} and {@link #getMax()} are less or equal
+         * to the given threshold, or infinite {@link #isInfiniteLoop()}.
+         */
+        public boolean isWithinThreshold(int threshold) {
+            return min <= threshold && max <= threshold;
+        }
+
+        /**
+         * Returns {@code true} iff "unrolling" this quantifier is trivial, i.e. nothing has to be
+         * duplicated. This is the case for quantifiers {@code ?} and {@code *}.
+         */
+        public boolean isUnrollTrivial() {
+            return min == 0 && max <= 1;
         }
 
         @Override

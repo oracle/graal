@@ -63,6 +63,7 @@ import java.util.Arrays;
  */
 public class LongArrayBuffer extends AbstractArrayBuffer {
 
+    private static final long[] EMPTY = {};
     protected long[] buf;
 
     public LongArrayBuffer(int initialSize) {
@@ -99,6 +100,6 @@ public class LongArrayBuffer extends AbstractArrayBuffer {
     }
 
     public long[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
     }
 }

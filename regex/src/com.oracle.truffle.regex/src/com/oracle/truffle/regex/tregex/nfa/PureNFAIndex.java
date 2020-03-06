@@ -55,11 +55,11 @@ public class PureNFAIndex extends SimpleStateIndex<PureNFA> {
     }
 
     @Override
-    protected short getStateId(PureNFA state) {
+    protected int getStateId(PureNFA state) {
         return state.getSubTreeId();
     }
 
     @Override
-    protected void setStateId(PureNFA state, short id) {
+    protected void setStateId(PureNFA state, int id) {
     }
 }

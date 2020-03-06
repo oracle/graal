@@ -99,6 +99,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         run(runRoot, true);
     }
 
+    protected boolean isForward() {
+        return !reverse;
+    }
+
     protected boolean isReverse() {
         return reverse;
     }
