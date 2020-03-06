@@ -42,15 +42,15 @@ import java.util.Set;
 @GenerateLibrary.DefaultExport(DefaultFrameLibrary.class)
 public abstract class FrameLibrary extends Library {
     public abstract Object readMember(
-                    Frame frame, Env env,
+                    Query env,
                     String member) throws UnknownIdentifierException;
 
     public abstract void collectNames(
-                    Frame frame, Env env,
+                    Query env,
                     Set<String> names) throws InteropException;
 
     @CompilerDirectives.TruffleBoundary
-    public static Object defaultReadMember(Env env, String member) throws UnknownIdentifierException {
+    public static Object defaultReadMember(Query env, String member) throws UnknownIdentifierException {
         InteropLibrary iop = InteropLibrary.getFactory().getUncached();
         for (Scope scope : env.findLocalScopes()) {
             if (scope == null) {
@@ -83,7 +83,7 @@ public abstract class FrameLibrary extends Library {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static void defaultCollectNames(Env env, Set<String> names) throws InteropException {
+    public static void defaultCollectNames(Query env, Set<String> names) throws InteropException {
         InteropLibrary iop = InteropLibrary.getFactory().getUncached();
         for (Scope scope : env.findLocalScopes()) {
             if (scope == null) {
@@ -111,12 +111,12 @@ public abstract class FrameLibrary extends Library {
         }
     }
 
-    public static final class Env {
+    public static final class Query {
         private final Node where;
         private final Frame frame;
         private final TruffleInstrument.Env env;
 
-        Env(Node where, Frame frame, TruffleInstrument.Env env) {
+        Query(Node where, Frame frame, TruffleInstrument.Env env) {
             this.where = where;
             this.frame = frame;
             this.env = env;
@@ -125,13 +125,17 @@ public abstract class FrameLibrary extends Library {
         public Iterable<Scope> findLocalScopes() {
             return env.findLocalScopes(where, frame);
         }
+
+        public Frame frame() {
+            return frame;
+        }
     }
 
     static {
         AccessorFrameLibrary accessor = new AccessorFrameLibrary() {
             @Override
-            protected Env create(Node where, Frame frame, TruffleInstrument.Env env) {
-                return new Env(where, frame, env);
+            protected Query create(Node where, Frame frame, TruffleInstrument.Env env) {
+                return new Query(where, frame, env);
             }
         };
         assert AccessorFrameLibrary.DEFAULT == accessor;

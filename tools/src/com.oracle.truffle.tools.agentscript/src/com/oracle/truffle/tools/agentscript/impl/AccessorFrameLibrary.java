@@ -39,5 +39,5 @@ public abstract class AccessorFrameLibrary {
         DEFAULT = this;
     }
 
-    protected abstract FrameLibrary.Env create(Node where, Frame frame, TruffleInstrument.Env env);
+    protected abstract FrameLibrary.Query create(Node where, Frame frame, TruffleInstrument.Env env);
 }
