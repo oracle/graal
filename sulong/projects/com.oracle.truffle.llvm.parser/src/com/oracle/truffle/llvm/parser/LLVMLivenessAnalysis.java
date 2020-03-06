@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -202,8 +202,8 @@ public final class LLVMLivenessAnalysis {
         return processedBlocks;
     }
 
+    @SuppressWarnings("unchecked")
     private LLVMLivenessAnalysisResult computeLivenessAnalysisResult(List<InstructionBlock> blocks, BlockInfo[] blockInfos, ArrayList<InstructionBlock>[] predecessors) {
-        @SuppressWarnings("unchecked")
         ArrayList<NullerInformation>[] nullableWithinBlock = new ArrayList[blocks.size()];
         BitSet[] nullableBeforeBlock = new BitSet[blocks.size()];
         BitSet[] nullableAfterBlock = new BitSet[blocks.size()];
@@ -309,8 +309,8 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static ArrayList<InstructionBlock>[] computePredecessors(List<InstructionBlock> blocks) {
-        @SuppressWarnings("unchecked")
         ArrayList<InstructionBlock>[] result = new ArrayList[blocks.size()];
         for (int i = 0; i < blocks.size(); i++) {
             result[i] = new ArrayList<>(2);
