@@ -2060,8 +2060,16 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type component: mx_sdk.GraalVmTruffleComponent
         :type graalvm: GraalVmLayoutDistribution
         """
+        def require_svm(components):
+            """
+            :type components: list[mx_sdk.GraalVmComponent]
+            :rtype: bool
+            """
+            return any(_get_launcher_configs(comp) or _get_library_configs(comp) for comp in components)
+
         other_comp_names = []
-        if _get_svm_support().is_supported() and (_get_launcher_configs(component) or _get_library_configs(component) or any(_get_launcher_configs(get_component(c)) or _get_library_configs(get_component(c)) for c in component.standalone_dependencies)):
+        involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
+        if _get_svm_support().is_supported() and require_svm(involved_components):
             if 'svm' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
@@ -2320,12 +2328,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Create standalones
     for components in installables.values():
         main_component = _get_main_component(components)
-        # pylint: disable=too-many-boolean-expressions
-        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) \
-                and (len(main_component.launcher_configs) == 0 or has_svm_launcher(main_component)) \
-                and (len(main_component.library_configs) == 0 or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))):
+        only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
+        only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
+        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and only_native_launchers and only_native_libraries:
             dependencies = main_component.standalone_dependencies.keys()
-            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (len(get_component(dep).library_configs) and not _get_svm_support().is_supported())]
+            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not _get_svm_support().is_supported())]
             if missing_dependencies:
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
@@ -2333,7 +2340,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), get_final_graalvm_distribution())
                 register_distribution(standalone)
                 with_debuginfo.append(standalone)
-        # pylint: enable=too-many-boolean-expressions
 
     if register_project:
         if _src_jdk_version == 8 and jvmci_parent_jars:
