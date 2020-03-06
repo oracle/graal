@@ -76,8 +76,8 @@ simpleLanguageMavenProjectGate:  {
         ["mkdir", "-p", "public_maven/simplelanguage/tck/src/"]
         ["cp", "-rf", "src/com.oracle.truffle.sl.tck/src/", "public_maven/simplelanguage/tck/src"],
         ["cd", "public_maven/simplelanguage"],
-        ["mvn", "-X", "-Dgraalvm.version=GATE", "package"],
-        ["set-export" "SL_SKIP_VERSION_CHECK", "true"],
+        ["mvn", "-Dgraalvm.version=GATE", "package"],
+        ["set-export", "SL_SKIP_VERSION_CHECK", "true"],
         ["./sl", "language/test/Add.sl"],
         ["./native/slnative language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
