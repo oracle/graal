@@ -57,7 +57,6 @@ public abstract class LLVMDebugTestBase {
 
     private static final String LANG_ID = LLVMLanguage.ID;
 
-    private static final String[] SOURCE_FILE_EXTENSIONS = new String[]{".c", ".cpp", ".ll"};
     private static final String TRACE_EXT = ".txt";
     public static final String TEST_FOLDER_EXT = ".dir";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";

@@ -161,15 +161,15 @@ public final class LLVMDebugExprParserTest {
         return TestExpressions.parse(path);
     }
 
-    Path getBitcodePath() {
+    static Path getBitcodePath() {
         return BC_DIR_PATH;
     }
 
-    Path getSourcePath() {
+    static Path getSourcePath() {
         return SRC_DIR_PATH;
     }
 
-    Path getTracePath() {
+    static Path getTracePath() {
         return TRACE_DIR_PATH;
     }
 
