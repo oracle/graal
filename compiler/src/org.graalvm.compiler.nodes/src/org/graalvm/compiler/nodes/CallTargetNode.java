@@ -89,7 +89,6 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
      *
      *  Example:
      *  <pre>
-     *      {@code
      *      interface I1 {
      *          void foo();
      *      }
@@ -97,7 +96,6 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
      *
      *      void bar(I2 o) {
      *          o.foo();
-     *      }
      *      }
      *  </pre>
      *
@@ -108,10 +106,8 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
      *  Since the interface types are not verified, another way to think about this call site is to rewrite it
      *  as follows:
      *  <pre>
-     *      {@code
      *      void bar(Object o) {
      *          ((I2) o).foo();
-     *      }
      *      }
      *  </pre>
      *  So, in case the receiver is not a subtype of {@code I2} an exception is thrown.
