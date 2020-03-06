@@ -65,7 +65,7 @@ simpleLanguageMavenProjectGate:  {
     run : [
         ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "build"],
         ["mx", "maven-deploy", "--all-suites", "--version-string", "GATE"],
-        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/substratevm", "graalvm-home"]],
+        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
         ["ls", "$JAVA_HOME"],
         ["ls", "$JAVA_HOME/bin"],
         ["$JAVA_HOME/bin/java"],
