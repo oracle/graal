@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -624,7 +624,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
         // Current behavior, but maybe this should work?
         // Similar to Array.newInstance(long.class, 3, 4)
-        ValueAssert.assertFails(() -> objectClass.newInstance(3, 4), IllegalArgumentException.class);
+        assertFails(() -> objectClass.newInstance(3, 4), IllegalArgumentException.class);
 
         Value object = objectClass.newInstance(4);
         assertTrue(object.isHostObject());

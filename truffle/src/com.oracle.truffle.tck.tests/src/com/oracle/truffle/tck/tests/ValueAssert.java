@@ -38,25 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.polyglot;
+package com.oracle.truffle.tck.tests;
 
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXCEPTION;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NATIVE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.META;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -84,7 +84,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.HostAccess.Implementable;
@@ -140,211 +139,7 @@ public class ValueAssert {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static void assertValueImpl(Value value, int depth, boolean hasHostAccess, Trait... expectedTypes) {
-        if (depth > 10) {
-            // stop at a certain recursion depth for recursive data structures
-            return;
-        }
-
-        assertNotNull(value.toString());
-        Value metaObject = value.getMetaObject();
-        if (metaObject != null && depth == 0) { // meta-object may be null
-            assertValueImpl(metaObject, depth + 1, hasHostAccess, detectSupportedTypes(metaObject));
-            assertNotNull(metaObject.toString());
-        }
-
-        assertSame(value, value.as(Value.class));
-
-        for (Trait supportedType : expectedTypes) {
-            String msg = "expected " + supportedType.name() + " but was " + value.toString();
-            switch (supportedType) {
-                case NULL:
-                    assertTrue(msg, value.isNull());
-                    break;
-                case BOOLEAN:
-                    assertTrue(msg, value.isBoolean());
-                    boolean booleanValue = value.asBoolean();
-                    assertEquals(booleanValue, value.as(Boolean.class));
-                    assertEquals(booleanValue, value.as(boolean.class));
-                    break;
-                case STRING:
-                    assertTrue(msg, value.isString());
-                    String stringValue = value.asString();
-                    assertEquals(stringValue, value.as(String.class));
-                    if (stringValue.length() == 1) {
-                        assertEquals(stringValue.charAt(0), (char) value.as(Character.class));
-                        assertEquals(stringValue.charAt(0), (char) value.as(char.class));
-                    }
-                    break;
-                case NUMBER:
-                    assertValueNumber(value);
-                    break;
-                case ARRAY_ELEMENTS:
-                    assertTrue(msg, value.hasArrayElements());
-                    assertValueArrayElements(value, depth, hasHostAccess);
-                    break;
-                case EXECUTABLE:
-                    assertTrue(msg, value.canExecute());
-                    assertFunctionalInterfaceMapping(value);
-                    break;
-                case INSTANTIABLE:
-                    assertTrue(msg, value.canInstantiate());
-                    value.as(Function.class);
-                    // otherwise its ambiguous with the executable semantics.
-                    if (!value.canExecute()) {
-                        assertFunctionalInterfaceMapping(value);
-                    }
-                    break;
-                case HOST_OBJECT:
-                    assertTrue(msg, value.isHostObject());
-                    Object hostObject = value.asHostObject();
-                    assertFalse(hostObject instanceof Proxy);
-                    if (hasHostAccess && hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
-                        if (hostObject instanceof Class) {
-                            boolean isStaticClass = value.hasMember("class");
-                            if (isStaticClass) {
-                                assertClassMembers(value, (Class<?>) hostObject, true);
-                            } else {
-                                if (hasHostAccess) {
-                                    assertClassMembers(value, Class.class, false);
-                                    assertTrue(value.hasMember("static"));
-                                }
-                            }
-                        } else {
-                            assertClassMembers(value, hostObject.getClass(), false);
-                        }
-                    }
-                    break;
-                case PROXY_OBJECT:
-                    assertTrue(msg, value.isProxyObject());
-                    Object proxyObject = value.asProxyObject();
-                    assertTrue(proxyObject instanceof Proxy);
-                    break;
-                case MEMBERS:
-                    assertTrue(msg, value.hasMembers());
-
-                    Map<Object, Object> expectedValues = new HashMap<>();
-                    for (String key : value.getMemberKeys()) {
-                        Value child = value.getMember(key);
-                        expectedValues.put(key, child.as(Object.class));
-                        if (!isSameHostObject(value, child)) {
-                            assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
-                        }
-                    }
-
-                    if (value.isHostObject() && value.asHostObject() instanceof Map) {
-                        expectedValues = value.asHostObject();
-                    } else {
-                        Map<String, Object> stringMap = value.as(STRING_OBJECT_MAP);
-                        assertTrue(expectedValues.equals(expectedValues));
-                        assertTrue(stringMap.equals(stringMap));
-                        assertFalse(value.as(STRING_OBJECT_MAP).equals(expectedValues));
-                        assertTrue(value.as(STRING_OBJECT_MAP).equals(value.as(STRING_OBJECT_MAP)));
-                        assertNotEquals(0, value.as(STRING_OBJECT_MAP).hashCode());
-                        assertNotNull(value.as(STRING_OBJECT_MAP).toString());
-
-                        assertContentEquals(expectedValues, value.as(STRING_OBJECT_MAP));
-
-                        Set<String> keySet = value.as(Map.class).keySet();
-                        assertEquals(value.getMemberKeys(), keySet);
-                        for (String key : keySet) {
-                            assertTrue(value.hasMember(key));
-                        }
-                    }
-                    assertContentEquals(expectedValues, value.as(Map.class));
-                    assertEquals(value.toString(), value.as(Map.class).toString());
-
-                    break;
-                case NATIVE:
-                    assertTrue(msg, value.isNativePointer());
-                    value.asNativePointer();
-                    break;
-                case DATE:
-                    assertFalse(value.isNull());
-                    assertTrue(value.isDate());
-                    assertNotNull(value.asDate());
-                    assertNotNull(value.as(LocalDate.class));
-
-                    if (value.isTime()) {
-                        assertEquals(value.as(LocalDateTime.class).toLocalDate(), value.as(LocalDate.class));
-                        assertEquals(value.as(LocalDateTime.class).toLocalTime(), value.as(LocalTime.class));
-                        if (value.isTimeZone()) {
-                            assertNotNull(value.asInstant());
-                            assertEquals(value.as(ZonedDateTime.class).toLocalDate(), value.as(LocalDate.class));
-                            assertNotNull(value.as(Instant.class));
-                            assertNotNull(value.as(Date.class));
-                        }
-                    }
-                    break;
-                case TIME:
-                    assertTrue(value.isTime());
-                    assertNotNull(value.asTime());
-                    assertNotNull(value.as(LocalTime.class));
-
-                    if (value.isDate()) {
-                        // asserted by DATE trait
-                    } else {
-                        if (value.isTimeZone()) {
-                            // invalid combination
-                            assertFails(() -> value.asTime(), AssertionError.class);
-                            assertFails(() -> value.asTimeZone(), AssertionError.class);
-                        }
-                    }
-                    break;
-                case TIMEZONE:
-                    assertTrue(value.isTimeZone());
-                    assertNotNull(value.asTimeZone());
-                    assertNotNull(value.as(ZoneId.class));
-                    break;
-                case DURATION:
-                    assertTrue(value.isDuration());
-                    assertNotNull(value.asDuration());
-                    assertNotNull(value.as(Duration.class));
-                    break;
-                case EXCEPTION:
-                    assertTrue(value.isException());
-                    try {
-                        value.throwException();
-                        fail("should have thrown");
-                    } catch (PolyglotException expected) {
-                        // caught expected exception
-                    } catch (UnsupportedOperationException unsupported) {
-                        throw new AssertionError(unsupported);
-                    }
-                    break;
-                case META:
-                    assertTrue(value.isMetaObject());
-                    assertNotNull(value.getMetaQualifiedName());
-                    assertNotNull(value.getMetaSimpleName());
-                    value.isMetaInstance("");
-                    break;
-
-                default:
-                    throw new AssertionError();
-            }
-        }
-
-        assertUnsupported(value, expectedTypes);
-    }
-
-    private static void assertContentEquals(Map<? extends Object, ? extends Object> map1, Map<? extends Object, ? extends Object> map2) {
-        assertEquals(convertMap(map1), convertMap(map2));
-    }
-
-    private static Map<? extends Object, ? extends Object> convertMap(Map<? extends Object, ? extends Object> map) {
-        if (map instanceof HashMap) {
-            return map;
-        } else {
-            return new HashMap<>(map);
-        }
-    }
-
-    private static boolean isSameHostObject(Value a, Value b) {
-        return a.isHostObject() && b.isHostObject() && a.asHostObject() == b.asHostObject();
-    }
-
-    static void assertUnsupported(Value value, Trait... supported) {
+    public static void assertUnsupported(Value value, Trait... supported) {
         Set<Trait> supportedSet = new HashSet<>(Arrays.asList(supported));
         for (Trait unsupportedType : Trait.values()) {
             if (supportedSet.contains(unsupportedType)) {
@@ -607,6 +402,210 @@ public class ValueAssert {
     }
 
     @SuppressWarnings("unchecked")
+    private static void assertValueImpl(Value value, int depth, boolean hasHostAccess, Trait... expectedTypes) {
+        if (depth > 10) {
+            // stop at a certain recursion depth for recursive data structures
+            return;
+        }
+
+        assertNotNull(value.toString());
+        Value metaObject = value.getMetaObject();
+        if (metaObject != null && depth == 0) { // meta-object may be null
+            assertValueImpl(metaObject, depth + 1, hasHostAccess, detectSupportedTypes(metaObject));
+            assertNotNull(metaObject.toString());
+        }
+
+        assertSame(value, value.as(Value.class));
+
+        for (Trait supportedType : expectedTypes) {
+            String msg = "expected " + supportedType.name() + " but was " + value.toString();
+            switch (supportedType) {
+                case NULL:
+                    assertTrue(msg, value.isNull());
+                    break;
+                case BOOLEAN:
+                    assertTrue(msg, value.isBoolean());
+                    boolean booleanValue = value.asBoolean();
+                    assertEquals(booleanValue, value.as(Boolean.class));
+                    assertEquals(booleanValue, value.as(boolean.class));
+                    break;
+                case STRING:
+                    assertTrue(msg, value.isString());
+                    String stringValue = value.asString();
+                    assertEquals(stringValue, value.as(String.class));
+                    if (stringValue.length() == 1) {
+                        assertEquals(stringValue.charAt(0), (char) value.as(Character.class));
+                        assertEquals(stringValue.charAt(0), (char) value.as(char.class));
+                    }
+                    break;
+                case NUMBER:
+                    assertValueNumber(value);
+                    break;
+                case ARRAY_ELEMENTS:
+                    assertTrue(msg, value.hasArrayElements());
+                    assertValueArrayElements(value, depth, hasHostAccess);
+                    break;
+                case EXECUTABLE:
+                    assertTrue(msg, value.canExecute());
+                    assertFunctionalInterfaceMapping(value);
+                    break;
+                case INSTANTIABLE:
+                    assertTrue(msg, value.canInstantiate());
+                    value.as(Function.class);
+                    // otherwise its ambiguous with the executable semantics.
+                    if (!value.canExecute()) {
+                        assertFunctionalInterfaceMapping(value);
+                    }
+                    break;
+                case HOST_OBJECT:
+                    assertTrue(msg, value.isHostObject());
+                    Object hostObject = value.asHostObject();
+                    assertFalse(hostObject instanceof Proxy);
+                    if (hasHostAccess && hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
+                        if (hostObject instanceof Class) {
+                            boolean isStaticClass = value.hasMember("class");
+                            if (isStaticClass) {
+                                assertClassMembers(value, (Class<?>) hostObject, true);
+                            } else {
+                                if (hasHostAccess) {
+                                    assertClassMembers(value, Class.class, false);
+                                    assertTrue(value.hasMember("static"));
+                                }
+                            }
+                        } else {
+                            assertClassMembers(value, hostObject.getClass(), false);
+                        }
+                    }
+                    break;
+                case PROXY_OBJECT:
+                    assertTrue(msg, value.isProxyObject());
+                    Object proxyObject = value.asProxyObject();
+                    assertTrue(proxyObject instanceof Proxy);
+                    break;
+                case MEMBERS:
+                    assertTrue(msg, value.hasMembers());
+
+                    Map<Object, Object> expectedValues = new HashMap<>();
+                    for (String key : value.getMemberKeys()) {
+                        Value child = value.getMember(key);
+                        expectedValues.put(key, child.as(Object.class));
+                        if (!isSameHostObject(value, child)) {
+                            assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
+                        }
+                    }
+
+                    if (value.isHostObject() && value.asHostObject() instanceof Map) {
+                        expectedValues = value.asHostObject();
+                    } else {
+                        Map<String, Object> stringMap = value.as(STRING_OBJECT_MAP);
+                        assertTrue(expectedValues.equals(expectedValues));
+                        assertTrue(stringMap.equals(stringMap));
+                        assertFalse(value.as(STRING_OBJECT_MAP).equals(expectedValues));
+                        assertTrue(value.as(STRING_OBJECT_MAP).equals(value.as(STRING_OBJECT_MAP)));
+                        assertNotEquals(0, value.as(STRING_OBJECT_MAP).hashCode());
+                        assertNotNull(value.as(STRING_OBJECT_MAP).toString());
+
+                        assertContentEquals(expectedValues, value.as(STRING_OBJECT_MAP));
+
+                        Set<String> keySet = value.as(Map.class).keySet();
+                        assertEquals(value.getMemberKeys(), keySet);
+                        for (String key : keySet) {
+                            assertTrue(value.hasMember(key));
+                        }
+                    }
+                    assertContentEquals(expectedValues, value.as(Map.class));
+                    assertEquals(value.toString(), value.as(Map.class).toString());
+
+                    break;
+                case NATIVE:
+                    assertTrue(msg, value.isNativePointer());
+                    value.asNativePointer();
+                    break;
+                case DATE:
+                    assertFalse(value.isNull());
+                    assertTrue(value.isDate());
+                    assertNotNull(value.asDate());
+                    assertNotNull(value.as(LocalDate.class));
+
+                    if (value.isTime()) {
+                        assertEquals(value.as(LocalDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                        assertEquals(value.as(LocalDateTime.class).toLocalTime(), value.as(LocalTime.class));
+                        if (value.isTimeZone()) {
+                            assertNotNull(value.asInstant());
+                            assertEquals(value.as(ZonedDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                            assertNotNull(value.as(Instant.class));
+                            assertNotNull(value.as(Date.class));
+                        }
+                    }
+                    break;
+                case TIME:
+                    assertTrue(value.isTime());
+                    assertNotNull(value.asTime());
+                    assertNotNull(value.as(LocalTime.class));
+
+                    if (value.isDate()) {
+                        // asserted by DATE trait
+                    } else {
+                        if (value.isTimeZone()) {
+                            // invalid combination
+                            assertFails(() -> value.asTime(), AssertionError.class);
+                            assertFails(() -> value.asTimeZone(), AssertionError.class);
+                        }
+                    }
+                    break;
+                case TIMEZONE:
+                    assertTrue(value.isTimeZone());
+                    assertNotNull(value.asTimeZone());
+                    assertNotNull(value.as(ZoneId.class));
+                    break;
+                case DURATION:
+                    assertTrue(value.isDuration());
+                    assertNotNull(value.asDuration());
+                    assertNotNull(value.as(Duration.class));
+                    break;
+                case EXCEPTION:
+                    assertTrue(value.isException());
+                    try {
+                        value.throwException();
+                        fail("should have thrown");
+                    } catch (PolyglotException expected) {
+                        // caught expected exception
+                    } catch (UnsupportedOperationException unsupported) {
+                        throw new AssertionError(unsupported);
+                    }
+                    break;
+                case META:
+                    assertTrue(value.isMetaObject());
+                    assertNotNull(value.getMetaQualifiedName());
+                    assertNotNull(value.getMetaSimpleName());
+                    value.isMetaInstance("");
+                    break;
+
+                default:
+                    throw new AssertionError();
+            }
+        }
+
+        assertUnsupported(value, expectedTypes);
+    }
+
+    private static void assertContentEquals(Map<? extends Object, ? extends Object> map1, Map<? extends Object, ? extends Object> map2) {
+        assertEquals(convertMap(map1), convertMap(map2));
+    }
+
+    private static Map<? extends Object, ? extends Object> convertMap(Map<? extends Object, ? extends Object> map) {
+        if (map instanceof HashMap) {
+            return map;
+        } else {
+            return new HashMap<>(map);
+        }
+    }
+
+    private static boolean isSameHostObject(Value a, Value b) {
+        return a.isHostObject() && b.isHostObject() && a.asHostObject() == b.asHostObject();
+    }
+
+    @SuppressWarnings("unchecked")
     private static void assertValueArrayElements(Value value, int depth, boolean hasHostAccess) {
         assertTrue(value.hasArrayElements());
 
@@ -677,40 +676,14 @@ public class ValueAssert {
         }
     }
 
-    static void assertFails(Runnable runnable, Class<? extends Throwable> exceptionType) {
+    private static void assertFails(Runnable runnable, Class<? extends Throwable> exceptionType) {
         assertFails(() -> {
             runnable.run();
             return null;
         }, exceptionType);
     }
 
-    static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
-        try {
-            callable.call();
-        } catch (Throwable t) {
-            if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
-            }
-            verifier.accept(exceptionType.cast(t));
-            return;
-        }
-        fail("expected " + exceptionType.getName() + " but no exception was thrown");
-    }
-
-    static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
-        try {
-            run.run();
-        } catch (Throwable t) {
-            if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
-            }
-            verifier.accept(exceptionType.cast(t));
-            return;
-        }
-        fail("expected " + exceptionType.getName() + " but no exception was thrown");
-    }
-
-    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    private static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {
@@ -827,7 +800,7 @@ public class ValueAssert {
 
     }
 
-    static Trait[] detectSupportedTypes(Value value) {
+    private static Trait[] detectSupportedTypes(Value value) {
         List<Trait> valueTypes = new ArrayList<>();
         if (value.isBoolean()) {
             valueTypes.add(BOOLEAN);

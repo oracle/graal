@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -118,6 +118,7 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class LanguageSPITest {
 
@@ -1541,9 +1542,9 @@ public class LanguageSPITest {
         assertFalse(bindings.hasMember(""));
         assertTrue(bindings.getMemberKeys().isEmpty());
         assertNull(bindings.getMember(""));
-        ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        assertValue(bindings);
+        ValueAssert.assertValue(bindings);
 
         c.close();
     }
@@ -1566,28 +1567,28 @@ public class LanguageSPITest {
         assertEquals(new HashSet<>(Arrays.asList("foobar")), bindings.getMemberKeys());
         assertNull(bindings.getMember(""));
         assertEquals("baz", bindings.getMember("foobar").asString());
-        ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        ValueAssert.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        AbstractPolyglotTest.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.insertable = true;
         bindings.putMember("baz", "val");
         assertEquals("val", scope.values.get("baz"));
         assertEquals("val", bindings.getMember("baz").asString());
-        assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.modifiable = true;
         bindings.putMember("foobar", "val");
         assertEquals("val", scope.values.get("foobar"));
         assertEquals("val", bindings.getMember("foobar").asString());
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.removable = true;
         assertFalse(bindings.removeMember(""));
         assertTrue(bindings.removeMember("foobar"));
-        assertValue(bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         assertEquals(1, findScopeInvokes);
 
@@ -1613,7 +1614,7 @@ public class LanguageSPITest {
         assertFalse(bindings.hasMember(""));
         assertNull(bindings.getMember(""));
 
-        ValueAssert.assertFails(() -> bindings.putMember("foo", "bar"), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foo", "bar"), UnsupportedOperationException.class);
 
         // test insertion into first insertable scope
         scopes[1].insertable = true;
@@ -1627,7 +1628,7 @@ public class LanguageSPITest {
 
         // test it does not insert early before already existing member
         scopes[0].insertable = true;
-        ValueAssert.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
         scopes[1].modifiable = true;
         // does not insert in 1 but modifies foo in 2
         bindings.putMember("foo", "baz");
@@ -1644,7 +1645,7 @@ public class LanguageSPITest {
         scopes[3].values.put("bar", "val");
         assertEquals("bar", bindings.getMember("foo").asString());
         assertEquals("baz", bindings.getMember("bar").asString());
-        ValueAssert.assertFails(() -> bindings.removeMember("foo"), UnsupportedOperationException.class);
+        assertFails(() -> bindings.removeMember("foo"), UnsupportedOperationException.class);
         assertTrue(bindings.removeMember("bar"));
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));

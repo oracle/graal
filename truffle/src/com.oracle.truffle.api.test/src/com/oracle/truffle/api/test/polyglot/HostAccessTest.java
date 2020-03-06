@@ -71,10 +71,11 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.After;
-import org.junit.Test;
 import org.junit.Ignore;
+import org.junit.Test;
 
-import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import com.oracle.truffle.tck.tests.ValueAssert;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class HostAccessTest {
     public static class OK {
