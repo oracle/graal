@@ -66,9 +66,6 @@ simpleLanguageMavenProjectGate:  {
         ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "build"],
         ["mx", "maven-deploy", "--all-suites", "--version-string", "GATE"],
         ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
-        ["ls", "$JAVA_HOME"],
-        ["ls", "$JAVA_HOME/bin"],
-        ["$JAVA_HOME/bin/java"],
         ["mkdir", "-p", "public_maven/simplelanguage/language/src/main/java"]
         ["cp", "-rf", "src/com.oracle.truffle.sl/src/", "public_maven/simplelanguage/language/src/main/java/"],
         ["mkdir", "-p", "public_maven/simplelanguage/language/src/test/java/com"]
