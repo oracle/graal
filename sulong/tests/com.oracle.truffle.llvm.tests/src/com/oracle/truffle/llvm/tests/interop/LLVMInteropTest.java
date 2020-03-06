@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -67,8 +68,6 @@ import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-
-import static com.oracle.truffle.llvm.tests.interop.InteropTestBase.TEST_DIR_EXT;
 
 public class LLVMInteropTest {
     @Test
@@ -1567,7 +1566,7 @@ public class LLVMInteropTest {
         }
 
         Runner(String testName, Map<String, String> options) {
-            this.testName = testName + TEST_DIR_EXT;
+            this.testName = testName + BaseSuiteHarness.TEST_DIR_EXT;
             this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }
