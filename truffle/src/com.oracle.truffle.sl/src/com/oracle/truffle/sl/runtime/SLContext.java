@@ -258,7 +258,7 @@ public final class SLContext {
         if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
-            return String.valueOf(a);
+            return fromForeignCharacter(a);
         } else if (a instanceof Number) {
             return fromForeignNumber(a);
         } else if (a instanceof TruffleObject) {
@@ -273,6 +273,11 @@ public final class SLContext {
     @TruffleBoundary
     private static long fromForeignNumber(Object a) {
         return ((Number) a).longValue();
+    }
+
+    @TruffleBoundary
+    private static String fromForeignCharacter(Object c) {
+        return String.valueOf(c);
     }
 
     public CallTarget parse(Source source) {

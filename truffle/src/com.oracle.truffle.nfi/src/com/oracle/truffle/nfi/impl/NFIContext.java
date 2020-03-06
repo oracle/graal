@@ -174,6 +174,7 @@ class NFIContext {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
 
+    @TruffleBoundary
     Object lookupSymbol(LibFFILibrary library, String name) {
         return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
     }
