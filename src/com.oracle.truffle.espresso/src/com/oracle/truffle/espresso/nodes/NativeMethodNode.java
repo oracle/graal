@@ -37,14 +37,14 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public final class NativeRootNode extends EspressoMethodNode {
+public final class NativeMethodNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
     private final boolean isJni;
@@ -53,8 +53,9 @@ public final class NativeRootNode extends EspressoMethodNode {
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
-    public NativeRootNode(TruffleObject boundNative, Method method, boolean isJni) {
-        super(method.getMethodVersion());
+
+    public NativeMethodNode(TruffleObject boundNative, MethodVersion method, boolean isJni) {
+        super(method);
         this.boundNative = boundNative;
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
         this.isJni = isJni;

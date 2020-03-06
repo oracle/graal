@@ -27,20 +27,27 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.vm.VM;
 
 public final class InvokeStaticNode extends QuickNode {
 
     @CompilationFinal protected MethodVersion method;
+    private final boolean callsDoPrivileged;
+
     @Child private DirectCallNode directCallNode;
 
     public InvokeStaticNode(Method method, int top, int curBCI) {
         super(top, curBCI);
         assert method.isStatic();
         this.method = method.getMethodVersion();
+        this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
+                        Name.doPrivileged.equals(method.getName());
     }
 
     @Override
@@ -61,6 +68,15 @@ public final class InvokeStaticNode extends QuickNode {
         }
         BytecodeNode root = getBytecodesNode();
         Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getMethod().getParsedSignature());
+
+        // Support for AccessController.doPrivileged*.
+        if (callsDoPrivileged) {
+            EspressoRootNode rootNode = (EspressoRootNode) getRootNode();
+            if (rootNode != null) {
+                // Put cookie in the caller frame.
+                rootNode.setFrameId(frame, VM.GlobalFrameIDs.getID());
+            }
+        }
 
         Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()); // no
