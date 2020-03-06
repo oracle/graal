@@ -50,6 +50,7 @@ final class EventContextObject implements TruffleObject {
         this.context = context;
     }
 
+    @CompilerDirectives.TruffleBoundary
     RuntimeException wrap(Object target, int arity, InteropException ex) {
         IllegalStateException ill = new IllegalStateException("Cannot invoke " + target + " with " + arity + " arguments: " + ex.getMessage());
         ill.initCause(ex);
