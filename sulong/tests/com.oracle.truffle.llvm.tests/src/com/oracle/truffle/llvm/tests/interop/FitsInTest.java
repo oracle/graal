@@ -47,7 +47,7 @@ public final class FitsInTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("fitsIn");
+        Value testLibrary = loadTestBitcodeValue("fitsIn.c");
         testFitsIn = testLibrary.getMember("test_fits_in");
     }
 

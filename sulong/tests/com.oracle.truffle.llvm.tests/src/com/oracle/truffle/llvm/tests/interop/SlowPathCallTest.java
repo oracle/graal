@@ -56,7 +56,7 @@ public class SlowPathCallTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = loadTestBitcodeInternal("interopSlowpathCall");
+        testLibrary = loadTestBitcodeInternal("interopSlowpathCall.c");
     }
 
     public class TestSlow extends RootNode {

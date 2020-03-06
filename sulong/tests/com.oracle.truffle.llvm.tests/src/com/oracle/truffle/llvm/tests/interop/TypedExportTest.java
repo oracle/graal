@@ -55,7 +55,7 @@ public class TypedExportTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("typedExport");
+        Value testLibrary = loadTestBitcodeValue("typedExport.c");
         allocPoint = testLibrary.getMember("allocPoint");
         allocPointUninitialized = testLibrary.getMember("allocPointUninitialized");
         readPoint = testLibrary.getMember("readPoint");

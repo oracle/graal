@@ -52,7 +52,7 @@ public final class PrimitiveArrayInteropTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeValue("primitiveArrayInterop");
+        testLibrary = loadTestBitcodeValue("primitiveArrayInterop.c");
         freeSeq = testLibrary.getMember("free_seq");
     }
 

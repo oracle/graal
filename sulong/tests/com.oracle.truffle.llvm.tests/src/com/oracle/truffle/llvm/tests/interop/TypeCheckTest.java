@@ -53,7 +53,7 @@ public final class TypeCheckTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("typeCheck");
+        Value testLibrary = loadTestBitcodeValue("typeCheck.c");
         checkTypes = testLibrary.getMember("check_types");
     }
 

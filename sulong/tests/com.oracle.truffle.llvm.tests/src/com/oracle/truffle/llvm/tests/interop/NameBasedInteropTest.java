@@ -57,7 +57,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("nameBasedInterop");
+        testLibrary = loadTestBitcodeInternal("nameBasedInterop.c");
     }
 
     @Parameters(name = "{0}")

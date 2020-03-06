@@ -55,7 +55,7 @@ public class TypedInteropTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("typedInterop", ".cpp.dir");
+        testLibrary = loadTestBitcodeInternal("typedInterop.cpp");
     }
 
     private static StructObject makePoint(int x, int y) {

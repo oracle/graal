@@ -46,7 +46,7 @@ public class DecorateFunctionTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("decorateFunctionTest");
+        testLibrary = loadTestBitcodeInternal("decorateFunctionTest.c");
     }
 
     public class TestDecorateFunctionNode extends SulongTestNode {

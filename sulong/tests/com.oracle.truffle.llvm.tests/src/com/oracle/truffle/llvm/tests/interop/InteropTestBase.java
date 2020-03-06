@@ -53,6 +53,8 @@ import org.graalvm.polyglot.Value;
 
 public class InteropTestBase {
 
+    public static final String TEST_DIR_EXT = ".dir";
+
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(getContextBuilder());
 
     public static Context.Builder getContextBuilder() {
@@ -64,11 +66,7 @@ public class InteropTestBase {
     public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
     protected static TruffleObject loadTestBitcodeInternal(String name) {
-        return loadTestBitcodeInternal(name, ".c.dir");
-    }
-
-    protected static TruffleObject loadTestBitcodeInternal(String name, String ext) {
-        File file = Paths.get(testBase.toString(), name + ext, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
         Source source;
         try {
@@ -81,11 +79,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        return loadTestBitcodeValue(name, ".c.dir");
-    }
-
-    protected static Value loadTestBitcodeValue(String name, String ext) {
-        File file = Paths.get(testBase.toString(), name + ext, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

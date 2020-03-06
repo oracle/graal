@@ -50,7 +50,7 @@ public class PointerArithmeticDerefTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadLibrary() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("pointerArithmetic");
+        testLibrary = loadTestBitcodeInternal("pointerArithmetic.c");
     }
 
     public static class DerefPointerNode extends SulongTestNode {

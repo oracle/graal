@@ -95,7 +95,7 @@ public class ManagedMemAccessTestBase extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("managedMemmove");
+        testLibrary = loadTestBitcodeInternal("managedMemmove.c");
 
         Value lib = runWithPolyglot.getPolyglotContext().asValue(testLibrary);
         Value getTypes = lib.getMember("get_types");

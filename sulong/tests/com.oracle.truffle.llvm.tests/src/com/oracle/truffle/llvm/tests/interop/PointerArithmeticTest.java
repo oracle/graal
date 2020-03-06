@@ -57,7 +57,7 @@ public final class PointerArithmeticTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadLibrary() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("pointerArithmetic");
+        testLibrary = loadTestBitcodeInternal("pointerArithmetic.c");
     }
 
     private static void addTest(ArrayList<Object[]> tests, String method, LongBinaryOperator op) {

@@ -56,7 +56,7 @@ public class StringTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("stringTest");
+        testLibrary = loadTestBitcodeInternal("stringTest.c");
     }
 
     public class TestStringSizeNode extends SulongTestNode {

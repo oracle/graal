@@ -62,7 +62,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("polyglotBuiltinTest");
+        testLibrary = loadTestBitcodeInternal("polyglotBuiltinTest.c");
     }
 
     public static class TestNewNode extends SulongTestNode {

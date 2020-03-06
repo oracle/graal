@@ -48,7 +48,7 @@ public class PolyglotScopeTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("polyglotScopeTest");
+        testLibrary = loadTestBitcodeInternal("polyglotScopeTest.c");
     }
 
     public static class TestImportConstNode extends SulongTestNode {

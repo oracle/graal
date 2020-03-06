@@ -56,7 +56,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibraryInternal = InteropTestBase.loadTestBitcodeInternal("polyglotRegisterDynamicCast");
+        testLibraryInternal = loadTestBitcodeInternal("polyglotRegisterDynamicCast.c");
         testLibrary = runWithPolyglot.getPolyglotContext().asValue(testLibraryInternal);
         test = testLibrary.getMember("test_dynamic_cast");
     }
