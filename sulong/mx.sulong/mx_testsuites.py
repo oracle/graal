@@ -206,7 +206,7 @@ class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ances
             def enlist(line):
                 line = line.strip()
                 if not line.endswith(".ignore"):
-                    self._tests += [line[:-3]]  # Strip the .ll
+                    self._tests += [line + ".dir"]
 
             mx_sulong.llirtestgen(["gen", "--print-filenames"], out=enlist)
         return self._tests

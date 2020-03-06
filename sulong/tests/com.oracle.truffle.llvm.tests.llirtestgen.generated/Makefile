@@ -31,30 +31,30 @@
 JAVA=$(JAVA_HOME)/bin/java
 LLIRTESTGEN_CMD=$(JAVA) -Dllirtestgen.prelude=prelude.ll -cp $(LLIR_TEST_GEN_JAR) com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen
 OUTPUT_DIR=gen
-GENERATED=$(TESTS:=.ll)
+GENERATED=$(TESTS:.dir=)
 TIMESTAMP=timestamp
 
-GENERATED_REFS=$(GENERATED:.ll=/ref.out)
-GENERATED_BCS=$(GENERATED:.ll=/O0.bc)
+GENERATED_REFS=$(GENERATED:.ll=.ll.dir/ref.out)
+GENERATED_BCS=$(GENERATED:.ll=.ll.dir/O0.bc)
 
 all: $(GENERATED_REFS) $(GENERATED_BCS)
 
-include $(VPATH)/../Makefile
+include $(VPATH)/../Makefile.common
 
 prelude.ll: prelude.bc
-	$(LLVM_DIS) $<
+	$(QUIETLY) $(LLVM_DIS) $<
 
 prelude.bc: prelude.c
-	$(CLANG) -Wall -Wextra $(CFLAGS) -c -emit-llvm $<
+	$(QUIETLY) $(CLANG) -Wall -Wextra $(CFLAGS) -c -emit-llvm $<
 
 $(TIMESTAMP): prelude.ll $(LLIR_TEST_GEN_JAR)
-	mkdir -p $(OUTPUT_DIR)
-	touch $@
-	$(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+	@mkdir -p $(OUTPUT_DIR)
+	$(QUIETLY) touch $@
+	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
 
 $(GENERATED): $(TIMESTAMP)
 	@/bin/echo -n ""
 
 .PHONY:
 clean:
-	$(RM) prelude.bc prelude.ll
+	$(QUIETLY) $(RM) prelude.bc prelude.ll
