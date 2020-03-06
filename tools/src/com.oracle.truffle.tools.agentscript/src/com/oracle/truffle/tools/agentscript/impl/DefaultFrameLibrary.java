@@ -34,6 +34,7 @@ import com.oracle.truffle.tools.agentscript.FrameLibrary;
 import com.oracle.truffle.tools.agentscript.FrameLibrary.Env;
 import java.util.Set;
 
+@SuppressWarnings("unused")
 @ExportLibrary(value = FrameLibrary.class, receiverType = Frame.class)
 public final class DefaultFrameLibrary {
     @CompilerDirectives.TruffleBoundary
