@@ -47,6 +47,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -58,6 +59,7 @@ public abstract class LLVMDebugTestBase {
 
     private static final String[] SOURCE_FILE_EXTENSIONS = new String[]{".c", ".cpp", ".ll"};
     private static final String TRACE_EXT = ".txt";
+    public static final String TEST_FOLDER_EXT = ".dir";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
     LLVMDebugTestBase(String testName, String configuration) {
@@ -107,23 +109,21 @@ public abstract class LLVMDebugTestBase {
         return source;
     }
 
-    private Source loadOriginalSource() {
-        for (String ext : SOURCE_FILE_EXTENSIONS) {
-            final File file = getSourcePath().resolve(testName + ext).toFile();
-            if (file.exists()) {
-                return loadSource(file);
-            }
-        }
-        throw new AssertionError("Could not locate source for test: " + testName);
+    protected Source loadOriginalSource() {
+        final File file = getSourcePath().resolve(testName).toFile();
+        Assert.assertTrue("Locate Source", file.exists());
+        return loadSource(file);
     }
 
-    private Source loadBitcodeSource() {
-        final Path path = getBitcodePath().resolve(Paths.get(testName, configuration));
-        return loadSource(path.toFile());
+    protected Source loadBitcodeSource() {
+        final File file = getBitcodePath().resolve(Paths.get(testName + ".dir", configuration)).toFile();
+        Assert.assertTrue("Locate Bitcode", file.exists());
+        return loadSource(file);
     }
 
     private Trace readTrace() {
         final Path path = getTracePath().resolve(testName + TRACE_EXT);
+        Assert.assertTrue("Locate Trace", path.toFile().exists());
         return Trace.parse(path);
     }
 
