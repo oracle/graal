@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.gc;
+package org.graalvm.compiler.hotspot.meta;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.gc.ReferenceOffsets;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
+public class HotSpotReferenceOffsets implements ReferenceOffsets {
+    private final long referentOffset;
 
-public interface BarrierSet {
-    void addBarriers(FixedAccessNode n);
+    public HotSpotReferenceOffsets(long referentOffset) {
+        this.referentOffset = referentOffset;
+    }
 
-    BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind);
-
-    BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind);
-
-    BarrierType readBarrierType(RawLoadNode load);
-
-    BarrierType storeBarrierType(RawStoreNode store);
-
-    BarrierType arrayStoreBarrierType(JavaKind storageKind);
-
-    BarrierType guessStoreBarrierType(ValueNode object, ValueNode value);
+    @Override
+    public long getReferentOffset() {
+        return referentOffset;
+    }
 }

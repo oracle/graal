@@ -40,7 +40,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
-import java.lang.ref.Reference;
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -159,6 +158,7 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -211,8 +211,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ForeignCallSnippets.Templates foreignCallSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
-        super(metaAccess, foreignCalls, target, runtime.getVMConfig().useCompressedOops);
+                    HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, target, runtime.getVMConfig().useCompressedOops);
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
@@ -781,16 +781,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
-        HotSpotResolvedJavaField loadField = (HotSpotResolvedJavaField) f;
-        if (loadField.getJavaKind() == JavaKind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
-                        loadField.getName().equals("referent")) {
-            return BarrierType.WEAK_FIELD;
-        }
-        return super.fieldLoadBarrierType(f);
-    }
-
-    @Override
     public int fieldOffset(ResolvedJavaField f) {
         return f.getOffset();
     }
@@ -801,7 +791,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected final JavaKind getStorageKind(ResolvedJavaField field) {
+    public final JavaKind getStorageKind(ResolvedJavaField field) {
         return field.getJavaKind();
     }
 

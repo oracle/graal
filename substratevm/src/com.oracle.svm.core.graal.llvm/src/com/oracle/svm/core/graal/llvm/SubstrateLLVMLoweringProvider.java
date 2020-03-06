@@ -29,6 +29,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -39,8 +40,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvider {
 
-    public SubstrateLLVMLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target);
+    public SubstrateLLVMLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, target);
     }
 
     @SuppressWarnings("unchecked")

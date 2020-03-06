@@ -38,9 +38,7 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -78,6 +76,8 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 //Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
@@ -92,7 +92,6 @@ public class HeapImpl extends Heap {
     private final GCImpl gcImpl;
     private final HeapPolicy heapPolicy;
 
-    private final GenScavengePlatformConfigurationProvider platformConfigurationProvider;
     private final MemoryMXBean memoryMXBean;
     private final ImageHeapInfo imageHeapInfo;
     private HeapVerifierImpl heapVerifier;
@@ -124,7 +123,6 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.platformConfigurationProvider = new GenScavengePlatformConfigurationProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.imageHeapInfo = new ImageHeapInfo();
         this.readOnlyPrimitiveWalker = new ReadOnlyPrimitiveMemoryWalkerAccess();
@@ -138,24 +136,6 @@ public class HeapImpl extends Heap {
             report(Log.log(), true).newline();
             Log.log().newline();
         });
-    }
-
-    private static class GenScavengePlatformConfigurationProvider implements PlatformConfigurationProvider {
-        private final BarrierSet barrierSet;
-
-        GenScavengePlatformConfigurationProvider() {
-            this.barrierSet = new CardTableBarrierSet();
-        }
-
-        @Override
-        public BarrierSet getBarrierSet() {
-            return barrierSet;
-        }
-
-        @Override
-        public boolean canVirtualizeLargeByteArrayAccess() {
-            return true;
-        }
     }
 
     @Fold
@@ -695,8 +675,9 @@ public class HeapImpl extends Heap {
     }
 
     @Override
-    public PlatformConfigurationProvider getPlatformConfigurationProvider() {
-        return platformConfigurationProvider;
+    public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+        ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        return new CardTableBarrierSet(objectArrayType);
     }
 }
 

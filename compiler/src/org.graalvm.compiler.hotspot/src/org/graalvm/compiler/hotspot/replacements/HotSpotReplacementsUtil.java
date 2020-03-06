@@ -863,9 +863,13 @@ public class HotSpotReplacementsUtil {
         return config.gcTotalCollectionsAddress();
     }
 
+    public static String referentFieldName() {
+        return "referent";
+    }
+
     @Fold
     public static long referentOffset(@InjectedParameter MetaAccessProvider metaAccessProvider) {
-        return getFieldOffset(metaAccessProvider.lookupJavaType(Reference.class), "referent");
+        return getFieldOffset(metaAccessProvider.lookupJavaType(Reference.class), referentFieldName());
     }
 
     @Fold

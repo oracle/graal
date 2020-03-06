@@ -47,6 +47,7 @@ import sun.misc.Unsafe;
  */
 public final class ReferenceInternals {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    public static final String REFERENT_FIELD_NAME = "rawReferent";
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
