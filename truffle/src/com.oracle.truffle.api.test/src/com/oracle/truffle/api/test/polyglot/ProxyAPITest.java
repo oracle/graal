@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -586,6 +587,42 @@ public class ProxyAPITest {
             }
         });
         assertFails(() -> duration.asDuration(), PolyglotException.class, (e) -> assertTrue(e.asHostException() instanceof AssertionError));
+    }
+
+    static final class P0 implements Proxy {
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof P0 || obj instanceof P1;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+    }
+
+    static final class P1 implements Proxy {
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof P0 || obj instanceof P1;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+    }
+
+    @Test
+    public void testProxyEquality() {
+        Value p0 = context.asValue(new P0());
+        Value p1 = context.asValue(new P1());
+        assertEquals(p0, p0);
+        assertEquals(p1, p1);
+        assertNotEquals(p0, p1);
+        assertNotEquals(p1, p0);
     }
 
 }
