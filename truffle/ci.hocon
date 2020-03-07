@@ -64,7 +64,7 @@ simpleLanguageMavenProjectGate:  {
     }
     run : [
         ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "build"],
-        ["mx", "maven-deploy", "--all-suites", "--version-string", "GATE"],
+        ["mx", "maven-deploy", "--all-suites", "--version-string", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-version"]],
         ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
         ["mkdir", "-p", "public_maven/simplelanguage/language/src/main/java"]
         ["cp", "-rf", "src/com.oracle.truffle.sl/src/", "public_maven/simplelanguage/language/src/main/java/"],
@@ -76,8 +76,7 @@ simpleLanguageMavenProjectGate:  {
         ["mkdir", "-p", "public_maven/simplelanguage/tck/src/"]
         ["cp", "-rf", "src/com.oracle.truffle.sl.tck/src/", "public_maven/simplelanguage/tck/src"],
         ["cd", "public_maven/simplelanguage"],
-        ["mvn", "-Dgraalvm.version=GATE", "package"],
-        ["set-export", "SL_SKIP_VERSION_CHECK", "true"],
+        ["mvn", "package"],
         ["./sl", "language/tests/Add.sl"],
         ["./native/slnative", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],

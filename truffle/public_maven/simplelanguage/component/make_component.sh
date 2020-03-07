@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-readonly JAVA_VERSION="${1}"
+declare -r JAVA_VERSION="${1:?First argument must be java version.}"
+declare -r GRAALVM_VERSION="${2:?Second argument must be GraalVM version.}"
 if [[ $JAVA_VERSION == 1.8* ]]; then
     JRE="jre/"
 elif [[ $JAVA_VERSION == 11* ]]; then
@@ -35,8 +36,8 @@ mkdir -p "$COMPONENT_DIR/META-INF"
 {
     echo "Bundle-Name: Simple Language";
     echo "Bundle-Symbolic-Name: com.oracle.truffle.sl";
-    echo "Bundle-Version: 20.0.0";
-    echo 'Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=20.0.0)(os_arch=amd64))"';
+    echo "Bundle-Version: $GRAALVM_VERSION";
+    echo 'Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=$GRAALVM_VERSION)(os_arch=amd64))"';
     echo "x-GraalVM-Polyglot-Part: True"
 } > "$COMPONENT_DIR/META-INF/MANIFEST.MF"
 

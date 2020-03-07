@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="20.0.0"
+VERSION="20.1.0-dev"
 
 MAIN_CLASS="com.oracle.truffle.sl.launcher.SLMain"
 SCRIPT_HOME="$(cd "$(dirname "$0")" && pwd -P)"
@@ -14,7 +14,7 @@ function extractGraalVMVersion() {
 
 function versionCheck() {
     local -r message="${1:-Wrong GraalVM version.}"
-    if [[ "$SL_SKIP_VERSION_CHECK" != "true" && "$GRAALVM_VERSION" != "$VERSION" ]]; then
+    if [[ "$GRAALVM_VERSION" != "$VERSION" ]]; then
         fail "$message"
     fi
 }

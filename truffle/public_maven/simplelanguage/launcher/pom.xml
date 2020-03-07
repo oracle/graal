@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.oracle</groupId>
     <artifactId>simplelanguage-parent</artifactId>
-    <version>20.0.0-SNAPSHOT</version>
+    <version>${graalvm.version}</version>
   </parent>
   <artifactId>launcher</artifactId>
   <build>
