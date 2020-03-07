@@ -4,7 +4,7 @@
 
     <groupId>com.oracle</groupId>
     <artifactId>simpletool</artifactId>
-    <version>20.0.0</version>
+    <version>${graalvm.version}</version>
 
     <name>simpletool</name>
 
@@ -12,7 +12,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <graalvm.version>20.0.0</graalvm.version>
+        <graalvm.version>20.1.0-dev</graalvm.version>
     </properties>
     <profiles>
         <profile>

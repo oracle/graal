@@ -40,14 +40,14 @@ simpleToolMavenProjectGate:  {
     }
     run : [
         ["mx", "-p", "../vm", "--dy", "/graal-js", "build"],
-        ["mx", "-p", "../../js/graal-js", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", "GATE"],
+        ["mx", "-p", "../../js/graal-js", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", ["mx", "-p", "../vm", "--dy", "/graal-js", "graalvm-version"]],
         ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/graal-js", "graalvm-home"]],
         ["mkdir", "-p", "public_maven/simpletool/src/main/java/"],
         ["cp", "-rf", "src/com.oracle.truffle.st/src/", "public_maven/simpletool/src/main/java/"],
         ["mkdir", "-p", "public_maven/simpletool/src/test/java/"],
         ["cp", "-rf", "src/com.oracle.truffle.st.test/src/", "public_maven/simpletool/src/test/java/"],
         ["cd", "public_maven/simpletool"],
-        ["mvn", "-Dgraalvm.version=GATE", "package"],
+        ["mvn", "package"],
         ["./simpletool", "js", "example.js"],
     ],
     targets : [gate],
