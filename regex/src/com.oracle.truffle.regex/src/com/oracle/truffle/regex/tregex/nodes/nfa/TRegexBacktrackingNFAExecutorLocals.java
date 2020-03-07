@@ -122,7 +122,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t) {
         dupFrame();
-        t.getGroupBoundaries().apply(stack(), sp + stackFrameSize + 2, getIndex());
+        t.getGroupBoundaries().applyExploded(stack(), sp + stackFrameSize + 2, getIndex());
         return newSubLocals();
     }
 
@@ -158,7 +158,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void apply(PureNFATransition t, int index) {
-        t.getGroupBoundaries().apply(stack(), offsetCaptureGroups(), index);
+        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), index);
     }
 
     public void resetToInitialState(int newIndex) {
@@ -202,7 +202,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void pushResult(PureNFATransition t, int index) {
-        t.getGroupBoundaries().apply(result, 0, index);
+        t.getGroupBoundaries().applyExploded(result, 0, index);
         pushResult();
     }
 

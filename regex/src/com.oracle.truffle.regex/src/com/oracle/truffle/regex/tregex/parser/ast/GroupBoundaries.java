@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -270,12 +271,24 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     @ExplodeLoop
-    public void apply(int[] array, int offset, int index) {
-        for (short i : clearArray) {
-            array[offset + Short.toUnsignedInt(i)] = -1;
+    public void applyExploded(int[] array, int offset, int index) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(clearArray);
+        CompilerAsserts.partialEvaluationConstant(updateArray);
+        for (int i = 0; i < clearArray.length; i++) {
+            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
         }
-        for (short i : updateArray) {
-            array[offset + Short.toUnsignedInt(i)] = index;
+        for (int i = 0; i < updateArray.length; i++) {
+            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
+        }
+    }
+
+    public void apply(int[] array, int offset, int index) {
+        for (int i = 0; i < clearArray.length; i++) {
+            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
+        }
+        for (int i = 0; i < updateArray.length; i++) {
+            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
         }
     }
 
