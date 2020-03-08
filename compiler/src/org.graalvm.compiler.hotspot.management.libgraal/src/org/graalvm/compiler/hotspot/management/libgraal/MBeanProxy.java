@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import java.lang.reflect.Method;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
 
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,10 +35,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
+
 import javax.management.DynamicMBean;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
@@ -47,6 +48,8 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 class MBeanProxy<T extends DynamicMBean> {
 
@@ -307,12 +310,12 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     private static void checkDefineClassException(JNI.JNIEnv env, String className) {
-        checkException(env, "Failed to define" + className);
+        checkException(env, "Failed to define " + className);
     }
 
     @SafeVarargs
     private static void checkFindClassException(JNI.JNIEnv env, String className, Class<? extends Throwable>... allowedExceptions) {
-        checkException(env, "Failed to load" + className, allowedExceptions);
+        checkException(env, "Failed to load " + className, allowedExceptions);
     }
 
     /**
@@ -335,10 +338,11 @@ class MBeanProxy<T extends DynamicMBean> {
                     }
                 }
                 if (!allowed) {
-                    throw new InternalError(String.format("%s due to %s:%s.",
+                    InternalError error = new InternalError(String.format("%s due to %s:%s.",
                                     message,
                                     createString(env, SVMToHotSpotCalls.getClassName(env, exceptionClass)),
                                     createString(env, SVMToHotSpotCalls.getExceptionMessage(env, exception))));
+                    throw error;
                 }
             } finally {
                 JNIUtil.ExceptionClear(env);
@@ -403,12 +407,14 @@ class MBeanProxy<T extends DynamicMBean> {
      */
     @SuppressWarnings("try")
     private static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints) {
-        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.GetFactory, env)) {
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetFactory, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
             JNI.JObject factory = SVMToHotSpotCalls.getFactory(env, svmHsEntryPoints);
             checkException(env, "Failed to instantiate MBean factory on HotSpot side");
             assert factory.isNonNull() : "Factory cannot be null.";
-            return factory;
+            scope.setObjectResult(factory);
         }
+        return scope.getObjectResult();
     }
 
     /**

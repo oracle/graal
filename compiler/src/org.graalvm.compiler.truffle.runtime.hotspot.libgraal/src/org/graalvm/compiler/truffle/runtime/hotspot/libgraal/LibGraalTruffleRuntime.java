@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -46,25 +47,52 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
-    private final long handle;
+    private final Map<Long, Handle> isolateToHandle = new HashMap<>();
+
+    /**
+     * Handle to a HSTruffleCompilerRuntime object in an SVM heap.
+     */
+    static final class Handle extends SVMObject {
+        Handle(long handle) {
+            super(handle);
+        }
+    }
+
+    /**
+     * Handle to the HSTruffleCompilerRuntime object in the libgraal isolate for this thread.
+     */
+    final ThreadLocal<Handle> handle = new ThreadLocal<Handle>() {
+        @Override
+        protected Handle initialValue() {
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            try (LibGraalScope scope = new LibGraalScope(runtime)) {
+                long isolate = scope.getIsolate();
+                synchronized (isolateToHandle) {
+                    Handle libgraalRT = isolateToHandle.get(isolate);
+                    if (libgraalRT == null) {
+                        MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
+                        HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
+                        long classLoaderDelegate = LibGraal.translate(runtime, type);
+                        libgraalRT = new Handle(HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, classLoaderDelegate));
+                        isolateToHandle.put(isolate, libgraalRT);
+                    }
+                    return libgraalRT;
+                }
+            }
+        }
+    };
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         runtime.registerNativeMethods(HotSpotToSVMCalls.class);
-        MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
-        HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
-        try (LibGraalScope scope = new LibGraalScope(runtime)) {
-            long classLoaderDelegate = LibGraal.translate(runtime, type);
-            handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
-        }
     }
 
     @SuppressWarnings("try")
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.newCompiler(getIsolateThread(), handle));
+            return new SVMHotSpotTruffleCompiler(this);
         }
     }
 
@@ -72,7 +100,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected String initLazyCompilerConfigurationName() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread());
+            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle.get().handle);
         }
     }
 
@@ -80,7 +108,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected Map<String, Object> createInitialOptions() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
+            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle.get().handle);
             return OptionsEncoder.decode(serializedOptions);
         }
     }

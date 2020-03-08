@@ -26,6 +26,7 @@ package org.graalvm.libgraal;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -65,9 +66,17 @@ public class LibGraal {
             translate = runtimeClass.getDeclaredMethod("translate", Object.class);
             registerNativeMethods = runtimeClass.getDeclaredMethod("registerNativeMethods", Class.class);
             isCurrentThreadAttached = runtimeClass.getDeclaredMethod("isCurrentThreadAttached");
-            attachCurrentThread = runtimeClass.getDeclaredMethod("attachCurrentThread", Boolean.TYPE);
             detachCurrentThread = runtimeClass.getDeclaredMethod("detachCurrentThread");
             getFailedSpeculationsAddress = HotSpotSpeculationLog.class.getDeclaredMethod("getFailedSpeculationsAddress");
+            for (Method m : runtimeClass.getDeclaredMethods()) {
+                if (m.getName().equals("attachCurrentThread")) {
+                    if (attachCurrentThread != null) {
+                        throw new InternalError(String.format("Expected single method named attachCurrentThread, found %s and %s",
+                                        attachCurrentThread, m));
+                    }
+                    attachCurrentThread = m;
+                }
+            }
         } catch (NoSuchMethodException | SecurityException e) {
             // If the very first method is unavailable assume nothing is available. Otherwise only
             // some are missing so complain about it.
@@ -83,10 +92,18 @@ public class LibGraal {
         runtimeAttachCurrentThread = attachCurrentThread;
         runtimeDetachCurrentThread = detachCurrentThread;
         speculationLogGetFailedSpeculationsAddress = getFailedSpeculationsAddress;
+
+        Class<?>[] v1 = {Boolean.TYPE};
+        Class<?>[] v2 = {Boolean.TYPE, long[].class};
+        Class<?>[] parameterTypes = attachCurrentThread.getParameterTypes();
+        if (!Arrays.equals(parameterTypes, v1) && !Arrays.equals(parameterTypes, v2)) {
+            throw new InternalError(String.format("Unexpected signature for attachCurrentThread: %s",
+                            Arrays.toString(parameterTypes)));
+        }
     }
 
     public static boolean isAvailable() {
-        return inLibGraal() || isolate != 0L;
+        return inLibGraal() || available;
     }
 
     public static boolean isSupported() {
@@ -154,8 +171,9 @@ public class LibGraal {
 
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
 
-            long[] nativeInterface = (long[]) runtimeRegisterNativeMethods.invoke(runtime, LibGraal.class);
-            return nativeInterface[1];
+            long[] javaVMInfo = (long[]) runtimeRegisterNativeMethods.invoke(runtime, LibGraal.class);
+            long isolate = javaVMInfo[1];
+            return isolate;
         } catch (InvocationTargetException e) {
             if (e.getTargetException() instanceof UnsupportedOperationException) {
                 return 0L;
@@ -166,7 +184,8 @@ public class LibGraal {
         }
     }
 
-    static final long isolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final boolean available = initialIsolate != 0L;
 
     static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
         try {
@@ -176,9 +195,21 @@ public class LibGraal {
         }
     }
 
-    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon) {
+    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon, long[] isolate) {
         try {
-            return (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon);
+            if (runtimeAttachCurrentThread.getParameterCount() == 2) {
+                long[] javaVMInfo = isolate != null ? new long[4] : null;
+                boolean res = (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon, javaVMInfo);
+                if (isolate != null) {
+                    isolate[0] = javaVMInfo[1];
+                }
+                return res;
+            } else {
+                if (isolate != null) {
+                    isolate[0] = initialIsolate;
+                }
+                return (boolean) runtimeAttachCurrentThread.invoke(runtime, isDaemon);
+            }
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }

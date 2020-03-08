@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 
 /**
- * Encapsulates a handle to an object in the SVM heap where the lifetime of the latter is bound to
+ * Encapsulates a handle to an object in an SVM heap where the lifetime of the latter is bound to
  * the lifetime of a {@link SVMObject} instance. At some point after a {@link SVMObject} is garbage
  * collected, a {@link HotSpotToSVM} call is made to release the handle, allowing the SVM object to
  * be collected by the SVM garbage collector.
@@ -100,6 +100,12 @@ class SVMObject {
 
     @Override
     public String toString() {
-        return String.format("%s[0x%x]", getClass().getSimpleName(), handle);
+        String name = getClass().getSimpleName();
+        Class<?> outer = getClass().getDeclaringClass();
+        while (outer != null) {
+            name = outer.getSimpleName() + '.' + name;
+            outer = outer.getDeclaringClass();
+        }
+        return String.format("%s[0x%x]", name, handle);
     }
 }

@@ -27,6 +27,7 @@ package org.graalvm.compiler.debug;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 /**
  * Metric values that can be {@linkplain #add(DebugContext) updated} by multiple threads.
@@ -75,6 +77,22 @@ public class GlobalMetrics {
         return res;
     }
 
+    private static PrintStream openPrintStream(String metricsFile) throws IOException {
+        if (metricsFile == null) {
+            return DebugContext.getDefaultLogStream();
+        } else {
+            int lastDot = metricsFile.lastIndexOf('.');
+            String isolateID = IsolateUtil.getIsolateID();
+            Path path;
+            if (lastDot != -1 && !isolateID.isEmpty()) {
+                path = Paths.get(metricsFile.substring(0, lastDot) + isolateID + metricsFile.substring(lastDot));
+            } else {
+                path = Paths.get(metricsFile + isolateID);
+            }
+            return new PrintStream(Files.newOutputStream(path));
+        }
+    }
+
     /**
      * Prints the values in the object to the file specified by
      * {@link DebugOptions#AggregatedMetricsFile} if present otherwise to
@@ -88,10 +106,11 @@ public class GlobalMetrics {
             boolean csv = metricsFile != null && (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV"));
             PrintStream p = null;
             try {
-                p = metricsFile == null ? DebugContext.getDefaultLogStream() : new PrintStream(Files.newOutputStream(Paths.get(metricsFile)));
+                p = openPrintStream(metricsFile);
+                String isolateID = IsolateUtil.getIsolateID();
                 if (!csv) {
                     if (!map.isEmpty()) {
-                        p.println("++ Aggregated Metrics ++");
+                        p.printf("++ Aggregated Metrics%s ++%n", isolateID);
                     }
                 }
                 String csvFormat = CSVUtil.buildFormatString("%s", "%s", "%s");
@@ -107,7 +126,7 @@ public class GlobalMetrics {
                 }
                 if (!csv) {
                     if (!map.isEmpty()) {
-                        p.println("-- Aggregated Metrics --");
+                        p.printf("-- Aggregated Metrics%s --%n", isolateID);
                     }
                 }
             } catch (IOException e) {

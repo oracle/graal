@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core;
+package org.graalvm.compiler.serviceprovider;
 
 /**
- * This is a utility class for Threads started by the compiler itself. In certain execution
- * environments extra work must be done for these threads to execute correctly and this class
- * provides hooks for this work.
+ * Utility methods that provide access to isolate details.
  */
-public class GraalServiceThread extends Thread {
-    private final Runnable runnable;
+public final class IsolateUtil {
 
-    public GraalServiceThread(Runnable runnable) {
-        super();
-        this.runnable = runnable;
-    }
-
-    @Override
-    public final void run() {
-        beforeRun();
-        try {
-            runnable.run();
-        } finally {
-            afterRun();
-        }
+    /**
+     * Gets the address of the current isolate or 0 if this not an isolate-aware runtime.
+     */
+    public static long getIsolate() {
+        return 0;
     }
 
     /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_org_graalvm_compiler_core_GraalServiceThread} to attach to the peer runtime if
-     * required.
+     * Gets a string composed of {@code '@'} and the address of the current isolate in hex format if
+     * this is an isolate-aware runtime. Otherwise, returns an empty string.
      */
-    private void afterRun() {
+    public static String getIsolateID() {
+        long isolate = getIsolate();
+        return isolate == 0 ? "" : '@' + Long.toHexString(isolate);
     }
 
-    /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_org_graalvm_compiler_core_GraalServiceThread} to attach to the peer runtime if
-     * required.
-     */
-    private void beforeRun() {
+    private IsolateUtil() {
     }
 }

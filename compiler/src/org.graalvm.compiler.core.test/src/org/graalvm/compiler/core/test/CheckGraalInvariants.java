@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -345,6 +346,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
 
+        loadVerifiers(verifiers);
+
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {
             verifiers.add(foldableMethodsVerifier);
@@ -468,6 +471,13 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 msg.append(e);
             }
             Assert.fail(msg.toString());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void loadVerifiers(List<VerifyPhase<CoreProviders>> verifiers) {
+        for (VerifyPhase<CoreProviders> verifier : ServiceLoader.load(VerifyPhase.class)) {
+            verifiers.add(verifier);
         }
     }
 

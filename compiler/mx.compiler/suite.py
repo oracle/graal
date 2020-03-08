@@ -730,6 +730,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.compiler.hotspot.management.libgraal",
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.hotspot",
       ],
@@ -2159,6 +2160,9 @@ suite = {
       "distDependencies" : [
         "JVMCI_HOTSPOT",
         "GRAAL",
+        "GRAAL_LIBGRAAL_JNI",
+        "GRAAL_MANAGEMENT",
+        "GRAAL_MANAGEMENT_LIBGRAAL",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
       ],

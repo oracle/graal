@@ -171,7 +171,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
     static IgvSupport create(SVMHotSpotTruffleCompiler compiler, Map<String, Object> options, SVMTruffleCompilation compilation) {
         byte[] encodedOptions = OptionsEncoder.encode(options);
         LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime());
-        return new IgvSupport(scope, compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThread(), compiler.handle, compilation == null ? 0 : compilation.handle, encodedOptions));
+        return new IgvSupport(scope, compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThread(), compiler.handle(), compilation == null ? 0 : compilation.handle, encodedOptions));
     }
 
     private static final class IgvDumpChannel extends SVMObject implements WritableByteChannel {

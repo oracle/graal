@@ -83,8 +83,9 @@ public class LibGraal {
             Services.initializeJVMCI();
 
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-            long[] nativeInterface = runtime.registerNativeMethods(LibGraal.class);
-            return nativeInterface[1];
+            long[] javaVMInfo = runtime.registerNativeMethods(LibGraal.class);
+            long isolate = javaVMInfo[1];
+            return isolate;
         } catch (UnsupportedOperationException e) {
             return 0L;
         }
@@ -96,7 +97,10 @@ public class LibGraal {
         return runtime.isCurrentThreadAttached();
     }
 
-    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon) {
+    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon, long[] isolate) {
+        if (isolate != null) {
+            isolate[0] = LibGraal.isolate;
+        }
         return runtime.attachCurrentThread(isDaemon);
     }
 

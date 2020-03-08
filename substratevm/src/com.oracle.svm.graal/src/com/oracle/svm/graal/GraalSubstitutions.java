@@ -60,6 +60,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.printer.NoDeadCodeVerifyHandler;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -190,6 +191,14 @@ final class Target_org_graalvm_compiler_debug_TTY {
     private static PrintStream out = Log.logStream();
 }
 
+@TargetClass(className = "org.graalvm.compiler.serviceprovider.IsolateUtil", onlyWith = GraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
+
+    @Substitute
+    public static long getIsolate() {
+        return CurrentIsolate.getIsolate().rawValue();
+    }
+}
 /*
  * The following substitutions replace methods where reflection is used in the Graal code.
  */

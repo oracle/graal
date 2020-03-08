@@ -80,7 +80,7 @@ final class HotSpotToSVMCalls {
     static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
 
     @HotSpotToSVM(GetCompilerConfigurationFactoryName)
-    static native String getCompilerConfigurationFactoryName(long isolateThreadId);
+    static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);
 
     @HotSpotToSVM(NewCompiler)
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);

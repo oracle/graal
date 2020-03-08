@@ -40,6 +40,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
@@ -53,7 +54,9 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
         // @formatter:off
         @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying " +
-                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis().  " +
+                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis(). " +
+                       "If the current runtime is in an isolate, then %i will be replaced by '@' followed by the " +
+                       "address of the isolate in hex format otherwise %i is removed. " +
                        "Using %o as filename sends logging to System.out whereas %e sends logging to System.err.", type = OptionType.Expert)
         public static final LogStreamOptionKey LogFile = new LogStreamOptionKey();
         // @formatter:on
@@ -84,10 +87,13 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         private static String makeFilename(String nameTemplate) {
             String name = nameTemplate;
             if (name.contains("%p")) {
-                name = name.replaceAll("%p", GraalServices.getExecutionID());
+                name = name.replace("%p", GraalServices.getExecutionID());
+            }
+            if (name.contains("%i")) {
+                name = name.replace("%i", IsolateUtil.getIsolateID());
             }
             if (name.contains("%t")) {
-                name = name.replaceAll("%t", String.valueOf(System.currentTimeMillis()));
+                name = name.replace("%t", String.valueOf(System.currentTimeMillis()));
             }
 
             for (String subst : new String[]{"%o", "%e"}) {

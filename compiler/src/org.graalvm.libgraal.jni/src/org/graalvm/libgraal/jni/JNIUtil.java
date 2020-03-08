@@ -36,6 +36,7 @@ import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.libgraal.jni.JNI.JValue;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
@@ -302,7 +303,8 @@ public final class JNIUtil {
         if (traceLevel() >= level) {
             HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
-            TTY.printf(indent + format + "%n", args);
+            String prefix = "[" + Long.toHexString(CurrentIsolate.getIsolate().rawValue()) + ":" + Thread.currentThread().getName() + "]";
+            TTY.printf(prefix + indent + format + "%n", args);
         }
     }
 }
