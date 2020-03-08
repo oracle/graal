@@ -40,8 +40,9 @@ simpleToolMavenProjectGate:  {
     }
     run : [
         ["mx", "-p", "../vm", "--dy", "/graal-js", "build"],
-        ["mx", "-p", "../../js/graal-js", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", ["mx", "-p", "../vm", "--dy", "/graal-js", "graalvm-version"]],
-        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/graal-js", "graalvm-home"]],
+        ["mx", "maven-deploy", "--all-suites", "--all-distribution-types", "--version-string", ["mx", "-p", "../vm", "graalvm-version"]],
+        ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/graal-js", "build"],
+        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/graal-js", "graalvm-home"]],
         ["mkdir", "-p", "public_maven/simpletool/src/main/java/"],
         ["cp", "-rf", "src/com.oracle.truffle.st/src/", "public_maven/simpletool/src/main/java/"],
         ["mkdir", "-p", "public_maven/simpletool/src/test/java/"],
@@ -63,9 +64,10 @@ simpleLanguageMavenProjectGate:  {
         valgrind: ">=3.9.0"
     }
     run : [
-        ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "build"],
-        ["mx", "maven-deploy", "--all-suites", "--version-string", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-version"]],
-        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
+        ["mx", "-p", "../vm", "--native-images=none", "build"],
+        ["mx", "maven-deploy", "--all-suites", "--version-string", ["mx", "-p", "../vm", "graalvm-version"]],
+        ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/substratevm", "--native-images=none", "build"],
+        ["set-export", "JAVA_HOME", ["mx", "-p", "../vm", "--java-home", "$JDK_FOR_GRAALVM", "--dy", "/substratevm", "--native-images=none", "graalvm-home"]],
         ["mkdir", "-p", "public_maven/simplelanguage/language/src/main/java"]
         ["cp", "-rf", "src/com.oracle.truffle.sl/src/", "public_maven/simplelanguage/language/src/main/java/"],
         ["mkdir", "-p", "public_maven/simplelanguage/language/src/test/java/com"]
@@ -91,10 +93,12 @@ simpleLanguageMavenProjectGate:  {
 builds += [
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-11"},
-  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-public-mvn-simpletool-8"},
-  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-public-mvn-simpletool-11"},
-  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-public-mvn-simplelanguage-8"},
-  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-public-mvn-simplelanguage-11"},
+
+  ${linux-amd64} ${oraclejdk8}   ${truffleCommon} ${simpleToolMavenProjectGate} {environment: { JDK_FOR_GRAALVM: "$JAVA_HOME" }, name: "gate-public-mvn-simpletool-8"},
+  ${linux-amd64} ${oraclejdk8}   ${truffleCommon} ${simpleToolMavenProjectGate} {environment: { JDK_FOR_GRAALVM: "$EXTRA_JAVA_HOMES" }, name: "gate-public-mvn-simpletool-11"},
+  ${linux-amd64} ${oraclejdk8}   ${truffleCommon} ${simpleLanguageMavenProjectGate} {environment: { JDK_FOR_GRAALVM: "$JAVA_HOME" }, name: "gate-public-mvn-simplelanguage-8"},
+  ${linux-amd64} ${oraclejdk8}   ${truffleCommon} ${simpleLanguageMavenProjectGate} {environment: { JDK_FOR_GRAALVM: "$EXTRA_JAVA_HOMES" }, name: "gate-public-mvn-simplelanguage-11"},
+
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
