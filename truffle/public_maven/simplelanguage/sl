@@ -39,7 +39,7 @@ if [[ "$GRAALVM_VERSION" != "" ]]; then
     versionCheck "Installed in wrong version of GraalVM. Expected: $VERSION, found $GRAALVM_VERSION"
 else
     LANGUAGE_PATH="$SCRIPT_HOME/language/target/simplelanguage.jar"
-    LAUNCHER_PATH="$SCRIPT_HOME/launcher/target/launcher-$VERSION-SNAPSHOT.jar"
+    LAUNCHER_PATH="$SCRIPT_HOME/launcher/target/launcher-$VERSION.jar"
     # Check the GraalVM version in JAVA_HOME
     if [[ "$JAVA_HOME" != "" ]]; then
         GRAALVM_VERSION=$(extractGraalVMVersion "$JAVA_HOME"/release)
