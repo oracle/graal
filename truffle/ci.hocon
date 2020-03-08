@@ -84,9 +84,6 @@ simpleLanguageMavenProjectGate:  {
         ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "remove", "sl"],
-        ["./generate_parser"]
-        ["mvn", "package"],
-        ["./sl", "language/tests/Add.sl"]
     ],
     targets : [gate],
 }
