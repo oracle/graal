@@ -37,7 +37,7 @@ mkdir -p "$COMPONENT_DIR/META-INF"
     echo "Bundle-Name: Simple Language";
     echo "Bundle-Symbolic-Name: com.oracle.truffle.sl";
     echo "Bundle-Version: $GRAALVM_VERSION";
-    echo 'Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=$GRAALVM_VERSION)(os_arch=amd64))"';
+    echo "Bundle-RequireCapability: org.graalvm; filter:=\"(&(graalvm_version=$GRAALVM_VERSION)(os_arch=amd64))\"";
     echo "x-GraalVM-Polyglot-Part: True"
 } > "$COMPONENT_DIR/META-INF/MANIFEST.MF"
 
