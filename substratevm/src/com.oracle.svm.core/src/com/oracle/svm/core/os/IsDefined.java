@@ -47,6 +47,11 @@ public class IsDefined {
     }
 
     @Fold
+    public static final boolean isWindows() {
+        return Platform.includedIn(Platform.WINDOWS.class);
+    }
+
+    @Fold
     public static final boolean __solaris__() {
         return false;
     }
