@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -104,6 +105,14 @@ public class ReportUtils {
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
+    }
+
+    /*
+     * Extract the actual image file name when the imageName is specified as
+     * 'parent-directory/image-name'.
+     */
+    public static String extractImageName(String imageName) {
+        return imageName.substring(imageName.lastIndexOf(File.separatorChar) + 1);
     }
 
 }

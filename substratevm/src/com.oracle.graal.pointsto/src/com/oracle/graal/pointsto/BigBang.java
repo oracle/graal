@@ -151,7 +151,7 @@ public abstract class BigBang {
         unknownTypeFlow = new UnknownTypeFlow();
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
-        reportAnalysisStatistics = PointstoOptions.ReportAnalysisStatistics.getValue(options);
+        reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
         if (reportAnalysisStatistics) {
             PointsToStats.init(this);
         }
