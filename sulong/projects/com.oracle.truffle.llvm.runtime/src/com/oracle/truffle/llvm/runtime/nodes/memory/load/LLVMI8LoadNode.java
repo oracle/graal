@@ -38,11 +38,12 @@ import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
-public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
+public abstract class LLVMI8LoadNode extends LLVMLoadNode {
 
     public static LLVMI8LoadNode create() {
         return LLVMI8LoadNodeGen.create((LLVMExpressionNode) null);
