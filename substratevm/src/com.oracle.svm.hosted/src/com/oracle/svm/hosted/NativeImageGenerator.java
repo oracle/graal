@@ -141,6 +141,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -770,22 +771,19 @@ public class NativeImageGenerator {
              */
             if (bigbang != null) {
                 if (AnalysisReportsOptions.PrintAnalysisStatistics.getValue(options)) {
-                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
-                    StatisticsPrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                    StatisticsPrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
-                    CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                    CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
-                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
-                    ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                    ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
-                    PointsToStats.report(bigbang, imageName.replace("images/", ""));
+                    PointsToStats.report(bigbang, ReportUtils.extractImageName(imageName));
                 }
 
                 if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
