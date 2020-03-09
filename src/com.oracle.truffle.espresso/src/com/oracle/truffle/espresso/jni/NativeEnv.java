@@ -164,22 +164,27 @@ public abstract class NativeEnv {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public static class RawPointer implements TruffleObject {
+    protected static final class RawPointer implements TruffleObject {
         private final long rawPtr;
 
-        public static final RawPointer NULL = new RawPointer(0L);
+        private static final RawPointer NULL = new RawPointer(0L);
+
+        public static @Pointer TruffleObject nullInstance() {
+            return NULL;
+        }
 
         private RawPointer(long rawPtr) {
             this.rawPtr = rawPtr;
         }
 
-        public static RawPointer create(long ptr) {
+        public static @Pointer TruffleObject create(long ptr) {
             if (ptr == 0L) {
                 return NULL;
             }
             return new RawPointer(ptr);
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isPointer() {
             return true;

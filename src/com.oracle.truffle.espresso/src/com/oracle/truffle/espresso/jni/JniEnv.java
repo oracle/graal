@@ -78,8 +78,16 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
-    private final TruffleLogger JNILogger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
-    private final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
+    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
+
+    protected InteropLibrary getUncached() {
+        return uncached;
+    }
+
+    protected TruffleLogger getLogger() {
+        return logger;
+    }
 
     public static final int JNI_OK = 0; /* success */
     public static final int JNI_ERR = -1; /* unknown error */
@@ -183,13 +191,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                JNILogger.log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
+                getLogger().log(Level.FINER, "Fetching unknown/unimplemented JNI method: {0}", methodName);
                 return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
                                         CompilerDirectives.transferToInterpreter();
-                                        JNILogger.log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
+                                        getLogger().log(Level.SEVERE, "Calling unimplemented JNI method: {0}", methodName);
                                         throw EspressoError.unimplemented("JNI method: " + methodName);
                                     }
                                 }));
@@ -377,12 +385,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     }
                 }
             });
-            this.jniEnvPtr = (TruffleObject) UNCACHED.execute(initializeNativeContext, lookupJniImplCallback);
-            assert UNCACHED.isPointer(jniEnvPtr);
+            this.jniEnvPtr = (TruffleObject) getUncached().execute(initializeNativeContext, lookupJniImplCallback);
+            assert getUncached().isPointer(jniEnvPtr);
 
             this.handles = new JNIHandles();
 
-            assert UNCACHED.isNull(jniEnvPtr);
+            assert getUncached().isNull(jniEnvPtr);
         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
@@ -458,15 +466,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     public void dispose() {
-        assert !UNCACHED.isNull(jniEnvPtr) : "JNIEnv already disposed";
+        assert jniEnvPtr != null : "JNIEnv already disposed";
         try {
             InteropLibrary.getFactory().getUncached().execute(disposeNativeContext, jniEnvPtr);
             threadLocalPendingException.dispose();
-            this.jniEnvPtr = RawPointer.NULL;
+            this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
-        assert UNCACHED.isNull(jniEnvPtr);
+        assert jniEnvPtr == null;
     }
 
     // Checkstyle: stop method name check
@@ -1424,7 +1432,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Pointer TruffleObject GetStringCritical(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
@@ -1440,7 +1448,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetStringUTFChars(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
@@ -1465,7 +1473,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public @Pointer TruffleObject GetStringChars(@Host(String.class) StaticObject string, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
@@ -1735,7 +1743,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetBooleanArrayElements(@Host(boolean[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1749,7 +1757,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetCharArrayElements(@Host(char[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1762,7 +1770,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetByteArrayElements(@Host(byte[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1775,7 +1783,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetShortArrayElements(@Host(short[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1788,7 +1796,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetIntArrayElements(@Host(int[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1801,7 +1809,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetFloatArrayElements(@Host(float[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1814,7 +1822,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetDoubleArrayElements(@Host(double[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1827,7 +1835,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetLongArrayElements(@Host(long[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
@@ -1971,11 +1979,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         // HotSpot check.
         assert StaticObject.notNull(buf);
         if (!InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer)) {
-            return RawPointer.NULL;
+            return RawPointer.nullInstance();
         }
         // Check stated in the spec.
         if (StaticObject.notNull(buf) && !InterpreterToVM.instanceOf(buf, getMeta().java_nio_Buffer)) {
-            return RawPointer.NULL;
+            return RawPointer.nullInstance();
         }
         return RawPointer.create((long) getMeta().java_nio_Buffer_address.get(buf));
     }
@@ -2425,7 +2433,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Pointer TruffleObject GetPrimitiveArrayCritical(StaticObject object, @Pointer TruffleObject isCopyPtr) {
-        if (!UNCACHED.isNull(isCopyPtr)) {
+        if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
