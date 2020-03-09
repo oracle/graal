@@ -115,8 +115,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @CompilationFinal private int refKind;
 
-    @CompilationFinal private CallTarget callTarget;
-
     @CompilationFinal(dimensions = 1) //
     private ObjectKlass[] checkedExceptions;
 
@@ -174,7 +172,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(Method method) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-        this.callTarget = method.callTarget;
 
         initMethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
@@ -206,8 +203,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
-
-        this.callTarget = null;
 
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
 
@@ -358,101 +353,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     @TruffleBoundary
     public CallTarget getCallTarget() {
-        if (callTarget == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = getMeta();
-            if (poisonPill) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + this.getName());
-            }
-            // Initializing a class costs a lock, do it outside of this method's lock to avoid
-            // congestion.
-            // Note that requesting a call target is immediately followed by a call to the method,
-            // before advancing BCI.
-            // This ensures that we are respecting the specs, saying that a class must be
-            // initialized before a method is called, while saving a call to safeInitialize after a
-            // method lookup.
-            declaringKlass.safeInitialize();
-
-            synchronized (this) {
-                if (callTarget != null) {
-                    return callTarget;
-                }
-                if (proxy != null) {
-                    this.callTarget = proxy.getCallTarget();
-                    return callTarget;
-                }
-                EspressoRootNode redirectedMethod = getSubstitutions().get(this);
-                if (redirectedMethod != null) {
-                    callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
-                } else {
-                    if (this.isNative()) {
-                        // Bind native method.
-                        // If the loader is null we have a system class, so we attempt a lookup in
-                        // the native Java library.
-                        if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
-                            // Look in libjava
-                            for (boolean withSignature : new boolean[]{false, true}) {
-                                String mangledName = Mangle.mangleMethod(this, withSignature);
-
-                                try {
-                                    TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                    callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion(), true)));
-                                    return callTarget;
-                                } catch (UnknownIdentifierException e) {
-                                    // native method not found in libjava, safe to ignore
-                                }
-                            }
-                        }
-
-                        Method findNative = meta.java_lang_ClassLoader_findNative;
-
-                        // Lookup the short name first, otherwise lookup the long name (with
-                        // signature).
-                        callTarget = lookupJniCallTarget(findNative, false);
-                        if (callTarget == null) {
-                            callTarget = lookupJniCallTarget(findNative, true);
-                        }
-
-                        // TODO(peterssen): Search JNI methods with OS prefix/suffix
-                        // (print_jni_name_suffix_on ...)
-
-                        if (callTarget == null) {
-                            if (getDeclaringKlass() == meta.java_lang_invoke_MethodHandle && (Name.invokeExact.equals(getName()) || Name.invoke.equals(getName()))) {
-                                /*
-                                 * Happens only when trying to obtain call target of
-                                 * MethodHandle.invoke(Object... args), or
-                                 * MethodHandle.invokeExact(Object... args).
-                                 *
-                                 * The method was obtained through a regular lookup (since it is in
-                                 * the declared method). Delegate it to a polysignature method
-                                 * lookup.
-                                 *
-                                 * Redundant callTarget assignment. Better sure than sorry.
-                                 */
-                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
-                            } else {
-                                EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
-                                throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
-                            }
-                        }
-                    } else {
-                        if (getCodeAttribute() == null) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                            "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                        }
-
-                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-
-                        // BCI slot is always the latest.
-                        FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(methodVersion, frameDescriptor, bciSlot));
-
-                        callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-                    }
-                }
-            }
-        }
-        return callTarget;
+        return getMethodVersion().getCallTarget();
     }
 
     public boolean usesMonitors() {
@@ -814,9 +715,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public void unregisterNative() {
         assert isNative();
-        if (callTarget != null) {
+        if (getMethodVersion().callTarget != null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            callTarget = null;
+            getMethodVersion().callTarget = null;
         }
     }
 
@@ -909,7 +810,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // BCI slot is always the latest.
         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
         EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
-        result.callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(rootNode);
 
         return result;
     }
@@ -1042,7 +943,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(runtimePool, new LinkedMethod(newMethod), (CodeAttribute) newMethod.getAttribute(Name.Code));
+        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) newMethod.getAttribute(Name.Code));
         oldVersion.getAssumption().invalidate();
     }
 
@@ -1059,6 +960,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
+        @CompilationFinal private CallTarget callTarget;
 
         MethodVersion(RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
             this.assumption = Truffle.getRuntime().createAssumption();
@@ -1081,6 +983,104 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public RuntimeConstantPool getPool() {
             return pool;
+        }
+
+        public CallTarget getCallTarget() {
+            if (callTarget == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Meta meta = getMeta();
+                if (poisonPill) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
+                }
+                // Initializing a class costs a lock, do it outside of this method's lock to avoid
+                // congestion.
+                // Note that requesting a call target is immediately followed by a call to the method,
+                // before advancing BCI.
+                // This ensures that we are respecting the specs, saying that a class must be
+                // initialized before a method is called, while saving a call to safeInitialize after a
+                // method lookup.
+                declaringKlass.safeInitialize();
+
+                synchronized (this) {
+                    if (callTarget != null) {
+                        return callTarget;
+                    }
+                    if (proxy != null) {
+                        this.callTarget = proxy.getCallTarget();
+                        return callTarget;
+                    }
+                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                    if (redirectedMethod != null) {
+                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                    } else {
+                        if (getMethod().isNative()) {
+                            // Bind native method.
+                            // If the loader is null we have a system class, so we attempt a lookup in
+                            // the native Java library.
+                            if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
+                                // Look in libjava
+                                for (boolean withSignature : new boolean[]{false, true}) {
+                                    String mangledName = Mangle.mangleMethod(getMethod(), withSignature);
+
+                                    try {
+                                        TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), getMethod(), mangledName);
+                                        callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
+                                        return callTarget;
+                                    } catch (UnknownIdentifierException e) {
+                                        // native method not found in libjava, safe to ignore
+                                    }
+                                }
+                            }
+
+                            Method findNative = meta.java_lang_ClassLoader_findNative;
+
+                            // Lookup the short name first, otherwise lookup the long name (with
+                            // signature).
+                            callTarget = lookupJniCallTarget(findNative, false);
+                            if (callTarget == null) {
+                                callTarget = lookupJniCallTarget(findNative, true);
+                            }
+
+                            // TODO(peterssen): Search JNI methods with OS prefix/suffix
+                            // (print_jni_name_suffix_on ...)
+
+                            if (callTarget == null) {
+                                if (getDeclaringKlass() == meta.java_lang_invoke_MethodHandle && (Name.invokeExact.equals(getName()) || Name.invoke.equals(getName()))) {
+                                    /*
+                                     * Happens only when trying to obtain call target of
+                                     * MethodHandle.invoke(Object... args), or
+                                     * MethodHandle.invokeExact(Object... args).
+                                     *
+                                     * The method was obtained through a regular lookup (since it is in
+                                     * the declared method). Delegate it to a polysignature method
+                                     * lookup.
+                                     *
+                                     * Redundant callTarget assignment. Better sure than sorry.
+                                     */
+                                    this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                                } else {
+                                    EspressoLanguage.EspressoLogger.warning(String.format("Failed to link native method: %s", this.toString()));
+                                    throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
+                                }
+                            }
+                        } else {
+                            if (getCodeAttribute() == null) {
+                                throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
+                                        "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                            }
+
+                            FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+
+                            // BCI slot is always the latest.
+                            FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(methodVersion, frameDescriptor, bciSlot));
+
+                            callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+                        }
+                    }
+                }
+            }
+            return callTarget;
         }
 
         public int getCodeSize() {
