@@ -2636,8 +2636,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int bufLen) {
         // TODO(peterssen): Propagate errors and verifications, e.g. no class in the java package.
-        String name = interopPointerToString(namePtr);
-        return getVM().JVM_DefineClass(name, loader, bufPtr, bufLen, StaticObject.NULL);
+        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL);
     }
 
     // JavaVM **vm);
