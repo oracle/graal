@@ -277,24 +277,37 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def rules(self, out, benchmarks, bm_suite_args):
         return [
-            mx_benchmark.StdOutRule(r"(?P<path>.*): (?P<metric>.*)\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+            mx_benchmark.StdOutRule(r"(?P<path>.*): warmup iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
                 "benchmark": ("<path>", str),
                 "metric.better": "lower",
-                "metric.name": ("<metric>", str),
+                "metric.name": "memory",
                 "metric.unit": "MB",
                 "metric.value": ("<value>", float),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
-                "metric.iteration": ("<iteration>", int)
+                "metric.iteration": ("<iteration>", int),
+                "extra.metric.warmedup": "false"
+            }),
+            mx_benchmark.StdOutRule(r"(?P<path>.*): iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "memory",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "extra.metric.warmedup": "true"
             }),
             mx_benchmark.StdOutRule(r"(?P<path>.*): median: (?P<value>.*) MB", {
                 "benchmark": ("<path>", str),
                 "metric.better": "lower",
-                "metric.name": "median",
+                "metric.name": "memory",
                 "metric.unit": "MB",
                 "metric.value": ("<value>", float),
                 "metric.type": "numeric",
-                "metric.score-function": "id"
+                "metric.score-function": "id",
+                "extra.metric.aggregation": "median"
             }),
         ]
 
