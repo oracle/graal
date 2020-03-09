@@ -23,6 +23,9 @@
 
 from argparse import ArgumentParser
 
+import os
+from os.path import join
+
 import mx
 import mx_benchmark
 import mx_sdk_vm
@@ -30,17 +33,29 @@ from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
 
+
 _suite = mx.suite('espresso')
 
 
-class EspressoVM(mx_benchmark.GuestVm, mx_benchmark.JavaVm):
-    def __init__(self, host_vm, config_name, host_vm_args):
-        super(EspressoVM, self).__init__(host_vm)
-        self._config_name = config_name
-        self._host_vm_args = host_vm_args
+def _espresso_launcher_command(args):
+    """Espresso launcher embedded in GraalVM + arguments"""
+    import mx_sdk_vm_impl
+    return [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'espresso')] + args
 
-    def with_host_vm(self, host_vm):
-        return self.__class__(host_vm, self._config_name, self._host_vm_args)
+def _espresso_standalone_command(args):
+    """Espresso standalone command from distribution jars + arguments"""
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    return (
+        vm_args
+        + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+        + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
+    )
+
+
+class EspressoVM(mx_benchmark.JavaVm):
+    def __init__(self, config_name):
+        super(EspressoVM, self).__init__()
+        self._config_name = config_name
 
     def hosting_registry(self):
         return mx_benchmark.java_vm_registry
@@ -52,12 +67,37 @@ class EspressoVM(mx_benchmark.GuestVm, mx_benchmark.JavaVm):
         return self._config_name
 
     def run(self, cwd, args):
-        return self.host_vm().run(cwd, self._host_vm_args + _espresso_command(args))
+        return mx.run(_espresso_launcher_command(args), cwd=cwd)
 
 
-# Register Espresso as a VM for running `mx benchmark`.
-mx_benchmark.java_vm_registry.add_vm(EspressoVM(None, 'interpreter', ['-Dgraal.TruffleCompilation=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVM(None, 'jit', []), _suite, priority=1)
+# Register Espresso (launcher) as a VM for running `mx benchmark`.
+mx_benchmark.java_vm_registry.add_vm(EspressoVM('launcher'), _suite)
+
+
+def _run_espresso_launcher(args=None, cwd=None):
+    """run Espresso launcher embedded in a GraalVM"""
+    mx.run(_espresso_launcher_command(args), cwd=cwd)
+
+
+def _run_espresso_standalone(args=None, cwd=None):
+    """run standalone Espresso (not as part of GraalVM) from distribution jars"""
+    mx.run_java(_espresso_standalone_command(args), cwd=cwd)
+
+
+def _run_espresso_meta(args):
+    """run Espresso (standalone) on Espresso (launcher)"""
+    _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args))
+
+
+def _run_espresso_playground(args):
+    """run Espresso test programs"""
+    parser = ArgumentParser(prog='mx espresso-playground')
+    parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
+    parser.add_argument('main_class_args', nargs='*')
+    args = parser.parse_args(args)
+    return _run_espresso_launcher(['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
+                            'com.oracle.truffle.espresso.playground.' + args.main_class]
+                         + args.main_class_args)
 
 
 class EspressoDefaultTags:
@@ -65,34 +105,6 @@ class EspressoDefaultTags:
     unittest_with_compilation = 'unittest_with_compilation'
     jackpot = 'jackpot'
     meta = 'meta'
-
-
-def _espresso_command(args):
-    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
-    return (
-        vm_args
-        + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-        + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
-    )
-
-
-def _run_espresso(args, cwd=None):
-    mx.run_java(_espresso_command(args), cwd=cwd)
-
-
-def _run_espresso_meta(args):
-    mx.run_java(['-Xss5m'] + _espresso_command(_espresso_command(args)))
-
-
-def _run_espresso_playground(args):
-    parser = ArgumentParser(prog='mx espresso-playground')
-    parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
-    parser.add_argument('main_class_args', nargs='*')
-    args = parser.parse_args(args)
-
-    return _run_espresso(['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
-                            'com.oracle.truffle.espresso.playground.' + args.main_class]
-                         + args.main_class_args)
 
 
 def _espresso_gate_runner(args, tasks):
@@ -150,11 +162,12 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 ))
 
 
-# register new commands which can be used from the commandline with mx
+# Register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
-    'espresso': [_run_espresso, ''],
-    'espresso-meta': [_run_espresso_meta, ''],
-    'espresso-playground': [_run_espresso_playground, ''],
+    'espresso': [_run_espresso_launcher, '[args]'],
+    'espresso-standalone': [_run_espresso_standalone, '[args]'],
+    'espresso-meta': [_run_espresso_meta, '[args]'],
+    'espresso-playground': [_run_espresso_playground, '[class_name] [args]'],
     'verify-ci' : [verify_ci, '[options]'],
 })
 
