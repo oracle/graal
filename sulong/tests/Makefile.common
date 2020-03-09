@@ -72,25 +72,27 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
+# dummy object for embedding bitcode section on llvm 3.8 linux [GR-21735]
+EMBEDDED_BC_OBJ=embedded-bc.o
+
 ifndef NO_FEMBED_BITCODE
 EMBED_BC=-fembed-bitcode
+# empty file by default
+%/$(EMBEDDED_BC_OBJ):
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) echo "" | $(CLANG) -xc -c - -o $@
 else # NO_FEMBED_BITCODE it set
 ifeq ($(OS), darwin)
 EMBED_BC=-fembed-bitcode
+# empty file by default
+%/$(EMBEDDED_BC_OBJ):
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) echo "" | $(CLANG) -xc -c - -o $@
+
 else # not darwin
 EMBED_BC=
-%.c.dir/ref.out: %.c.dir/O0.bc.o
-%.cpp.dir/ref.out: %.cpp.dir/O0.bc.o
-%.cc.dir/ref.out: %.cc.dir/O0.bc.o
-%.C.dir/ref.out: %.C.dir/O0.bc.o
-%.f.dir/ref.out: %.f.dir/O0.bc.o
-%.f90.dir/ref.out: %.f90.dir/O0.bc.o
-%.f03.dir/ref.out: %.f03.dir/O0.bc.o
-%.ll.dir/ref.out: %.ll.dir/O0.bc.o
-
-%.bc.o: %.bc
+%/$(EMBEDDED_BC_OBJ): %/O0.bc
 	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
-
 endif # darwin
 endif # NO_FEMBED_BITCODE
 
@@ -125,31 +127,31 @@ ifdef GRAALVM_LLVM_HOME
 %/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
 endif
 
-%.c.dir/ref.out: %.c
+%.c.dir/ref.out: %.c %.c.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cpp.dir/ref.out: %.cpp
+%.cpp.dir/ref.out: %.cpp %.cpp.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cc.dir/ref.out: %.cc
+%.cc.dir/ref.out: %.cc %.cc.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.C.dir/ref.out: %.C
+%.C.dir/ref.out: %.C %.C.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cint.dir/ref.out: %.cint $(BC_FILE)
+%.cint.dir/ref.out: %.cint %.cint.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-%.gcc.dir/ref.out: %.gcc $(BC_FILE)
+%.gcc.dir/ref.out: %.gcc %.gcc.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-%.gpp.dir/ref.out: %.gpp $(BC_FILE)
+%.gpp.dir/ref.out: %.gpp %.gpp.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
@@ -177,7 +179,7 @@ endif
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
-%.ll.dir/ref.out: %.ll
+%.ll.dir/ref.out: %.ll %.ll.dir/$(EMBEDDED_BC_OBJ)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
