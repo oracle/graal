@@ -141,6 +141,18 @@ endif
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
+%.cint.dir/ref.out: %.cint $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+%.gcc.dir/ref.out: %.gcc $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+%.gpp.dir/ref.out: %.gpp $(BC_FILE)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+
 %.f.dir/ref.out: %.f
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
@@ -183,6 +195,18 @@ define OPT_RULES
 	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %.C.dir/$(1).bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+
+%.gcc.dir/$(1).bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+
+%.cint.dir/$(1).bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+
+%.gpp.dir/$(1).bc: %.gpp
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
