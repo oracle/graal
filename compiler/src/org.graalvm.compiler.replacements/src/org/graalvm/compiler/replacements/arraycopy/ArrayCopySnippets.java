@@ -375,7 +375,6 @@ public abstract class ArrayCopySnippets implements Snippets {
 
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
-        private boolean expandArraycopyLoop;
 
         public Templates(ArrayCopySnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, Factory factory, Providers providers,
                         SnippetReflectionProvider snippetReflection, TargetDescription target) {
@@ -398,7 +397,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyNode arraycopy, LoweringTool tool) {
-            lower(arraycopy, this.expandArraycopyLoop, tool);
+            lower(arraycopy, false, tool);
         }
 
         public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
@@ -460,7 +459,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 }
             }
 
-            if (this.expandArraycopyLoop && mayExpandThisArraycopy && snippetInfo == arraycopyExactStubCallSnippet) {
+            if (mayExpandThisArraycopy && snippetInfo == arraycopyExactStubCallSnippet) {
                 snippetInfo = arraycopyExactSnippet;
             }
 
@@ -498,9 +497,13 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, LoweringTool tool) {
+            lower(arraycopy, false, tool);
+        }
+
+        public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, boolean mayExpandArraycopyLoops, LoweringTool tool) {
             StructuredGraph graph = arraycopy.graph();
 
-            if (arraycopy.getSnippet() == exactArraycopyWithSlowPathWork && this.expandArraycopyLoop) {
+            if (arraycopy.getSnippet() == exactArraycopyWithSlowPathWork && mayExpandArraycopyLoops) {
                 if (!graph.getGuardsStage().areDeoptsFixed()) {
                     // Don't lower until floating guards are fixed.
                     return;
@@ -600,10 +603,6 @@ public abstract class ArrayCopySnippets implements Snippets {
                 }
             }
             return originalArraycopy;
-        }
-
-        public void setExpandArraycopyLoop(boolean b) {
-            this.expandArraycopyLoop = b;
         }
     }
 }
