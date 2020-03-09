@@ -286,7 +286,7 @@ enum OSReturn {
 extern "C" {
 #endif
 
-MokapotEnv* initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *));
+MokapotEnv* initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *));
 
 void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
 

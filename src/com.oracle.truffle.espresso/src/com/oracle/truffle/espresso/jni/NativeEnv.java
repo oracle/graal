@@ -37,6 +37,8 @@ import java.util.Map;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -75,6 +77,10 @@ public abstract class NativeEnv {
 
     public static NativeSimpleType classToType(Class<?> clazz, boolean javaToNative) {
         return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT);
+    }
+
+    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
+        return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(capacity, kind.getByteCount()));
     }
 
     protected static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
@@ -117,11 +123,76 @@ public abstract class NativeEnv {
         return buffer;
     }
 
+    public static long interopAsPointer(@Pointer TruffleObject interopPtr) {
+        long result = 0L;
+        if (InteropLibrary.getFactory().getUncached(interopPtr).isPointer(interopPtr)) {
+            try {
+                result = InteropLibrary.getFactory().getUncached(interopPtr).asPointer(interopPtr);
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+        return result;
+    }
+
+    public static String interopPointerToString(@Pointer TruffleObject interopPtr) {
+        return fromUTF8Ptr(interopAsPointer(interopPtr));
+    }
+
+    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
+        ByteBuffer buffer = null;
+        try {
+            long address = interopAsPointer(addressPtr);
+            buffer = constructor.newInstance(address, Math.toIntExact(capacity));
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        buffer.order(ByteOrder.nativeOrder());
+        return buffer;
+    }
+
     protected static long byteBufferAddress(ByteBuffer byteBuffer) {
         try {
             return (long) addressField.get(byteBuffer);
         } catch (IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    protected static @Pointer TruffleObject byteBufferPointer(ByteBuffer byteBuffer) {
+        return new RawPointer(byteBufferAddress(byteBuffer));
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static class RawPointer implements TruffleObject {
+        private final long rawPtr;
+
+        public static final RawPointer NULL = new RawPointer(0L);
+
+        private RawPointer(long rawPtr) {
+            this.rawPtr = rawPtr;
+        }
+
+        public static RawPointer create(long ptr) {
+            if (ptr == 0L) {
+                return NULL;
+            }
+            return new RawPointer(ptr);
+        }
+
+        @ExportMessage
+        boolean isPointer() {
+            return true;
+        }
+
+        @ExportMessage
+        long asPointer() {
+            return rawPtr;
+        }
+
+        @ExportMessage
+        boolean isNull() {
+            return rawPtr == 0L;
         }
     }
 
@@ -156,7 +227,7 @@ public abstract class NativeEnv {
         return StaticObject.NULL;
     }
 
-    public static TruffleObject loadLibrary(List<Path> searchPaths, String name) {
+    public static @Pointer TruffleObject loadLibrary(List<Path> searchPaths, String name) {
         for (Path path : searchPaths) {
             Path libPath = path.resolve(System.mapLibraryName(name));
             try {
@@ -168,7 +239,11 @@ public abstract class NativeEnv {
         throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
     }
 
-    public static String fromUTF8Ptr(@Word long rawBytesPtr) {
+    public static String fromUTF8Ptr(@Pointer TruffleObject buffPtr) {
+        return fromUTF8Ptr(interopAsPointer(buffPtr));
+    }
+
+    public static String fromUTF8Ptr(long rawBytesPtr) {
         if (rawBytesPtr == 0) {
             return null;
         }

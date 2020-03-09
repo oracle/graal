@@ -136,7 +136,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
     }
 
     protected Object processResult(JniEnv env, Object result) {
-        assert env.getNativePointer() != 0;
+        assert !InteropLibrary.getFactory().getUncached(env).isNull(env.getNativePointer());
 
         // JNI exception handling.
         maybeThrowAndClearPendingException(env);

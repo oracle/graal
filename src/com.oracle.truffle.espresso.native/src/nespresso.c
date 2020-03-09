@@ -559,7 +559,16 @@ static void unset_function_error() {
   exit(-1);
 }
 
-JNIEnv* initializeNativeContext(void* (*fetch_by_name)(const char *)) {
+void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
+    if (truffle_env != NULL) {
+        (*truffle_env)->newClosureRef(truffle_env, closure);
+    } else {
+        closure = truffle_deref_handle_for_managed(closure);
+    }
+    return closure;
+}
+
+JNIEnv* initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
@@ -638,13 +647,4 @@ void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
   *env = NULL;
 
   free(env);
-}
-
-void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
-    if (truffle_env != NULL) {
-        (*truffle_env)->newClosureRef(truffle_env, closure);
-    } else {
-        closure = truffle_deref_handle_for_managed(closure);
-    }
-    return closure;
 }

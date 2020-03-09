@@ -76,6 +76,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -90,6 +91,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess, MethodRef {
 
@@ -335,7 +337,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private static String buildJniNativeSignature(Method method) {
         // Prepend JNIEnv*.
-        StringBuilder sb = new StringBuilder("(").append(word());
+        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER);
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Receiver for instance methods, class for static methods.
@@ -502,7 +504,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (handle == 0) { // not found
             return null;
         }
-        TruffleObject symbol = getVM().getFunction(handle);
+        TruffleObject symbol = getVM().getFunction(NativeEnv.RawPointer.create(handle));
         TruffleObject nativeMethod = bind(symbol, this);
         return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
     }

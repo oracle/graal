@@ -56,7 +56,7 @@ JavaVM* getJavaVM() {
   V(AttachCurrentThreadAsDaemon)
 
 
-MokapotEnv* initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *)) {
+MokapotEnv* initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
  
@@ -67,7 +67,6 @@ MokapotEnv* initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const c
 
   *java_vm = java_vm_functions;
   functions->vm = java_vm;
-  fprintf(stderr, "JavaVM* = %p\n", functions->vm);
   *moka_env = functions;
 
   #define INIT__(name) \
