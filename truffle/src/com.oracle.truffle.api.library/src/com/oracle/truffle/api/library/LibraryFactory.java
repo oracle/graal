@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
@@ -61,6 +63,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
+
+import sun.misc.Unsafe;
 
 /**
  * Library factories allow to create instances of libraries used to call library messages. A library
@@ -235,6 +239,7 @@ public abstract class LibraryFactory<T extends Library> {
         if (limit <= 0) {
             return getUncached();
         } else {
+            ensureLibraryInitialized();
             return createDispatchImpl(limit);
         }
     }
@@ -256,6 +261,7 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, cached);
             return cached;
         }
+        ensureLibraryInitialized();
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
         cached = export.createCached(receiver);
         assert (cached = createAssertionsImpl(export, cached)) != null;
@@ -276,7 +282,28 @@ public abstract class LibraryFactory<T extends Library> {
      * @since 19.0
      */
     public final T getUncached() {
-        return uncachedDispatch;
+        T dispatch = this.uncachedDispatch;
+        if (dispatch == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ensureLibraryInitialized();
+            dispatch = createUncachedDispatch();
+            T otherDispatch = this.uncachedDispatch;
+            if (otherDispatch != null) {
+                dispatch = otherDispatch;
+            } else {
+                this.uncachedDispatch = dispatch;
+            }
+        }
+        return dispatch;
+    }
+
+    private void ensureLibraryInitialized() {
+        /*
+         * This is needed to enforce initialization order. This way the library class is always
+         * initialized before any of the export subclasses. So this method must be invoked before
+         * any instantiation of a library export.
+         */
+        UNSAFE.ensureClassInitialized(libraryClass);
     }
 
     /**
@@ -294,6 +321,7 @@ public abstract class LibraryFactory<T extends Library> {
             assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
+        ensureLibraryInitialized();
         LibraryExport<T> export = lookupExport(receiver, dispatchClass);
         uncached = export.createUncached(receiver);
         assert validateExport(receiver, dispatchClass, uncached);
@@ -304,16 +332,6 @@ public abstract class LibraryFactory<T extends Library> {
             return otherUncached;
         }
         return uncached;
-    }
-
-    final void ensureInitialized() {
-        if (this.uncachedDispatch == null) {
-            /*
-             * We deliberately don't lock here. We don't care if we have multiple different
-             * instances of uncachedDispatch.
-             */
-            this.uncachedDispatch = createUncachedDispatch();
-        }
     }
 
     private static volatile Map<String, List<DefaultExportProvider>> externalDefaultProviders;
@@ -593,6 +611,24 @@ public abstract class LibraryFactory<T extends Library> {
         return (LibraryFactory<T>) lib;
     }
 
+    private static final sun.misc.Unsafe UNSAFE;
+
+    static {
+        Unsafe unsafe;
+        try {
+            unsafe = Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e2) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+            }
+        }
+        UNSAFE = unsafe;
+    }
+
     static LibraryFactory<?> loadGeneratedClass(Class<?> libraryClass) {
         if (Library.class.isAssignableFrom(libraryClass)) {
             String generatedClassName = libraryClass.getPackage().getName() + "." + libraryClass.getSimpleName() + "Gen";
@@ -601,14 +637,7 @@ public abstract class LibraryFactory<T extends Library> {
             } catch (ClassNotFoundException e) {
                 return null;
             }
-            LibraryFactory<?> lib = LIBRARIES.get(libraryClass);
-            if (lib == null) {
-                // maybe still initializing?
-                return null;
-            } else {
-                lib.ensureInitialized();
-            }
-            return lib;
+            return LIBRARIES.get(libraryClass);
         }
         return null;
     }
