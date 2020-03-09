@@ -286,9 +286,11 @@ enum OSReturn {
 extern "C" {
 #endif
 
-jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (*fetch_by_name)(const char *));
+MokapotEnv* initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *));
 
-void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr);
+void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
+
+JavaVM* getJavaVM();
 
 #ifdef __cplusplus
 } // extern "C"

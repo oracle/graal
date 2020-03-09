@@ -254,6 +254,15 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    // cf. sun.launcher.LauncherHelper
+    private enum LaunchMode {
+        LM_UNKNOWN,
+        LM_CLASS,
+        LM_JAR,
+        // LM_MODULE,
+        // LM_SOURCE
+    }
+
     @Override
     protected void launch(Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
@@ -283,7 +292,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             try {
                 Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
-                                .invokeMember("checkAndLoadMain", true, 1 /* LM_CLASS */, mainClassName) //
+                                .invokeMember("checkAndLoadMain", true, LaunchMode.LM_CLASS.ordinal(), mainClassName) //
                                 .getMember("static");
                 mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
                 rc = 0;

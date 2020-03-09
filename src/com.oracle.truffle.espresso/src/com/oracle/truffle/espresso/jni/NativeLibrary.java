@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 public final class NativeLibrary {
 
     @TruffleBoundary
-    public static TruffleObject loadLibrary(Path lib) {
+    public static @Pointer TruffleObject loadLibrary(Path lib) {
         StringBuilder sb = new StringBuilder();
         sb.append("load(RTLD_LAZY");
         OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
@@ -62,7 +62,7 @@ public final class NativeLibrary {
         }
     }
 
-    public static TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {
+    public static @Pointer TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {
         try {
             return (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
         } catch (UnsupportedMessageException e) {
@@ -70,7 +70,7 @@ public final class NativeLibrary {
         }
     }
 
-    public static TruffleObject bind(TruffleObject symbol, String signature) {
+    public static @Pointer TruffleObject bind(@Pointer TruffleObject symbol, String signature) {
         try {
             return (TruffleObject) InteropLibrary.getFactory().getUncached().invokeMember(symbol, "bind", signature);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
@@ -78,7 +78,7 @@ public final class NativeLibrary {
         }
     }
 
-    public static TruffleObject lookupAndBind(TruffleObject library, String method, String signature) throws UnknownIdentifierException {
+    public static @Pointer TruffleObject lookupAndBind(@Pointer TruffleObject library, String method, String signature) throws UnknownIdentifierException {
         try {
             TruffleObject symbol = (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
             if (InteropLibrary.getFactory().getUncached().isNull(symbol)) {

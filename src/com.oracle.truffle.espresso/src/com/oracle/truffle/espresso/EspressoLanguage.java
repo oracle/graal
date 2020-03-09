@@ -111,15 +111,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return new EspressoOptionsOptionDescriptors();
     }
 
-    // cf. sun.launcher.LauncherHelper
-    enum LaunchMode {
-        LM_UNKNOWN,
-        LM_CLASS,
-        LM_JAR,
-        // LM_MODULE,
-        // LM_SOURCE
-    }
-
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         // TODO(peterssen): Redirect in/out to env.in()/out()
