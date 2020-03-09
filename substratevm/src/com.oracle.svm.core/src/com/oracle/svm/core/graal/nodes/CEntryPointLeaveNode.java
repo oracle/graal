@@ -87,4 +87,5 @@ public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
+
 }

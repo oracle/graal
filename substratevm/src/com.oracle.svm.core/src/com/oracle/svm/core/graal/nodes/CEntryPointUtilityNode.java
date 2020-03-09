@@ -102,4 +102,5 @@ public final class CEntryPointUtilityNode extends FixedWithNextNode implements L
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
+
 }

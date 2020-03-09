@@ -166,13 +166,16 @@ public class SubstrateGraphKit extends GraphKit {
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
+
         }
 
         InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            append(new CFunctionEpilogueNode(newThreadStatus));
+            CFunctionEpilogueNode epilog = new CFunctionEpilogueNode(newThreadStatus);
+            append(epilog);
+            epilog.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(invoke.stateAfter());

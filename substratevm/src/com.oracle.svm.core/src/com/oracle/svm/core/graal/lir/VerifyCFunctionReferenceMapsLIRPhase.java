@@ -177,10 +177,6 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
          * instructions with a frame state (the C function call and the slowpath transition back to
          * the Java thread status).
          *
-         * The slowpath transition back to the Java code however, does not require a state because
-         * its a foreign call that can never deoptimize, thus we can also assume 1 state (on the
-         * call) to be a safe pro-epilogue scenario.
-         *
          * When doing a C function call with a Java to VM transition, we only expect 1 call
          * instruction with a frame state (only the C function call) as we only need the fastpath
          * when doing the transition back to the Java thread status.
@@ -188,7 +184,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
         private int expectedFrameStates() {
             switch (newThreadStatus) {
                 case StatusSupport.STATUS_IN_NATIVE:
-                    return 1;
+                    return 2;
                 case StatusSupport.STATUS_IN_VM:
                     return 1;
                 default:

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -32,7 +33,9 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptDuring;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -43,7 +46,7 @@ import org.graalvm.word.LocationIdentity;
  * See comments in {@link CFunctionPrologueNode} for details.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
-public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {
+public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptDuring {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
@@ -84,4 +87,28 @@ public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lo
 
     @NodeIntrinsic
     public static native void cFunctionEpilogue(@ConstantNodeParameter int oldThreadStatus);
+
+    @OptionalInput(State) protected FrameState stateDuring;
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public FrameState stateDuring() {
+        return stateDuring;
+    }
+
+    @Override
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState currentStateAfter) {
+        setStateDuring(currentStateAfter);
+    }
+
 }
