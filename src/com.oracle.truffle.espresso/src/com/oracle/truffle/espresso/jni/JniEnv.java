@@ -78,7 +78,7 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
-    private static final TruffleLogger JNILogger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
+    private final TruffleLogger JNILogger = TruffleLogger.getLogger(EspressoLanguage.ID, JniEnv.class);
     private final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
     public static final int JNI_OK = 0; /* success */

@@ -126,27 +126,31 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
  */
 public final class VM extends NativeEnv implements ContextAccess {
 
-    private static final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
+    private final TruffleLogger VMLogger = TruffleLogger.getLogger(EspressoLanguage.ID, VM.class);
 
-    private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
+    private final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
 
     private final @Pointer TruffleObject initializeMokapotContext;
     private final @Pointer TruffleObject disposeMokapotContext;
-
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
-
     private final @Pointer TruffleObject getJavaVM;
 
     private final JniEnv jniEnv;
 
     private @Pointer TruffleObject managementPtr;
-
-    public JNIHandles getHandles() {
-        return jniEnv.getHandles();
-    }
-
     private @Pointer TruffleObject vmPtr;
+
+    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
+    // interface (libjvm).
+    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
+    // libmokapot must be loaded strictly before any other library in the private namespace to
+    // avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
+    // libzip, libnet, libnio ...
+    private final @Pointer TruffleObject mokapotLibrary;
+
+    // libjava must be loaded after mokapot.
+    private final @Pointer TruffleObject javaLibrary;
 
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
@@ -172,18 +176,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     });
 
-    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
-    // interface (libjvm).
-    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
-    // libmokapot must be loaded strictly before any other library in the private namespace to
-    // avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
-    // libzip, libnet, libnio ...
-    private final TruffleObject mokapotLibrary;
+    public JNIHandles getHandles() {
+        return jniEnv.getHandles();
+    }
 
-    // libjava must be loaded after mokapot.
-    private final TruffleObject javaLibrary;
-
-    public TruffleObject getJavaLibrary() {
+    public @Pointer TruffleObject getJavaLibrary() {
         return javaLibrary;
     }
 
@@ -489,14 +486,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
+    public int AttachCurrentThread(@Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr) {
         VMLogger.warning("Calling AttachCurrentThread! " + penvPtr + " " + Thread.currentThread());
         EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
         return JNI_OK;
     }
 
     @VmImpl
-    public static int DetachCurrentThread() {
+    public int DetachCurrentThread() {
         VMLogger.warning("DetachCurrentThread!!!" + Thread.currentThread());
         EspressoLanguage.getCurrentContext().disposeThread(Thread.currentThread());
         return JNI_OK;
@@ -767,13 +764,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @TruffleBoundary
     @VmImpl
-    public static void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
+    public void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
         // TODO(peterssen): Do unload the library.
         VMLogger.severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", handle));
     }
 
     @VmImpl
-    public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, String name) {
+    public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
+        String name = interopPointerToString(namePtr);
         if (UNCACHED.isNull(libraryPtr)) {
             VMLogger.warning(String.format("JVM_FindLibraryEntry from default/global namespace (0): %s", name));
             return RawPointer.NULL;
@@ -1881,7 +1879,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public static int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
+    public int GetOptionalSupport(@Pointer TruffleObject /* jmmOptionalSupport **/ supportPtr) {
         if (!UNCACHED.isNull(supportPtr)) {
             ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
             supportBuf.putInt(0); // nothing optional is supported
