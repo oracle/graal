@@ -70,17 +70,17 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
     }
 
     @Override
-    public void close(Token token) throws IOException {
+    public void close(Token tokenToCLose) throws IOException {
         iss.setMessageListener(null);
         if (inspectEndpoint != null) {
-            if (token.equals(this.token)) {
+            if (tokenToCLose.equals(this.token)) {
                 inspectEndpoint.sendClose();
             }
         }
     }
 
     @Override
-    public void consoleAPICall(Token token, String type, Object text) {
+    public void consoleAPICall(Token tokenToCall, String type, Object text) {
         iss.consoleAPICall(type, text);
     }
 
