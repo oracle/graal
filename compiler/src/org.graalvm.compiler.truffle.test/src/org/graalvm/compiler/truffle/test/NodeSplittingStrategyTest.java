@@ -325,4 +325,39 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         callTarget.call(noArguments);
         rootNode.report();
     }
+
+    class CallableOnlyOnceRootNode extends ExposesReportPolymorphicSpecializeRootNode {
+        boolean called;
+        boolean active;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (active && called) {
+                throw new AssertionError("This is illegal state. Seems a split happened but the original was called.");
+            }
+            called = true;
+            return super.execute(frame);
+        }
+
+        @Override
+        public boolean isCloningAllowed() {
+            return true;
+        }
+    }
+
+    @Test
+    public void testSplitsCalledAfterSplit() {
+        final CallableOnlyOnceRootNode rootNode = new CallableOnlyOnceRootNode();
+        final RootCallTarget reportsPolymorphism = runtime.createCallTarget(rootNode);
+        reportsPolymorphism.call(noArguments);
+        final RootCallTarget callsInner = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
+        final RootCallTarget callsInner2 = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
+        // make sure the runtime has seen these calls
+        callsInner.call(noArguments);
+        callsInner2.call(noArguments);
+        rootNode.active = true;
+        rootNode.report();
+        callsInner.call(noArguments);
+        callsInner2.call(noArguments);
+    }
 }
