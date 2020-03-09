@@ -29,15 +29,11 @@ package com.oracle.objectfile.debugentry;
 import java.nio.file.Path;
 
 /**
- * Tracks the directory associated with one or
- * more source files.
+ * Tracks the directory associated with one or more source files.
  *
- * This is identified separately from each FileEntry
- * idenityfing files that reside in the directory.
- * That is necessary because the line info generator
- * needs to collect and write out directory names
- * into directory tables once only rather than once
- * per file.
+ * This is identified separately from each FileEntry idenityfing files that reside in the directory.
+ * That is necessary because the line info generator needs to collect and write out directory names
+ * into directory tables once only rather than once per file.
  */
 public class DirEntry {
     private Path path;

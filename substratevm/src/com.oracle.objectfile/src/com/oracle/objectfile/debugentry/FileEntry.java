@@ -52,6 +52,7 @@ public class FileEntry {
     public String getFullName() {
         return getDirEntry().getPath().resolve(getFileName()).toString();
     }
+
     /**
      * The directory entry associated with this file entry.
      */

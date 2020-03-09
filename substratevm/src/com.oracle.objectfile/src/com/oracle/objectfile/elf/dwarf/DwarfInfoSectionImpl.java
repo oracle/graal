@@ -61,30 +61,36 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * we need a single level 0 DIE for each compilation unit (CU)
-         * Each CU's Level 0 DIE is preceded by a fixed header:
-         * and terminated by a null DIE
-         * uint32 length ......... excluding this length field
-         * uint16 dwarf_version .. always 2 ??
-         * uint32 abbrev offset .. always 0 ??
-         * uint8 address_size .... always 8
-         * <DIE>* ................ sequence of top-level and nested child entries
-         * <null_DIE> ............ == 0
+         * we need a single level 0 DIE for each compilation unit (CU).
+         * Each CU's Level 0 DIE is preceded by a fixed header
+         * and terminated by a null DIE:
+         * <ul>
+         * <li><code>uint32 length ......... excluding this length field</code>
+         * <li><code>uint16 dwarf_version .. always 2 ??</code>
+         * <li><code>uint32 abbrev offset .. always 0 ??</code>
+         * <li><code>uint8 address_size .... always 8</code>
+         * <li><code>DIE* .................. sequence of top-level and nested child entries</code>
+         * <li><code>null_DIE .............. == 0</code>
+         * </ul>
          *
-         * a DIE is a recursively defined structure
+         * a DIE is a recursively defined structure.
          * it starts with a code for the associated
          * abbrev entry followed by a series of attribute
-         * values as determined by the entry terminated by
+         * values, as determined by the entry, terminated by
          * a null value and followed by zero or more child
-         * DIEs (zero iff has_children == no_children)
+         * DIEs (zero iff has_children == no_children).
          *
-         * LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE
-         * <attribute_value>* ....... value sequence as determined by abbrev entry
-         * <DIE>* ................... sequence of child DIEs (if appropriate)
-         * <null_value> ............. == 0
+         * <ul>
+         * <li><code>LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE</code>
+         * <li><code>attribute_value* ......... value sequence as determined by abbrev entry</code>
+         * <li><code>DIE* ..................... sequence of child DIEs (if appropriate)</code>
+         * <li><code><null_value> ............. == 0</code>
+         * </ul>
          *
          * note that a null_DIE looks like
-         * LEB128 abbrev_code ....... == 0
+         * <ul>
+         * <li><code>LEB128 abbrev_code ....... == 0</code>
+         * </ul>
          * i.e. it also looks like a null_value
          */
 
@@ -209,8 +215,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    /*
-     * we may need this later
     public int writeAttrString(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
@@ -219,7 +223,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             return putAsciiStringBytes(value, buffer, pos);
         }
     }
-    */
 
     @Override
     protected void debug(String format, Object... args) {

@@ -54,9 +54,11 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * rsp has not been updated
+         * rsp has not been updated and
          * caller pc is in lr
-         * register r32 (rpc), r30 (lr)
+         * <ul>
+         * <li><code>register r32 (rpc), r30 (lr)</code>
+         * </ul>
          */
         pos = writeRegister(DW_CFA_PC_IDX, DW_CFA_LR_IDX, buffer, pos);
         return pos;

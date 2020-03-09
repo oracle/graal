@@ -75,18 +75,24 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * terminated by a null entry
          *
          * a null entry has consists of just a 0 abbrev code
-         * LEB128 abbrev_code; ...... == 0
+         * <ul>
+         * <li><code>LEB128 abbrev_code; ...... == 0</code>
+         * </ul>
          *
          * non-null entries have the following format
-         * LEB128 abbrev_code; ...... unique noncode for this layout != 0
-         * LEB128 tag; .............. defines the type of the DIE (class, subprogram, var etc)
-         * uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling DIE
-         * <attribute_spec>* ........ zero or more attributes
-         * <null_attribute_spec> .... terminator
+         * <ul>
+         * <li><code>LEB128 abbrev_code; ...... unique noncode for this layout != 0</code>
+         * <li><code>LEB128 tag; .............. defines the type of the DIE (class, subprogram, var etc)</code>
+         * <li><code>uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling DIE</code>
+         * <li><code>attribute_spec* .......... zero or more attributes</code>
+         * <li><code>null_attribute_spec ...... terminator</code>
+         * </ul>
          *
          * An attribute_spec consists of an attribute name and form
-         * LEB128 attr_name; ........ 0 for the null attribute name
-         * LEB128 attr_form; ........ 0 for the null attribute form
+         * <ul>
+         * <li><code>LEB128 attr_name; ........ 0 for the null attribute name</code>
+         * <li><code>LEB128 attr_form; ........ 0 for the null attribute form</code>
+         * </ul>
          *
          * For the moment we only use one abbrev table for all CUs.
          * It contains two DIEs, the first to describe the compilation
@@ -95,18 +101,21 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * The DIE layouts are as follows:
          *
-         * abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children
-         * DW_AT_language : ... DW_FORM_data1
-         * DW_AT_name : ....... DW_FORM_strp
-         * DW_AT_low_pc : ..... DW_FORM_address
-         * DW_AT_hi_pc : ...... DW_FORM_address
-         * DW_AT_stmt_list : .. DW_FORM_data4
+         * <ul>
+         * <li><code>abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children</code>
+         * <li><code>DW_AT_language : ... DW_FORM_data1</code>
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code>
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code>
+         * </ul>
          *
-         * abbrev_code == 2, tag == DW_TAG_subprogram, no_children
-         * DW_AT_name : ....... DW_FORM_strp
-         * DW_AT_low_pc : ..... DW_FORM_addr
-         * DW_AT_hi_pc : ...... DW_FORM_addr
-         * DW_AT_external : ... DW_FORM_flag
+         * <ul>
+         * <li><code>abbrev_code == 2, tag == DW_TAG_subprogram, no_children</code>
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_addr</code>
+         * <li><code>DW_AT_external : ... DW_FORM_flag</code>
+         * </ul>
          */
 
         pos = writeAbbrev1(null, pos);

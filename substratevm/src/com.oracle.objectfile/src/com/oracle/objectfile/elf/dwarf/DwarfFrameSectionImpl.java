@@ -101,14 +101,16 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
          * because we have to have at least one
          * the layout is
          *
-         * uint32 : length ............... length of remaining fields in this CIE
-         * uint32 : CIE_id ................ unique id for CIE == 0xffffff
-         * uint8 : version ................ == 1
-         * uint8[] : augmentation ......... == "" so always 1 byte
-         * ULEB : code_alignment_factor ... == 1 (could use 4 for Aarch64)
-         * ULEB : data_alignment_factor ... == -8
-         * byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32
-         * byte[] : initial_instructions .. includes pad to 8-byte boundary
+         * <ul>
+         * <li><code>uint32 : length ............... length of remaining fields in this CIE</code>
+         * <li><code>uint32 : CIE_id ................ unique id for CIE == 0xffffff</code>
+         * <li><code>uint8 : version ................ == 1</code>
+         * <li><code>uint8[] : augmentation ......... == "" so always 1 byte</code>
+         * <li><code>ULEB : code_alignment_factor ... == 1 (could use 4 for Aarch64)</code>
+         * <li><code>ULEB : data_alignment_factor ... == -8</code>
+         * <li><code>byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32</code>
+         * <li><code>byte[] : initial_instructions .. includes pad to 8-byte boundary</code>
+         * </ul>
          */
         int pos = p;
         if (buffer == null) {
@@ -191,11 +193,13 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
          * we only need a vanilla FDE header with default fields
          * the layout is
          *
-         * uint32 : length ........... length of remaining fields in this FDE
-         * uint32 : CIE_offset ........ always 0 i.e. identifies our only CIE header
-         * uint64 : initial_location .. i.e. method lo address
-         * uint64 : address_range ..... i.e. method hi - lo
-         * byte[] : instructions ...... includes pad to 8-byte boundary
+         * <ul>
+         * <li><code>uint32 : length ............ length of remaining fields in this FDE</code>
+         * <li><code>uint32 : CIE_offset ........ always 0 i.e. identifies our only CIE header</code>
+         * <li><code>uint64 : initial_location .. i.e. method lo address</code>
+         * <li><code>uint64 : address_range ..... i.e. method hi - lo</code>
+         * <li><code>byte[] : instructions ...... includes pad to 8-byte boundary</code>
+         * </ul>
          */
 
         int pos = p;

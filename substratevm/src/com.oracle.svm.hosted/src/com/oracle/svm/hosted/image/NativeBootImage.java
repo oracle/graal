@@ -975,9 +975,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     /**
-     * implementation of the DebugInfoProvider API interface
-     * that allows type, code and heap data info to be passed to
-     * an ObjectFile when generation of debug info is enabled.
+     * implementation of the DebugInfoProvider API interface that allows type, code and heap data
+     * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final NativeImageCodeCache codeCache;
@@ -1006,18 +1005,16 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     private static final String[] GRAAL_SRC_PACKAGE_PREFIXES = {
-            "org.graalvm",
-            "com.oracle.graal",
-            "com.oracle.objectfile",
-            "com.oracle.svm",
-            "com.oracle.truffle",
+                    "org.graalvm",
+                    "com.oracle.graal",
+                    "com.oracle.objectfile",
+                    "com.oracle.svm",
+                    "com.oracle.truffle",
     };
 
-
     /**
-     * implementation of the DebugCodeInfo API interface
-     * that allows code info to be passed to an ObjectFile
-     * when generation of debug info is enabled.
+     * implementation of the DebugCodeInfo API interface that allows code info to be passed to an
+     * ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugCodeInfo implements DebugCodeInfo {
         private final HostedMethod method;
@@ -1041,6 +1038,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
             return null;
         }
+
         @Override
         public Path filePath() {
             if (fullFilePath != null) {
@@ -1122,9 +1120,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     /**
-     * implementation of the DebugLineInfo API interface
-     * that allows line number info to be passed to an
-     * ObjectFile when generation of debug info is enabled.
+     * implementation of the DebugLineInfo API interface that allows line number info to be passed
+     * to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
@@ -1145,7 +1142,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         @Override
         public String fileName() {
-           if (fullFilePath != null) {
+            if (fullFilePath != null) {
                 return fullFilePath.getFileName().toString();
             }
             return null;
@@ -1194,10 +1191,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
             }
             /*
-             * HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so
-             * for consistency we need to do the path lookup
-             * relative to the wrapped class
+             * HostedType and AnalysisType punt calls to getSourceFilename to the wrapped class so
+             * for consistency we need to do the path lookup relative to the wrapped class
              */
             if (declaringClass instanceof HostedType) {
                 declaringClass = ((HostedType) declaringClass).getWrapped();
@@ -1211,9 +1206,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     /**
-     * implementation of the DebugFrameSizeChange API interface
-     * that allows stack frame size change info to be passed to
-     * an ObjectFile when generation of debug info is enabled.
+     * implementation of the DebugFrameSizeChange API interface that allows stack frame size change
+     * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugFrameSizeChange implements DebugFrameSizeChange {
         private int offset;

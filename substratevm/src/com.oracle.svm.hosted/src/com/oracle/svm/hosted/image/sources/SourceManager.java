@@ -36,20 +36,18 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 
 /**
- * A singleton class responsible for locating source files
- * for classes included in a native image and copying them
- * into the local sources.
+ * A singleton class responsible for locating source files for classes included in a native image
+ * and copying them into the local sources.
  */
 public class SourceManager {
     /**
-     * Find and cache a source file for a give Java class and
-     * return a Path to the file relative to the source.
-     * @param resolvedType the Java type whose source file
-     * should  be located and cached
+     * Find and cache a source file for a give Java class and return a Path to the file relative to
+     * the source.
+     * 
+     * @param resolvedType the Java type whose source file should be located and cached
      * @param clazz the Java class associated with the resolved type
-     * @return a path identifying the location of a successfully
-     * cached file for inclusion in the generated debug info or
-     * null if a source file cannot be found or cached.
+     * @return a path identifying the location of a successfully cached file for inclusion in the
+     *         generated debug info or null if a source file cannot be found or cached.
      */
     public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz) {
         /* short circuit if we have already seen this type */
@@ -60,13 +58,11 @@ public class SourceManager {
 
         String fileName = computeBaseName(resolvedType);
         /*
-         * null for the name means this class
-         * will not have a source so we skip on that
+         * null for the name means this class will not have a source so we skip on that
          */
         if (fileName != null) {
             /*
-             * we can only provide sources
-             * for known classes and interfaces
+             * we can only provide sources for known classes and interfaces
              */
             if (resolvedType.isInstanceClass() || resolvedType.isInterface()) {
                 String packageName = computePackageName(resolvedType);
@@ -83,19 +79,16 @@ public class SourceManager {
         }
         /* memoize the lookup */
         verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
-        
+
         return path;
     }
 
     /**
-     * Construct the base file name for a resolved
-     * Java class excluding path elements using either
-     * the source name embedded in the class file or
-     * the class name itself.
-     * @param resolvedType the resolved java type whose
-     * source file name is required
-     * @return the file name or null if it the class cannot
-     * be associated with a source file
+     * Construct the base file name for a resolved Java class excluding path elements using either
+     * the source name embedded in the class file or the class name itself.
+     * 
+     * @param resolvedType the resolved java type whose source file name is required
+     * @return the file name or null if it the class cannot be associated with a source file
      */
     private String computeBaseName(ResolvedJavaType resolvedType) {
         String fileName = resolvedType.getSourceFileName();
@@ -122,13 +115,12 @@ public class SourceManager {
         }
         return fileName;
     }
+
     /**
-     * Construct the package name for a Java type or
-     * the empty String if it has no package.
-     * @param javaType the Java type whose package
-     * name is required
-     * @return the package name or the empty String
-     * if it has no package
+     * Construct the package name for a Java type or the empty String if it has no package.
+     * 
+     * @param javaType the Java type whose package name is required
+     * @return the package name or the empty String if it has no package
      */
     private String computePackageName(ResolvedJavaType javaType) {
         String name = javaType.toClassName();
@@ -139,16 +131,18 @@ public class SourceManager {
             return "";
         }
     }
+
     /**
-     * Construct the prototype name for a Java source file
-     * which can be used to resolve and cache an actual source
-     * file.
+     * Construct the prototype name for a Java source file which can be used to resolve and cache an
+     * actual source file.
+     * 
      * @param fileName the base file name for the source file
      * @param packageName the name of the package for the associated Java class
-     * @param sourceCacheType the sourceCacheType of cache in which to lookup or cache this class's source file
+     * @param sourceCacheType the sourceCacheType of cache in which to lookup or cache this class's
+     *            source file
      * @param javaType the java sourceCacheType whose prototype name is required
-     * @param clazz the class associated with the sourceCacheType used to
-     * identify the module prefix for JDK classes
+     * @param clazz the class associated with the sourceCacheType used to identify the module prefix
+     *            for JDK classes
      * @return a protoype name for the source file
      */
     private Path computePrototypeName(String fileName, String packageName, SourceCacheType sourceCacheType, ResolvedJavaType javaType, Class<?> clazz) {
@@ -166,51 +160,48 @@ public class SourceManager {
             return Paths.get(prefix, packageName.split("\\.")).resolve(fileName);
         }
     }
+
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter JDK runtime class lookups.
+     * A whitelist of packages prefixes used to pre-filter JDK runtime class lookups.
      */
     public static final String[] JDK_SRC_PACKAGE_PREFIXES = {
-            "java.",
-            "jdk.",
-            "javax.",
-            "sun.",
-            "com.sun.",
-            "org.ietf.",
-            "org.jcp.",
-            "org.omg.",
-            "org.w3c.",
-            "org.xml",
+                    "java.",
+                    "jdk.",
+                    "javax.",
+                    "sun.",
+                    "com.sun.",
+                    "org.ietf.",
+                    "org.jcp.",
+                    "org.omg.",
+                    "org.w3c.",
+                    "org.xml",
     };
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter GraalVM class lookups.
+     * A whitelist of packages prefixes used to pre-filter GraalVM class lookups.
      */
     public static final String[] GRAALVM_SRC_PACKAGE_PREFIXES = {
-            "com.oracle.graal.",
-            "com.oracle.objectfile.",
-            "com.oracle.svm.",
-            "com.oracle.truffle.",
-            "org.graalvm.",
+                    "com.oracle.graal.",
+                    "com.oracle.objectfile.",
+                    "com.oracle.svm.",
+                    "com.oracle.truffle.",
+                    "org.graalvm.",
     };
 
     /**
-     * A whitelist of packages prefixes used to
-     * pre-filter app class lookups which
-     * includes just the empty string because
-     * any package will do.
+     * A whitelist of packages prefixes used to pre-filter app class lookups which includes just the
+     * empty string because any package will do.
      */
     private static final String[] APP_SRC_PACKAGE_PREFIXES = {
-            "",
+                    "",
     };
 
     /**
      * Check a package name against a whitelist of acceptable packages.
+     * 
      * @param packageName the package name of the class to be checked
-     * @param whitelist a list of prefixes one of which may form
-     * the initial prefix of the package name being checked
-     * @return true if the package name matches an entry in the
-     * whitelist otherwise false
+     * @param whitelist a list of prefixes one of which may form the initial prefix of the package
+     *            name being checked
+     * @return true if the package name matches an entry in the whitelist otherwise false
      */
     private boolean whiteListPackage(String packageName, String[] whitelist) {
         for (String prefix : whitelist) {
@@ -222,9 +213,9 @@ public class SourceManager {
     }
 
     /**
-     * Identify which type of source cache should be used
-     * to locate a given class's source code as determined
-     * by it's package name.
+     * Identify which type of source cache should be used to locate a given class's source code as
+     * determined by it's package name.
+     * 
      * @param packageName the package name of the class.
      * @return the corresponding source cache type
      */
@@ -237,34 +228,30 @@ public class SourceManager {
         }
         return SourceCacheType.APPLICATION;
     }
+
     /**
-     * A map from each of the top level root keys to a
-     * cache that knows how to handle lookup and caching
-     * of the associated type of source file.
+     * A map from each of the top level root keys to a cache that knows how to handle lookup and
+     * caching of the associated type of source file.
      */
     private static HashMap<SourceCacheType, SourceCache> caches = new HashMap<>();
 
     /**
-     * A map from a Java type to an associated source paths which
-     * is known to have an up to date entry in the relevant source
-     * file cache. This is used to memoize previous lookups.
+     * A map from a Java type to an associated source paths which is known to have an up to date
+     * entry in the relevant source file cache. This is used to memoize previous lookups.
      */
     private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
 
     /**
-     * An invalid path used as a marker to track failed lookups
-     * so we don't waste time looking up the source again.
-     * Note that all legitimate paths will end with a ".java"
-     * suffix.
+     * An invalid path used as a marker to track failed lookups so we don't waste time looking up
+     * the source again. Note that all legitimate paths will end with a ".java" suffix.
      */
     private static final Path INVALID_PATH = Paths.get("invalid");
 
     /**
-     * Retrieve the source cache used to locate and cache sources
-     * of a given type as determined by the supplied key, creating
-     * and initializing it if it does not already exist.
-     * @param type an enum identifying the type of Java sources
-     * cached by the returned cache.
+     * Retrieve the source cache used to locate and cache sources of a given type as determined by
+     * the supplied key, creating and initializing it if it does not already exist.
+     * 
+     * @param type an enum identifying the type of Java sources cached by the returned cache.
      * @return the desired source cache.
      */
     private SourceCache getOrCreateCache(SourceCacheType type) {
@@ -286,4 +273,3 @@ public class SourceManager {
         }
     }
 }
-

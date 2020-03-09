@@ -61,21 +61,27 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         /*
          * we need an entry for each compilation unit
          *
-         * uint32 length ............ in bytes (not counting these 4 bytes)
-         * uint16 dwarf_version ..... always 2
-         * uint32 info_offset ....... offset of compilation unit on debug_info
-         * uint8 address_size ....... always 8
-         * uint8 segment_desc_size .. ???
+         * <ul>
+         * <li><code>uint32 length ............ in bytes (not counting these 4 bytes)</code>
+         * <li><code>uint16 dwarf_version ..... always 2</code>
+         * <li><code>uint32 info_offset ....... offset of compilation unit on debug_info</code>
+         * <li><code>uint8 address_size ....... always 8</code>
+         * <li><code>uint8 segment_desc_size .. ???</code>
+         * </ul>
          *
          * i.e. 12 bytes followed by padding
          * aligning up to 2 * address size
          *
-         * uint8 pad[4]
+         * <ul>
+         * <li><code>uint8 pad[4]</code>
+         * </ul>
          *
          * followed by N + 1 times
          *
-         * uint64 lo ................ lo address of range
-         * uint64 length ............ number of bytes in range
+         * <ul>
+         * <li><code>uint64 lo ................ lo address of range</code>
+         * <li><code>uint64 length ............ number of bytes in range</code>
+         * </ul>
          *
          * where N is the number of ranges belonging to the compilation unit
          * and the last range contains two zeroes

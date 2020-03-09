@@ -33,8 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Tracks debug info associated with a primary method.
- * i.e. a top level compiled method
+ * Tracks debug info associated with a primary method. i.e. a top level compiled method
  */
 public class PrimaryEntry {
     /**
@@ -61,6 +60,7 @@ public class PrimaryEntry {
      * Size of compiled method frame.
      */
     private int frameSize;
+
     public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
@@ -77,8 +77,7 @@ public class PrimaryEntry {
         assert !subranges.contains(subrange);
         assert subrangeIndex.get(subrange) == null;
         /*
-         * we need to generate a file table entry
-         * for all ranges
+         * we need to generate a file table entry for all ranges
          */
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);

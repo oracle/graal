@@ -93,17 +93,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /*
      *  set column 1 uleb arg
      */
-    /*
-     * currently unused
     private static final byte DW_LNS_set_column = 5;
-    */
     /*
      *  flip is_stmt 0 args
      */
-    /*
-     * currently unused
     private static final byte DW_LNS_negate_stmt = 6;
-     */
     /*
      *  set end sequence and copy row 0 args
      */
@@ -123,7 +117,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /*
      * there is no extended opcode 0
      */
-    // private static final byte DW_LNE_undefined = 0;
+    @SuppressWarnings("unused")
+    private static final byte DW_LNE_undefined = 0;
     /*
      *  end sequence of addresses
      */
@@ -179,16 +174,18 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     public int headerSize() {
         /*
          * header size is standard 31 bytes
-         * uint32 total_length
-         * uint16 version
-         * uint32 prologue_length
-         * uint8 min_insn_length
-         * uint8 default_is_stmt
-         * int8 line_base
-         * uint8 line_range
-         * uint8 opcode_base
-         * uint8 li_opcode_base
-         * uint8[opcode_base-1] standard_opcode_lengths
+         * <ul>
+         * <li><code>uint32 total_length</code>
+         * <li><code>uint16 version</code>
+         * <li><code>uint32 prologue_length</code>
+         * <li><code>uint8 min_insn_length</code>
+         * <li><code>uint8 default_is_stmt</code>
+         * <li><code>int8 line_base</code>
+         * <li><code>uint8 line_range</code>
+         * <li><code>uint8 opcode_base</code>
+         * <li><code>uint8 li_opcode_base</code>
+         * <li><code>uint8[opcode_base-1] standard_opcode_lengths</code>
+         * </ul>
          */
 
         return DW_LN_HEADER_SIZE;
@@ -675,8 +672,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    /*
-     * we may need these later
+    @SuppressWarnings("unused")
     public int putSetColumn(long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_column;
         int pos = p;
@@ -689,6 +685,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int putNegateStmt(byte[] buffer, int p) {
         byte opcode = DW_LNS_negate_stmt;
         int pos = p;
@@ -698,7 +695,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             return putByte(opcode, buffer, pos);
         }
     }
-    */
 
     public int putSetBasicBlock(byte[] buffer, int p) {
         byte opcode = DW_LNS_set_basic_block;

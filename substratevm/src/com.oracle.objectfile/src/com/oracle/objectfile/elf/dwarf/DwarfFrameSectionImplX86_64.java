@@ -54,13 +54,17 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
         /*
          * rsp points at the word containing the saved rip
          * so the frame base (cfa) is at rsp + 8 (why not - ???)
-         * def_cfa r7 (sp) offset 8
+         * <ul>
+         * <li><code>def_cfa r7 (sp) offset 8</code>
+         * </ul>
          */
         pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
         /*
-         * and rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
+         * rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa
          * (why not -1 ???)
-         * offset r16 (rip) cfa - 8
+         * <ul>
+         * <li><code>offset r16 (rip) cfa - 8</code>
+         * </li>
          */
         pos = writeOffset(DW_CFA_RIP_IDX, 1, buffer, pos);
         return pos;
