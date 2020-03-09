@@ -298,6 +298,7 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     private void ensureLibraryInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
         /*
          * This is needed to enforce initialization order. This way the library class is always
          * initialized before any of the export subclasses. So this method must be invoked before
