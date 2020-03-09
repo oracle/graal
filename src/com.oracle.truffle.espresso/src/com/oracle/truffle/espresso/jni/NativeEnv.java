@@ -124,15 +124,11 @@ public abstract class NativeEnv {
     }
 
     public static long interopAsPointer(@Pointer TruffleObject interopPtr) {
-        long result = 0L;
-        if (InteropLibrary.getFactory().getUncached(interopPtr).isPointer(interopPtr)) {
-            try {
-                result = InteropLibrary.getFactory().getUncached(interopPtr).asPointer(interopPtr);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+        try {
+            return InteropLibrary.getFactory().getUncached().asPointer(interopPtr);
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
         }
-        return result;
     }
 
     public static String interopPointerToString(@Pointer TruffleObject interopPtr) {
