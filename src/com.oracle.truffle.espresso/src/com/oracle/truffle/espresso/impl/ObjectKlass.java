@@ -937,7 +937,6 @@ public final class ObjectKlass extends Klass {
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
         redefineCache = new RedefinitionCache(pool, linkedKlass);
         oldVersion.assumption.invalidate();
-        redefineCache.assumption.invalidate();
     }
 
     private static final class RedefinitionCache {
