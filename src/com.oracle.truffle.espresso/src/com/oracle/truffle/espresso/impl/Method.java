@@ -126,8 +126,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
-    private ParserMethod redefinedMethod;
-    private ParserKlass redefinedKlass;
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -146,27 +144,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public RuntimeConstantPool getRuntimeConstantPool() {
-        MethodVersion cache = methodVersion;
-        if (!cache.getAssumption().isValid()) {
-            methodVersion = updateMethodVersion();
-        }
-        return methodVersion.pool;
+        return getMethodVersion().pool;
     }
 
     private LinkedMethod getLinkedMethod() {
-        MethodVersion cache = methodVersion;
-        if (!cache.getAssumption().isValid()) {
-            methodVersion = updateMethodVersion();
-        }
-        return methodVersion.linkedMethod;
+        return getMethodVersion().linkedMethod;
     }
 
     public CodeAttribute getCodeAttribute() {
-        MethodVersion cache = methodVersion;
-        if (!cache.getAssumption().isValid()) {
-            methodVersion = updateMethodVersion();
-        }
-        return methodVersion.codeAttribute;
+        return getMethodVersion().codeAttribute;
     }
 
     @Override
@@ -1051,24 +1037,21 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public void redefine(ParserMethod newMethod, ParserKlass newKlass) {
-        redefinedMethod = newMethod;
-        redefinedKlass = newKlass;
-        callTarget = null;
-        methodVersion.getAssumption().invalidate();
-    }
-
-    private MethodVersion updateMethodVersion() {
-        LinkedMethod newLinkedMethod = new LinkedMethod(redefinedMethod);
-        RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), redefinedKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
-        return new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) redefinedMethod.getAttribute(Name.Code));
+        // invalidate old version
+        // install the new method version immediately
+        LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
+        RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        MethodVersion oldVersion = methodVersion;
+        methodVersion = new MethodVersion(runtimePool, new LinkedMethod(newMethod), (CodeAttribute) newMethod.getAttribute(Name.Code));
+        oldVersion.getAssumption().invalidate();
     }
 
     public MethodVersion getMethodVersion() {
-        if (!methodVersion.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            methodVersion = updateMethodVersion();
+        MethodVersion version = methodVersion;
+        while (!version.getAssumption().isValid()) {
+            version = methodVersion;
         }
-        return methodVersion;
+        return version;
     }
 
     public final class MethodVersion {

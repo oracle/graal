@@ -114,7 +114,6 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private int computedModifiers = -1;
 
-    private ParserKlass redefinedParserKlass;
     @CompilationFinal volatile RedefinitionCache redefineCache;
 
     public static final int LOADED = 0;
@@ -395,12 +394,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public RuntimeConstantPool getConstantPool() {
-        RedefinitionCache cache = redefineCache;
-        if (!cache.assumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            redefineCache = updateClass();
-        }
-        return redefineCache.pool;
+        return getRedefineCache().pool;
     }
 
     @Override
@@ -452,12 +446,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public LinkedKlass getLinkedKlass() {
-        RedefinitionCache cache = redefineCache;
-        if (!cache.assumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            redefineCache = updateClass();
-        }
-        return redefineCache.linkedKlass;
+        return getRedefineCache().linkedKlass;
     }
 
     public Attribute getRuntimeVisibleAnnotations() {
@@ -928,22 +917,27 @@ public final class ObjectKlass extends Klass {
         return attribute != null ? attribute.getDebugExtension() : null;
     }
 
-    public void redefineClass(ParserKlass parserKlass) {
-        redefinedParserKlass = parserKlass;
-        redefineCache.assumption.invalidate();
+    public RedefinitionCache getRedefineCache() {
+        RedefinitionCache cache = redefineCache;
+        while (!cache.assumption.isValid()) {
+            cache = redefineCache;
+        }
+        return cache;
     }
 
-    private synchronized RedefinitionCache updateClass() {
-        StaticObject definingClassLoader = redefineCache.pool.getClassLoader();
-        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), redefinedParserKlass.getConstantPool(), definingClassLoader);
+    public void redefineClass(ParserKlass parserKlass) {
+        RedefinitionCache oldVersion = redefineCache;
+        StaticObject definingClassLoader = oldVersion.pool.getClassLoader();
+        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), definingClassLoader);
         ObjectKlass[] superInterfaces = getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
         for (int i = 0; i < superInterfaces.length; i++) {
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
-        LinkedKlass linkedKlass = new LinkedKlass(redefinedParserKlass, getSuperKlass().getLinkedKlass(), interfaces);
-        redefinedParserKlass = null;
-        return new RedefinitionCache(pool, linkedKlass);
+        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
+        redefineCache = new RedefinitionCache(pool, linkedKlass);
+        oldVersion.assumption.invalidate();
+        redefineCache.assumption.invalidate();
     }
 
     private static final class RedefinitionCache {
