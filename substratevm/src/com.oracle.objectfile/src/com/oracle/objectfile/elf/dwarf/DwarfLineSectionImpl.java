@@ -669,6 +669,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    /*
+     * we may need these later
     public int putSetColumn(long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_column;
         int pos = p;
@@ -690,6 +692,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             return putByte(opcode, buffer, pos);
         }
     }
+    */
 
     public int putSetBasicBlock(byte[] buffer, int p) {
         byte opcode = DW_LNS_set_basic_block;

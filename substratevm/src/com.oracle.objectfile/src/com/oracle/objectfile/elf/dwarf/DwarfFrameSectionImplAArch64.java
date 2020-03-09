@@ -31,7 +31,7 @@ package com.oracle.objectfile.elf.dwarf;
  * that knows details of AArch64 registers and frame layout.
  */
 public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
-    public static final int DW_CFA_FP_IDX = 29;
+    // public static final int DW_CFA_FP_IDX = 29;
     public static final int DW_CFA_LR_IDX = 30;
     public static final int DW_CFA_SP_IDX = 31;
     public static final int DW_CFA_PC_IDX = 32;

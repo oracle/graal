@@ -280,6 +280,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    /*
+     * we may need this later
     public int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putLong(value, scratch, 0);
@@ -287,6 +289,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return putLong(value, buffer, pos);
         }
     }
+    */
 
     public int writeAttrData4(int value, byte[] buffer, int pos) {
         if (buffer == null) {

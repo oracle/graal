@@ -29,7 +29,6 @@ package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StringTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -227,12 +226,8 @@ public class DwarfSections {
     private StringTable stringTable = new StringTable();
 
     /**
-     * list detailing all dirs in which files are found to reside
+     * index of all dirs in which files are found to reside
      * either as part of substrate/compiler or user code.
-     */
-    private LinkedList<DirEntry> dirs = new LinkedList<>();
-    /**
-     * index of already seen dirs.
      */
     private Map<Path, DirEntry> dirsIndex = new HashMap<>();
 
@@ -274,15 +269,7 @@ public class DwarfSections {
     private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
 
     /**
-     * list of files which contain primary ranges.
-     */
-    private LinkedList<FileEntry> primaryFiles = new LinkedList<>();
-    /**
-     * List of files which contain primary or secondary ranges.
-     */
-    private LinkedList<FileEntry> files = new LinkedList<>();
-    /**
-     * index of already seen files.
+     * index of files which contain primary or secondary ranges.
      */
     private Map<Path, FileEntry> filesIndex = new HashMap<>();
 
@@ -416,17 +403,15 @@ public class DwarfSections {
         if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(filePath);
             fileEntry = new FileEntry(fileName, dirEntry);
-            files.add(fileEntry);
-            filesIndex.put(fileAsPath, fileEntry);
             /*
-             * if this is a primary entry then add it to the primary list
+             * index the file entry by file path
              */
-            if (range.isPrimary()) {
-                primaryFiles.add(fileEntry);
-            } else {
+            filesIndex.put(fileAsPath, fileEntry);
+            if (!range.isPrimary()) {
+                /* check we have a file for the corresponding primary range */
                 Range primaryRange = range.getPrimary();
-                FileEntry primaryEntry = filesIndex.get(primaryRange.getFileAsPath());
-                assert primaryEntry != null;
+                FileEntry primaryFileEntry = filesIndex.get(primaryRange.getFileAsPath());
+                assert primaryFileEntry != null;
             }
         }
         return fileEntry;
@@ -435,7 +420,7 @@ public class DwarfSections {
     public void addRange(Range primaryRange, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
-        PrimaryEntry entry = classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
+        classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
     }
 
     public void addSubRange(Range primaryRange, Range subrange) {
@@ -443,14 +428,14 @@ public class DwarfSections {
         assert !subrange.isPrimary();
         String className = primaryRange.getClassName();
         ClassEntry classEntry = primaryClassesIndex.get(className);
-        FileEntry subrangeEntry = ensureFileEntry(subrange);
+        FileEntry subrangeFileEntry = ensureFileEntry(subrange);
         /*
          * the primary range should already have been seen
          * and associated with a primary class entry
          */
         assert classEntry.primaryIndexFor(primaryRange) != null;
-        if (subrangeEntry != null) {
-            classEntry.addSubRange(subrange, subrangeEntry);
+        if (subrangeFileEntry != null) {
+            classEntry.addSubRange(subrange, subrangeFileEntry);
         }
     }
 
@@ -462,7 +447,6 @@ public class DwarfSections {
         if (dirEntry == null) {
             dirEntry = new DirEntry(filePath);
             dirsIndex.put(filePath, dirEntry);
-            dirs.add(dirEntry);
         }
         return dirEntry;
     }

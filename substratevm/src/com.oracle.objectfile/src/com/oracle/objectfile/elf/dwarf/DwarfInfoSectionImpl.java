@@ -209,6 +209,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    /*
+     * we may need this later
     public int writeAttrString(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
@@ -217,6 +219,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             return putAsciiStringBytes(value, buffer, pos);
         }
     }
+    */
 
     @Override
     protected void debug(String format, Object... args) {
