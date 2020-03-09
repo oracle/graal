@@ -344,8 +344,9 @@ public final class ClassRedefinition {
                     return false;
                 }
             }
+            return true;
         }
-        return true;
+        return false;
     }
 
     private static int redefineChangedMethodBodies(ParserKlass parserKlass, ObjectKlass oldKlass, DetectedChange change) {
