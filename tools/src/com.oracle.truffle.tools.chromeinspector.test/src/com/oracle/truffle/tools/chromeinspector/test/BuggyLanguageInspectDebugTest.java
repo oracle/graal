@@ -178,8 +178,18 @@ public class BuggyLanguageInspectDebugTest {
     @Test
     public void testBuggySourceLocation() throws Exception {
         testBuggyCalls(new TestDebugBuggyLanguage() {
+            private int numCalls = 0;
+
             @Override
             protected SourceSection findSourceLocation(ProxyLanguage.LanguageContext context, Object value) {
+                // Functions provide the location as description,
+                // thus we need to prevent from firing an error from the description.
+                // We ignore every first and second request, which comes from description
+                // and an assert.
+                numCalls++;
+                if ((numCalls % 3) != 0) {
+                    return null;
+                }
                 if (value instanceof TruffleObject) {
                     try {
                         int errNum = (int) InteropLibrary.getFactory().getUncached().readMember(value, "A");
