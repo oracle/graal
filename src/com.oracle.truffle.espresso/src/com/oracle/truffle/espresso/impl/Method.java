@@ -76,7 +76,6 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
-import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -504,7 +503,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (handle == 0) { // not found
             return null;
         }
-        TruffleObject symbol = getVM().getFunction(NativeEnv.RawPointer.create(handle));
+        TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
         return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
     }
