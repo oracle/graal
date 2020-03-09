@@ -54,16 +54,8 @@ public final class ExternalLibrary {
         return ExternalLibrary.createFromName(name, isNative, true);
     }
 
-    public static ExternalLibrary externalFromPath(Path path, boolean isNative) {
-        return ExternalLibrary.createFromPath(path, isNative, false);
-    }
-
     public static ExternalLibrary internalFromPath(Path path, boolean isNative) {
         return ExternalLibrary.createFromPath(path, isNative, true);
-    }
-
-    public static ExternalLibrary externalFromFile(TruffleFile file, boolean isNative) {
-        return ExternalLibrary.createFromFile(file, isNative, false);
     }
 
     public static ExternalLibrary createFromName(String name, boolean isNative, boolean isInternal) {

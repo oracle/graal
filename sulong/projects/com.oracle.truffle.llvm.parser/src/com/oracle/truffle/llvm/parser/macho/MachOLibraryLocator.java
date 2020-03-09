@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ public final class MachOLibraryLocator extends LibraryLocator {
         this.rPaths = machoPaths;
     }
 
-    private static final String RPATH_PATTERN = "@rpath";
+    private static final String RPATH_PATTERN = "@rpath/";
 
     @Override
     public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
@@ -67,18 +67,22 @@ public final class MachOLibraryLocator extends LibraryLocator {
             return path;
         }
 
-        if (!rPaths.isEmpty() && lib.startsWith(RPATH_PATTERN)) {
+        if (lib.startsWith(RPATH_PATTERN)) {
             String subLib = lib.substring(RPATH_PATTERN.length());
-            // search file local paths
-            traceSearchPath(context, rPaths, reason);
-            for (String p : rPaths) {
-                Path absPath = Paths.get(p, subLib);
-                traceTry(context, absPath);
-                TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
-                if (file.exists()) {
-                    return file;
+            if (!rPaths.isEmpty()) {
+                // search file local paths
+                traceSearchPath(context, rPaths, reason);
+                for (String p : rPaths) {
+                    Path absPath = Paths.get(p, subLib);
+                    traceTry(context, absPath);
+                    TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
+                    if (file.exists()) {
+                        return file;
+                    }
                 }
             }
+            // search global without @rpath
+            return DefaultLibraryLocator.locateGlobal(context, subLib);
         }
         return null;
     }
