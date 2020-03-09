@@ -304,7 +304,7 @@ public abstract class NativeImageCodeCache {
         return new Path[]{tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix())};
     }
 
-    public abstract List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile);
+    public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal);
 
     public Map<HostedMethod, CompilationResult> getCompilations() {
         return compilations;
