@@ -530,7 +530,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     callNodeOffset++;
 
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
-                    stackPointer -= args.length;
+                    stackPointer -= numArgs;
 
                     trace("direct call to function %s (%d args)", function, args.length);
                     Object result = callNode.call(args);
@@ -612,7 +612,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     int numArgs = module().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
-                    stackPointer -= args.length;
+                    stackPointer -= numArgs;
 
                     trace("indirect call to function %s (%d args)", function, args.length);
                     Object result = callNode.execute(function, args);
