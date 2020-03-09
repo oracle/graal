@@ -2739,7 +2739,11 @@ public abstract class TruffleLanguage<C> {
         void dispose() {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
-                getSpi().disposeContext(c);
+                try {
+                    getSpi().disposeContext(c);
+                } finally {
+                    context = null;
+                }
             } else {
                 throw new IllegalStateException("Disposing while context has not been set yet.");
             }

@@ -1101,6 +1101,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     cancelling = false;
                     if (success) {
                         closed = true;
+                        if (contextImpls != null) {
+                            for (int i = 0; i < contextImpls.length; i++) {
+                                contextImpls[i] = null;
+                            }
+                        }
                     }
                     // triggers a thread changed event which requires slow path enter
                     setCachedThreadInfo(PolyglotThreadInfo.NULL);

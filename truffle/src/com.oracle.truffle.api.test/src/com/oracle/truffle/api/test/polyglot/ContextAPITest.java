@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -742,6 +743,46 @@ public class ContextAPITest {
         assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
         context.leave();
         context.close();
+    }
+
+    @Test
+    public void testLanguageContextFreedAfterClose() {
+        Context context = Context.create();
+        testLanguageContextFreedAfterCloseImpl(context);
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testLanguageContextFreedAfterCloseMultipleContexts() {
+        Engine eng = Engine.create();
+        Context context1 = Context.newBuilder().engine(eng).build();
+        try (Context context2 = Context.newBuilder().engine(eng).build()) {
+            testLanguageContextFreedAfterCloseImpl(context1);
+        }
+    }
+
+    private static void testLanguageContextFreedAfterCloseImpl(Context context) {
+        AtomicReference<ProxyLanguage.LanguageContext> currentLangContext = new AtomicReference<>();
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                currentLangContext.set(ProxyLanguage.getCurrentContext());
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        lookupContextReference(ProxyLanguage.class).get();
+                        return 42;
+                    }
+                });
+            }
+        });
+        context.initialize(ProxyLanguage.ID);
+        Value res = context.eval(ProxyLanguage.ID, "");
+        assertEquals(42, res.asInt());
+        context.close();
+        assertNotNull(currentLangContext.get());
+        Reference<?> langContextRef = new WeakReference<>(currentLangContext.getAndSet(null));
+        GCUtils.assertGc("Language context should be freed when polyglot Context is closed.", langContextRef);
     }
 
 }
