@@ -2518,7 +2518,7 @@ def graalvm_show(args):
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     args = parser.parse_args(args)
 
-    graalvm_dist = get_final_graalvm_distribution()
+    graalvm_dist = get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution()
     print("GraalVM distribution: {}".format(graalvm_dist))
     print("Version: {}".format(_suite.release_version()))
     print("Config name: {}".format(graalvm_dist.vm_config_name))
@@ -2539,7 +2539,7 @@ def graalvm_show(args):
         print("No launcher")
 
     libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
-    if libraries:
+    if libraries and not args.stage1:
         print("Libraries:")
         for library in libraries:
             suffix = ''
@@ -2553,7 +2553,7 @@ def graalvm_show(args):
         print("No library")
 
     installables = _get_dists(GraalVmInstallableComponent)
-    if installables:
+    if installables and not args.stage1:
         print("Installables:")
         for i in installables:
             print(" - {}".format(i))
@@ -2561,7 +2561,7 @@ def graalvm_show(args):
         print("No installable")
 
     standalones = _get_dists(GraalVmStandaloneComponent)
-    if standalones:
+    if standalones and not args.stage1:
         print("Standalones:")
         for s in standalones:
             print(" - {}".format(s))
