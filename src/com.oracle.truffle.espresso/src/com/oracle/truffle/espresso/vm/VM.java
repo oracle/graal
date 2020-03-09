@@ -238,7 +238,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     public @Pointer TruffleObject getJavaVM() {
         try {
-            @Pointer TruffleObject ptr = (TruffleObject) UNCACHED.execute(getJavaVM);
+            @Pointer
+            TruffleObject ptr = (TruffleObject) UNCACHED.execute(getJavaVM);
             assert UNCACHED.isPointer(ptr);
             return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -692,7 +693,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr, @Host(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
-                                                           @Host(ProtectionDomain.class) StaticObject pd) {
+                    @Host(ProtectionDomain.class) StaticObject pd) {
         String name = interopPointerToString(namePtr);
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
@@ -750,7 +751,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         String name = interopPointerToString(namePtr);
         VMLogger.fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
-            @Pointer TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
+            @Pointer
+            TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);

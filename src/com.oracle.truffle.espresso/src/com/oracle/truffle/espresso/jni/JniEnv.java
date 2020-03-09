@@ -2436,7 +2436,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         int length = GetArrayLength(array);
 
         ByteBuffer region = allocateDirect(length, componentKind);
-        @Pointer TruffleObject addressPtr = byteBufferPointer(region);
+        @Pointer
+        TruffleObject addressPtr = byteBufferPointer(region);
         // @formatter:off
         switch (componentKind) {
             case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr);  break;
@@ -2558,9 +2559,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * "[Ljava/lang/Object;"
      * </pre>
      *
-     * @param namePtr a fully-qualified class name (that is, a package name, delimited by "/", followed
-     *            by the class name). If the name begins with "[" (the array signature character),
-     *            it returns an array class. The string is encoded in modified UTF-8.
+     * @param namePtr a fully-qualified class name (that is, a package name, delimited by "/",
+     *            followed by the class name). If the name begins with "[" (the array signature
+     *            character), it returns an array class. The string is encoded in modified UTF-8.
      * @return Returns a class object from a fully-qualified name, or NULL if the class cannot be
      *         found.
      * @throws ClassFormatError if the class data does not specify a valid class.
