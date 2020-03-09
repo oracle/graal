@@ -218,6 +218,11 @@ def registered_graalvm_components(stage1=False):
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
 
+        # The polyglot library must be the last component that we register, since it depends on the other ones.
+        # To avoid registering it twice (once when `stage1 == False` and once when `stage1 == True`), we check that
+        # `libpoly` is not part of `registered_short_names`.
+        # Even when the polyglot library is already registered, we still need to add its dependencies to the current
+        # GraalVM (see call to `add_dependencies()`.
         registered_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
         if _with_polyglot_lib_project() and libpoly_has_entrypoints:
             if 'libpoly' in registered_short_names:
