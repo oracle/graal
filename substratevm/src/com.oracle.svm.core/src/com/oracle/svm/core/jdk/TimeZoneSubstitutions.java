@@ -29,6 +29,7 @@ import static java.util.stream.Collectors.toMap;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -82,7 +83,7 @@ final class TimeZoneFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<>(false);
 
         @Option(help = "The time zones, in addition to the default zone of the host, that will be pre-initialized in the image.")//
-        public static final HostedOptionKey<String[]> IncludeTimeZones = new HostedOptionKey<>(new String[]{"GMT", "UTC", defaultZone.getID()});
+        public static final HostedOptionKey<String> IncludeTimeZones = new HostedOptionKey<>("GMT,UTC," + defaultZone.getID());
     }
 
     @Override
@@ -91,11 +92,14 @@ final class TimeZoneFeature implements Feature {
         if (Options.IncludeAllTimeZones.getValue()) {
             supportedZoneIDs = TimeZone.getAvailableIDs();
         } else {
-            supportedZoneIDs = Options.IncludeTimeZones.getValue();
+            supportedZoneIDs = Options.IncludeTimeZones.getValue().split(",");
         }
         Map<String, TimeZone> supportedZones = Arrays.stream(supportedZoneIDs)
-                        .map(TimeZone::getTimeZone)
-                        .collect(toMap(TimeZone::getID, tz -> tz, (tz1, tz2) -> tz1));
+                        .collect(toMap(Function.identity(), TimeZone::getTimeZone, (tz1, tz2) -> tz1));
+
+        // In al cases put "GMT", "UTC" and default. The JDK returns the GMT time zone for missing
+        // time zone ids
+        Arrays.asList("GMT", "UTC", Options.defaultZone.getID()).forEach(id -> supportedZones.putIfAbsent(id, TimeZone.getTimeZone(id)));
         ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(supportedZones, Options.defaultZone));
     }
 }
