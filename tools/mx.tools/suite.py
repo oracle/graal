@@ -86,7 +86,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.agentscript",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -115,7 +115,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.profiler",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -144,7 +144,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.coverage",
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -300,7 +300,7 @@ suite = {
                 "com.oracle.truffle.tools.agentscript.test",
             ],
             "distDependencies" : [
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "AGENTSCRIPT",
             ],
             "description" : "Tests for the script driven tracing and instrumentation Agent.",
@@ -335,7 +335,7 @@ suite = {
                 "com.oracle.truffle.tools.profiler.test",
             ],
             "distDependencies" : [
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "TRUFFLE_PROFILER",
             ],
             "description" : "Tests for the truffle profiler.",
@@ -370,7 +370,7 @@ suite = {
                 "com.oracle.truffle.tools.coverage.test",
             ],
             "distDependencies" : [
-                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "truffle:TRUFFLE_TEST",
                 "TRUFFLE_COVERAGE",
             ],
             "description" : "Tests for the truffle coverage tool.",
