@@ -44,7 +44,7 @@ public interface StateIndex<S> {
 
     int getNumberOfStates();
 
-    short getId(S state);
+    int getId(S state);
 
     S getState(int id);
 

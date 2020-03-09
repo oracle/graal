@@ -335,6 +335,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private final Source source;
         private final String code;
         private int current;
+        private int argumentIndex = 0;
 
         Parser(InstrumentationTestLanguage lang, Source source) {
             this.lang = lang;
@@ -365,7 +366,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 throw new LanguageError(String.format("Illegal tag \"%s\".", tag));
             }
 
-            int argumentIndex = 0;
             int numberOfIdents = 0;
             if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") || tag.equals("SLEEP") ||
                             tag.equals("SPAWN") | tag.equals("CATCH")) {

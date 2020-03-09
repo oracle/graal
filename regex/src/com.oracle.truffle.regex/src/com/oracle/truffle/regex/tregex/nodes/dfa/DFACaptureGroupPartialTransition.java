@@ -89,7 +89,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
      * This is OK since the dimensions of {@link DFACaptureGroupTrackingData#results} are capped by
      * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfNFAStatesInOneDFATransition}
      * (1st dimension) and
-     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfCaptureGroups}
+     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfCaptureGroupsForDFA}
      * {@code * 2} (2nd dimension, times two because we need two array slots per capture group, one
      * for the beginning and one for the end). <br>
      * Although we treat {@link DFACaptureGroupTrackingData#results} as a 2D-array here, it is

@@ -69,8 +69,7 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
     }
 
     @Override
-    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
-        assert !hasQuantifier();
+    public boolean equalsSemantic(RegexASTNode obj) {
         return this == obj || (obj instanceof RegexASTRootNode && ((RegexASTRootNode) obj).getGroup().equalsSemantic(getGroup()));
     }
 

@@ -6,44 +6,24 @@ labels: bug
 assignees: ''
 
 ---
-**Describe GraalVM and your environment :**
- - GraalVM version or commit id if built from source: **[e.g. 19.3]**
- - CE or EE: **[e.g.: CE]**
- - JDK version: **[e.g.: JDK8]**
- - OS and OS Version: **[e.g.: macOS Catalina]**
- - Architecture: **[e.g.: amd64]**
- - The output of `java -Xinternalversion`: 
-```
- **PASTE OUTPUT HERE**
-```
-
-**Have you verified this issue still happens when using the latest snapshot?**
-You can find snapshot builds here: https://github.com/graalvm/graalvm-ce-dev-builds/releases
 
 **Describe the issue**
-A clear and concise description of the issue.
-
-**Code snippet or code repository that reproduces the issue**
-```
-**PASTE CODE/REPO HERE**
-```
+A clear and concise description of the issue. We recommend using the [latest snapshot builds](https://github.com/graalvm/graalvm-ce-dev-builds/releases) to replicate the issue as  bugs are constantly being fixed in the master branch
 
 **Steps to reproduce the issue**
 Please include both build steps as well as run steps
-1. Step one [e.g.: git clone --depth 1 https://git.myrepo.com/projectone ]
-2. Step two [e.g.: mvn clean package]
+1. **[e.g.: git clone --depth 1 https://git.myrepo.com/projectone ]**
+2. **[e.g.: mvn clean package]**
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Describe GraalVM and your environment:**
+ - GraalVM version (latest snapshot builds can be found [here](https://github.com/graalvm/graalvm-ce-dev-builds/releases)), or commit id if built from source: **[e.g. EE 19.3, CE 20.0, CE 20.1.0-dev-20200304_0848]**
+ - JDK major version: **[e.g.:8]**
+ - OS: **[e.g. macOS Catalina]**
+ - Architecture: **[e.g.: AMD64]**
 
 
-**Additional context**
-Add any other context about the problem here. Specially important are stack traces or log output. Feel free to link to gists or to screenshots if necessary
-<details><summary>Details</summary>
-
+**More details**
+Add any other information about the problem here. Especially important are stack traces or log output. Feel free to link to gists or to screenshots if necessary.
 ```
     PASTE YOUR LOG/STACK TRACE HERE
 ```
-</details>
-
-

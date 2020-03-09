@@ -47,6 +47,8 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
 public abstract class LocationImpl extends Location {
@@ -225,6 +227,7 @@ public abstract class LocationImpl extends Location {
      * @deprecated equivalent to {@link java.util.Objects#equals(Object, Object)}
      */
     @Deprecated
+    @TruffleBoundary // equals is blacklisted
     public static boolean valueEquals(Object val1, Object val2) {
         return val1 == val2 || (val1 != null && val1.equals(val2));
     }

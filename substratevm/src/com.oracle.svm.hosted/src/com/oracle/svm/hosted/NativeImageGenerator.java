@@ -284,6 +284,7 @@ public class NativeImageGenerator {
     private final HostedOptionProvider optionProvider;
 
     private ForkJoinPool imageBuildPool;
+    private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
     private Inflation bigbang;
@@ -439,10 +440,11 @@ public class NativeImageGenerator {
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
             this.imageBuildPool = createForkJoinPool(maxConcurrentThreads);
             imageBuildPool.submit(() -> {
-                try {
-                    ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
-                    ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
 
+                ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
+                ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
+                watchdog = new DeadlockWatchdog();
+                try {
                     doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
                 } catch (Throwable t) {
                     try {
@@ -451,6 +453,8 @@ public class NativeImageGenerator {
                         t.addSuppressed(ecleanup);
                     }
                     throw t;
+                } finally {
+                    watchdog.close();
                 }
                 cleanup();
             }).get();
@@ -565,30 +569,30 @@ public class NativeImageGenerator {
                     throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
                 }
 
-                ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
-                heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
-
-                BeforeCompilationAccessImpl config = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
-                featureHandler.forEachFeature(feature -> feature.beforeCompilation(config));
-
-                runtime.updateLazyState(hMetaAccess);
-
                 bigbang.getUnsupportedFeatures().report(bigbang);
+
+                recordMethodsWithStackValues();
+                recordRestrictHeapAccessCallees(aUniverse.getMethods());
+
+                /*
+                 * After this point, all TypeFlow (and therefore also TypeState) objects are
+                 * unreachable and can be garbage collected. This is important to keep the overall
+                 * memory footprint low. However, this also means we no longer have complete call
+                 * chain information. Only the summarized information stored in the
+                 * StaticAnalysisResult objects is available after this point.
+                 */
+                bigbang.cleanupAfterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
 
-            recordMethodsWithStackValues();
-            recordRestrictHeapAccessCallees(aUniverse.getMethods());
+            ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
+            heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
 
-            /*
-             * After this point, all TypeFlow (and therefore also TypeState) objects are unreachable
-             * and can be garbage collected. This is important to keep the overall memory footprint
-             * low. However, this also means we no longer have complete call chain information. Only
-             * the summarized information stored in the StaticAnalysisResult objects is available
-             * after this point.
-             */
-            bigbang.cleanupAfterAnalysis();
+            BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
+            featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
+
+            runtime.updateLazyState(hMetaAccess);
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
@@ -620,7 +624,6 @@ public class NativeImageGenerator {
                         // Finish building the model of the native image heap.
                         heap.addTrailingObjects();
 
-                        ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
                         heapLayouter.initialize();
                         heapLayouter.assignPartitionRelativeOffsets(heap);
 
@@ -856,7 +859,7 @@ public class NativeImageGenerator {
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializationSupport, debug);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
-                bigbang = createBigBang(options, target, aUniverse, nativeLibraries, analysisExecutor, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
+                bigbang = createBigBang(options, target, aUniverse, nativeLibraries, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
                                 annotationSubstitutions, aForeignCalls, classInitializationSupport);
 
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
@@ -994,6 +997,7 @@ public class NativeImageGenerator {
     }
 
     public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, NativeLibraries nativeLibraries, ForkJoinPool analysisExecutor,
+                    Runnable heartbeatCallback,
                     AnalysisMetaAccess aMetaAccess, AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes, SnippetReflectionProvider aSnippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls, ClassInitializationSupport classInitializationSupport) {
         assert aUniverse != null : "Analysis universe must be initialized.";
@@ -1013,7 +1017,7 @@ public class NativeImageGenerator {
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
                         aSnippetReflection, aWordTypes, platformConfigurationProvider);
 
-        return new Inflation(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor);
+        return new Inflation(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback);
     }
 
     @SuppressWarnings("try")

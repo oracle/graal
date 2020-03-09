@@ -1,5 +1,8 @@
 # Change Log
 
+## Version 0.0.6
+* Documentation enhanced
+
 ## Version 0.0.5
 * GraalVM LSP support added
 

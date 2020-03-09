@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
+import java.util.PrimitiveIterator;
 
 /**
  * This class is designed as a "scratchpad" for generating many short arrays of unknown size. It
@@ -49,7 +50,7 @@ import java.util.Arrays;
  * <p>
  * Usage Example:
  * </p>
- * 
+ *
  * <pre>
  * ShortArrayBuffer buf = new ShortArrayBuffer();
  * List<short[]> results = new ArrayList<>();
@@ -62,8 +63,9 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class ShortArrayBuffer extends AbstractArrayBuffer {
+public class ShortArrayBuffer extends AbstractArrayBuffer implements Iterable<Integer> {
 
+    private static final short[] EMPTY = {};
     private short[] buf;
 
     public ShortArrayBuffer() {
@@ -102,7 +104,42 @@ public class ShortArrayBuffer extends AbstractArrayBuffer {
         length += valuesLength;
     }
 
+    public Object peek() {
+        return buf[length - 1];
+    }
+
+    public Object pop() {
+        return buf[--length];
+    }
+
     public short[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new ShortArrayBufferIterator(buf, length);
+    }
+
+    private static final class ShortArrayBufferIterator implements PrimitiveIterator.OfInt {
+
+        private final short[] buf;
+        private final int size;
+        private int i = 0;
+
+        private ShortArrayBufferIterator(short[] buf, int size) {
+            this.buf = buf;
+            this.size = size;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < size;
+        }
+
+        @Override
+        public int nextInt() {
+            return buf[i++];
+        }
     }
 }

@@ -161,13 +161,13 @@ builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
   ${sulong-gate-asm-parser} { name: gate-sulong-asm-parser }
-  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-misc, run: [
+  ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-misc, run: [
     [mx, gate, --tags, "build,sulongMisc"]
   ] ${sulong-test-toolchain} }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
-  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
+  ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
@@ -176,7 +176,7 @@ builds += [
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
   ${sulong-gateTestLLVMorg-darwin} { name: gate-sulong-basic_bundled-llvm_mac, run: [[mx, gate, --tags, "build,sulongBasic,sulongLL,nwcc,llvm,toolchain"]] }
 
-  ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
+  ${sulong-gateTestLLVMorg-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
   ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} ${linux-aarch64} { name: gate-sulong-build_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build"]] }
   ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk-ce-11-only} { name: gate-sulong-build_bundled-llvm-linux-amd64-labsjdk-ce-11, run: [

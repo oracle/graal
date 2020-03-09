@@ -40,7 +40,7 @@ final class HotSpotToSVMCalls {
 
     static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
 
-    static native String getRegistrationName(long isolateThreadId, long svmRegistration);
+    static native String getObjectName(long isolateThreadId, long svmRegistration);
 
     static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
 

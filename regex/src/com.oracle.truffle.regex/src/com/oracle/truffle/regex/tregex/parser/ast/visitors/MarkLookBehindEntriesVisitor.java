@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -83,14 +84,14 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     }
 
     public void run() {
-        for (LookBehindAssertion lb : ast.getLookBehinds()) {
-            if (lb.getLength() == 0) {
+        for (LookAroundAssertion lb : ast.getLookArounds()) {
+            if (lb instanceof LookAheadAssertion) {
                 continue;
             }
             run(lb);
             movePastLookAheadBoundaries();
             int curDepth = 1;
-            while (!newEntriesFound.isEmpty() && curDepth < lb.getLength()) {
+            while (!newEntriesFound.isEmpty() && curDepth < lb.getLiteralLength()) {
                 // Here we go to all previous successors until we reach the required depth. This
                 // might cause us to revisit nodes we have already visited but it will not cause
                 // infinite loops. We will re-enter looping groups and try all of their
@@ -115,7 +116,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
                 movePastLookAheadBoundaries();
             }
             for (CharacterClass t : newEntriesFound) {
-                t.addLookBehindEntry(ast, lb);
+                t.addLookBehindEntry(ast, (LookBehindAssertion) lb);
             }
             curEntriesFound.clear();
             newEntriesFound.clear();
@@ -155,5 +156,10 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void leaveLookAhead(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected boolean canTraverseLookArounds() {
+        return true;
     }
 }

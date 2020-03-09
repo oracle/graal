@@ -216,8 +216,18 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
      */
     @SuppressWarnings("unchecked")
     default <T extends ImmutableSortedListOfRanges> IntersectAndSubtractResult<T> intersectAndSubtract(T o, CompilationBuffer compilationBuffer) {
-        if (matchesNothing() || o.matchesNothing()) {
+        if (matchesNothing() || o.matchesNothing() || getMin() > o.getMax() || o.getMin() > getMax()) {
+            // no intersection possible
             return new IntersectAndSubtractResult<>((T) this, o, createEmpty());
+        }
+        if (matchesEverything()) {
+            return new IntersectAndSubtractResult<>(o.createInverse(), createEmpty(), o);
+        }
+        if (o.matchesEverything()) {
+            return new IntersectAndSubtractResult<>(createEmpty(), createInverse(), (T) this);
+        }
+        if (equals(o)) {
+            return new IntersectAndSubtractResult<>(createEmpty(), createEmpty(), (T) this);
         }
         RangesBuffer subtractedA = getBuffer1(compilationBuffer);
         RangesBuffer subtractedB = getBuffer2(compilationBuffer);

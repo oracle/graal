@@ -114,6 +114,22 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
+     * Returns the smallest value contained in this set. Must not be called on empty sets.
+     */
+    default int getMin() {
+        assert !isEmpty();
+        return getLo(0);
+    }
+
+    /**
+     * Returns the largest value contained in this set. Must not be called on empty sets.
+     */
+    default int getMax() {
+        assert !isEmpty();
+        return getHi(size() - 1);
+    }
+
+    /**
      * Returns {@code true} if the range {@code [aLo, aHi]} contains the range {@code [bLo, bHi]}.
      */
     static boolean contains(int aLo, int aHi, int bLo, int bHi) {
@@ -310,7 +326,7 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns {@code true} if a given binary search result is equals to the range in list {@code o}
+     * Returns {@code true} if a given binary search result is equal to the range in list {@code o}
      * at index {@code ib}.
      *
      * @param searchResult the result of a call to {@link #binarySearch(int)} with
