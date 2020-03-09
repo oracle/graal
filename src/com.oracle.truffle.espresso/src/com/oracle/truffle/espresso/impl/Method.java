@@ -148,7 +148,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public RuntimeConstantPool getRuntimeConstantPool() {
         MethodVersion cache = methodVersion;
         if (!cache.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             methodVersion = updateMethodVersion();
         }
         return methodVersion.pool;
@@ -157,7 +156,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private LinkedMethod getLinkedMethod() {
         MethodVersion cache = methodVersion;
         if (!cache.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             methodVersion = updateMethodVersion();
         }
         return methodVersion.linkedMethod;
@@ -166,7 +164,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public CodeAttribute getCodeAttribute() {
         MethodVersion cache = methodVersion;
         if (!cache.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             methodVersion = updateMethodVersion();
         }
         return methodVersion.codeAttribute;
