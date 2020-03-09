@@ -93,11 +93,17 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /*
      *  set column 1 uleb arg
      */
+    /*
+     * currently unused
     private static final byte DW_LNS_set_column = 5;
+    */
     /*
      *  flip is_stmt 0 args
      */
+    /*
+     * currently unused
     private static final byte DW_LNS_negate_stmt = 6;
+     */
     /*
      *  set end sequence and copy row 0 args
      */
