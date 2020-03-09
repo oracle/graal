@@ -32,15 +32,14 @@ import javax.lang.model.type.ReferenceType;
 
 public abstract class IntrinsicsProcessor extends EspressoProcessor {
     static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
-    // private static final String NFI_TYPE = JNI_PACKAGE + "." + "NFIType";
     private static final String POINTER = JNI_PACKAGE + "." + "Pointer";
     private static final String HANDLE = JNI_PACKAGE + "." + "Handle";
 
     // @Pointer
-    TypeElement pointer;
+    TypeElement pointerAnnotation;
 
     // @Handle
-    TypeElement handle;
+    TypeElement handleAnnotation;
 
     private final String ENV_NAME;
 
@@ -50,8 +49,8 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
     }
 
     protected void initNfiType() {
-        this.pointer = processingEnv.getElementUtils().getTypeElement(POINTER);
-        this.handle = processingEnv.getElementUtils().getTypeElement(HANDLE);
+        this.pointerAnnotation = processingEnv.getElementUtils().getTypeElement(POINTER);
+        this.handleAnnotation = processingEnv.getElementUtils().getTypeElement(HANDLE);
     }
 
     static void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
@@ -79,11 +78,11 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             }
 
             // Override NFI type.
-            AnnotationMirror ptr = getAnnotation(param.asType(), pointer);
-            AnnotationMirror hdl = getAnnotation(param.asType(), handle);
-            if (ptr != null) {
+            AnnotationMirror pointer = getAnnotation(param.asType(), pointerAnnotation);
+            AnnotationMirror handle = getAnnotation(param.asType(), handleAnnotation);
+            if (pointer != null) {
                 sb.append(NativeSimpleType.POINTER);
-            } else if (hdl != null) {
+            } else if (handle != null) {
                 sb.append(NativeSimpleType.SINT64);
             } else {
                 sb.append(classToType(param.asType().toString()));
@@ -92,11 +91,11 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
 
         sb.append("): ");
 
-        AnnotationMirror ptr = getAnnotation(method.getReturnType(), pointer);
-        AnnotationMirror hdl = getAnnotation(method.getReturnType(), handle);
-        if (ptr != null) {
+        AnnotationMirror pointer = getAnnotation(method.getReturnType(), pointerAnnotation);
+        AnnotationMirror handle = getAnnotation(method.getReturnType(), handleAnnotation);
+        if (pointer != null) {
             sb.append(NativeSimpleType.POINTER);
-        } else if (hdl != null) {
+        } else if (handle != null) {
             sb.append(NativeSimpleType.SINT64);
         } else {
             sb.append(classToType(returnType));
