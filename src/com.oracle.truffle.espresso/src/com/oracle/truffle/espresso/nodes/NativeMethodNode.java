@@ -53,7 +53,6 @@ public final class NativeMethodNode extends EspressoMethodNode {
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
-
     public NativeMethodNode(TruffleObject boundNative, MethodVersion method, boolean isJni) {
         super(method);
         this.boundNative = boundNative;

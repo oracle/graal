@@ -123,7 +123,6 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
     public static final int ERRONEOUS = 99;
 
-
     public Attribute getAttribute(Symbol<Name> name) {
         return getLinkedKlass().getAttribute(name);
     }
@@ -436,7 +435,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Method[] getDeclaredMethods() {
-       return declaredMethods;
+        return declaredMethods;
     }
 
     @Override

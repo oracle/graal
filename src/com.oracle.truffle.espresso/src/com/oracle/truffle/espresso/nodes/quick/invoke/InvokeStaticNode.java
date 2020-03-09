@@ -80,7 +80,7 @@ public final class InvokeStaticNode extends QuickNode {
 
         Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()); // no
-                                                                                         // receiver
+        // receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getMethod().getReturnKind());
     }
 }
