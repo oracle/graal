@@ -73,17 +73,24 @@ CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
 ifndef NO_FEMBED_BITCODE
-BC_FILE=
 EMBED_BC=-fembed-bitcode
 else # NO_FEMBED_BITCODE it set
 ifeq ($(OS), darwin)
-BC_FILE=
 EMBED_BC=-fembed-bitcode
 else # not darwin
 EMBED_BC=
-BC_FILE=%/O0.bc.o
+%.c.dir/ref.out: %.c.dir/O0.bc.o
+%.cpp.dir/ref.out: %.cpp.dir/O0.bc.o
+%.cc.dir/ref.out: %.cc.dir/O0.bc.o
+%.C.dir/ref.out: %.C.dir/O0.bc.o
+%.f.dir/ref.out: %.f.dir/O0.bc.o
+%.f90.dir/ref.out: %.f90.dir/O0.bc.o
+%.f03.dir/ref.out: %.f03.dir/O0.bc.o
+%.ll.dir/ref.out: %.ll.dir/O0.bc.o
+
 %.bc.o: %.bc
 	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
+
 endif # darwin
 endif # NO_FEMBED_BITCODE
 
@@ -118,31 +125,31 @@ ifdef GRAALVM_LLVM_HOME
 %/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
 endif
 
-%.c.dir/ref.out: %.c $(BC_FILE)
+%.c.dir/ref.out: %.c
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cpp.dir/ref.out: %.cpp $(BC_FILE)
+%.cpp.dir/ref.out: %.cpp
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.cc.dir/ref.out: %.cc $(BC_FILE)
+%.cc.dir/ref.out: %.cc
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.C.dir/ref.out: %.C $(BC_FILE)
+%.C.dir/ref.out: %.C
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f.dir/ref.out: %.f $(BC_FILE)
+%.f.dir/ref.out: %.f
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f90.dir/ref.out: %.f90 $(BC_FILE)
+%.f90.dir/ref.out: %.f90
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.f03.dir/ref.out: %.f03 $(BC_FILE)
+%.f03.dir/ref.out: %.f03
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
@@ -158,7 +165,7 @@ endif
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
-%.ll.dir/ref.out: %.ll $(BC_FILE)
+%.ll.dir/ref.out: %.ll
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
