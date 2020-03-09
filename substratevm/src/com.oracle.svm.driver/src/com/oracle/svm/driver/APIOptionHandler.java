@@ -235,7 +235,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     void printOptions(Consumer<String> println) {
         apiOptions.entrySet().stream()
                         .filter(e -> !e.getValue().isDeprecated())
-                        .forEach(e -> SubstrateOptionsParser.printOption(println, e.getKey(), e.getValue().helpText, 4, 22, 66));
+                        .forEach(e -> SubstrateOptionsParser.printOption(println, e.getKey(), e.getValue().helpText, 4, 22, 66, true));
     }
 }
 

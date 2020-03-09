@@ -132,11 +132,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                nativeImage.setQueryOption(OptionType.User.name());
+                nativeImage.setPrintFlagsOptionQuery(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.setQueryOption("");
+                nativeImage.setPrintFlagsOptionQuery("");
+                return true;
+            case "--expert-options-detail":
+                args.poll();
+                String optionNames = args.poll();
+                nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
                 return true;
             case noServerOption:
             case verboseServerOption:
