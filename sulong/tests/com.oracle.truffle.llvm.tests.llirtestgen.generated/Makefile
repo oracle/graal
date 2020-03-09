@@ -37,7 +37,7 @@ TIMESTAMP=timestamp
 GENERATED_REFS=$(GENERATED:.ll=.ll.dir/ref.out)
 GENERATED_BCS=$(GENERATED:.ll=.ll.dir/O0.bc)
 
-all: $(GENERATED_REFS) $(GENERATED_BCS)
+default: $(GENERATED_REFS) $(GENERATED_BCS)
 
 include $(VPATH)/../Makefile.common
 
