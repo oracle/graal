@@ -342,7 +342,7 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         @Specialization
         static boolean doTyped(LLVMTypedForeignObject receiver, LLVMTypedForeignObject other,
                         @Cached CompareForeignNode compare) {
-            return compare.execute(receiver.foreign, other.foreign);
+            return compare.execute(receiver.getForeign(), other.foreign);
         }
 
         @Fallback
