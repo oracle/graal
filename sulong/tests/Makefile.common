@@ -216,3 +216,6 @@ $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call OPT_RULES,O1,-O1))
 $(eval $(call OPT_RULES,O2,-O2))
 $(eval $(call OPT_RULES,O3,-O3))
+
+# disable implicit rules
+.SUFFIXES:
