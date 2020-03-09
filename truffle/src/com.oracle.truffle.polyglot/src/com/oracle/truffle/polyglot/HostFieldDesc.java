@@ -119,7 +119,8 @@ abstract class HostFieldDesc {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalArgumentException e) {
-                throw UnsupportedTypeException.create(HostInteropReflect.EMPTY);
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             } catch (IllegalAccessException e) {
                 CompilerDirectives.transferToInterpreter();
                 if (Modifier.isFinal(field.getModifiers())) {
@@ -178,7 +179,8 @@ abstract class HostFieldDesc {
             try {
                 invokeSetHandle(setHandle, receiver, value);
             } catch (Exception e) {
-                throw UnsupportedTypeException.create(new Object[]{value});
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             } catch (Throwable e) {
                 throw HostInteropReflect.rethrow(e);
             }

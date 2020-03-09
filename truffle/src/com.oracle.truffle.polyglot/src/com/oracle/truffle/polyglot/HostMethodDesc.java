@@ -215,7 +215,8 @@ abstract class HostMethodDesc {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
-                    throw UnsupportedTypeException.create(arguments);
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -257,7 +258,8 @@ abstract class HostMethodDesc {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
-                    throw UnsupportedTypeException.create(arguments);
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -293,7 +295,8 @@ abstract class HostMethodDesc {
                 try {
                     return invokeHandle(handle, receiver, arguments);
                 } catch (ClassCastException ex) {
-                    throw UnsupportedTypeException.create(arguments);
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
                 }
             }
 
@@ -336,7 +339,8 @@ abstract class HostMethodDesc {
                     try {
                         ret = invokeHandle(methodHandle, receiver, arguments);
                     } catch (ClassCastException ex) {
-                        throw HostInteropReflect.rethrow(UnsupportedTypeException.create(arguments));
+                        CompilerDirectives.transferToInterpreter();
+                        throw HostInteropReflect.rethrow(UnsupportedTypeException.create(arguments, ex.getMessage()));
                     } catch (Throwable e) {
                         throw HostInteropReflect.rethrow(e);
                     }

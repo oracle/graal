@@ -341,7 +341,8 @@ final class HostObject implements TruffleObject {
             writeField.execute(f, this, value);
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
-            throw UnsupportedTypeException.create(new Object[]{value});
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
         }
     }
 
