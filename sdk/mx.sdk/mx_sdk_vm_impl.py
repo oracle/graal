@@ -121,6 +121,30 @@ _registered_graalvm_components = {}
 _env_tests = []
 
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Polyglot Launcher',
+    short_name='poly',
+    license_files=[],
+    third_party_license_files=[],
+    dir_name='polyglot',
+    launcher_configs=[mx_sdk_vm.LauncherConfig(
+        destination='bin/<exe:polyglot>',
+        jar_distributions=['sdk:LAUNCHER_COMMON'],
+        main_class='org.graalvm.launcher.PolyglotLauncher',
+        build_args=[
+            '-H:-ParseRuntimeOptions',
+            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--tool:all',
+        ],
+        is_main_launcher=True,
+        default_symlinks=True,
+        is_sdk_launcher=True,
+        is_polyglot=True,
+    )],
+))
+
+
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
@@ -195,35 +219,6 @@ def registered_graalvm_components(stage1=False):
         add_dependencies(components_include_list, excludes=True)
 
         registered_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components()]
-        if _with_polyglot_launcher_project():
-            if 'poly' in registered_short_names:
-                polyglot_component = mx_sdk_vm.graalvm_component_by_name('poly')
-            else:
-                polyglot_component = mx_sdk_vm.GraalVmJreComponent(
-                    suite=_suite,
-                    name='Polyglot Launcher',
-                    short_name='poly',
-                    license_files=[],
-                    third_party_license_files=[],
-                    dir_name='polyglot',
-                    launcher_configs=[mx_sdk_vm.LauncherConfig(
-                        destination='bin/<exe:polyglot>',
-                        jar_distributions=['sdk:LAUNCHER_COMMON'],
-                        main_class='org.graalvm.launcher.PolyglotLauncher',
-                        build_args=[
-                            '-H:-ParseRuntimeOptions',
-                            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
-                            '--tool:all',
-                        ],
-                        is_main_launcher=True,
-                        default_symlinks=True,
-                        is_sdk_launcher=True,
-                        is_polyglot=True,
-                    )],
-                )
-                mx_sdk_vm.register_graalvm_component(polyglot_component)
-            add_dependencies([polyglot_component])
-
         if _with_polyglot_lib_project() and libpoly_has_entrypoints:
             if 'libpoly' in registered_short_names:
                 libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly')
@@ -2568,6 +2563,7 @@ def graalvm_show(args):
     else:
         print("No standalone")
 
+
 def _get_dists(dist_class):
     """
     :type dist_class: mx.Distribution
@@ -2675,8 +2671,10 @@ mx.add_argument('--extra-image-builder-argument', action='append', help='Add ext
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 
+
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
+
 
 def _components_include_list():
     included = mx.get_opts().components or mx.get_env('COMPONENTS', None)
@@ -2684,9 +2682,13 @@ def _components_include_list():
         return None
     return [mx_sdk.graalvm_component_by_name(name) for name in included.split(',')]
 
+
 def _excluded_components():
     excluded = mx.get_opts().exclude_components or mx.get_env('EXCLUDE_COMPONENTS', '')
-    return excluded.split(',')
+    excluded_list = excluded.split(',')
+    if mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'):
+        excluded_list.append('poly')
+    return excluded_list
 
 
 def _extra_image_builder_args(image):
@@ -2716,7 +2718,7 @@ def _with_polyglot_lib_project():
 
 
 def _with_polyglot_launcher_project():
-    return not (mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'))
+    return 'poly' in [c.short_name for c in registered_graalvm_components()]
 
 
 def _force_bash_launchers(launcher):
