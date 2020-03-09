@@ -57,6 +57,8 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
@@ -123,10 +125,10 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
     @GenerateUncached
     public abstract static class ForeignGetTypeNode extends LLVMNode {
 
-        public abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
+        public abstract LLVMInteropType.Structured execute(Object object);
 
         @Specialization(limit = "3")
-        public LLVMInteropType.Structured getType(LLVMTypedForeignObject object,
+        public LLVMInteropType.Structured getType(Object object,
                         @CachedLibrary("object") NativeTypeLibrary typeLibrary) {
             Object type = typeLibrary.getNativeType(object);
             if (type == null || type instanceof LLVMInteropType.Structured) {
@@ -201,14 +203,40 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
         return true;
     }
 
+    static boolean isWrappedAutoDerefHandle(LLVMLanguage language, LLVMNativeLibrary nativeLibrary, Object obj) {
+        try {
+            return LLVMNode.isAutoDerefHandle(language, nativeLibrary.asPointer(obj));
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(ex);
+        }
+    }
+
     @ExportMessage
     static class ReadI8 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static byte doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getI8(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static byte doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return (byte) read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.I8);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -226,12 +254,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadI16 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static short doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getI16(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static short doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return (short) read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.I16);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -249,12 +294,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadI32 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static int doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getI32(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static int doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return (int) read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.I32);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -272,12 +334,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadGenericI64 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static Object doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getI64(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static Object doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.I64);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -295,12 +374,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadFloat {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static float doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getFloat(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static float doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return (float) read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.FLOAT);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -318,12 +414,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadDouble {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static double doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getDouble(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static double doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return (double) read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.DOUBLE);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -341,12 +454,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class ReadPointer {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static LLVMPointer doPointer(LLVMTypedForeignObject receiver, long offset,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 return language.getLLVMMemory().getPointer(nativeLibrary.asPointer(receiver.getForeign()) + offset);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static LLVMPointer doHandle(LLVMTypedForeignObject receiver, long offset,
+                        @Shared("read") @Cached LLVMInteropReadNode read,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                return LLVMPointer.cast(read.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, ForeignToLLVMType.POINTER));
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -364,12 +494,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteI8 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, byte value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 language.getLLVMMemory().putI8(nativeLibrary.asPointer(receiver.getForeign()) + offset, value);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, byte value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.I8);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -387,12 +534,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteI16 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, short value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 language.getLLVMMemory().putI16(nativeLibrary.asPointer(receiver.getForeign()) + offset, value);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, short value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.I16);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -410,12 +574,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteI32 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, int value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 language.getLLVMMemory().putI32(nativeLibrary.asPointer(receiver.getForeign()) + offset, value);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, int value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.I32);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -433,7 +614,7 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteGenericI64 {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, Object value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
@@ -441,6 +622,23 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
             try {
                 long valuePointer = nativePointerLibrary.toNativePointer(value).asNative();
                 language.getLLVMMemory().putI64(nativeLibrary.asPointer(receiver.getForeign()) + offset, valuePointer);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, Object value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.I64);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -458,12 +656,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteFloat {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, float value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 language.getLLVMMemory().putFloat(nativeLibrary.asPointer(receiver.getForeign()) + offset, value);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, float value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.FLOAT);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -481,12 +696,29 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WriteDouble {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, double value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary) {
             try {
                 language.getLLVMMemory().putDouble(nativeLibrary.asPointer(receiver.getForeign()) + offset, value);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, double value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.DOUBLE);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
@@ -504,7 +736,7 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     static class WritePointer {
-        @Specialization(guards = "nativeLibrary.isPointer(receiver.foreign)")
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
         static void doPointer(LLVMTypedForeignObject receiver, long offset, LLVMPointer value,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
@@ -512,6 +744,23 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject impl
             try {
                 LLVMNativePointer nativePointer = nativePointerLibrary.toNativePointer(value);
                 language.getLLVMMemory().putPointer(nativeLibrary.asPointer(receiver.getForeign()) + offset, nativePointer);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Specialization(guards = {"nativeLibrary.isPointer(receiver.foreign)", "isWrappedAutoDerefHandle(language, nativeLibrary, receiver.foreign)"})
+        static void doHandle(LLVMTypedForeignObject receiver, long offset, LLVMPointer value,
+                        @Shared("write") @Cached LLVMInteropWriteNode write,
+                        @Shared("getType") @Cached ForeignGetTypeNode getType,
+                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
+                        @CachedLibrary("receiver.foreign") LLVMNativeLibrary nativeLibrary,
+                        @Shared("receiverNode") @Cached LLVMDerefHandleGetReceiverNode receiverNode,
+                        @Shared("asForeignNode") @Cached LLVMAsForeignNode asForeignNode) {
+            try {
+                LLVMManagedPointer recv = receiverNode.execute(nativeLibrary.asPointer(receiver.getForeign()));
+                write.execute(getType.execute(recv.getObject()), asForeignNode.execute(recv), recv.getOffset() + offset, value, ForeignToLLVMType.POINTER);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
