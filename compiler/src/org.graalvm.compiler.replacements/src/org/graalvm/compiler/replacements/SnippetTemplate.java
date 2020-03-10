@@ -111,6 +111,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -1826,7 +1827,7 @@ public class SnippetTemplate {
                         } else if (stateAfter != null) {
                             deoptDupDuring.computeStateDuring(stateAfter);
                         } else if (stateBefore != null) {
-                            assert !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                            assert ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
                             deoptDupDuring.setStateDuring(stateBefore);
                         }
                     }

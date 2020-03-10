@@ -125,4 +125,9 @@ public final class CEntryPointUtilityNode extends FixedWithNextNode implements L
         return stateBefore;
     }
 
+    @Override
+    public boolean canUseAsStateDuring() {
+        return true;
+    }
+
 }

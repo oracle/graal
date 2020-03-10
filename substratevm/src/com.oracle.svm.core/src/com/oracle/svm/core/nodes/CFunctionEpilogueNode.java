@@ -34,7 +34,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptDuring;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -46,7 +46,7 @@ import org.graalvm.word.LocationIdentity;
  * See comments in {@link CFunctionPrologueNode} for details.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
-public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptDuring {
+public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
@@ -88,7 +88,7 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     @NodeIntrinsic
     public static native void cFunctionEpilogue(@ConstantNodeParameter int oldThreadStatus);
 
-    @OptionalInput(State) protected FrameState stateDuring;
+    @OptionalInput(State) protected FrameState stateBefore;
 
     @Override
     public boolean canDeoptimize() {
@@ -96,19 +96,20 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     }
 
     @Override
-    public FrameState stateDuring() {
-        return stateDuring;
+    public void setStateBefore(FrameState state) {
+
+        updateUsages(this.stateBefore, state);
+        this.stateBefore = state;
     }
 
     @Override
-    public void setStateDuring(FrameState stateDuring) {
-        updateUsages(this.stateDuring, stateDuring);
-        this.stateDuring = stateDuring;
+    public FrameState stateBefore() {
+        return stateBefore;
     }
 
     @Override
-    public void computeStateDuring(FrameState currentStateAfter) {
-        setStateDuring(currentStateAfter);
+    public boolean canUseAsStateDuring() {
+        return true;
     }
 
 }

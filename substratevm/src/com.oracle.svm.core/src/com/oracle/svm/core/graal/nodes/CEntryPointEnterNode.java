@@ -135,4 +135,9 @@ public final class CEntryPointEnterNode extends FixedWithNextNode implements Low
         return stateBefore;
     }
 
+    @Override
+    public boolean canUseAsStateDuring() {
+        return true;
+    }
+
 }

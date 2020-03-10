@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
@@ -44,7 +45,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8)
+@NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8, allowedUsageTypes = {InputType.Memory})
 public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, DeoptBefore {
 
     public static final NodeClass<CEntryPointLeaveNode> TYPE = NodeClass.create(CEntryPointLeaveNode.class);
@@ -108,6 +109,11 @@ public class CEntryPointLeaveNode extends FixedWithNextNode implements Lowerable
     @Override
     public FrameState stateBefore() {
         return stateBefore;
+    }
+
+    @Override
+    public boolean canUseAsStateDuring() {
+        return true;
     }
 
 }
