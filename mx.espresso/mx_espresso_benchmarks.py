@@ -24,18 +24,18 @@
 import mx
 import mx_benchmark
 import mx_espresso
-import mx_sdk_vm
-
+import mx_sdk_vm_impl
 
 _suite = mx.suite('espresso')
 
 
-class EspressoVM(mx_benchmark.JavaVm):
+class EspressoLauncherVM(mx_benchmark.JavaVm):
     """
-    Espresso (launcher) JVM within GraalVM.
+    Espresso (launcher) within GraalVM.
     """
+
     def __init__(self, config_name):
-        super(EspressoVM, self).__init__()
+        super(EspressoLauncherVM, self).__init__()
         self._config_name = config_name
 
     def hosting_registry(self):
@@ -48,8 +48,15 @@ class EspressoVM(mx_benchmark.JavaVm):
         return self._config_name
 
     def run(self, cwd, args):
-        return mx.run(mx_espresso._espresso_launcher_command(args), cwd=cwd)
+        capture = mx.TeeOutputCapture(mx.OutputCapture())
+        ret_code = mx.run(mx_espresso._espresso_launcher_command(args),
+                          nonZeroIsFatal=False, out=capture, err=capture, cwd=cwd)
+
+        output = capture.underlying.data
+        graalvm_dist = mx_sdk_vm_impl.get_final_graalvm_distribution()
+        return [ret_code, output, {'vm.graalvm.config': graalvm_dist.vm_config_name,
+                                   'vm.graalvm.dist': graalvm_dist.name}]
 
 
 # Register Espresso (launcher) as a JVM for running `mx benchmark`.
-mx_benchmark.java_vm_registry.add_vm(EspressoVM('launcher'), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoLauncherVM('launcher'), _suite)
