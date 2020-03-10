@@ -138,10 +138,6 @@ public abstract class BoxNode extends AbstractBoxNode implements VirtualizableAl
 
         @Override
         public LocationIdentity getLocationIdentity() {
-            /*
-             * All box snippets, except boolean which does no allocation just access the newly
-             * allocated object
-             */
             return LocationIdentity.INIT_LOCATION;
         }
 

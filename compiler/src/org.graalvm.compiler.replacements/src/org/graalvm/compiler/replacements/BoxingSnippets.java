@@ -49,6 +49,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class BoxingSnippets implements Snippets {
 
@@ -161,28 +162,35 @@ public class BoxingSnippets implements Snippets {
             super(options, factories, providers, snippetReflection, target);
             for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
                 LocationIdentity accessedLocation = null;
+                LocationIdentity cacheLocation = null;
+
                 try {
                     switch (kind) {
                         case Byte:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Byte.class.getDeclaredField("value")));
+                            cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Byte.class.getDeclaredClasses()[0].getDeclaredField("cache")));
                             break;
                         case Boolean:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Boolean.class.getDeclaredField("value")));
                             break;
                         case Short:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Short.class.getDeclaredField("value")));
+                            cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Short.class.getDeclaredClasses()[0].getDeclaredField("cache")));
                             break;
                         case Char:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Character.class.getDeclaredField("value")));
+                            cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Character.class.getDeclaredClasses()[0].getDeclaredField("cache")));
                             break;
                         case Float:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Float.class.getDeclaredField("value")));
                             break;
                         case Int:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Integer.class.getDeclaredField("value")));
+                            cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Integer.class.getDeclaredClasses()[0].getDeclaredField("cache")));
                             break;
                         case Long:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Long.class.getDeclaredField("value")));
+                            cacheLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Long.class.getDeclaredClasses()[0].getDeclaredField("cache")));
                             break;
                         case Double:
                             accessedLocation = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Double.class.getDeclaredField("value")));
@@ -194,11 +202,29 @@ public class BoxingSnippets implements Snippets {
                     throw GraalError.shouldNotReachHere(e);
                 }
                 assert accessedLocation != null;
+                /*
+                 * Boxing may write to cache or init location
+                 */
                 if (kind == JavaKind.Boolean) {
-                    // does no allocation
-                    boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", accessedLocation, NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
+                    assert cacheLocation == null;
+                    try {
+                        FieldLocationIdentity trueField = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Boolean.class.getDeclaredField("TRUE")));
+                        FieldLocationIdentity falseField = new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(Boolean.class.getDeclaredField("FALSE")));
+                        // does no allocation
+                        boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", trueField, falseField));
+                    } catch (NoSuchFieldException | SecurityException e) {
+                        throw GraalError.shouldNotReachHere(e);
+                    }
                 } else {
-                    boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
+                    if (cacheLocation != null) {
+                        boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
+                                        NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
+                    } else {
+                        // floating points are not cached
+                        assert kind == JavaKind.Float || kind == JavaKind.Double;
+                        boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation,
+                                        NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
+                    }
                 }
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value", accessedLocation));
             }

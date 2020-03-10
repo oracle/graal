@@ -303,7 +303,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ValueNode value = box.getValue();
-        if (value.isConstant()) {
+        if (value.isConstant() && !GraalOptions.ImmutableCode.getValue(box.getOptions())) {
             JavaConstant sourceConstant = value.asJavaConstant();
             if (sourceConstant.getJavaKind() != box.getBoxingKind() && sourceConstant.getJavaKind().isNumericInteger()) {
                 switch (box.getBoxingKind()) {
