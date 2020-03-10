@@ -151,7 +151,7 @@ local espresso_benchmark(env, suite) =
   build_espresso(env) +
   {
     run+: maybe_set_ld_debug_flag(env) + [
-        _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss8m']),
+        _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss32m']),
         ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '1:00:00',
