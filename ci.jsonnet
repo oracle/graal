@@ -124,12 +124,12 @@ local clone_graal(env) = {
 local build_espresso(env) = {
   run+: [
     ['mx', 'sversions'],
-    _mx(env, 'build'),
+    _mx(env, ['build']),
   ],
 };
 
 local run_espresso(env, args) = {
-  local maybe_set_ld_debug_flag = if std.startsWith(env, 'jvm') then ['set-export', 'LD_DEBUG', 'unused'] else [],
+  local maybe_set_ld_debug_flag = if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
   run+: maybe_set_ld_debug_flag + [
     _mx(env, ['espresso'] + args),
   ],
@@ -137,11 +137,11 @@ local run_espresso(env, args) = {
 
 local hello_world_args = ['-cp', 'mxbuild/dists/jdk1.8/espresso-playground.jar', 'com.oracle.truffle.espresso.playground.HelloWorld'];
 
-local clone_build_run(env, args) = (
+local clone_build_run(env, args) =
   clone_graal(env) +
   build_espresso(env) +
-  run_espresso(env, args)
-);
+  run_espresso(env, args);
+
 
 local espresso_benchmark(env, suite) =
   clone_graal(env) +
