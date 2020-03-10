@@ -40,6 +40,54 @@
  */
 package org.graalvm.wasm.benchmark;
 
-public class WasmBenchmarkOptions {
-    public static final String BENCHMARK_NAME = System.getProperty("wasmbench.benchmarkName");
+import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.utils.cases.WasmCase;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
+
+import java.io.IOException;
+
+/**
+ * This benchmark base class runs a workload that compiles the given test case (but does not run
+ * it). This is done by calling `Context.evaluate` on each source.
+ */
+@Warmup(iterations = 2)
+@Measurement(iterations = 6)
+@Fork(1)
+@State(Scope.Benchmark)
+public abstract class WasmCompilationBenchmarkSuiteBase {
+    public abstract static class WasmCompilationBenchmarkState {
+        private Context context;
+        private WasmCase benchmarkCase;
+
+        abstract protected String benchmarkResource();
+
+        @Setup(Level.Trial)
+        public void setup() throws IOException {
+            benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
+        }
+
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
+            final Context.Builder contextBuilder = Context.newBuilder("wasm");
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
+            context = contextBuilder.build();
+        }
+
+        @TearDown(Level.Invocation)
+        public void teardownInvocation() {
+            context.close();
+            context = null;
+        }
+
+        public void run() throws IOException, InterruptedException {
+            benchmarkCase.getSources().forEach(context::eval);
+        }
+    }
 }

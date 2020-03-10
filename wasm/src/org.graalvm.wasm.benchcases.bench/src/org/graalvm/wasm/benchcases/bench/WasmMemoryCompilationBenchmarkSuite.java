@@ -38,34 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils;
+package org.graalvm.wasm.benchcases.bench;
+
+import org.graalvm.wasm.benchmark.WasmCompilationBenchmarkSuiteBase;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 
 import java.io.IOException;
-import java.io.StringReader;
-import java.util.Properties;
 
-public class SystemProperties {
-    public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
-    public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
-
-    public static final String BENCHMARK_NAME_PROPERTY_NAME = "wasmbench.benchmarkName";
-    public static final String BENCHMARK_NAME = System.getProperty(BENCHMARK_NAME_PROPERTY_NAME);
-
-    public static final String DISABLE_COMPILATION_FLAG_NAME = "wasmbench.disableCompilation";
-    public static final String DISABLE_COMPILATION_FLAG = System.getProperty(DISABLE_COMPILATION_FLAG_NAME);
-
-    public static Properties createFromOptions(String optsContent) {
-        Properties options = new Properties();
-        if (optsContent == null) {
-            return options;
+public class WasmMemoryCompilationBenchmarkSuite extends WasmCompilationBenchmarkSuiteBase {
+    @State(Scope.Benchmark)
+    public static class CBenchmarkState extends WasmCompilationBenchmarkState {
+        @Override
+        protected String benchmarkResource() {
+            return "wasm/memory";
         }
+    }
 
-        try {
-            options.load(new StringReader(optsContent));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return options;
+    @Benchmark
+    public void run(CBenchmarkState state) throws IOException, InterruptedException {
+        state.run();
     }
 }

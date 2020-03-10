@@ -227,7 +227,7 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         parser = argparse.ArgumentParser()
         parser.add_argument("--jvm-config")
         jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
-        return jvm_config == "node" or jvm_config == "native"
+        return jvm_config in ("node", "native")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
@@ -236,3 +236,80 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
 
 add_bm_suite(WasmBenchmarkSuite())
+
+
+_suite = mx.suite("wasm")
+
+
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
+
+
+class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """
+    Example suite used for testing and as a subclassing template.
+    """
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "wasm"
+
+    def name(self):
+        return "wasm-memory"
+
+    def benchmarkList(self, _):
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_PROFILER_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
+
+    def createCommandLineArgs(self, benchmarks, bm_suite_args):
+        benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        run_args = self.runArgs(bm_suite_args)
+        return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
+
+    def rules(self, out, benchmarks, bm_suite_args):
+        return [
+            mx_benchmark.StdOutRule(r"(?P<path>.*): warmup iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "memory",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "extra.metric.warmedup": "false"
+            }),
+            mx_benchmark.StdOutRule(r"(?P<path>.*): iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "memory",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "extra.metric.warmedup": "true"
+            }),
+            mx_benchmark.StdOutRule(r"(?P<path>.*): median: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "memory",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "extra.metric.aggregation": "median"
+            }),
+        ]
+
+
+add_bm_suite(MemoryBenchmarkSuite())
