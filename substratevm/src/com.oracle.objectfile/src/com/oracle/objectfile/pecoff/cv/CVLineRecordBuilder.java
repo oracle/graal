@@ -30,13 +30,12 @@ import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 
+import static com.oracle.objectfile.pecoff.cv.CVConstants.mergeAdjacentLineRecords;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.skipGraalInternals;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.skipGraalIntrinsics;
-import static com.oracle.objectfile.pecoff.cv.CVRootPackages.isJavaPackage;
 
 public class CVLineRecordBuilder {
 
-    private static final boolean debug = true;
     private static final boolean HAS_COLUMNS = false;
 
     private CVSections cvSections;
@@ -59,20 +58,21 @@ public class CVLineRecordBuilder {
      */
 
     /**
-     * Feed Range structures to processRange.
-     * @param primaryEntry input containing sub ranges
-     * @return CVLineRecord containing any entries generated, or null if o entries
+     * build line number records for a function
+     * @param primaryEntry function to build line number table for
+     * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
-    CVLineRecord build(String methodName, PrimaryEntry primaryEntry) {
-        long lowAddr = Long.MAX_VALUE;
-        long highAddr = 0;
+    CVLineRecord build(PrimaryEntry primaryEntry, String methodName) {
+   //     long lowAddr = Long.MAX_VALUE;
+   //     long highAddr = 0;
         this.primaryEntry = primaryEntry;
-        previousRange = null;
 
         assert (!HAS_COLUMNS); /* can't handle columns yet */
 
         Range primaryRange = primaryEntry.getPrimary();
-        if (skipGraalInternals && isGraalIntrinsic(primaryRange.getClassName())) {
+        previousRange = null;
+        /* option to not even bother with debug code for Graal */
+        if (skipGraalInternals && CVRootPackages.isGraalClass(primaryRange.getClassName())) {
             CVUtil.debug("  skipping Graal internal class %s\n", primaryRange);
             return null;
         }
@@ -80,14 +80,18 @@ public class CVLineRecordBuilder {
         this.lineRecord = new CVLineRecord(cvSections, methodName, primaryEntry);
         CVUtil.debug("     CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
         processRange(primaryRange);
-        lowAddr = Math.min(lowAddr, primaryRange.getLo());
-        highAddr = Math.max(highAddr, primaryRange.getHi());
+     //   lowAddr = Math.min(lowAddr, primaryRange.getLo());
+      //  highAddr = Math.max(highAddr, primaryRange.getHi());
 
         for (Range subRange : primaryEntry.getSubranges()) {
             CVUtil.debug("     CVLineRecord.computeContents: processing range %s\n", subRange);
+            FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subRange);
+            if (subFileEntry == null) {
+                continue;
+            }
             processRange(subRange);
-            lowAddr = Math.min(lowAddr, subRange.getLo());
-            highAddr = Math.max(highAddr, subRange.getHi());
+      //      lowAddr = Math.min(lowAddr, subRange.getLo());
+      //      highAddr = Math.max(highAddr, subRange.getHi());
         }
         return lineRecord;
     }
@@ -99,47 +103,73 @@ public class CVLineRecordBuilder {
      *  - if a Range has a negative linenumber
      *  - if a range is part of Graal or the JDK, and skipGraalOption is true
      *  - if a range has the same line number, source file and function
+     *
      * @param range to be merged or added to line number record
      */
     private void processRange(Range range) {
 
         /* should we merge this range with the previous entry? */
+        /* i.e. same line in same file, same class and function */
         if (shouldMerge(previousRange, range)) {
-            range = new Range(previousRange, range.getLo(), range.getHi());
-        } else if (range.getLine() == -1) {
+            CVUtil.debug("     processRange: merging with previous\n");
             return;
-        }
+            //range = new Range(previousRange, range.getLo(), range.getHi());
+        } /*else if (range.getLine() == -1) {
+            CVUtil.debug("     processRange: ignoring: bad line number\n");
+            return;
+        }*/
 
-        boolean wantNewFile = previousRange == null || !previousRange.getFileName().equals(range.getFileName());
+        /* is this a new file? if so we emit a new file record */
+        boolean wantNewFile = previousRange == null || !previousRange.getFileAsPath().equals(range.getFileAsPath());
         if (wantNewFile) {
             FileEntry file = cvSections.ensureFileEntry(range);
-            previousRange =  null;
-            CVUtil.debug("     adding linerecord for file: %s\n", file.getFileName());
-            lineRecord.addNewFile(file);
+            if (file != null && file.getFileName() != null) {
+                previousRange = null;
+                CVUtil.debug("     processRange: addNewFile: %s\n", file);
+                lineRecord.addNewFile(file);
+            } else {
+                CVUtil.debug("     processRange: range has no file: %s\n", range);
+                return;
+            }
         }
 
         if (wantNewRange(previousRange, range)) {
             previousRange = range;
-            int lineLo = range.getLo() - primaryEntry.getPrimary().getLo();
-            CVUtil.debug("            line: 0x%05x %s\n", lineLo, range.getLine());
-            lineRecord.addNewLine(lineLo, range.getLine());
+            int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
+            int line = range.getLine() < 1 ? 1 : range.getLine();
+            CVUtil.debug("     processRange:   addNewLine: 0x%05x %s\n", lineLoAddr, line);
+            lineRecord.addNewLine(lineLoAddr, line);
         }
     }
 
-    private boolean isGraalIntrinsic(String className) {
-        return className.startsWith("com.oracle.svm") || className.startsWith("org.graalvm") || isJavaPackage(className);
-    }
-
+    /**
+     * test to see if two ranges are adjacent, and can be combined into one
+     * @param previousRange the first range (lower address)
+     * @param range the second range (higher address)
+     * @return true if the two ranges can be combined
+     */
     private boolean shouldMerge(Range previousRange, Range range) {
+        if (!mergeAdjacentLineRecords) {
+            return false;
+        }
         if (previousRange == null) {
             return false;
         }
-        if (skipGraalIntrinsics && isGraalIntrinsic(range.getClassName())) {
+        /* if we're in a different class that the primary Class, this is inlined code */
+        final boolean isInlinedCode = !range.getClassName().equals(primaryEntry.getClassEntry().getClassName());
+        // if (isInlinedCode && skipInlinedCode) { return true; }
+        if (isInlinedCode && skipGraalIntrinsics && CVRootPackages.isGraalIntrinsic(range.getClassName())) {
             return true;
         }
-        return previousRange.getFileName().equals(range.getFileName()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
+        return previousRange.getFileAsPath().equals(range.getFileAsPath()) && (range.getLine() == -1 || previousRange.getLine() == range.getLine());
     }
 
+    /**
+     * test to see if a new line record should be emitted
+     * @param previous previous range
+     * @param range current range
+     * @return true if the current range is on a different line or file from the previous one
+     */
     private boolean wantNewRange(Range previous, Range range) {
         return true;
         /*if (debug) {
@@ -147,21 +177,21 @@ public class CVLineRecordBuilder {
                 CVUtil.debug("wantNewRange() prevnull:true");
             } else {
                 CVUtil.debug("wantNewRange() prevnull:false" + " linesdiffer:" + (previous.getLine() != range.getLine())
-                        + " fndiffer:" + (!previous.sameFileName(range)) + " contig:" + (previous.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
+                        + " fndiffer:" + (previous.getFilePath() != range.getFilePath()) + " contig:" + (previous.getHi() < range.getLo()) + " delta:" + (range.getHi() - previousRange.getLo()));
             }
-        }*/
-        /*
+        }*
         if (previous == null)
             return true;
         if (previous.getLine() != range.getLine())
             return true;
-        if (!previous.sameFileName(range))
+        if (previous.getFilePath() != range.getFilePath())
             return true;
+        /* it might actually be fine to merge if there's a gap between ranges *
         if (previous.getHi() < range.getLo())
             return true;
-        long delta = range.getHi() - previousRange.getLo();
-        return delta >= 127;
-         */
+        //long delta = range.getHi() - previousRange.getLo();
+        //return delta >= 127;
+        return false; */
     }
 
 

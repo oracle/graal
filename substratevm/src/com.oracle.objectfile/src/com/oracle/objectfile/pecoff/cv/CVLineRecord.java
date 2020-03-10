@@ -52,8 +52,8 @@ final class CVLineRecord extends CVSymbolRecord {
 
     /*
      * FileBlock is a section of contiguous code in a compilation unit, associated with a single source file.
-     * if a function includes inlined code, that code needs its own FileBlock, surroneded by FileBlocks descibing the inclosing source file
-     * A fileBlock consists of a list of LineEntries
+     * if a function includes inlined code, that code needs its own FileBlock, surrounded by FileBlocks describing the enclosing source file
+     * A FileBlock consists of a list of LineEntries
      */
     private static class FileBlock {
 
@@ -146,9 +146,9 @@ final class CVLineRecord extends CVSymbolRecord {
     }
 
     @Override
-    protected int computeSize(int startPos) {
+    protected int computeSize(int initialPos) {
         /* header */
-        int pos = startPos + Integer.BYTES + Short.BYTES * 2 + Integer.BYTES;
+        int pos = initialPos + Integer.BYTES + Short.BYTES * 2 + Integer.BYTES;
         /* all blocks */
         for (FileBlock fileBlock : fileBlocks) {
             pos = fileBlock.computeSize(pos);

@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.HashSet;
 
 abstract class CVRootPackages {
-    private static String[] rootPackageNames = {
+    private static final String[] rootPackageNames = {
             /* substrate root packages */
             "com.oracle.graal.pointsto",
             "com.oracle.objectfile",
@@ -157,22 +157,59 @@ abstract class CVRootPackages {
             "org.graalvm.util",
     };
 
+    private static final String[] intrinsicClassNames = {
+            "com.oracle.svm.core.genscavenge.AlignedHeapChunk",
+            "com.oracle.svm.core.genscavenge.CardTable",
+            "com.oracle.svm.core.genscavenge.ObjectHeaderImpl",
+            "com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSnippets",
+            "com.oracle.svm.core.genscavenge.graal.BarrierSnippets",
+            "com.oracle.svm.core.snippets.KnownIntrinsics",
+            "com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets",
+            "com.oracle.svm.core.threadlocal.FastThreadLocalBytes",
+            "org.graalvm.compiler.replacements.AllocationSnippets",
+            "org.graalvm.compiler.nodes.PrefetchAllocateNode",
+            "com.oracle.svm.core.os.CopyingImageHeapProvider"
+    };
+
     private static final HashSet<String> rootPackageSet;
+    private static final HashSet<String> intrinsicClassNameSet;
 
     static {
         rootPackageSet = new HashSet<>(rootPackageNames.length);
         Collections.addAll(rootPackageSet, rootPackageNames);
+        intrinsicClassNameSet = new HashSet<>(intrinsicClassNames.length);
+        Collections.addAll(intrinsicClassNameSet, intrinsicClassNames);
     }
 
-    static boolean isRootPackage(String pn) {
+    static boolean isGraalPackage(String pn) {
         return rootPackageSet.contains(pn);
+    }
+
+    private static String getPackagename(String className) {
+        return className.contains(".") ? className.substring(0, className.lastIndexOf('.')) : className;
+    }
+
+    static boolean isGraalClass(String cn) {
+        final String pn = getPackagename(cn);
+        return isGraalPackage(pn);
+    }
+
+    /**
+     * is class a Graal intrinsic class
+     *
+     * @param cn class name of code
+     * @return true if this is Graal intrinsic code
+     */
+    static boolean isGraalIntrinsic(String cn) {
+        System.out.println("XXXXX isGraalIntrinsic " + cn + " " + intrinsicClassNameSet.contains(cn));
+        return intrinsicClassNameSet.contains(cn);
     }
 
     static boolean isJavaPackage(String pn) {
         return pn.startsWith("java.") || pn.startsWith("javax.") || pn.startsWith("sun.");
     }
-
+/*
     static boolean isJavaFile(String pn) {
         return pn.startsWith("java/") || pn.startsWith("javax/") || pn.startsWith("sun/");
-    }
+    }*/
 }

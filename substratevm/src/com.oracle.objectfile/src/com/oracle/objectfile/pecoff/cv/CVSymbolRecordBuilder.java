@@ -48,34 +48,73 @@ final class CVSymbolRecordBuilder {
         this.typeSection = cvSections.getCVTypeSection();
     }
 
+    /**
+     * build DEBUG_S_SYMBOLS record from all classEntries
+     * (could probably build one per class or one per function)
+     */
     void build() {
-        /* A module has a set of (function def, block def, linenumbers) for each function */
-        String previousMethodName = "";
         for (ClassEntry classEntry : cvSections.getPrimaryClasses()) {
-            for (PrimaryEntry primary : classEntry.getPrimaryEntries()) {
-                Range range = primary.getPrimary();
-                if (range.getFileName() != null) {
-                    // for each function
-                    String newMethodName = fixMethodName(range);
-                    if (!newMethodName.equals(previousMethodName)) {
-                        previousMethodName = newMethodName;
-                        processFunction(newMethodName, range);
-                        addLineNumberRecords(newMethodName, primary);
-                    }
+            build(classEntry);
+        }
+        cvSections.getCVSymbolSection().addRecord(symbolRecord);
+    }
+
+    /**
+     * build all debug info for a classEntry
+     * (does not yet handle member variables)
+     *
+     * @param classEntry current class
+     */
+    private void build(ClassEntry classEntry) {
+        String previousMethodName = "";
+        for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
+            Range primaryRange = primaryEntry.getPrimary();
+            if (primaryRange.getFileName() != null) {
+                // for each function
+                String newMethodName = fixMethodName(primaryRange);
+                if (!newMethodName.equals(previousMethodName)) {
+                    previousMethodName = newMethodName;
+                    build(primaryEntry, newMethodName);
                 }
             }
         }
-        cvSections.getCVSymbolSection().addRecord(symbolRecord);
+    }
+
+    /**
+     * emit records for each function:
+     *   PROC32
+     *   S_FRAMEPROC
+     *   S_END
+     *   (later: type records as required)
+     *   line number records
+     *
+     * @param primaryEntry primary entry for this function
+     * @param methodName method name alias as it will be seen by the user
+     */
+    private void build(PrimaryEntry primaryEntry, String methodName) {
+        final Range primaryRange = primaryEntry.getPrimary();
+        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", typeSection.getRecords().size());
+        int functionTypeIndex = addTypeRecords(primaryEntry);
+        byte funcFlags = 0;
+        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvSections, methodName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0, 0, functionTypeIndex, primaryRange.getLo(), (short) 0, funcFlags);
+        addToSymbolRecord(proc32);
+        int frameFlags = 0; /* LLVM uses 0x14000; */
+        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvSections, primaryRange.getHi() - primaryRange.getLo(), frameFlags));
+        /* TODO: add local variables, and their types */
+        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvSections));
+        addLineNumberRecords(primaryEntry, methodName);
     }
 
     private boolean noMainFound = true;
 
     /**
      * renames a method name ot something user friendly in the debugger
-     * (does not affect external symbols
+     * (does not affect external symbols used by linker)
+     *
      * first main function becomes class.main (unless replaceMainFunctionName is non-null)
      * if functionNamesHashArgs is true (which it must be for the linker to work properly)
      * all other functions become class.function.999 (where 999 is a hash of the arglist)
+     *
      * @param range Range contained in the method of interest
      * @return user debugger friendly method name
      */
@@ -98,21 +137,8 @@ final class CVSymbolRecordBuilder {
         return methodName;
     }
 
-    private void processFunction(String methodName, Range range) {
-
-        CVUtil.debug("addfunc(" + methodName + ") numtypes = %d\n", typeSection.getRecords().size());
-        int functionTypeIndex = addTypeRecords();
-        byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvSections, methodName, 0, 0, 0, range.getHi() - range.getLo(), 0, 0, functionTypeIndex, range.getLo(), (short) 0, funcFlags);
-        addToSymbolRecord(proc32);
-        int frameFlags = 0; /* LLVM uses 0x14000; */
-        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvSections, range.getHi() - range.getLo(), frameFlags));
-        /* TODO: add local variavles, and their types */
-        addToSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvSections));
-    }
-
-    private void addLineNumberRecords(String methodName, PrimaryEntry primary) {
-        CVLineRecord record = new CVLineRecordBuilder(cvSections).build(methodName, primary);
+    private void addLineNumberRecords(PrimaryEntry primaryEntry, String methodName) {
+        CVLineRecord record = new CVLineRecordBuilder(cvSections).build(primaryEntry, methodName);
         /*
          * if the builder decides this entry is uninteresting, we don't build a record.
          * for example, Graal intrinsics may be uninteresting.
@@ -127,8 +153,13 @@ final class CVSymbolRecordBuilder {
         symbolRecord.addRecord(record);
     }
 
-    private int addTypeRecords() {
-        /* add type records for function (later add arglist, and arrlist and local types) */
+    /**
+     * add type records for function
+     * (later add arglist, and arrlist and local types)
+     *
+     * @return type index of function type
+     */
+    private int addTypeRecords(PrimaryEntry unused) {
         CVTypeRecord.CVTypeArglistRecord argListType = addTypeRecord(new CVTypeRecord.CVTypeArglistRecord().add(T_NOTYPE));
         CVTypeRecord funcType = addTypeRecord(new CVTypeRecord.CVTypeProcedureRecord().returnType(T_VOID).argList(argListType));
         return funcType.getSequenceNumber();

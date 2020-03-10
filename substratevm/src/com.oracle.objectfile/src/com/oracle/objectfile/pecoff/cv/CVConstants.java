@@ -28,7 +28,7 @@ package com.oracle.objectfile.pecoff.cv;
 
 public interface CVConstants {
 
-    /* names of relevant codeview sections */
+    /* names of relevant CodeView sections */
     String CV_SYMBOL_SECTION_NAME = ".debug$S";
     String CV_TYPE_SECTION_NAME = ".debug$T";
     //String CV_RDATA_SECTION_NAME = ".rdata";
@@ -37,7 +37,7 @@ public interface CVConstants {
     //String TEXT_SECTION_NAME = ".text";
     //String DATA_SECTION_NAME = ".data";
 
-    /* Codeview section header signature */
+    /* CodeView section header signature */
     int CV_SIGNATURE_C13 = 4;
 
     /* 
@@ -73,12 +73,12 @@ public interface CVConstants {
     boolean skipGraalInternals = false;         /* if true, don't emit debug code for Graal classes */
     boolean skipJDKInternals = false;           /* (unimplemented) if true, don't emit debug code for JDK classes */
     boolean skipGraalIntrinsics = true;         /* Graal inlined code treated as generated code */
-    boolean mergeAdjacentLineRecords = false;   /* if a line record is the same line in the same file as the previous record, meerge them */
+    boolean mergeAdjacentLineRecords = true;    /* if a line record is the same line in the same file as the previous record, merge them */
     boolean emitUnadornedMain = true;           /* if true, first main() does not have args in the debug name */
     String replaceMainFunctionName = null;      /* first main() becomes this name (with no class name or arg list at all) (set null to disable) */
 
     /* 
-     * The standard link.exe can't handle odd characters (parentheses or commas, for example) in enternal names.
+     * The standard link.exe can't handle odd characters (parentheses or commas, for example) in external names.
      * Setting functionNamesHashArgs true replaces those names, 
      * so that "Foo.function(String[] args)" becomes "Foo.function_617849326".
      * If functionNamesHashArgs is false, currently the linker will fail.

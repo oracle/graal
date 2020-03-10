@@ -66,7 +66,13 @@ final class CVFileRecord extends CVSymbolRecord {
      *
      * Currently, don't even try; use the SourceCache system
      */
-    private String fixPath(String fn) {
+    private String fixPath(FileEntry fileEntry) {
+        final String fn;
+        if (fileEntry.getDirEntry() == null) {
+            fn = fileEntry.getFileName();
+        } else {
+            fn = fileEntry.getFullName();
+        }
         return fn;
     }
 
@@ -75,7 +81,8 @@ final class CVFileRecord extends CVSymbolRecord {
             return fileEntryToOffsetMap.get(entry);
         } else {
             fileEntryToOffsetMap.put(entry, currentOffset);
-            strings.add(fixPath(entry.getFileName())); /* create required stringtable entry */
+            /* create required stringtable entry */
+            strings.add(fixPath(entry));
             currentOffset += FILE_RECORD_LENGTH;
             return currentOffset - FILE_RECORD_LENGTH;
         }
@@ -102,7 +109,7 @@ final class CVFileRecord extends CVSymbolRecord {
     }
 
     private int put(FileEntry entry, byte[] buffer, int initialPos) {
-        String fn = fixPath(entry.getFileName());
+        String fn = fixPath(entry);
         int stringId = strings.add(fn);
         int pos = CVUtil.putInt(stringId, buffer, initialPos); /* stringtable index */
         pos = CVUtil.putByte(CB_VALUE, buffer, pos); /* Cb (unknown what this is) */
