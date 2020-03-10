@@ -935,22 +935,25 @@ final class InstrumentationHandler {
         return newBindings;
     }
 
-    private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
+    private void insertWrapper(Node instrumentableNode, Node oldNode, SourceSection sourceSection) {
         Lock lock = InstrumentAccessor.nodesAccess().getLock(instrumentableNode);
         try {
             lock.lock();
-            insertWrapperImpl(instrumentableNode, sourceSection);
+            insertWrapperImpl(instrumentableNode, oldNode, sourceSection);
         } finally {
             lock.unlock();
         }
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})
-    private void insertWrapperImpl(Node node, SourceSection sourceSection) {
+    private void insertWrapperImpl(Node node, Node oldNode, SourceSection sourceSection) {
         Node parent = node.getParent();
         if (parent instanceof WrapperNode) {
             // already wrapped, need to invalidate the wrapper something changed
             invalidateWrapperImpl((WrapperNode) parent, node);
+            if (oldNode != null) {
+                ((WrapperNode) parent).getProbeNode().setOldNode(oldNode);
+            }
             return;
         }
         ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
@@ -1275,8 +1278,8 @@ final class InstrumentationHandler {
             computingRootNodeBits = bits;
         }
 
-        private Node newTreeTraversalParent;
         private Node savedParent;
+        protected Node oldNodeReference;
         private SourceSection savedParentSourceSection;
 
         public final boolean visit(Node originalNode) {
@@ -1284,12 +1287,10 @@ final class InstrumentationHandler {
             SourceSection sourceSection = node.getSourceSection();
             boolean instrumentable = InstrumentationHandler.isInstrumentableNode(node);
             Node previousParent = null;
-            Node previousNewTreeTraversalParent = null;
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
                 Node oldNode = node;
-                boolean oldNodeObtainedFromProbe = false;
                 if (!visitingOldNodes) {
                     Node materializedNode = materializeSyntaxNodes(node, sourceSection);
                     if (materializedNode != oldNode) {
@@ -1316,24 +1317,24 @@ final class InstrumentationHandler {
                          * the AST due to previous materialization
                          */
                         WrapperNode wrapperNode = getWrapperNode(node);
-                        oldNode = (wrapperNode != null ? wrapperNode.getProbeNode().getOldNode() : null);
-                        oldNodeObtainedFromProbe = true;
-                        if (oldNode != null) {
+                        Node oldNodeFromProbe = (wrapperNode != null ? wrapperNode.getProbeNode().getOldNode() : null);
+                        if (oldNodeFromProbe != null) {
                             visitingOldNodes = true;
                             try {
-                                NodeUtil.forEachChild(oldNode, this);
+                                NodeUtil.forEachChild(oldNodeFromProbe, this);
                             } finally {
                                 visitingOldNodes = false;
                             }
                         }
                     }
                 }
-                visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
-                if (oldNode != node && !oldNodeObtainedFromProbe) {
-                    WrapperNode wrapperNode = getWrapperNode(node);
-                    if (wrapperNode != null) {
-                        wrapperNode.getProbeNode().setOldNode(oldNode);
-                    }
+                if (oldNode != node) {
+                    this.oldNodeReference = oldNode;
+                }
+                try {
+                    visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
+                } finally {
+                    this.oldNodeReference = null;
                 }
                 previousParent = this.savedParent;
                 previousParentSourceSection = this.savedParentSourceSection;
@@ -1341,15 +1342,8 @@ final class InstrumentationHandler {
                 this.savedParentSourceSection = sourceSection;
             }
             try {
-                if (!visitingOldNodes) {
-                    previousNewTreeTraversalParent = newTreeTraversalParent;
-                    newTreeTraversalParent = node;
-                }
                 NodeUtil.forEachChild(node, this);
             } finally {
-                if (!visitingOldNodes) {
-                    newTreeTraversalParent = previousNewTreeTraversalParent;
-                }
                 if (instrumentable) {
                     this.savedParent = previousParent;
                     this.savedParentSourceSection = previousParentSourceSection;
@@ -1525,7 +1519,7 @@ final class InstrumentationHandler {
 
         @Override
         protected void visitInstrumented(Node node, SourceSection section) {
-            insertWrapper(node, section);
+            insertWrapper(node, oldNodeReference, section);
         }
 
     }
@@ -1550,7 +1544,7 @@ final class InstrumentationHandler {
 
         @Override
         protected void visitInstrumented(EventBinding.Source<?> binding, Node node, SourceSection section) {
-            insertWrapper(node, section);
+            insertWrapper(node, oldNodeReference, section);
         }
     }
 
