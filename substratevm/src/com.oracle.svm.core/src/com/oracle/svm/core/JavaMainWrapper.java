@@ -46,20 +46,17 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -187,15 +184,15 @@ public class JavaMainWrapper {
         return runCore(paramArgc, paramArgv);
     }
 
-    private static void checkArgumentBlockSupported() {
-        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
-            CArguments args = ARGUMENTS.get();
-            if (args.getArgv().isNull() || args.getArgc() <= 0) {
-                throw new UnsupportedOperationException("Argument vector not accessible (called from shared library image?)");
-            }
-            return;
+    private static boolean isArgumentBlockSupported() {
+        if (!Platform.includedIn(Platform.LINUX.class) && !Platform.includedIn(Platform.DARWIN.class)) {
+            return false;
         }
-        throw new UnsupportedOperationException("Argument vector manipulation unsupported for platform " + ImageSingletons.lookup(Platform.class).getClass().getName());
+        CArguments args = ARGUMENTS.get();
+        if (args.getArgv().isNull() || args.getArgc() <= 0) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -213,9 +210,7 @@ public class JavaMainWrapper {
      *         contiguous memory block without writing into the environment variables part.
      */
     public static int getCRuntimeArgumentBlockLength() {
-        try {
-            checkArgumentBlockSupported();
-        } catch (UnsupportedOperationException e) {
+        if (!isArgumentBlockSupported()) {
             return -1;
         }
 
@@ -233,7 +228,9 @@ public class JavaMainWrapper {
     }
 
     public static boolean setCRuntimeArgument0(String arg0) {
-        checkArgumentBlockSupported();
+        if (!isArgumentBlockSupported()) {
+            throw new UnsupportedOperationException("Argument vector support not available");
+        }
         boolean arg0truncation = false;
 
         try (CCharPointerHolder arg0Pin = CTypeConversion.toCString(arg0)) {
@@ -259,60 +256,10 @@ public class JavaMainWrapper {
     }
 
     public static String getCRuntimeArgument0() {
-        checkArgumentBlockSupported();
+        if (!isArgumentBlockSupported()) {
+            throw new UnsupportedOperationException("Argument vector support not available");
+        }
         return CTypeConversion.toJavaString(ARGUMENTS.get().getArgv().read(0));
-    }
-
-    @AutomaticFeature
-    public static class ExposeCRuntimeArgumentBlockFeature implements Feature {
-        @Override
-        public List<Class<? extends Feature>> getRequiredFeatures() {
-            return Arrays.asList(RuntimeFeature.class);
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            RuntimeSupport rs = RuntimeSupport.getRuntimeSupport();
-            rs.addCommandPlugin(new GetCRuntimeArgumentBlockLengthCommand());
-            rs.addCommandPlugin(new SetCRuntimeArgument0Command());
-            rs.addCommandPlugin(new GetCRuntimeArgument0Command());
-        }
-    }
-
-    private static class GetCRuntimeArgumentBlockLengthCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.getCRuntimeArgumentBlockLength()long";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return getCRuntimeArgumentBlockLength();
-        }
-    }
-
-    private static class SetCRuntimeArgument0Command implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.setCRuntimeArgument0(String)boolean";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return setCRuntimeArgument0((String) args[0]);
-        }
-    }
-
-    private static class GetCRuntimeArgument0Command implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.JavaMainWrapper.getCRuntimeArgument0()String";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return getCRuntimeArgument0();
-        }
     }
 
     private static class EnterCreateIsolateWithCArgumentsPrologue {
