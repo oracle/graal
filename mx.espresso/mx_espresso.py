@@ -24,11 +24,9 @@
 from argparse import ArgumentParser
 
 import os
-from os.path import join
 
 import mx
 import mx_sdk_vm
-import mx_espresso_benchmarks
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest

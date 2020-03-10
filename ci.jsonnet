@@ -154,7 +154,7 @@ local espresso_benchmark(env, suite) =
         _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss32m']),
         ['bench-uploader.py', 'bench-results.json'],
     ],
-    timelimit: '1:00:00',
+    timelimit: '3:00:00',
   };
 
 local jdk8_gate_windows           = base.jdk8 + base.gate   + base.windows;
