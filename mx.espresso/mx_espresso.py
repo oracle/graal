@@ -27,8 +27,8 @@ import os
 from os.path import join
 
 import mx
-import mx_benchmark
 import mx_sdk_vm
+import mx_espresso_benchmarks
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
@@ -52,45 +52,23 @@ def _espresso_standalone_command(args):
     )
 
 
-class EspressoVM(mx_benchmark.JavaVm):
-    def __init__(self, config_name):
-        super(EspressoVM, self).__init__()
-        self._config_name = config_name
-
-    def hosting_registry(self):
-        return mx_benchmark.java_vm_registry
-
-    def name(self):
-        return "espresso"
-
-    def config_name(self):
-        return self._config_name
-
-    def run(self, cwd, args):
-        return mx.run(_espresso_launcher_command(args), cwd=cwd)
-
-
-# Register Espresso (launcher) as a VM for running `mx benchmark`.
-mx_benchmark.java_vm_registry.add_vm(EspressoVM('launcher'), _suite)
-
-
 def _run_espresso_launcher(args=None, cwd=None):
-    """run Espresso launcher embedded in a GraalVM"""
+    """Run Espresso launcher within a GraalVM"""
     mx.run(_espresso_launcher_command(args), cwd=cwd)
 
 
 def _run_espresso_standalone(args=None, cwd=None):
-    """run standalone Espresso (not as part of GraalVM) from distribution jars"""
+    """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
     mx.run_java(_espresso_standalone_command(args), cwd=cwd)
 
 
 def _run_espresso_meta(args):
-    """run Espresso (standalone) on Espresso (launcher)"""
+    """Run Espresso (standalone) on Espresso (launcher)"""
     _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args))
 
 
 def _run_espresso_playground(args):
-    """run Espresso test programs"""
+    """Run Espresso test programs"""
     parser = ArgumentParser(prog='mx espresso-playground')
     parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
     parser.add_argument('main_class_args', nargs='*')
