@@ -49,8 +49,9 @@ import jdk.vm.ci.code.StackSlot;
  *            | incoming overflow argument 0   |    | offsets
  *   ---------+--------------------------------+---------------------
  *   current  | return address                 |    |            ^
- *   frame    | preserved rbp                  |    |            ^
- *            | (iff {@link #useStandardFrameProlog})   |    |            ^
+ *   frame    +--------------------------------+    |            |
+ *            | preserved rbp                  |    |            |
+ *            | (iff {@link #useStandardFrameProlog})   |    |            |
  *            +--------------------------------+    |            |    -----
  *            |                                |    |            |      ^
  *            : callee save area               :    |            |      |
