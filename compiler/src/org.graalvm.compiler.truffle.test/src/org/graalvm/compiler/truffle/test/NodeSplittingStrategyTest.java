@@ -288,7 +288,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
     }
 
-    class ExposesReportPolymorphicSpecializeNode extends Node {
+    static class ExposesReportPolymorphicSpecializeNode extends Node {
         void report() {
             reportPolymorphicSpecialize();
         }
@@ -300,7 +300,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         node.report();
     }
 
-    class ExposesReportPolymorphicSpecializeRootNode extends RootNode {
+    static class ExposesReportPolymorphicSpecializeRootNode extends RootNode {
 
         @Child ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
 
@@ -326,7 +326,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         rootNode.report();
     }
 
-    class CallableOnlyOnceRootNode extends ExposesReportPolymorphicSpecializeRootNode {
+    static class CallableOnlyOnceRootNode extends ExposesReportPolymorphicSpecializeRootNode {
         boolean called;
         boolean active;
 
@@ -350,14 +350,14 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         final CallableOnlyOnceRootNode rootNode = new CallableOnlyOnceRootNode();
         final RootCallTarget reportsPolymorphism = runtime.createCallTarget(rootNode);
         reportsPolymorphism.call(noArguments);
-        final RootCallTarget callsInner = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
+        final RootCallTarget callsInner1 = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
         final RootCallTarget callsInner2 = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
         // make sure the runtime has seen these calls
-        callsInner.call(noArguments);
+        callsInner1.call(noArguments);
         callsInner2.call(noArguments);
         rootNode.active = true;
         rootNode.report();
-        callsInner.call(noArguments);
+        callsInner1.call(noArguments);
         callsInner2.call(noArguments);
     }
 }
