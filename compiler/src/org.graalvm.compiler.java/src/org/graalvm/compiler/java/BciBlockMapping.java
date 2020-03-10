@@ -288,8 +288,8 @@ import jdk.vm.ci.meta.JavaMethod;
  * maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
  * <p>
  * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more
- * than one entry), a bailout is thrown. This simplifies the compiler later on since only structured
- * loops need to be supported.
+ * than one entry), a bailout is thrown or block duplication is attempted to make the loop reducible.
+ * This simplifies the compiler later on since only structured loops need to be supported.
  * <p>
  * A data flow analysis computes the live local variables from the point of view of the interpreter.
  * The result is used later to prune frame states, i.e., remove local variable entries that are
@@ -1402,6 +1402,24 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
     }
 
+    /**
+     * Computes a block pre-order, finds and marks loops.
+     *
+     * <p>
+     * This uses a depth-first traversal of the blocks.
+     * In order to detect irreducible loops, blocks are marked as belonging to a block as soon as that is known.
+     * This is done by keeping a linked list of the currently "active" blocks (the path from entry to the current
+     * block). To be able to do this marking correctly when in the case of nested loops, merge points (including loop
+     * headers) remember the path from their predecessor (see {@link #propagateLoopBits(TraversalStep, long)}).
+     * <p>
+     * Since loops are marked eagerly, forward entries into an existing loop without going through the loop header
+     * (i.e., irreducible loops) can be detected easily. In this case, if {@link Options#DuplicateIrreducibleLoops} is
+     * enabled, the traversal starts to duplicate blocks until it either exits the loop or reaches the header. Since
+     * this is a depth-first traversal and the loop header is not active, we know that the loop and its inner-loops
+     * were until then reducible.
+     * <p>
+     * This is not recursive to avoid stack overflow issues.
+     */
     private void computeBlockOrder(BciBlock initialBlock) {
         ArrayDeque<TraversalStep> workStack = new ArrayDeque<>();
         workStack.push(new TraversalStep(initialBlock));
@@ -1418,7 +1436,7 @@ public final class BciBlockMapping implements JavaMethodContext {
                     DuplicationTraversalStep duplicationStep = (DuplicationTraversalStep) step;
                     BciBlock targetHeader = duplicationStep.loopHeader;
                     if (successor != targetHeader && (successor.loops & 1 << targetHeader.loopId) != 0) {
-                        // neither the target header nor an exit: duplicate
+                        // neither the target header nor an exit: duplicate or merge with duplicate
                         BciBlock duplicate = duplicationStep.duplicationMap.get(successor);
                         if (duplicate == null) {
                             duplicate = successor.duplicate();
@@ -1428,11 +1446,6 @@ public final class BciBlockMapping implements JavaMethodContext {
                         successor = duplicate;
                         successor.predecessorCount++;
                         block.successors.set(step.currentSuccessorIndex, successor);
-                        if (!successor.visited) {
-                            workStack.push(new DuplicationTraversalStep(duplicationStep, successor));
-                            step.currentSuccessorIndex++;
-                            continue;
-                        }
                     } else {
                         debug.dump(DebugContext.DETAILED_LEVEL, this, "Exiting duplication @ %s", successor);
                         debug.log("Exiting duplication @ %s", successor);
@@ -1494,6 +1507,8 @@ public final class BciBlockMapping implements JavaMethodContext {
                         successor.loopIdChain.add(step);
                         debug.dump(DebugContext.DETAILED_LEVEL, this, "After re-reaching %s", successor);
                     }
+                } else if (step instanceof DuplicationTraversalStep) {
+                    workStack.push(new DuplicationTraversalStep((DuplicationTraversalStep) step, successor));
                 } else {
                     workStack.push(new TraversalStep(step, successor));
                 }
