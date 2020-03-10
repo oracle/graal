@@ -244,6 +244,16 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
+#ifdef JNI_VERSION_9
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
+}
+
 int jio_fprintf(FILE *fp, const char *fmt, ...)
 {
     int len;
@@ -254,15 +264,5 @@ int jio_fprintf(FILE *fp, const char *fmt, ...)
     va_end(args);
 
     return len;
-}
-
-#ifdef JNI_VERSION_9
-int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-  va_list args;
-  int len;
-  va_start(args, fmt);
-  len = jio_vsnprintf(str, count, fmt, args);
-  va_end(args);
-  return len;
 }
 #endif
