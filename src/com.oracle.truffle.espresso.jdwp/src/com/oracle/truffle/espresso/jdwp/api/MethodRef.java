@@ -201,4 +201,14 @@ public interface MethodRef {
      * @return true if this method has any breakpoints, false otherwise
      */
     boolean hasActiveBreakpoint();
+
+    /**
+     * Determine if this method is obsolete. A method is obsolete if it has been replaced by a
+     * non-equivalent method using the RedefineClasses command. The original and redefined methods
+     * are considered equivalent if their bytecodes are the same except for indices into the
+     * constant pool and the referenced constants are equal.
+     * 
+     * @return true if the method is obsolete
+     */
+    boolean isObsolete();
 }

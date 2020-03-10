@@ -38,6 +38,7 @@ public final class ParserMethod {
     private final int flags;
     private final Symbol<Name> name;
     private final Symbol<Signature> signature;
+    private boolean changed;
 
     public int getFlags() {
         return flags;
@@ -81,5 +82,13 @@ public final class ParserMethod {
         this.name = name;
         this.signature = signature;
         this.attributes = attributes;
+    }
+
+    public void markChanged() {
+        this.changed = true;
+    }
+
+    public boolean isChanged() {
+        return changed;
     }
 }

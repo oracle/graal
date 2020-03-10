@@ -1414,8 +1414,7 @@ final class JDWP {
                 if (method == null) {
                     return new CommandResult(reply);
                 }
-                // TODO - do a proper check here when done with redefining methods!
-                reply.writeBoolean(false);
+                reply.writeBoolean(method.isObsolete());
                 return new CommandResult(reply);
             }
         }

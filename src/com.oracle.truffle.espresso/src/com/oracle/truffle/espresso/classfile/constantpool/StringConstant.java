@@ -80,6 +80,11 @@ public interface StringConstant extends PoolConstant {
         public void validate(ConstantPool pool) {
             pool.utf8At(utf8Index).validateUTF8();
         }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getSymbol(pool).toString();
+        }
     }
 
     final class Resolved implements StringConstant, Resolvable.ResolvedConstant {
@@ -99,6 +104,11 @@ public interface StringConstant extends PoolConstant {
         public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getSymbol(pool).toString();
+        }
     }
 
     final class PreResolved implements StringConstant, Resolvable {
@@ -116,6 +126,11 @@ public interface StringConstant extends PoolConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             return new Resolved(resolved);
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getSymbol(pool).toString();
         }
     }
 }

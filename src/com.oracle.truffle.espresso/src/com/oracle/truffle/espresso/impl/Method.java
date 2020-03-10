@@ -124,6 +124,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
+    private boolean obsolete;
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -945,6 +946,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion oldVersion = methodVersion;
         methodVersion = new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) newMethod.getAttribute(Name.Code));
         oldVersion.getAssumption().invalidate();
+        // an already obsolete method stays obsolete on subsequent redefines
+        obsolete = obsolete ? true : newMethod.isChanged();
+    }
+
+    public boolean isObsolete() {
+        return obsolete;
     }
 
     public MethodVersion getMethodVersion() {
