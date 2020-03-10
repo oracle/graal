@@ -704,7 +704,7 @@ x-GraalVM-Component-Distribution=bundled
                                                             string_substitutions=string_substitutions,
                                                             testDistribution=testDistribution, **kw_args)
         self.reset_user_group = True
-        mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
+        mx.logvv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
     def getBuildTask(self, args):
         return BaseGraalVmLayoutDistributionTask(args, self)
@@ -2074,7 +2074,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
             add_files_from_component(dependency, base_dir + dependency_path + '/', excluded_paths)
 
-        mx.logv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
+        mx.logvv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
 
         self.maven = _graalvm_maven_attributes
         super(GraalVmStandaloneComponent, self).__init__(
