@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# If you update this number make sure the graalvm.version value in ./pom.xml matches
 VERSION="20.1.0-dev"
 
 MAIN_CLASS="com.oracle.truffle.sl.launcher.SLMain"
