@@ -85,7 +85,7 @@ public class HeapPolicy {
         try {
             result = policy.getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
-            throw UserError.abort("policy " + className + " cannot be instantiated.");
+            throw UserError.abort(ex, "policy " + className + " cannot be instantiated.");
         }
 
         if (!policyClass.isInstance(result)) {
