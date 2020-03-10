@@ -34,7 +34,6 @@ import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StringTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
-import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +56,8 @@ public abstract class DebugInfoBase {
 
     private boolean isWanted(DebugInfoProvider.DebugCodeInfo debugCodeInfo) {
         /* TODO: be much more clever; this is merely proof of concept */
-        return !(CVConstants.skipGraalInternals && debugCodeInfo.className().startsWith("com.oracle"));
+        //return !(CVConstants.skipGraalInternals && debugCodeInfo.className().startsWith("com.oracle"));
+        return true;
     }
 
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {

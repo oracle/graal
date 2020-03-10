@@ -135,6 +135,9 @@ abstract class CVTypeRecord implements CVTypeConstants {
             return this;
         }
 
+        private short computeFlags() {
+            return (short) ((addConst ? 0x01 : 0x00) | (addVolatile ? 0x02 : 0x00) | (addUnaligned ? 0x04 : 0));
+        }
         @Override
         public int computeSize(int pos) {
             return pos + Integer.BYTES + Short.BYTES;
@@ -143,8 +146,7 @@ abstract class CVTypeRecord implements CVTypeConstants {
         @Override
         public int computeContents(byte[] buffer, int pos) {
             pos = CVUtil.putInt(originalLeaf, buffer, pos);
-            int flags = (addConst ? 0x01 : 0x00) | (addVolatile ? 0x02 : 0x00) | (addUnaligned ? 0x04 : 0);
-            pos = CVUtil.putShort((short) flags, buffer, pos);
+            pos = CVUtil.putShort(computeFlags(), buffer, pos);
             return pos;
         }
 
@@ -166,9 +168,9 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = originalLeaf;
-            int flags = (addConst ? 0x01 : 0x00) | (addVolatile ? 0x02 : 0x00) | (addUnaligned ? 0x04 : 0);
-            h = 31 * h + flags;
+            int h = type;
+            h = 31 * h + originalLeaf;
+            h = 31 * h + computeFlags();
             return h;
         }
     }
@@ -200,6 +202,10 @@ abstract class CVTypeRecord implements CVTypeConstants {
             this.originalLeaf = originalLeaf.getSequenceNumber();
         }
 
+        private int computeAttributes() {
+            return kind | (mode << 5) | (modifiers << 8) | (size << 13) | (flags << 19);
+        }
+
         @Override
         public int computeSize(int pos) {
             return pos + Integer.BYTES * 2;
@@ -208,8 +214,7 @@ abstract class CVTypeRecord implements CVTypeConstants {
         @Override
         public int computeContents(byte[] buffer, int pos) {
             pos = CVUtil.putInt(originalLeaf, buffer, pos);
-            int attributes = kind | (mode << 5) | (modifiers << 8) | (size << 13) | (flags << 19);
-            pos = CVUtil.putInt(attributes, buffer, pos);
+            pos = CVUtil.putInt(computeAttributes(), buffer, pos);
             return pos;
         }
 
@@ -220,9 +225,9 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = originalLeaf;
-            int attributes = kind | (mode << 5) | (modifiers << 8) | (size << 13) | (flags << 19);
-            h = 31 * h + attributes;
+            int h = type;
+            h = 31 * h + originalLeaf;
+            h = 31 * h + computeAttributes();
             return h;
         }
     }
@@ -273,7 +278,8 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = returnType;
+            int h = type;
+            h = 31 * h + returnType;
             h = 31 * h + argList.hashCode();
             // h = 31 * h + // callType + funcAttr
             return h;
@@ -328,7 +334,8 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = 0;
+            int h = type;
+            h = h * 31 + args.size();
             for (Integer r : args) {
                 h = 31 * h + r.hashCode();
             }
@@ -604,7 +611,8 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = elementType;
+            int h = type;
+            h = 31 * h + elementType;
             h = 31 * h + indexType;
             h = 31 * h + length;
             return h;
@@ -656,7 +664,8 @@ abstract class CVTypeRecord implements CVTypeConstants {
 
         @Override
         public int hashCode() {
-            int h = Arrays.hashCode(guid);
+            int h = type;
+            h = 31 * h + Arrays.hashCode(guid);
             h = 31 * h + age;
             h = 31 * h + fileName.hashCode();
             return h;

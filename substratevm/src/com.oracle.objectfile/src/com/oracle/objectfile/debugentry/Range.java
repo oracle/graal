@@ -192,4 +192,9 @@ public class Range {
     private String constructClassAndMethodNameWithParams() {
         return getExtendedMethodName(true, false);
     }
+
+    @Override
+    public String toString() {
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), getFileAsPath(), line);
+    }
 }

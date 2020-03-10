@@ -58,4 +58,14 @@ public class FileEntry {
     public DirEntry getDirEntry() {
         return dirEntry;
     }
+
+    @Override
+    public String toString() {
+        if (getDirEntry() == null) {
+            return getFileName() == null ? "-" : getFileName();
+        } else if (getFileName() == null) {
+            return "--";
+        }
+        return String.format("FileEntry(%s)", getFullName());
+    }
 }
