@@ -168,7 +168,8 @@ builds += [
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
-  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  # No more testing on llvm 3.8 [GR-21735]
+  # ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-basic_v80, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }

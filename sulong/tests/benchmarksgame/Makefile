@@ -35,9 +35,3 @@ CFLAGS+= -xc
 
 include $(TOP)/../Makefile.common
 include ${TESTFILE}
-
-# linking an object file conflicts with the -xc flag - make it a text file
-# remove if llvm-3.8 support is dropped [GR-21735]
-%/$(EMBEDDED_BC_OBJ):
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) echo "" > $@
