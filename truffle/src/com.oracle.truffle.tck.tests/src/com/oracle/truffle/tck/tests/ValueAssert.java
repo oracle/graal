@@ -117,8 +117,6 @@ public class ValueAssert {
     private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
     };
 
-    private static final boolean AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
-
     public static void assertValue(Value value) {
         assertValue(value, detectSupportedTypes(value));
     }
@@ -265,17 +263,15 @@ public class ValueAssert {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
                     } else if (!value.canInstantiate()) {
-                        if (!AOT) {
-                            /*
-                             * Proxy mapping fails in AOT mode if not configured. That is fine.
-                             */
-                            if (value.hasMembers()) {
-                                assertFails(() -> value.as(FUNCTION).apply(null), UnsupportedOperationException.class);
-                                assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(123), UnsupportedOperationException.class);
-                            } else if (!value.isHostObject() || (!(value.asHostObject() instanceof Function))) {
-                                assertFails(() -> value.as(FUNCTION), ClassCastException.class);
-                                assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
-                            }
+                        /*
+                         * Proxy mapping fails in AOT mode if not configured. That is fine.
+                         */
+                        if (value.hasMembers()) {
+                            assertFails(() -> value.as(FUNCTION).apply(null), UnsupportedOperationException.class);
+                            assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(123), UnsupportedOperationException.class);
+                        } else if (!value.isHostObject() || (!(value.asHostObject() instanceof Function))) {
+                            assertFails(() -> value.as(FUNCTION), ClassCastException.class);
+                            assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
                         }
                     }
                     break;
@@ -286,17 +282,15 @@ public class ValueAssert {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
                     } else if (!value.canExecute()) {
-                        if (!AOT) {
-                            /*
-                             * Proxy mapping fails in AOT mode if not configured. That is fine.
-                             */
-                            if (value.hasMembers()) {
-                                assertFails(() -> value.as(FUNCTION).apply(null), UnsupportedOperationException.class);
-                                assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(123), UnsupportedOperationException.class);
-                            } else if (!value.isHostObject() || (!(value.asHostObject() instanceof Function))) {
-                                assertFails(() -> value.as(FUNCTION), ClassCastException.class);
-                                assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
-                            }
+                        /*
+                         * Proxy mapping fails in AOT mode if not configured. That is fine.
+                         */
+                        if (value.hasMembers()) {
+                            assertFails(() -> value.as(FUNCTION).apply(null), UnsupportedOperationException.class);
+                            assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class).foobarbaz(123), UnsupportedOperationException.class);
+                        } else if (!value.isHostObject() || (!(value.asHostObject() instanceof Function))) {
+                            assertFails(() -> value.as(FUNCTION), ClassCastException.class);
+                            assertFails(() -> value.as(IsFunctionalInterfaceVarArgs.class), ClassCastException.class);
                         }
                     }
                     break;
