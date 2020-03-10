@@ -114,11 +114,13 @@ local gate_espresso = {
 
 local _mx(env, args) = ['mx', '--env', env] + args;
 
+local clone_repo(repo) = ['git', 'clone', '-b', 'slimbeans', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + repo], '../' + repo];
+
 local clone_graal(env) = {
-  local graal_repo = if std.endsWith(env, 'ee') then 'graal-enterprise' else 'graal',
+  local maybe_clone_graal_enterprise = if std.endsWith(env, 'ee') then [clone_repo('graal-enterprise')] else [],
   setup+: [
-    ['git', 'clone', '-b', 'slimbeans', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + graal_repo], '../' + graal_repo],
-  ],
+    clone_repo('graal'),
+  ] + maybe_clone_graal_enterprise,
 };
 
 local build_espresso(env) = {
@@ -128,9 +130,10 @@ local build_espresso(env) = {
   ],
 };
 
+local maybe_set_ld_debug_flag(env) = if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [];
+
 local run_espresso(env, args) = {
-  local maybe_set_ld_debug_flag = if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
-  run+: maybe_set_ld_debug_flag + [
+  run+: maybe_set_ld_debug_flag(env) + [
     _mx(env, ['espresso'] + args),
   ],
 };
@@ -147,7 +150,7 @@ local espresso_benchmark(env, suite) =
   clone_graal(env) +
   build_espresso(env) +
   {
-    run+: [
+    run+: maybe_set_ld_debug_flag(env) + [
         _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss8m']),
         ['bench-uploader.py', 'bench-results.json'],
     ],
