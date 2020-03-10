@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.channels.ScatteringByteChannel;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +77,8 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -111,6 +114,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.junit.Assert;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * <p>
@@ -198,8 +204,101 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT_BODY, ROOT, CONSTANT, TRY_CATCH};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "MATERIALIZE_CHILD_EXPR_AND_STMT",
-                    "BLOCK_NO_SOURCE_SECTION",
+                    "MATERIALIZE_CHILD_EXPR_AND_STMT_NC", "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
+
+    public static class RecordingExecutionEventListener implements ExecutionEventListener {
+        private volatile boolean error;
+        private volatile String waiting = "";
+        private final boolean stepping;
+        private final StringBuilder sb = new StringBuilder();
+        private final Object sync = new Object();
+
+        public RecordingExecutionEventListener() {
+            this(false);
+        }
+
+        public RecordingExecutionEventListener(boolean stepping) {
+            this.stepping = stepping;
+        }
+
+
+        private String getStepId(String prefix, EventContext c) {
+            return prefix + ((BaseNode)c.getInstrumentedNode()).getShortId();
+        }
+
+        public void go(String... stepIds) {
+            for (String stepId : stepIds) {
+                synchronized (sync) {
+                    while (waiting.isEmpty()) {
+                        try {
+                            sync.wait(1000);
+                        } catch (InterruptedException ie) {
+                        }
+                    }
+                    try {
+                        assertEquals("Unexpected step encountered!", stepId, waiting);
+                    } catch (AssertionError ae) {
+                        error = true;
+                        throw ae;
+                    } finally {
+                        waiting = "";
+                        sync.notifyAll();
+                    }
+                }
+            }
+        }
+
+        public void start()
+        {
+            waitBeforeStep("$START");
+        }
+
+        public void end()
+        {
+            waitBeforeStep("$END");
+        }
+
+        private void waitBeforeStep(String stepId) {
+            if (stepping && !error) {
+                synchronized (sync) {
+                    waiting = stepId;
+                    while (!waiting.isEmpty()) {
+                        sync.notifyAll();
+                        try {
+                            sync.wait(1000);
+                        } catch (InterruptedException ie) {
+                        }
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            String stepId = getStepId("+", context);
+            waitBeforeStep(stepId);
+            sb.append(stepId);
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            String stepId = getStepId("-", context);
+            waitBeforeStep(stepId);
+            sb.append(stepId);
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            String stepId = getStepId("*", context);
+            waitBeforeStep(stepId);
+            sb.append(stepId);
+        }
+
+        public String getRecording() {
+            return sb.toString();
+        }
+    }
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -515,6 +614,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new MaterializeChildExpressionNode(childArray);
                 case "MATERIALIZE_CHILD_EXPR_AND_STMT":
                     return new MaterializeChildExpressionAndStatementNode(childArray);
+                case "MATERIALIZE_CHILD_EXPR_AND_STMT_NC":
+                    return new MaterializeChildExpressionAndStatementNode(childArray, false);
                 case "TRY":
                     return new TryCatchNode(childArray);
                 case "CATCH":
@@ -658,6 +759,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         protected BaseNode copyUninitialized() {
             return new ExpressionNode(cloneUninitialized(children));
+        }
+
+        @Override
+        String getShortId() {
+            return "E";
         }
     }
 
@@ -1093,6 +1199,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @Override
+        String getShortId() {
+            return "R";
+        }
+
+        @Override
         protected BaseNode copyUninitialized() {
             return new FunctionRootNode(cloneUninitialized(children));
         }
@@ -1114,6 +1225,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         StatementNode(BaseNode[] children) {
             super(children);
+        }
+
+        @Override
+        String getShortId() {
+            return "S";
         }
 
         @Override
@@ -1658,9 +1774,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     static class MaterializeChildExpressionAndStatementNode extends StatementNode {
+        private final boolean cloneSubTreeOnMaterialization;
 
         MaterializeChildExpressionAndStatementNode(BaseNode[] children) {
+            this(children, true);
+        }
+
+        MaterializeChildExpressionAndStatementNode(BaseNode[] children, boolean cloneSubTreeOnMaterialization) {
             super(children);
+            this.cloneSubTreeOnMaterialization = cloneSubTreeOnMaterialization;
         }
 
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
@@ -1687,7 +1809,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     replacementForSkippedExpressions[i].setSourceSection(getSourceSection());
                 }
                 MaterializedChildExpressionAndStatementNode materializedNode = new MaterializedChildExpressionAndStatementNode(getSourceSection(), replacementForSkippedExpressions,
-                                cloneUninitialized(newChildren));
+                                cloneSubTreeOnMaterialization ? cloneUninitialized(newChildren) : newChildren);
                 materializedNode.setSourceSection(getSourceSection());
                 return materializedNode;
             }
@@ -1879,8 +2001,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
         }
 
-        WhileLoopNode(RepeatingNode repeatingNode) {
-            this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
+        WhileLoopNode(int loopCount, boolean infinite, BaseNode[] children) {
+            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, infinite, children));
         }
 
         FrameSlot getLoopIndex() {
@@ -1925,8 +2047,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @Override
+        String getShortId() {
+            return "L";
+        }
+
+        @Override
         protected BaseNode copyUninitialized() {
-            return new WhileLoopNode((RepeatingNode) cloneUninitialized((BaseNode) loop.getRepeatingNode()));
+            LoopConditionNode repeatingNode = (LoopConditionNode) loop.getRepeatingNode();
+            return new WhileLoopNode(repeatingNode.loopCount, repeatingNode.infinite, cloneUninitialized(repeatingNode.children));
         }
 
         final class LoopConditionNode extends InstrumentedNode implements RepeatingNode {
@@ -1977,11 +2105,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 } else {
                     return false;
                 }
-            }
-
-            @Override
-            protected BaseNode copyUninitialized() {
-                return new LoopConditionNode(loopCount, infinite, cloneUninitialized(children));
             }
         }
     }
@@ -2087,6 +2210,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         public abstract Object execute(VirtualFrame frame);
+
+        String getShortId() {
+            return "B";
+        }
 
         protected BaseNode copyUninitialized() {
             if (this instanceof InstrumentableNode.WrapperNode) {
