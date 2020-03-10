@@ -34,8 +34,10 @@ import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -612,7 +614,20 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
         if (prologueInvoke != null) {
+            FixedNode next = prologueInvoke.next();
+            FrameState stateAfterPrologue = prologueInvoke.stateAfter();
+            if (stateAfterPrologue == null) {
+                stateAfterPrologue = kit.getFrameState().create(prologueInvoke.bci(), null);
+            } else {
+                stateAfterPrologue = stateAfterPrologue.duplicateWithVirtualState();
+            }
             kit.inline(prologueInvoke, "Inline prologue.", "GraphBuilding");
+            if (next.isAlive() && next.predecessor() instanceof AbstractMergeNode) {
+                AbstractMergeNode merge = (AbstractMergeNode) next.predecessor();
+                if (merge.stateAfter() == null) {
+                    merge.setStateAfter(stateAfterPrologue);
+                }
+            }
             NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
             for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
                 ValueNode result = node.getResult();
