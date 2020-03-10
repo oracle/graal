@@ -1,4 +1,4 @@
-Using the ptototype debug info feature
+Using the prototype debug info feature
 --------------------------------------
 
 To add debug info to a generated native image add flag
