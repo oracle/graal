@@ -43,18 +43,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A class that models the debug info in an
- * organization that facilitates generation of the
- * required DWARF sections. It groups common data and
- * behaviours for use by the various subclasses of
- * class DwarfSectionImpl that take responsibility
- * for generating content for a specific section type.
+ * A class that models the debug info in an organization that facilitates generation of the required
+ * DWARF sections. It groups common data and behaviours for use by the various subclasses of class
+ * DwarfSectionImpl that take responsibility for generating content for a specific section type.
  */
 public class DwarfSections {
 
     /*
-     * names of the different ELF sections we create or reference
-     * in reverse dependency order
+     * names of the different ELF sections we create or reference in reverse dependency order
      */
     public static final String TEXT_SECTION_NAME = ".text";
     public static final String DW_STR_SECTION_NAME = ".debug_str";
@@ -95,7 +91,7 @@ public class DwarfSections {
     public static final int DW_AT_language = 0x13;
     public static final int DW_AT_external = 0x3f;
     @SuppressWarnings("unused")
-     public static final int DW_AT_return_addr = 0x2a;
+    public static final int DW_AT_return_addr = 0x2a;
     @SuppressWarnings("unused")
     public static final int DW_AT_frame_base = 0x40;
     /*
@@ -149,7 +145,8 @@ public class DwarfSections {
      * others not yet needed
      */
     @SuppressWarnings("unused")
-    public static final int DW_AT_type = 0; // only present for non-void functions
+    public static final int DW_AT_type = 0; // only present for non-void
+                                                                        // functions
     @SuppressWarnings("unused")
     public static final int DW_AT_accessibility = 0;
 
@@ -238,15 +235,14 @@ public class DwarfSections {
     }
 
     /**
-     * a table listing all known strings, some of
-     * which may be marked for insertion into the
+     * a table listing all known strings, some of which may be marked for insertion into the
      * debug_str section.
      */
     private StringTable stringTable = new StringTable();
 
     /**
-     * index of all dirs in which files are found to reside
-     * either as part of substrate/compiler or user code.
+     * index of all dirs in which files are found to reside either as part of substrate/compiler or
+     * user code.
      */
     private Map<Path, DirEntry> dirsIndex = new HashMap<>();
 
@@ -254,6 +250,7 @@ public class DwarfSections {
      * The obvious traversal structure for debug records is:
      *
      * 1) by top level compiled method (primary Range) ordered by ascending address
+     *
      * 2) by inlined method (sub range) within top level method ordered by ascending address
      *
      * these can be used to ensure that all debug records are generated in increasing address order
@@ -261,21 +258,22 @@ public class DwarfSections {
      * An alternative traversal option is
      *
      * 1) by top level class (String id)
+     *
      * 2) by top level compiled method (primary Range) within a class ordered by ascending address
+     *
      * 3) by inlined method (sub range) within top level method ordered by ascending address
      *
-     * this relies on the (current) fact that methods of a given class always appear
-     * in a single continuous address range with no intervening code from other methods
-     * or data values. this means we can treat each class as a compilation unit, allowing
-     * data common to all methods of the class to be shared.
+     * this relies on the (current) fact that methods of a given class always appear in a single
+     * continuous address range with no intervening code from other methods or data values. this
+     * means we can treat each class as a compilation unit, allowing data common to all methods of
+     * the class to be shared.
      *
      * A third option appears to be to traverse via files, then top level class within file etc.
-     * Unfortunately, files cannot be treated as the compilation unit. A file F may contain
-     * multiple classes, say C1 and C2. There is no guarantee that methods for some other
-     * class C' in file F' will not be compiled into the address space interleaved between
-     * methods of C1 and C2. That is a shame because generating debug info records one file at a
-     * time would allow more sharing e.g. enabling all classes in a file to share a single copy
-     * of the file and dir tables.
+     * Unfortunately, files cannot be treated as the compilation unit. A file F may contain multiple
+     * classes, say C1 and C2. There is no guarantee that methods for some other class C' in file F'
+     * will not be compiled into the address space interleaved between methods of C1 and C2. That is
+     * a shame because generating debug info records one file at a time would allow more sharing
+     * e.g. enabling all classes in a file to share a single copy of the file and dir tables.
      */
 
     /**
@@ -283,7 +281,7 @@ public class DwarfSections {
      */
     private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
     /**
-     *  index of already seen classes.
+     * index of already seen classes.
      */
     private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
 
@@ -294,6 +292,7 @@ public class DwarfSections {
 
     /**
      * indirects this call to the string table.
+     * 
      * @param string the string to be inserted
      * @return a unique equivalent String
      */
@@ -302,11 +301,10 @@ public class DwarfSections {
     }
 
     /**
-     * indirects this call to the string table, ensuring
-     * the table entry is marked for inclusion in the
-     * debug_str section.
-     * @param string the string to be inserted and
-     * marked for inclusion in the debug_str section
+     * indirects this call to the string table, ensuring the table entry is marked for inclusion in
+     * the debug_str section.
+     * 
+     * @param string the string to be inserted and marked for inclusion in the debug_str section
      * @return a unique equivalent String
      */
     public String uniqueDebugString(String string) {
@@ -315,26 +313,23 @@ public class DwarfSections {
 
     /**
      * indirects this call to the string table.
+     * 
      * @param string the string whose index is required
-     * @return the offset of the string in the .debug_str
-     * section
+     * @return the offset of the string in the .debug_str section
      */
     public int debugStringIndex(String string) {
         return stringTable.debugStringIndex(string);
     }
 
     /**
-     * entry point allowing ELFObjectFile to pass on information
-     * about types, code and heap data.
-     * @param debugInfoProvider provider instance passed by
-     * ObjectFile client
+     * entry point allowing ELFObjectFile to pass on information about types, code and heap data.
+     * 
+     * @param debugInfoProvider provider instance passed by ObjectFile client
      */
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         /*
-         * DebugTypeInfoProvider typeInfoProvider = debugInfoProvider.typeInfoProvider();
-         * for (DebugTypeInfo debugTypeInfo : typeInfoProvider) {
-         * install types
-         * }
+         * DebugTypeInfoProvider typeInfoProvider = debugInfoProvider.typeInfoProvider(); for
+         * (DebugTypeInfo debugTypeInfo : typeInfoProvider) { install types }
          */
 
         /*
@@ -359,8 +354,8 @@ public class DwarfSections {
             Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine);
             /*
              * System.out.format("arange: [0x%08x,0x%08x) %s %s::%s(%s) %s\n", lo, hi,
-             * returnTypeName, className, methodName, paramNames, fileName);
-             * create an infoSection entry for the method
+             * returnTypeName, className, methodName, paramNames, fileName); create an infoSection
+             * entry for the method
              */
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
@@ -381,11 +376,9 @@ public class DwarfSections {
             });
         });
         /*
-         * DebugDataInfoProvider dataInfoProvider = debugInfoProvider.dataInfoProvider();
-         * for (DebugDataInfo debugDataInfo : dataInfoProvider) {
-         * install details of heap elements
-         * String name = debugDataInfo.toString();
-         * }
+         * DebugDataInfoProvider dataInfoProvider = debugInfoProvider.dataInfoProvider(); for
+         * (DebugDataInfo debugDataInfo : dataInfoProvider) { install details of heap elements
+         * String name = debugDataInfo.toString(); }
          */
     }
 
@@ -449,8 +442,7 @@ public class DwarfSections {
         ClassEntry classEntry = primaryClassesIndex.get(className);
         FileEntry subrangeFileEntry = ensureFileEntry(subrange);
         /*
-         * the primary range should already have been seen
-         * and associated with a primary class entry
+         * the primary range should already have been seen and associated with a primary class entry
          */
         assert classEntry.primaryIndexFor(primaryRange) != null;
         if (subrangeFileEntry != null) {
@@ -469,12 +461,15 @@ public class DwarfSections {
         }
         return dirEntry;
     }
+
     public StringTable getStringTable() {
         return stringTable;
     }
+
     public LinkedList<ClassEntry> getPrimaryClasses() {
         return primaryClasses;
     }
+
     public ByteOrder getByteOrder() {
         return byteOrder;
     }

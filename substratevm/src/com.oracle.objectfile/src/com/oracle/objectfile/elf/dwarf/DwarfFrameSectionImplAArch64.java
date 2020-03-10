@@ -27,8 +27,8 @@
 package com.oracle.objectfile.elf.dwarf;
 
 /**
- * AArch64-specific section generator for debug_frame section
- * that knows details of AArch64 registers and frame layout.
+ * AArch64-specific section generator for debug_frame section that knows details of AArch64
+ * registers and frame layout.
  */
 public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     // public static final int DW_CFA_FP_IDX = 29;
@@ -54,14 +54,15 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * rsp has not been updated and
-         * caller pc is in lr
+         * rsp has not been updated and caller pc is in lr
+         *
          * <ul>
+         *
          * <li><code>register r32 (rpc), r30 (lr)</code>
+         *
          * </ul>
          */
         pos = writeRegister(DW_CFA_PC_IDX, DW_CFA_LR_IDX, buffer, pos);
         return pos;
     }
 }
-

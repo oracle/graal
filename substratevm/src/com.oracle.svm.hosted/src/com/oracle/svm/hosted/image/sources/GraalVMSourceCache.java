@@ -54,14 +54,11 @@ public class GraalVMSourceCache extends SourceCache {
     private static final String JAVA_CLASSPATH_PROP = "java.class.path";
 
     private void initSrcRoots() {
-        String javaClassPath = System.getProperty(JAVA_CLASSPATH_PROP);
-        assert javaClassPath != null;
-        String[] classPathEntries = javaClassPath.split(File.pathSeparator);
         for (String classPathEntry : classPathEntries) {
             tryClassPathRoot(classPathEntry);
         }
         for (String sourcePathEntry : sourcePathEntries) {
-            tryClassPathRoot(sourcePathEntry);
+            trySourceRoot(sourcePathEntry);
         }
     }
 
@@ -127,7 +124,7 @@ public class GraalVMSourceCache extends SourceCache {
      * @param root A root path under which to locate the desired subdirectory
      * @return true if a
      */
-    private boolean filterSrcRoot(Path root) {
+    private static boolean filterSrcRoot(Path root) {
         String separator = root.getFileSystem().getSeparator();
 
         /* if any of the graal paths exist accept this root */

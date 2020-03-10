@@ -40,6 +40,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_FLAG_true;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_LANG_Java;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+
 /**
  * Section generator for debug_info section.
  */
@@ -61,36 +62,52 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * we need a single level 0 DIE for each compilation unit (CU).
-         * Each CU's Level 0 DIE is preceded by a fixed header
-         * and terminated by a null DIE:
+         * we need a single level 0 DIE for each compilation unit (CU). Each CU's Level 0 DIE is
+         * preceded by a fixed header and terminated by a null DIE:
+         *
          * <ul>
+         *
          * <li><code>uint32 length ......... excluding this length field</code>
+         *
          * <li><code>uint16 dwarf_version .. always 2 ??</code>
+         *
          * <li><code>uint32 abbrev offset .. always 0 ??</code>
+         *
          * <li><code>uint8 address_size .... always 8</code>
+         *
          * <li><code>DIE* .................. sequence of top-level and nested child entries</code>
+         *
          * <li><code>null_DIE .............. == 0</code>
+         *
          * </ul>
          *
-         * a DIE is a recursively defined structure.
-         * it starts with a code for the associated
-         * abbrev entry followed by a series of attribute
-         * values, as determined by the entry, terminated by
-         * a null value and followed by zero or more child
-         * DIEs (zero iff has_children == no_children).
+         * a DIE is a recursively defined structure. it starts with a code for the associated abbrev
+         * entry followed by a series of attribute values, as determined by the entry, terminated by
+         * a null value and followed by zero or more child DIEs (zero iff has_children ==
+         * no_children).
          *
          * <ul>
-         * <li><code>LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of DIE</code>
+         *
+         * <li><code>LEB128 abbrev_code != 0 .. non-zero value indexes tag + attr layout of
+         * DIE</code>
+         *
          * <li><code>attribute_value* ......... value sequence as determined by abbrev entry</code>
+         *
          * <li><code>DIE* ..................... sequence of child DIEs (if appropriate)</code>
-         * <li><code><null_value> ............. == 0</code>
+         * <li><code>
+         *
+         * <li><code>null_value ............... == 0</code>
+         *
          * </ul>
          *
          * note that a null_DIE looks like
+         *
          * <ul>
+         *
          * <li><code>LEB128 abbrev_code ....... == 0</code>
+         *
          * </ul>
+         *
          * i.e. it also looks like a null_value
          */
 
@@ -122,8 +139,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         debug("  [0x%08x] size = 0x%08x\n", pos, size);
         for (ClassEntry classEntry : getPrimaryClasses()) {
             /*
-             * save the offset of this file's CU so it can
-             * be used when writing the aranges section
+             * save the offset of this file's CU so it can be used when writing the aranges section
              */
             classEntry.setCUIndex(pos);
             int lengthPos = pos;
@@ -244,8 +260,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     public final LayoutDecision.Kind[] targetSectionKinds = {
-            LayoutDecision.Kind.CONTENT,
-            LayoutDecision.Kind.OFFSET
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.OFFSET
     };
 
     @Override
@@ -253,4 +269,3 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return targetSectionKinds;
     }
 }
-

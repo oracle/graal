@@ -275,7 +275,7 @@ public abstract class SourceCache {
      * @return true if the path identifies a file or false if no such file can be found.
      * @throws IOException if there is some error in resolving the path.
      */
-    private boolean checkSourcePath(Path sourcePath) throws IOException {
+    private static boolean checkSourcePath(Path sourcePath) throws IOException {
         return Files.isRegularFile(sourcePath);
     }
 
@@ -285,7 +285,7 @@ public abstract class SourceCache {
      * @param targetDir a path to the desired directory
      * @throws IOException if it is not possible to create one or more directories in the path
      */
-    private void ensureTargetDirs(Path targetDir) throws IOException {
+    private static void ensureTargetDirs(Path targetDir) throws IOException {
         if (targetDir != null) {
             File targetFile = targetDir.toFile();
             if (!targetFile.exists()) {

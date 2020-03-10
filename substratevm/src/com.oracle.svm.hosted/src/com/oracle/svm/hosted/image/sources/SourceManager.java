@@ -26,8 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.meta.ResolvedJavaType;
 

@@ -980,6 +980,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     private class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final NativeImageCodeCache codeCache;
+        @SuppressWarnings("unused")
         private final NativeImageHeap heap;
 
         NativeImageDebugInfoProvider(NativeImageCodeCache codeCache, NativeImageHeap heap) {
@@ -1003,14 +1004,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return Stream.empty();
         }
     }
-
-    private static final String[] GRAAL_SRC_PACKAGE_PREFIXES = {
-                    "org.graalvm",
-                    "com.oracle.graal",
-                    "com.oracle.objectfile",
-                    "com.oracle.svm",
-                    "com.oracle.truffle",
-    };
 
     /**
      * implementation of the DebugCodeInfo API interface that allows code info to be passed to an
@@ -1094,10 +1087,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return compilation.getSourceMappings().stream().map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping));
         }
 
+        @Override
         public int getFrameSize() {
             return compilation.getTotalFrameSize();
         }
 
+        @Override
         public List<DebugFrameSizeChange> getFrameSizeChanges() {
             List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
             for (Mark mark : compilation.getMarks()) {
@@ -1132,8 +1127,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
             NodeSourcePosition position = sourceMapping.getSourcePosition();
-            int bci = position.getBCI();
-            this.bci = (bci >= 0 ? bci : 0);
+            int posbci = position.getBCI();
+            this.bci = (posbci >= 0 ? posbci : 0);
             this.method = position.getMethod();
             this.lo = sourceMapping.getStartOffset();
             this.hi = sourceMapping.getEndOffset();
@@ -1148,6 +1143,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return null;
         }
 
+        @Override
         public Path filePath() {
             if (fullFilePath != null) {
                 return fullFilePath.getParent();

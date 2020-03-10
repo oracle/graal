@@ -39,6 +39,7 @@ import java.util.Map;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ARANGES_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_INFO_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_VERSION_2;
+
 /**
  * Section generator for debug_aranges section.
  */
@@ -62,30 +63,38 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * we need an entry for each compilation unit
          *
          * <ul>
+         *
          * <li><code>uint32 length ............ in bytes (not counting these 4 bytes)</code>
+         *
          * <li><code>uint16 dwarf_version ..... always 2</code>
+         *
          * <li><code>uint32 info_offset ....... offset of compilation unit on debug_info</code>
+         *
          * <li><code>uint8 address_size ....... always 8</code>
+         *
          * <li><code>uint8 segment_desc_size .. ???</code>
+         *
          * </ul>
          *
-         * i.e. 12 bytes followed by padding
-         * aligning up to 2 * address size
+         * i.e. 12 bytes followed by padding aligning up to 2 * address size
          *
          * <ul>
+         *
          * <li><code>uint8 pad[4]</code>
+         *
          * </ul>
          *
          * followed by N + 1 times
          *
-         * <ul>
-         * <li><code>uint64 lo ................ lo address of range</code>
+         * <ul> <li><code>uint64 lo ................ lo address of range</code>
+         *
          * <li><code>uint64 length ............ number of bytes in range</code>
+         *
          * </ul>
          *
-         * where N is the number of ranges belonging to the compilation unit
-         * and the last range contains two zeroes
-        */
+         * where N is the number of ranges belonging to the compilation unit and the last range
+         * contains two zeroes
+         */
 
         for (ClassEntry classEntry : getPrimaryClasses()) {
             pos += DW_AR_HEADER_SIZE;
@@ -108,9 +117,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
             if (valueObj != null && valueObj instanceof Number) {
                 /*
-                 * this may not be the final vaddr for the text segment
-                 * but it will be close enough to make debug easier
-                 * i.e. to within a 4k page or two
+                 * this may not be the final vaddr for the text segment but it will be close enough
+                 * to make debug easier i.e. to within a 4k page or two
                  */
                 debugTextBase = ((Number) valueObj).longValue();
             }
@@ -183,8 +191,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     }
 
     public final LayoutDecision.Kind[] targetSectionKinds = {
-            LayoutDecision.Kind.CONTENT,
-            LayoutDecision.Kind.OFFSET
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.OFFSET
     };
 
     @Override
