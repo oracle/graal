@@ -768,8 +768,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isDefaultFileSystem(FileSystem fs) {
-            return FileSystems.isDefaultFileSystem(fs);
+        public boolean isInternal(FileSystem fs) {
+            return FileSystems.isInternal(fs);
+        }
+
+        @Override
+        public boolean hasAllAccess(FileSystem fs) {
+            return FileSystems.hasAllAccess(fs);
         }
 
         @Override

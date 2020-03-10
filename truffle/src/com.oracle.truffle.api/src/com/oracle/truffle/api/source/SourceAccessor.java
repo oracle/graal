@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,8 +81,8 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
-    static boolean isDefaultFileSystem(Object fileSystemContext) {
-        return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
+    static boolean hasAllAccess(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().hasAllAccess(fileSystemContext);
     }
 
     static boolean isPreInitialization() {
