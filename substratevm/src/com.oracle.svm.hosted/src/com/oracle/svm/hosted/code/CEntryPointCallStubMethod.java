@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.Isolate;
@@ -501,7 +502,11 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
-            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception));
+            StateSplitProxyNode stateSplitProxy = new StateSplitProxyNode(null);
+            kit.append(stateSplitProxy);
+            stateSplitProxy.setStateAfter(exception.stateAfter());
+            CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
+            kit.append(leave);
             kit.append(new DeadEndNode());
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
@@ -564,7 +569,11 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
             kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
             assert !enumExceptionCtor.hasNext();
-            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException));
+            StateSplitProxyNode stateSplitProxy = new StateSplitProxyNode(null);
+            kit.append(stateSplitProxy);
+            stateSplitProxy.setStateAfter(kit.getFrameState().create(kit.bci(), stateSplitProxy));
+            CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
+            kit.append(leave);
             kit.append(new DeadEndNode());
             kit.endIf();
 

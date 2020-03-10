@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -199,8 +200,11 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
             default:
                 throw VMError.shouldNotReachHere();
         }
-
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        kit.append(proxy);
+        proxy.setStateAfter(state.create(kit.bci(), proxy));
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);
 
         return kit.finalizeGraph();
