@@ -50,7 +50,19 @@ public class HeapHistogram {
         }
     }
 
-    private static final Comparator<HistogramEntry> SIZE_COMPARATOR = (o1, o2) -> Long.compare(o2.size, o1.size);
+    private static final Comparator<HistogramEntry> SIZE_COMPARATOR = (o1, o2) -> {
+        // Larger sizes first
+        int result = Long.compare(o2.size, o1.size);
+        if (result == 0) {
+            // Then more instances
+            result = Long.compare(o2.count, o1.count);
+        }
+        if (result == 0) {
+            // Then sort by name
+            result = o2.clazz.getName().compareTo(o1.clazz.getName());
+        }
+        return result;
+    };
 
     public void add(ObjectInfo objectInfo, long size) {
         assert NativeImageOptions.PrintHeapHistogram.getValue();
