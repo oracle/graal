@@ -288,8 +288,9 @@ import jdk.vm.ci.meta.JavaMethod;
  * maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
  * <p>
  * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more
- * than one entry), a bailout is thrown or block duplication is attempted to make the loop reducible.
- * This simplifies the compiler later on since only structured loops need to be supported.
+ * than one entry), a bailout is thrown or block duplication is attempted to make the loop
+ * reducible. This simplifies the compiler later on since only structured loops need to be
+ * supported.
  * <p>
  * A data flow analysis computes the live local variables from the point of view of the interpreter.
  * The result is used later to prune frame states, i.e., remove local variable entries that are
@@ -1406,17 +1407,19 @@ public final class BciBlockMapping implements JavaMethodContext {
      * Computes a block pre-order, finds and marks loops.
      *
      * <p>
-     * This uses a depth-first traversal of the blocks.
-     * In order to detect irreducible loops, blocks are marked as belonging to a block as soon as that is known.
-     * This is done by keeping a linked list of the currently "active" blocks (the path from entry to the current
-     * block). To be able to do this marking correctly when in the case of nested loops, merge points (including loop
-     * headers) remember the path from their predecessor (see {@link #propagateLoopBits(TraversalStep, long)}).
+     * This uses a depth-first traversal of the blocks. In order to detect irreducible loops, blocks
+     * are marked as belonging to a block as soon as that is known. This is done by keeping a linked
+     * list of the currently "active" blocks (the path from entry to the current block). To be able
+     * to do this marking correctly when in the case of nested loops, merge points (including loop
+     * headers) remember the path from their predecessor (see
+     * {@link #propagateLoopBits(TraversalStep, long)}).
      * <p>
-     * Since loops are marked eagerly, forward entries into an existing loop without going through the loop header
-     * (i.e., irreducible loops) can be detected easily. In this case, if {@link Options#DuplicateIrreducibleLoops} is
-     * enabled, the traversal starts to duplicate blocks until it either exits the loop or reaches the header. Since
-     * this is a depth-first traversal and the loop header is not active, we know that the loop and its inner-loops
-     * were until then reducible.
+     * Since loops are marked eagerly, forward entries into an existing loop without going through
+     * the loop header (i.e., irreducible loops) can be detected easily. In this case, if
+     * {@link Options#DuplicateIrreducibleLoops} is enabled, the traversal starts to duplicate
+     * blocks until it either exits the loop or reaches the header. Since this is a depth-first
+     * traversal and the loop header is not active, we know that the loop and its inner-loops were
+     * until then reducible.
      * <p>
      * This is not recursive to avoid stack overflow issues.
      */
@@ -1607,7 +1610,7 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("try")
     public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug) {
         BciBlockMapping map = new BciBlockMapping(code, debug);
         try (Scope scope = debug.scope("BciBlockMapping", map)) {
