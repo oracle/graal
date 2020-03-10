@@ -88,8 +88,6 @@ local base = {
   },
 };
 
-local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'];
-
 local gate_coverage = base.eclipse + {
   setup+: [
     ['mx', 'sversions'],
@@ -102,6 +100,8 @@ local gate_coverage = base.eclipse + {
   timelimit: '30:00',
 };
 
+local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'];
+
 local gate_espresso = {
   setup+: [
     ['mx', 'sversions'],
@@ -112,67 +112,87 @@ local gate_espresso = {
   timelimit: '15:00',
 };
 
-local mx_espresso_svm(ee, args) = ['mx', '--env', (if ee then 'native-ee' else 'native-ce')] + args;
+local _mx(env, args) = ['mx', '--env', env] + args;
 
-local run_espresso_native(ee, args) = [
-  ['set-export', 'GRAALVM_HOME', mx_espresso_svm(ee, ['graalvm-home'])],
-  ['set-export', 'ESPRESSO', '${GRAALVM_HOME}/bin/espresso'],
-  ['set-export', 'LD_DEBUG', 'unused'],
-  ['${ESPRESSO}'] + args,
-];
+local clone_graal(env) = {
+  local graal_repo = if std.endsWith(env, 'ee') then 'graal-enterprise' else 'graal',
+  setup+: [
+    ['git', 'clone', '-b', 'slimbeans', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/' + graal_repo], '../' + graal_repo],
+  ],
+};
+
+local build_espresso(env) = {
+  run+: [
+    ['mx', 'sversions'],
+    _mx(env, 'build'),
+  ],
+};
+
+local run_espresso(env, args) = {
+  local maybe_set_ld_debug_flag = if std.startsWith(env, 'jvm') then ['set-export', 'LD_DEBUG', 'unused'] else [],
+  run+: maybe_set_ld_debug_flag + [
+    _mx(env, ['espresso'] + args),
+  ],
+};
 
 local hello_world_args = ['-cp', 'mxbuild/dists/jdk1.8/espresso-playground.jar', 'com.oracle.truffle.espresso.playground.HelloWorld'];
 
-local gate_espresso_svm = {
-  setup+: [
-    ['mx', 'sversions'],
-  ],
-  run+: [
-    mx_espresso_svm(false, ['build']),
-  ] +
-    run_espresso_native(false, hello_world_args),
-};
+local clone_build_run(env, args) = (
+  clone_graal(env) +
+  build_espresso(env) +
+  run_espresso(env, args)
+);
 
-local gate_espresso_svm_ee = {
-  setup+: [
-    ['git', 'clone', '-b', 'slimbeans', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/oracle/graal-enterprise'], '../graal-enterprise'],
-    ['mx', 'sversions'],
-  ],
-  run+: [
-    mx_espresso_svm(true, ['build']),
-  ] +
-    run_espresso_native(true, hello_world_args),
-};
+local espresso_benchmark(env, suite) =
+  clone_graal(env) +
+  build_espresso(env) +
+  {
+    run+: [
+        _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss8m']),
+        ['bench-uploader.py', 'bench-results.json'],
+    ],
+    timelimit: '1:00:00',
+  };
 
 local jdk8_gate_windows           = base.jdk8 + base.gate   + base.windows;
-local jdk8_gate_darwin            = base.jdk8 + base.gate   + base.darwin;
-local jdk8_gate_linux             = base.jdk8 + base.gate   + base.linux;
-local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate   + base.linux + base.eclipse + base.jdt;
-local jdk8_weekly_linux           = base.jdk8 + base.weekly + base.linux;
+local jdk8_gate_darwin            = base.jdk8 + base.gate       + base.darwin;
+local jdk8_gate_linux             = base.jdk8 + base.gate       + base.linux;
+local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate       + base.linux + base.eclipse + base.jdt;
+local jdk8_weekly_linux           = base.jdk8 + base.weekly     + base.linux;
+local jdk8_daily_bench_linux      = base.jdk8 + base.dailyBench + base.linux + base.x52;
+
+local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
+local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
 {
   builds: [
-    jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-coverage-linux-amd64'},
+    // JaCoCo coverage
+    jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-coverage-jdk8-linux-amd64'},
 
-    jdk8_gate_linux + base.extra_jdk11 + gate_espresso   + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-jackpot-linux-amd64'},
-    jdk8_gate_linux_eclipse_jdt   + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
+    // Gates
+    jdk8_gate_linux + base.extra_jdk11 + gate_espresso   + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-gate-jackpot-jdk8-linux-amd64'},
+    jdk8_gate_linux_eclipse_jdt   + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-gate-style-fullbuild-jdk8-linux-amd64'},
 
-    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-unittest-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-gate-unittest-jdk8-linux-amd64'},
 
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS      : 'build,unittest_with_compilation',
                                                                            DYNAMIC_IMPORTS: '/compiler'},
-                                                            timelimit: '1:00:00'}                         + {name: 'espresso-unittest-compilation-linux-amd64'},
+                                                            timelimit: '1:00:00'}                         + {name: 'espresso-gate-unittest-compilation-jdk8-linux-amd64'},
 
     // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
     jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
-                                                                                                          + {name: 'espresso-meta-hello-world-linux-amd64'},
+                                                                                                          + {name: 'espresso-meta-hello-world-linux-amd64'},                                                                                                   
 
-    jdk8_gate_linux               + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-linux-amd64'},
-    jdk8_gate_linux               + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-linux-amd64'},
+    // Hello World! should run in all supported configurations.
+    jdk8_gate_linux               + clone_build_run('jvm-ce', hello_world_args)                           + {name: 'espresso-gate-jvm-ce-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_linux               + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_linux               + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-linux-amd64'},
+    jdk8_gate_darwin              + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-darwin-amd64'},
+    jdk8_gate_darwin              + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-darwin-amd64'},
+    jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
 
-    jdk8_gate_darwin              + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-darwin-amd64'},
-    jdk8_gate_darwin              + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-darwin-amd64'},
-
-    jdk8_gate_windows             + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-windows-amd64'},
-  ]
+    // Benchmarks
+    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce',    'scala-dacapo:*')                     + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('native-ce', 'scala-dacapo:*')                     + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
+  ],
 }
