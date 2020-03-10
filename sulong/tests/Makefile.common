@@ -72,7 +72,13 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
+ifeq ($(OS), darwin)
+# NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
+#   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
+EMBED_BC=-flto -Wl,-bitcode_bundle -Wno-everything
+else
 EMBED_BC=-fembed-bitcode
+endif
 
 ifdef CLANG_NO_OPTNONE
 SULONG_MAKE_CLANG_IMPLICIT_ARGS=
@@ -213,6 +219,35 @@ define OPT_RULES
 %.c.dir/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
+
+
+%.c.dir/$(1)_OUT.bc: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cpp.dir/$(1)_OUT.bc: %.cpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cc.dir/$(1)_OUT.bc: %.cc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.C.dir/$(1)_OUT.bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.gcc.dir/$(1)_OUT.bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cint.dir/$(1)_OUT.bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.gpp.dir/$(1)_OUT.bc: %.gpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 endef
 
