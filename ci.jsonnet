@@ -195,7 +195,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
 
     // Benchmarks
-    jdk8_daily_bench_linux        + espresso_benchmark('jvm-ce',    'scala-dacapo:*')                     + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
     jdk8_daily_bench_linux        + espresso_benchmark('native-ce', 'scala-dacapo:*')                     + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('native-ee', 'scala-dacapo:*')                     + {name: 'espresso-bench-native-ee-scala-dacapo-jdk8-linux-amd64'},
   ],
 }
