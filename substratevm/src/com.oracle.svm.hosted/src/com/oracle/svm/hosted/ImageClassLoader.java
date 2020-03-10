@@ -257,10 +257,31 @@ public final class ImageClassLoader {
         }
     }
 
-    private static boolean annotationsAvailable(AnnotatedElement element) {
+    /**
+     * @param element The element to check
+     * @return Returns true if the annotations on the {@code element} can be loaded without any
+     *         errors.
+     */
+    private static boolean canLoadAnnotations(AnnotatedElement element) {
         try {
             element.getAnnotations();
             return true;
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+            return false;
+        }
+    }
+
+    /**
+     *
+     * @param element The element to check
+     * @return Returns true if and only if the the {@code element} has any annotations present and
+     *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
+     */
+    private static boolean annotationsAvailable(AnnotatedElement element) {
+        try {
+            final Annotation[] annotations = element.getAnnotations();
+            return annotations.length != 0;
         } catch (Throwable t) {
             handleClassLoadingError(t);
             return false;
@@ -362,7 +383,7 @@ public final class ImageClassLoader {
             cur = clazz;
         }
         do {
-            if (!annotationsAvailable(cur)) {
+            if (!canLoadAnnotations(cur)) {
                 return;
             }
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
