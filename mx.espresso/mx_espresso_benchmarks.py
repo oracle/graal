@@ -56,7 +56,3 @@ class EspressoLauncherVM(mx_benchmark.JavaVm):
         graalvm_dist = mx_sdk_vm_impl.get_final_graalvm_distribution()
         return [ret_code, output, {'vm.graalvm.config': graalvm_dist.vm_config_name,
                                    'vm.graalvm.dist': graalvm_dist.name}]
-
-
-# Register Espresso (launcher) as a JVM for running `mx benchmark`.
-mx_benchmark.java_vm_registry.add_vm(EspressoLauncherVM('launcher'), _suite)

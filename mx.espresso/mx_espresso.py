@@ -26,6 +26,8 @@ from argparse import ArgumentParser
 import os
 
 import mx
+import mx_benchmark
+import mx_espresso_benchmarks
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
@@ -154,3 +156,6 @@ mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'nfi', 'sdk', 'tfl',
 mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
 mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
 mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
+
+# Register Espresso (launcher) as a JVM for running `mx benchmark`.
+mx_benchmark.java_vm_registry.add_vm(mx_espresso_benchmarks.EspressoLauncherVM('launcher'), _suite)
