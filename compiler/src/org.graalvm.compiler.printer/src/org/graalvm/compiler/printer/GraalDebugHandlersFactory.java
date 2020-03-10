@@ -68,7 +68,9 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             handlers.add(new CFGPrinterObserver());
         }
         handlers.add(new NoDeadCodeVerifyHandler());
-        handlers.add(new BciBlockMappingDumpHandler());
+        if (DebugOptions.PrintBlockMapping.getValue(options)) {
+            handlers.add(new BciBlockMappingDumpHandler());
+        }
         return handlers;
     }
 

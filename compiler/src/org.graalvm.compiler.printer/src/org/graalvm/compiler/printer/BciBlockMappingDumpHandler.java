@@ -26,7 +26,6 @@ package org.graalvm.compiler.printer;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,22 +65,18 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
                 if (structure == null) {
                     structure = new BlockMappingStructure();
                 }
-                dump(debug, (BciBlockMapping) object, format, structure, nextId++, arguments);
+                int id = nextId++;
+                Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(structure).elements(ELEMENTS).types(TYPES).protocolVersion(6, 1);
+                GraphOutput<BciBlockMapping, ResolvedJavaMethod> output = debug.buildOutput(builder);
+                Map<Object, Object> properties = new HashMap<>();
+                properties.put("hasJsrBytecodes", ((BciBlockMapping) object).hasJsrBytecodes);
+                // ideally this should collaborate with the graph printer to open/close groups
+                output.print((BciBlockMapping) object, properties, id, format, arguments);
+                output.close();
             } catch (IOException e) {
                 throw new RuntimeException("Failed to dump block mapping", e);
             }
         }
-    }
-
-    private static void dump(DebugContext debug, BciBlockMapping mapping, String format, BlockMappingStructure struct, int id, Object... arguments) throws IOException {
-        Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(struct).elements(ELEMENTS).types(TYPES).protocolVersion(6, 1);
-        GraphOutput<BciBlockMapping, ResolvedJavaMethod> output = debug.buildOutput(builder);
-        //output.beginGroup(mapping, "BCI Block Mapping", "BlockMap", mapping.code.getMethod(), 0, DebugContext.addVersionProperties(null));
-        Map<Object, Object> properties = new HashMap<>();
-        properties.put("hasJsrBytecodes", mapping.hasJsrBytecodes);
-        output.print(mapping, properties, id, format, arguments);
-        //output.endGroup();
-        output.close();
     }
 
     static class BciBlockClass {
