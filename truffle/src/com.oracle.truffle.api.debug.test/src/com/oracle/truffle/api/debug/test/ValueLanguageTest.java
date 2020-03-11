@@ -120,21 +120,21 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
                 DebugValue value = frame.getScope().getDeclaredValue("i");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L1:10", value.as(String.class));
+                assertEquals("L1:10", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("s");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L1:test", value.as(String.class));
+                assertEquals("L1:test", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("a");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("b");
                 LanguageInfo lang = value.getOriginalLanguage();
                 assertNotNull(lang);
                 assertEquals(ValuesLanguage1.NAME, lang.getName());
-                assertEquals("{a={}, j=100}", value.as(String.class));
+                assertEquals("{a={}, j=100}", value.toDisplayString());
 
                 event.prepareContinue();
             });
@@ -150,17 +150,17 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
                 DebugValue value = frame.getScope().getDeclaredValue("j");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L2:20", value.as(String.class));
+                assertEquals("L2:20", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("s");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L2:test2", value.as(String.class));
+                assertEquals("L2:test2", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("e");
                 LanguageInfo lang2 = value.getOriginalLanguage();
                 assertNotNull(lang2);
                 assertEquals(ValuesLanguage2.NAME, lang2.getName());
-                assertEquals("{d={}}", value.as(String.class));
+                assertEquals("{d={}}", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("b");
                 LanguageInfo lang1 = value.getOriginalLanguage();
@@ -168,14 +168,14 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 assertNotEquals(lang1, lang2);
                 assertEquals(ValuesLanguage1.NAME, lang1.getName());
                 // info from current lang2:
-                assertEquals("Object", value.as(String.class));
-                assertEquals("L2:Object", value.getMetaObject().as(String.class));
+                assertEquals("Object", value.toDisplayString());
+                assertEquals("L2:Object", value.getMetaObject().toDisplayString());
                 // info from original lang1:
                 value = value.asInLanguage(lang1);
-                assertEquals("{a={}, j=100, k=200, c={}}", value.as(String.class));
-                assertEquals("L1:Map", value.getMetaObject().as(String.class));
+                assertEquals("{a={}, j=100, k=200, c={}}", value.toDisplayString());
+                assertEquals("L1:Map", value.getMetaObject().getMetaQualifiedName());
                 // The String value of meta object can not be changed by a different language
-                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
+                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang2).getMetaQualifiedName());
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");
@@ -200,13 +200,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 value = frame.getScope().getDeclaredValue("j");
                 assertNull(value.getSourceLocation());
                 value = value.asInLanguage(lang1);
-                assertEquals("L1:20", value.as(String.class));
+                assertEquals("L1:20", value.toDisplayString());
                 assertNull(value.getSourceLocation());
 
                 value = frame.getScope().getDeclaredValue("d");
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
                 value = value.asInLanguage(lang1);
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("e");
                 assertEquals(getSourceImpl(source2).createSection(4, 3, 2), value.getSourceLocation());

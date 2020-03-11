@@ -59,7 +59,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.graalvm.wasm.utils.cases.WasmCase;
@@ -134,9 +133,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
 
             try {
-                for (Source source : sources) {
-                    context.eval(source);
-                }
+                sources.forEach(context::eval);
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
@@ -238,7 +235,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            Map<String, byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
@@ -253,13 +249,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             }
 
             Context context;
-
-            ArrayList<Source> sources = new ArrayList<>();
-            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
-                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
-                Source source = sourceBuilder.build();
-                sources.add(source);
-            }
+            ArrayList<Source> sources = testCase.getSources();
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));

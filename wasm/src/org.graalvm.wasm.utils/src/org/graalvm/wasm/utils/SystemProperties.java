@@ -48,6 +48,12 @@ public class SystemProperties {
     public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
 
+    public static final String BENCHMARK_NAME_PROPERTY_NAME = "wasmbench.benchmarkName";
+    public static final String BENCHMARK_NAME = System.getProperty(BENCHMARK_NAME_PROPERTY_NAME);
+
+    public static final String DISABLE_COMPILATION_FLAG_NAME = "wasmbench.disableCompilation";
+    public static final String DISABLE_COMPILATION_FLAG = System.getProperty(DISABLE_COMPILATION_FLAG_NAME);
+
     public static Properties createFromOptions(String optsContent) {
         Properties options = new Properties();
         if (optsContent == null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -58,6 +61,13 @@ public class DerefHandleTest extends InteropTestBase {
 
         public TestAllocateDerefHandleNode() {
             super(testLibrary, "test_allocate_deref_handle");
+        }
+    }
+
+    public class TestAddHandleMembers extends SulongTestNode {
+
+        public TestAddHandleMembers() {
+            super(testLibrary, "test_add_handle_members");
         }
     }
 
@@ -94,6 +104,29 @@ public class DerefHandleTest extends InteropTestBase {
         public TestCallDerefHandlemMemberNode() {
             super(testLibrary, "test_call_deref_handle_member");
         }
+    }
+
+    @Test
+    public void testWrappedDerefHandle(@Inject(TestAllocateDerefHandleNode.class) CallTarget allocateDerefHandle,
+                    @Inject(TestAddHandleMembers.class) CallTarget addHandleMembers) throws UnsupportedMessageException {
+        Map<String, Object> members = makePointObject();
+        int x = (int) members.get("x");
+        int y = (int) members.get("y");
+        Object handle = allocateDerefHandle.call(new StructObject(members));
+        NativeValue handleNative = new NativeValue(InteropLibrary.getFactory().getUncached().asPointer(handle));
+        Object sumObj = addHandleMembers.call(handleNative);
+        Assert.assertEquals(x + y, sumObj);
+    }
+
+    @Test
+    public void testRawDerefHandle(@Inject(TestAllocateDerefHandleNode.class) CallTarget allocateDerefHandle,
+                    @Inject(TestAddHandleMembers.class) CallTarget addHandleMembers) {
+        Map<String, Object> members = makePointObject();
+        int x = (int) members.get("x");
+        int y = (int) members.get("y");
+        Object handle = allocateDerefHandle.call(new StructObject(members));
+        Object sumObj = addHandleMembers.call(handle);
+        Assert.assertEquals(x + y, sumObj);
     }
 
     @Test

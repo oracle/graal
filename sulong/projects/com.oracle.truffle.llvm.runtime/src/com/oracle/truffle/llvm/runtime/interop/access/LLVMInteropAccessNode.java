@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -126,10 +126,10 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 inner = interop.readMember(foreign, identifier);
             } catch (UnknownIdentifierException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
+                throw new LLVMPolyglotException(this, "Member '%s' not found", identifier);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read member '%s'.", identifier);
+                throw new LLVMPolyglotException(this, "Can not read member '%s'", identifier);
             }
 
             return recursive.execute(type, inner, restOffset);
@@ -144,10 +144,10 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 inner = interop.readArrayElement(foreign, index);
             } catch (InvalidArrayIndexException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Invalid array index %d.", index);
+                throw new LLVMPolyglotException(this, "Invalid array index %d", index);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read array element %d.", index);
+                throw new LLVMPolyglotException(this, "Cannot acess array element %d", index);
             }
 
             return recursive.execute(type, inner, restOffset);

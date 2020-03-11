@@ -93,7 +93,7 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 
     @Option(help = "Report analysis statistics.")//
-    public static final OptionKey<Boolean> ReportAnalysisStatistics = new OptionKey<>(false);
+    public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
 
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");

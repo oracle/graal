@@ -38,11 +38,12 @@ import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
-public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
+public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
 
     public static LLVMFloatLoadNode create() {
         return LLVMFloatLoadNodeGen.create((LLVMExpressionNode) null);

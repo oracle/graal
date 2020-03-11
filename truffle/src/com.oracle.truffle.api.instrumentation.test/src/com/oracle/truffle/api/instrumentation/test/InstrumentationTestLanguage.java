@@ -2130,7 +2130,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportMessage
         @TruffleBoundary
         boolean isMetaInstance(Object instance) {
-            return instance.equals(original);
+            return instance.equals(original) || (original instanceof InstrumentationLanguageView && instance.equals(((InstrumentationLanguageView) original).delegate));
         }
 
         @ExportMessage

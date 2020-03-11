@@ -176,7 +176,7 @@ public abstract class AbstractDebugTest {
         if (expectedReturnValue == null) {
             Assert.assertNull(returnValue);
         } else {
-            Assert.assertEquals(expectedReturnValue, returnValue.as(String.class));
+            Assert.assertEquals(expectedReturnValue, returnValue.toDisplayString());
         }
         return suspendedEvent;
     }
@@ -192,7 +192,7 @@ public abstract class AbstractDebugTest {
             String expectedValue = expectedFrame[i + 1];
             DebugValue value = values.get(expectedIdentifier);
             Assert.assertNotNull("Identifier " + expectedIdentifier + " not found.", value);
-            Assert.assertEquals(expectedValue, value.as(String.class));
+            Assert.assertEquals(expectedValue, value.toDisplayString());
         }
     }
 
