@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -47,7 +44,6 @@ import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
 class WindowsVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -64,17 +60,13 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private static void initCaches() {
         SysinfoAPI.SYSTEM_INFO sysInfo = StackValue.get(SysinfoAPI.SYSTEM_INFO.class);
         SysinfoAPI.GetSystemInfo(sysInfo);
-        int pageSize = sysInfo.dwPageSize();
-        Word value = WordFactory.unsigned(pageSize);
-        CACHED_PAGE_SIZE.get().write(value);
-        int granularity = sysInfo.dwAllocationGranularity();
-        value = WordFactory.unsigned(granularity);
-        CACHED_ALLOC_GRAN.get().write(value);
+        CACHED_PAGE_SIZE.get().write(WordFactory.unsigned(sysInfo.dwPageSize()));
+        CACHED_ALLOC_GRAN.get().write(WordFactory.unsigned(sysInfo.dwAllocationGranularity()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getPageSize() {
-        Word value = CACHED_PAGE_SIZE.get().read();
+    private static UnsignedWord getPageSize() {
+        UnsignedWord value = CACHED_PAGE_SIZE.get().read();
         if (value.equal(WordFactory.zero())) {
             initCaches();
             value = CACHED_PAGE_SIZE.get().read();
@@ -82,15 +74,26 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         return value;
     }
 
-    @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getGranularity() {
-        Word value = CACHED_ALLOC_GRAN.get().read();
+    private static UnsignedWord getAllocationGranularity() {
+        UnsignedWord value = CACHED_ALLOC_GRAN.get().read();
         if (value.equal(WordFactory.zero())) {
             initCaches();
             value = CACHED_ALLOC_GRAN.get().read();
         }
         return value;
+    }
+
+    @Override
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getGranularity() {
+        return getPageSize();
+    }
+
+    @Override
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getAlignment() {
+        return getAllocationGranularity();
     }
 
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
