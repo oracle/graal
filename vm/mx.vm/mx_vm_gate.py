@@ -280,11 +280,10 @@ def gate_svm_sl_tck(tasks):
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
                     options = [
                         '--macro:truffle',
-                        '--macro:tools',
+                        '--tool:all',
                         '-H:Path={}'.format(svmbuild),
                         '-H:+TruffleCheckBlackListedMethods',
                         '-H:Class=org.junit.runner.JUnitCore',
-                        '-H:MaxRuntimeCompileMethods=3000'
                     ]
                     tests_image = native_image(vm_image_args + options)
                     with open(unittest_file) as f:

@@ -223,17 +223,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
-    suite=_suite,
-    name='Tools Macro',
-    short_name='tlsm',
-    dir_name='tools',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['GraalVM Language Server', 'GraalVM Chrome Inspector', 'AgentScript', 'GraalVM Profiler', 'GraalVM Coverage'],
-    support_distributions=['tools:TOOLS_GRAALVM_SUPPORT']
-))
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',

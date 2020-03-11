@@ -322,7 +322,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
             truffleRuntime.resetHosted();
         }
-        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.truffle");
         for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
