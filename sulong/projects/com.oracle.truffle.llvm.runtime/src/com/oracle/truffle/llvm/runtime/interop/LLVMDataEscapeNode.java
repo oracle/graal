@@ -204,10 +204,15 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return Double.doubleToRawLongBits(escapingValue);
         }
 
-        @Specialization(limit = "3", replaces = "escapingPrimitive")
-        static long escapingPointer(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type,
-                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
-            return library.toNativePointer(escapingValue).asNative();
+        @Specialization
+        static long escapingNativePointer(LLVMNativePointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return escapingValue.asNative();
+        }
+
+        @Specialization
+        static Object escapingPointer(LLVMManagedPointer escapingValue, LLVMInteropType.Structured type,
+                        @Cached LLVMPointerDataEscapeNode pointerDataEscapeNode) {
+            return pointerDataEscapeNode.executeWithType(escapingValue, type);
         }
     }
 
