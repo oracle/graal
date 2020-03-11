@@ -30,6 +30,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 
@@ -62,7 +63,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         /*
-         * we need a single level 0 DIE for each compilation unit (CU). Each CU's Level 0 DIE is
+         * We need a single level 0 DIE for each compilation unit (CU). Each CU's Level 0 DIE is
          * preceded by a fixed header and terminated by a null DIE:
          *
          * <ul>
@@ -81,7 +82,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * a DIE is a recursively defined structure. it starts with a code for the associated abbrev
+         * A DIE is a recursively defined structure. it starts with a code for the associated abbrev
          * entry followed by a series of attribute values, as determined by the entry, terminated by
          * a null value and followed by zero or more child DIEs (zero iff has_children ==
          * no_children).
@@ -100,7 +101,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * note that a null_DIE looks like
+         * Note that a null_DIE looks like:
          *
          * <ul>
          *
@@ -108,7 +109,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * i.e. it also looks like a null_value
+         * i.e. it also looks like a null_value.
          */
 
         byte[] buffer = null;
@@ -118,9 +119,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(classEntry, buffer, pos);
+            pos = writeCU(null, classEntry, buffer, pos);
             /*
-             * no need to backpatch length at lengthPos
+             * No need to backpatch length at lengthPos.
              */
         }
         buffer = new byte[pos];
@@ -128,100 +129,100 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        debug("  [0x%08x] DEBUG_INFO\n", pos);
-        debug("  [0x%08x] size = 0x%08x\n", pos, size);
+        log(context, "  [0x%08x] DEBUG_INFO", pos);
+        log(context, "  [0x%08x] size = 0x%08x", pos, size);
         for (ClassEntry classEntry : getPrimaryClasses()) {
             /*
-             * save the offset of this file's CU so it can be used when writing the aranges section
+             * Save the offset of this file's CU so it can be used when writing the aranges section.
              */
             classEntry.setCUIndex(pos);
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
-            debug("  [0x%08x] Compilation Unit\n", pos, size);
+            log(context, "  [0x%08x] Compilation Unit", pos, size);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(classEntry, buffer, pos);
+            pos = writeCU(context, classEntry, buffer, pos);
             /*
-             * backpatch length at lengthPos (excluding length field)
+             * Backpatch length at lengthPos (excluding length field).
              */
             patchLength(lengthPos, buffer, pos);
         }
         assert pos == size;
     }
 
-    public int writeCUHeader(byte[] buffer, int p) {
+    private int writeCUHeader(byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
-            /* CU length */
+            /* CU length. */
             pos += putInt(0, scratch, 0);
-            /* dwarf version */
+            /* DWARF version. */
             pos += putShort(DW_VERSION_2, scratch, 0);
-            /* abbrev offset */
+            /* Abbrev offset. */
             pos += putInt(0, scratch, 0);
-            /* address size */
+            /* Address size. */
             return pos + putByte((byte) 8, scratch, 0);
         } else {
-            /* CU length */
+            /* CU length. */
             pos = putInt(0, buffer, pos);
-            /* dwarf version */
+            /* DWARF version. */
             pos = putShort(DW_VERSION_2, buffer, pos);
-            /* abbrev offset */
+            /* Abbrev offset. */
             pos = putInt(0, buffer, pos);
-            /* address size */
+            /* Address size. */
             return putByte((byte) 8, buffer, pos);
         }
     }
 
-    public int writeCU(ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        debug("  [0x%08x] <0> Abbrev Number %d\n", pos, DW_ABBREV_CODE_compile_unit);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, DW_ABBREV_CODE_compile_unit);
         pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
-        debug("  [0x%08x]     language  %s\n", pos, "DW_LANG_Java");
+        log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DW_LANG_Java, buffer, pos);
-        debug("  [0x%08x]     name  0x%x (%s)\n", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
-        debug("  [0x%08x]     low_pc  0x%08x\n", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
         pos = writeAttrAddress(classPrimaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
-        debug("  [0x%08x]     hi_pc  0x%08x\n", pos, classPrimaryEntries.getLast().getPrimary().getHi());
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, classPrimaryEntries.getLast().getPrimary().getHi());
         pos = writeAttrAddress(classPrimaryEntries.getLast().getPrimary().getHi(), buffer, pos);
-        debug("  [0x%08x]     stmt_list  0x%08x\n", pos, classEntry.getLineIndex());
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, classEntry.getLineIndex());
         pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            pos = writePrimary(primaryEntry, buffer, pos);
+            pos = writePrimary(context, primaryEntry, buffer, pos);
         }
         /*
-         * write a terminating null attribute for the the level 2 primaries
+         * Write a terminating null attribute for the the level 2 primaries.
          */
         return writeAttrNull(buffer, pos);
 
     }
 
-    public int writePrimary(PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writePrimary(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         int pos = p;
         Range primary = primaryEntry.getPrimary();
-        debug("  [0x%08x] <1> Abbrev Number  %d\n", pos, DW_ABBREV_CODE_subprogram);
+        verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, DW_ABBREV_CODE_subprogram);
         pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
-        debug("  [0x%08x]     name  0x%X (%s)\n", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
+        verboseLog(context, "  [0x%08x]     name  0x%X (%s)", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
         pos = writeAttrStrp(primary.getFullMethodName(), buffer, pos);
-        debug("  [0x%08x]     low_pc  0x%08x\n", pos, primary.getLo());
+        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, primary.getLo());
         pos = writeAttrAddress(primary.getLo(), buffer, pos);
-        debug("  [0x%08x]     high_pc  0x%08x\n", pos, primary.getHi());
+        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, primary.getHi());
         pos = writeAttrAddress(primary.getHi(), buffer, pos);
         /*
-         * need to pass true only if method is public
+         * Need to pass true only if method is public.
          */
-        debug("  [0x%08x]     external  true\n", pos);
+        verboseLog(context, "  [0x%08x]     external  true", pos);
         return writeFlag(DW_FLAG_true, buffer, pos);
     }
 
-    public int writeAttrStrp(String value, byte[] buffer, int p) {
+    private int writeAttrStrp(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
             return pos + putInt(0, scratch, 0);
@@ -231,6 +232,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    @SuppressWarnings("unused")
     public int writeAttrString(String value, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
@@ -240,26 +242,17 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    @Override
-    protected void debug(String format, Object... args) {
-        if (((int) args[0] - debugBase) < 0x100000) {
-            super.debug(format, args);
-        } else if (format.startsWith("  [0x%08x] primary file")) {
-            super.debug(format, args);
-        }
-    }
-
     /**
-     * debug_info section content depends on abbrev section content and offset.
+     * The debug_info section content depends on abbrev section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_ABBREV_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

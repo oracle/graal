@@ -68,48 +68,50 @@ public class ApplicationSourceCache extends SourceCache {
     }
 
     private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
-        Path sourcePath = Paths.get(sourceRoot);
-        String fileNameString = sourcePath.getFileName().toString();
-        if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
-            if (fromClassPath && fileNameString.endsWith(".jar")) {
-                /*
-                 * application jar /path/to/xxx.jar should have sources /path/to/xxx-sources.jar
-                 */
-                int length = fileNameString.length();
-                fileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
-            }
-            sourcePath = sourcePath.getParent().resolve(fileNameString);
-            if (sourcePath.toFile().exists()) {
-                try {
-                    FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, null);
-                    for (Path root : fileSystem.getRootDirectories()) {
-                        srcRoots.add(root);
+        try {
+            Path sourcePath = Paths.get(sourceRoot);
+            String fileNameString = sourcePath.getFileName().toString();
+            if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
+                if (fromClassPath && fileNameString.endsWith(".jar")) {
+                    /*
+                     * application jar /path/to/xxx.jar should have sources /path/to/xxx-sources.jar
+                     */
+                    int length = fileNameString.length();
+                    fileNameString = fileNameString.substring(0, length - 4) + "-sources.zip";
+                }
+                sourcePath = sourcePath.getParent().resolve(fileNameString);
+                if (sourcePath.toFile().exists()) {
+                    try {
+                        FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, null);
+                        for (Path root : fileSystem.getRootDirectories()) {
+                            srcRoots.add(root);
+                        }
+                    } catch (IOException | FileSystemNotFoundException ioe) {
+                        /* ignore this entry */
                     }
-                } catch (IOException ioe) {
-                    /* ignore this entry */
-                } catch (FileSystemNotFoundException fnfe) {
-                    /* ignore this entry */
+                }
+            } else {
+                if (fromClassPath) {
+                    /*
+                     * for dir entries ending in classes or target/classes translate to a parallel
+                     * src tree
+                     */
+                    if (sourcePath.endsWith("classes")) {
+                        Path parent = sourcePath.getParent();
+                        if (parent.endsWith("target")) {
+                            parent = parent.getParent();
+                        }
+                        sourcePath = (parent.resolve("src"));
+                    }
+                }
+                // try the path as provided
+                File file = sourcePath.toFile();
+                if (file.exists() && file.isDirectory()) {
+                    srcRoots.add(sourcePath);
                 }
             }
-        } else {
-            if (fromClassPath) {
-                /*
-                 * for dir entries ending in classes or target/classes translate to a parallel src
-                 * tree
-                 */
-                if (sourcePath.endsWith("classes")) {
-                    Path parent = sourcePath.getParent();
-                    if (parent.endsWith("target")) {
-                        parent = parent.getParent();
-                    }
-                    sourcePath = (parent.resolve("src"));
-                }
-            }
-            // try the path as provided
-            File file = sourcePath.toFile();
-            if (file.exists() && file.isDirectory()) {
-                srcRoots.add(sourcePath);
-            }
+        } catch (NullPointerException npe) {
+            // do nothing
         }
     }
 }

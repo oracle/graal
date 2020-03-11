@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020 Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,7 +83,7 @@ public class StringTable implements Iterable<StringEntry> {
      * Retrieves the offset at which a given string was written into the debug_str section. This
      * should only be called after the string section has been written.
      * 
-     * @param string
+     * @param string the strng whose offset is to be retrieved
      * @return the offset or -1 if the string does not define an entry or the entry has not been
      *         written to the debug_str section
      */

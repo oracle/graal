@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,16 +55,16 @@ import java.util.List;
 public abstract class SourceCache {
 
     /**
-     * A list of all entries in the classpath used by the native image classloader
+     * A list of all entries in the classpath used by the native image classloader.
      */
     protected static final List<String> classPathEntries = new ArrayList<>();
     /**
-     * A list of all entries in the classpath used by the native image classloader
+     * A list of all entries in the classpath used by the native image classloader.
      */
     protected static final List<String> sourcePathEntries = new ArrayList<>();
     /**
      * A list of root directories which may contain source files from which this cache can be
-     * populated
+     * populated.
      */
     protected List<Path> srcRoots;
 
@@ -77,7 +77,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Identify the specific type of this source cache
+     * Identify the specific type of this source cache.
      * 
      * @return the source cache type
      */
@@ -271,11 +271,10 @@ public abstract class SourceCache {
     /**
      * Indicate whether a source path identifies a file in the associated file system.
      * 
-     * @param sourcePath
+     * @param sourcePath the path to check
      * @return true if the path identifies a file or false if no such file can be found.
-     * @throws IOException if there is some error in resolving the path.
      */
-    private static boolean checkSourcePath(Path sourcePath) throws IOException {
+    private static boolean checkSourcePath(Path sourcePath) {
         return Files.isRegularFile(sourcePath);
     }
 
@@ -283,9 +282,8 @@ public abstract class SourceCache {
      * Ensure the directory hierarchy for a path exists creating any missing directories if needed.
      * 
      * @param targetDir a path to the desired directory
-     * @throws IOException if it is not possible to create one or more directories in the path
      */
-    private static void ensureTargetDirs(Path targetDir) throws IOException {
+    private static void ensureTargetDirs(Path targetDir) {
         if (targetDir != null) {
             File targetFile = targetDir.toFile();
             if (!targetFile.exists()) {
@@ -295,7 +293,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Add a path to the list of classpath entries
+     * Add a path to the list of classpath entries.
      * 
      * @param path The path to add.
      */
@@ -304,7 +302,7 @@ public abstract class SourceCache {
     }
 
     /**
-     * Add a path to the list of source path entries
+     * Add a path to the list of source path entries.
      * 
      * @param path The path to add.
      */
@@ -317,6 +315,7 @@ public abstract class SourceCache {
      * callback.
      */
     @AutomaticFeature
+    @SuppressWarnings("unused")
     public static class SourceCacheFeature implements Feature {
         @Override
         public void afterAnalysis(AfterAnalysisAccess access) {

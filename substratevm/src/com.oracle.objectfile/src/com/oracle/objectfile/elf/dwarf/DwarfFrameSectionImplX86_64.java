@@ -31,8 +31,8 @@ package com.oracle.objectfile.elf.dwarf;
  * and frame layout.
  */
 public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
-    public static final int DW_CFA_RSP_IDX = 7;
-    public static final int DW_CFA_RIP_IDX = 16;
+    private static final int DW_CFA_RSP_IDX = 7;
+    private static final int DW_CFA_RIP_IDX = 16;
 
     public DwarfFrameSectionImplX86_64(DwarfSections dwarfSections) {
         super(dwarfSections);
@@ -52,8 +52,8 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * rsp points at the word containing the saved rip so the frame base (cfa) is at rsp + 8
-         * (why not - ???)
+         * Register rsp points at the word containing the saved rip so the frame base (cfa) is at
+         * rsp + 8:
          *
          * <ul>
          *
@@ -63,10 +63,12 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
          */
         pos = writeDefCFA(DW_CFA_RSP_IDX, 8, buffer, pos);
         /*
-         * rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from cfa (why
-         * not -1 ???)
+         * Register rip is saved at offset 8 (coded as 1 which gets scaled by dataAlignment) from
+         * cfa
          *
-         * <ul> <li><code>offset r16 (rip) cfa - 8</code>
+         * <ul>
+         *
+         * <li><code>offset r16 (rip) cfa - 8</code>
          *
          * </ul>
          */

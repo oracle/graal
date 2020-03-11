@@ -32,9 +32,9 @@ package com.oracle.objectfile.elf.dwarf;
  */
 public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     // public static final int DW_CFA_FP_IDX = 29;
-    public static final int DW_CFA_LR_IDX = 30;
-    public static final int DW_CFA_SP_IDX = 31;
-    public static final int DW_CFA_PC_IDX = 32;
+    private static final int DW_CFA_LR_IDX = 30;
+    private static final int DW_CFA_SP_IDX = 31;
+    private static final int DW_CFA_PC_IDX = 32;
 
     public DwarfFrameSectionImplAArch64(DwarfSections dwarfSections) {
         super(dwarfSections);
@@ -54,7 +54,7 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     public int writeInitialInstructions(byte[] buffer, int p) {
         int pos = p;
         /*
-         * rsp has not been updated and caller pc is in lr
+         * Register rsp has not been updated and caller pc is in lr:
          *
          * <ul>
          *

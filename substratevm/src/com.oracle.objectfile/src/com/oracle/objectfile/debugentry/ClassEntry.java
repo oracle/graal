@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ public class ClassEntry {
     /**
      * details of the associated file.
      */
-    FileEntry fileEntry;
+    private FileEntry fileEntry;
     /**
      * a list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -111,14 +111,12 @@ public class ClassEntry {
         this.totalSize = -1;
     }
 
-    public PrimaryEntry addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
             primaryIndex.put(primary, primaryEntry);
-            return primaryEntry;
         }
-        return null;
     }
 
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
@@ -167,6 +165,7 @@ public class ClassEntry {
         }
     }
 
+    @SuppressWarnings("unused")
     String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
@@ -175,6 +174,7 @@ public class ClassEntry {
         }
     }
 
+    @SuppressWarnings("unused")
     String getDirName() {
         if (fileEntry != null) {
             return fileEntry.getPathName();
@@ -184,14 +184,14 @@ public class ClassEntry {
     }
 
     public void setCUIndex(int cuIndex) {
-        // should only get set once to a non-negative value
+        // Should only get set once to a non-negative value.
         assert cuIndex >= 0;
         assert this.cuIndex == -1;
         this.cuIndex = cuIndex;
     }
 
     public int getCUIndex() {
-        // should have been set before being read
+        // Should have been set before being read.
         assert cuIndex >= 0;
         return cuIndex;
     }

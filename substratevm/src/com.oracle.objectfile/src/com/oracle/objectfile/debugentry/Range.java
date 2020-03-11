@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020 Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,26 +47,26 @@ public class Range {
     private int hi;
     private int line;
     /*
-     * this is null for a primary range
+     * This is null for a primary range.
      */
     private Range primary;
 
     /*
-     * create a primary range
+     * Create a primary range.
      */
     public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
         this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
     }
 
     /*
-     * create a primary or secondary range
+     * Create a primary or secondary range.
      */
     public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
         /*
-         * currently file name and full method name need to go into the debug_str section other
-         * strings just need to be deduplicated to save space
+         * Currently file name and full method name need to go into the debug_str section other
+         * strings just need to be deduplicated to save space.
          */
-        this.fileName = (fileName == null ? fileName : stringTable.uniqueDebugString(fileName));
+        this.fileName = (fileName == null ? null : stringTable.uniqueDebugString(fileName));
         this.filePath = filePath;
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
@@ -133,7 +133,7 @@ public class Range {
         return fullMethodName;
     }
 
-    public String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
+    private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
             builder.append(returnTypeName);

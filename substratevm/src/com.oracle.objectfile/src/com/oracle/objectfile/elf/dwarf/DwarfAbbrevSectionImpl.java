@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
+import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_compile_unit;
 import static com.oracle.objectfile.elf.dwarf.DwarfSections.DW_ABBREV_CODE_subprogram;
@@ -68,11 +69,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     public void createContent() {
         int pos = 0;
         /*
-         * an abbrev table contains abbrev entries for one or more CUs. the table includes a
+         * An abbrev table contains abbrev entries for one or more CUs. the table includes a
          * sequence of abbrev entries each of which defines a specific DIE layout employed to
-         * describe some DIE in a CU. a table is terminated by a null entry
+         * describe some DIE in a CU. a table is terminated by a null entry.
          *
-         * a null entry has consists of just a 0 abbrev code
+         * A null entry has consists of just a 0 abbrev code.
          *
          * <ul>
          *
@@ -80,7 +81,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * non-null entries have the following format
+         * Mon-null entries have the following format.
          *
          * <ul>
          *
@@ -135,27 +136,27 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * </ul>
          */
 
-        pos = writeAbbrev1(null, pos);
-        pos = writeAbbrev2(null, pos);
+        pos = writeAbbrev1(null, null, pos);
+        pos = writeAbbrev2(null, null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        pos = writeAbbrev1(buffer, pos);
-        pos = writeAbbrev2(buffer, pos);
+        pos = writeAbbrev1(context, buffer, pos);
+        pos = writeAbbrev2(context, buffer, pos);
         assert pos == size;
     }
 
-    public int writeAttrType(long code, byte[] buffer, int pos) {
+    private int writeAttrType(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -163,7 +164,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAttrForm(long code, byte[] buffer, int pos) {
+    private int writeAttrForm(long code, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putSLEB(code, scratch, 0);
         } else {
@@ -171,10 +172,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    public int writeAbbrev1(byte[] buffer, int p) {
+    @SuppressWarnings("unused")
+    private int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
-         * abbrev 1 compile unit
+         * Abbrev 1 compile unit.
          */
         pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
         pos = writeTag(DW_TAG_compile_unit, buffer, pos);
@@ -190,17 +192,18 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DW_AT_stmt_list, buffer, pos);
         pos = writeAttrForm(DW_FORM_data4, buffer, pos);
         /*
-         * now terminate
+         * Now terminate.
          */
         pos = writeAttrType(DW_AT_null, buffer, pos);
         pos = writeAttrForm(DW_FORM_null, buffer, pos);
         return pos;
     }
 
-    public int writeAbbrev2(byte[] buffer, int p) {
+    @SuppressWarnings("unused")
+    private int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
-         * abbrev 2 compile unit
+         * Abbrev 2 compile unit.
          */
         pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
         pos = writeTag(DW_TAG_subprogram, buffer, pos);
@@ -214,29 +217,24 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DW_AT_external, buffer, pos);
         pos = writeAttrForm(DW_FORM_flag, buffer, pos);
         /*
-         * now terminate
+         * Now terminate.
          */
         pos = writeAttrType(DW_AT_null, buffer, pos);
         pos = writeAttrForm(DW_FORM_null, buffer, pos);
         return pos;
     }
 
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
-    }
-
     /**
-     * debug_abbrev section content depends on debug_frame section content and offset.
+     * The debug_abbrev section content depends on debug_frame section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_FRAME_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

@@ -65,7 +65,7 @@ public class SourceManager {
             if (resolvedType.isInstanceClass() || resolvedType.isInterface()) {
                 String packageName = computePackageName(resolvedType);
                 SourceCacheType sourceCacheType = sourceCacheType(packageName);
-                path = locateSource(fileName, packageName, sourceCacheType, resolvedType, clazz);
+                path = locateSource(fileName, packageName, sourceCacheType, clazz);
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
                     if (packageName.length() > 0) {
@@ -88,7 +88,7 @@ public class SourceManager {
      * @param resolvedType the resolved java type whose source file name is required
      * @return the file name or null if it the class cannot be associated with a source file
      */
-    private String computeBaseName(ResolvedJavaType resolvedType) {
+    private static String computeBaseName(ResolvedJavaType resolvedType) {
         String fileName = resolvedType.getSourceFileName();
         if (fileName == null) {
             /* ok, try to construct it from the class name */
@@ -120,7 +120,7 @@ public class SourceManager {
      * @param javaType the Java type whose package name is required
      * @return the package name or the empty String if it has no package
      */
-    private String computePackageName(ResolvedJavaType javaType) {
+    private static String computePackageName(ResolvedJavaType javaType) {
         String name = javaType.toClassName();
         int idx = name.lastIndexOf('.');
         if (idx > 0) {
@@ -138,12 +138,11 @@ public class SourceManager {
      * @param packageName the name of the package for the associated Java class
      * @param sourceCacheType the sourceCacheType of cache in which to lookup or cache this class's
      *            source file
-     * @param javaType the java sourceCacheType whose prototype name is required
      * @param clazz the class associated with the sourceCacheType used to identify the module prefix
      *            for JDK classes
      * @return a protoype name for the source file
      */
-    private Path computePrototypeName(String fileName, String packageName, SourceCacheType sourceCacheType, ResolvedJavaType javaType, Class<?> clazz) {
+    private static Path computePrototypeName(String fileName, String packageName, SourceCacheType sourceCacheType, Class<?> clazz) {
         String prefix = "";
         if (sourceCacheType == SourceCacheType.JDK && clazz != null) {
             /* JDK11+ paths will require the module name as prefix */
@@ -186,14 +185,6 @@ public class SourceManager {
     };
 
     /**
-     * A whitelist of packages prefixes used to pre-filter app class lookups which includes just the
-     * empty string because any package will do.
-     */
-    private static final String[] APP_SRC_PACKAGE_PREFIXES = {
-                    "",
-    };
-
-    /**
      * Check a package name against a whitelist of acceptable packages.
      * 
      * @param packageName the package name of the class to be checked
@@ -201,7 +192,7 @@ public class SourceManager {
      *            name being checked
      * @return true if the package name matches an entry in the whitelist otherwise false
      */
-    private boolean whiteListPackage(String packageName, String[] whitelist) {
+    private static boolean whiteListPackage(String packageName, String[] whitelist) {
         for (String prefix : whitelist) {
             if (packageName.startsWith(prefix)) {
                 return true;
@@ -217,7 +208,7 @@ public class SourceManager {
      * @param packageName the package name of the class.
      * @return the corresponding source cache type
      */
-    private SourceCacheType sourceCacheType(String packageName) {
+    private static SourceCacheType sourceCacheType(String packageName) {
         if (whiteListPackage(packageName, JDK_SRC_PACKAGE_PREFIXES)) {
             return SourceCacheType.JDK;
         }
@@ -252,7 +243,7 @@ public class SourceManager {
      * @param type an enum identifying the type of Java sources cached by the returned cache.
      * @return the desired source cache.
      */
-    private SourceCache getOrCreateCache(SourceCacheType type) {
+    private static SourceCache getOrCreateCache(SourceCacheType type) {
         SourceCache sourceCache = caches.get(type);
         if (sourceCache == null) {
             sourceCache = SourceCache.createSourceCache(type);
@@ -261,9 +252,9 @@ public class SourceManager {
         return sourceCache;
     }
 
-    private Path locateSource(String fileName, String packagename, SourceCacheType type, ResolvedJavaType javaType, Class<?> clazz) {
-        SourceCache cache = getOrCreateCache(type);
-        Path prototypeName = computePrototypeName(fileName, packagename, type, javaType, clazz);
+    private static Path locateSource(String fileName, String packagename, SourceCacheType cacheType, Class<?> clazz) {
+        SourceCache cache = getOrCreateCache(cacheType);
+        Path prototypeName = computePrototypeName(fileName, packagename, cacheType, clazz);
         if (prototypeName != null) {
             return cache.resolve(prototypeName);
         } else {

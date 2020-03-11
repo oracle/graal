@@ -1168,36 +1168,38 @@ public class ELFObjectFile extends ObjectFile {
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         DwarfSections dwarfSections = new DwarfSections(getMachine(), getByteOrder());
-        // we need an implementation for each section
+        /* We need an implementation for each generated DWARF section. */
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();
         DwarfFrameSectionImpl frameSectionImpl = dwarfSections.getFrameSectionImpl();
         DwarfInfoSectionImpl elfInfoSectionImpl = dwarfSections.getInfoSectionImpl();
         DwarfARangesSectionImpl elfARangesSectionImpl = dwarfSections.getARangesSectionImpl();
         DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
-        // now we can create the section elements with empty content
+        /* Now we can create the section elements with empty content. */
         newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
         newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
         newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
         newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
         newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
         newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
-        // the byte[] for each implementation's content are created and
-        // written under getOrDecideContent. doing that ensures that all
-        // dependent sections are filled in and then sized according to the
-        // declared dependencies. however, if we leave it at that then
-        // associated reloc sections only get created when the first reloc
-        // is inserted during content write that's too late for them to have
-        // layout constraints included in the layout decision set and causes
-        // an NPE during reloc section write. so we need to create the relevant
-        // reloc sections here in advance
+        /*
+         * The byte[] for each implementation's content are created and
+         * written under getOrDecideContent. Doing that ensures that all
+         * dependent sections are filled in and then sized according to the
+         * declared dependencies. However, if we leave it at that then
+         * associated reloc sections only get created when the first reloc
+         * is inserted during content write that's too late for them to have
+         * layout constraints included in the layout decision set and causes
+         * an NPE during reloc section write. So we need to create the relevant
+         * reloc sections here in advance.
+         */
         elfStrSectionImpl.getOrCreateRelocationElement(false);
         elfAbbrevSectionImpl.getOrCreateRelocationElement(false);
         frameSectionImpl.getOrCreateRelocationElement(false);
         elfInfoSectionImpl.getOrCreateRelocationElement(false);
         elfARangesSectionImpl.getOrCreateRelocationElement(false);
         elfLineSectionImpl.getOrCreateRelocationElement(false);
-        // ok now we can populate the implementations
+        /* Ok now we can populate the debug info model. */
         dwarfSections.installDebugInfo(debugInfoProvider);
     }
 }

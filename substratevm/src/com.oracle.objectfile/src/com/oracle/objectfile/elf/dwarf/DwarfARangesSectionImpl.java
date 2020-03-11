@@ -32,6 +32,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 import java.util.Map;
@@ -60,7 +61,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     public void createContent() {
         int pos = 0;
         /*
-         * we need an entry for each compilation unit
+         * We need an entry for each compilation unit.
          *
          * <ul>
          *
@@ -76,7 +77,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * i.e. 12 bytes followed by padding aligning up to 2 * address size
+         * That is 12 bytes followed by padding aligning up to 2 * address size.
          *
          * <ul>
          *
@@ -84,7 +85,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * followed by N + 1 times
+         * Followed by N + 1 times:
          *
          * <ul> <li><code>uint64 lo ................ lo address of range</code>
          *
@@ -92,14 +93,14 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * where N is the number of ranges belonging to the compilation unit and the last range
-         * contains two zeroes
+         * Where N is the number of ranges belonging to the compilation unit and the last range
+         * contains two zeroes.
          */
 
         for (ClassEntry classEntry : getPrimaryClasses()) {
             pos += DW_AR_HEADER_SIZE;
             /*
-             * align to 2 * address size
+             * Align to 2 * address size.
              */
             pos += DW_AR_HEADER_PAD_SIZE;
             pos += classEntry.getPrimaryEntries().size() * 2 * 8;
@@ -117,8 +118,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
             if (valueObj != null && valueObj instanceof Number) {
                 /*
-                 * this may not be the final vaddr for the text segment but it will be close enough
-                 * to make debug easier i.e. to within a 4k page or two
+                 * This may not be the final vaddr for the text segment but it will be close enough
+                 * to make debug easier i.e. to within a 4k page or two.
                  */
                 debugTextBase = ((Number) valueObj).longValue();
             }
@@ -127,44 +128,44 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public void writeContent() {
+    public void writeContent(DebugContext context) {
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
-        checkDebug(pos);
+        enableLog(context, pos);
 
-        debug("  [0x%08x] DEBUG_ARANGES\n", pos);
+        log(context, "  [0x%08x] DEBUG_ARANGES", pos);
         for (ClassEntry classEntry : getPrimaryClasses()) {
             int lastpos = pos;
             int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
             int cuIndex = classEntry.getCUIndex();
             LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             /*
-             * add room for each entry into length count
+             * Add room for each entry into length count.
              */
             length += classPrimaryEntries.size() * 2 * 8;
             length += 2 * 8;
-            debug("  [0x%08x] %s CU %d length 0x%x\n", pos, classEntry.getFileName(), cuIndex, length);
+            log(context, "  [0x%08x] %s CU %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
             pos = putInt(length, buffer, pos);
-            /* dwarf version is always 2 */
+            /* DWARF version is always 2. */
             pos = putShort(DW_VERSION_2, buffer, pos);
             pos = putInt(cuIndex, buffer, pos);
-            /* address size is always 8 */
+            /* Address size is always 8. */
             pos = putByte((byte) 8, buffer, pos);
-            /* segment size is always 0 */
+            /* Segment size is always 0. */
             pos = putByte((byte) 0, buffer, pos);
             assert (pos - lastpos) == DW_AR_HEADER_SIZE;
             /*
-             * align to 2 * address size
+             * Align to 2 * address size.
              */
             for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
                 pos = putByte((byte) 0, buffer, pos);
             }
-            debug("  [0x%08x] Address          Length           Name\n", pos);
+            log(context, "  [0x%08x] Address          Length           Name", pos);
             for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
                 Range primary = classPrimaryEntry.getPrimary();
-                debug("  [0x%08x] %016x %016x %s\n", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodName());
+                log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodName());
                 pos = putRelocatableCodeOffset(primary.getLo(), buffer, pos);
                 pos = putLong(primary.getHi() - primary.getLo(), buffer, pos);
             }
@@ -175,22 +176,17 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         assert pos == size;
     }
 
-    @Override
-    protected void debug(String format, Object... args) {
-        super.debug(format, args);
-    }
-
     /*
-     * debug_aranges section content depends on debug_info section content and offset
+     * The debug_aranges section content depends on debug_info section content and offset.
      */
-    public static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    public final LayoutDecision.Kind[] targetSectionKinds = {
+    private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
                     LayoutDecision.Kind.OFFSET
     };

@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -51,6 +52,7 @@ import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import sun.nio.ch.DirectBuffer;
+import org.graalvm.compiler.debug.DebugContext;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -1735,6 +1737,52 @@ public abstract class ObjectFile {
             return t;
         } else {
             return createSymbolTable();
+        }
+    }
+
+    /**
+     * Temporary storage for a debug context installed in a nested scope under a call. to
+     * {@link #withDebugContext}
+     */
+    private DebugContext debugContext = null;
+
+    /**
+     * Allows a task to be executed with a debug context in a named subscope bound to the object
+     * file and accessible to code executed during the lifetime of the task. Invoked code may obtain
+     * access to the debug context using method {@link #debugContext}.
+     * 
+     * @param context a context to be bound to the object file for the duration of the task
+     *            execution.
+     * @param scopeName a name to be used to define a subscope current while the task is being
+     *            executed.
+     * @param task a task to be executed while the context is bound to the object file.
+     */
+    @SuppressWarnings("try")
+    public void withDebugContext(DebugContext context, String scopeName, Runnable task) {
+        try (DebugContext.Scope s = context.scope(scopeName)) {
+            this.debugContext = context;
+            task.run();
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        } finally {
+            debugContext = null;
+        }
+    }
+
+    /**
+     * Allows a consumer to retrieve the debug context currently bound to this object file. This
+     * method must only called underneath an invocation of method {@link #withDebugContext}.
+     * 
+     * @param scopeName a name to be used to define a subscope current while the consumer is active.
+     * @param action an action parameterised by the debug context.
+     */
+    @SuppressWarnings("try")
+    public void debugContext(String scopeName, Consumer<DebugContext> action) {
+        assert debugContext != null;
+        try (DebugContext.Scope s = debugContext.scope(scopeName)) {
+            action.accept(debugContext);
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
         }
     }
 }

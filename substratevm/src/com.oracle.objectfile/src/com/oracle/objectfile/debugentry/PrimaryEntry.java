@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,19 +39,19 @@ public class PrimaryEntry {
     /**
      * The primary range detailed by this object.
      */
-    Range primary;
+    private Range primary;
     /**
      * Details of the class owning this range.
      */
-    ClassEntry classEntry;
+    private ClassEntry classEntry;
     /**
      * A list of subranges associated with the primary range.
      */
-    List<Range> subranges;
+    private List<Range> subranges;
     /**
      * A mapping from subranges to their associated file entry.
      */
-    HashMap<Range, FileEntry> subrangeIndex;
+    private HashMap<Range, FileEntry> subrangeIndex;
     /**
      * Details of of compiled method frame size changes.
      */
@@ -72,12 +72,12 @@ public class PrimaryEntry {
 
     public void addSubRange(Range subrange, FileEntry subFileEntry) {
         /*
-         * we should not see a subrange more than once
+         * We should not see a subrange more than once.
          */
         assert !subranges.contains(subrange);
         assert subrangeIndex.get(subrange) == null;
         /*
-         * we need to generate a file table entry for all ranges
+         * We need to generate a file table entry for all ranges.
          */
         subranges.add(subrange);
         subrangeIndex.put(subrange, subFileEntry);

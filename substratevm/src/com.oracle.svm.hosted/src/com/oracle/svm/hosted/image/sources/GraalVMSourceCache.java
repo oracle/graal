@@ -26,7 +26,6 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
@@ -51,8 +50,6 @@ public class GraalVMSourceCache extends SourceCache {
         return GRAALVM;
     }
 
-    private static final String JAVA_CLASSPATH_PROP = "java.class.path";
-
     private void initSrcRoots() {
         for (String classPathEntry : classPathEntries) {
             tryClassPathRoot(classPathEntry);
@@ -71,49 +68,51 @@ public class GraalVMSourceCache extends SourceCache {
     }
 
     private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
-        Path sourcePath = Paths.get(sourceRoot);
-        String fileNameString = sourcePath.getFileName().toString();
-        if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
-            if (fromClassPath && fileNameString.endsWith(".jar")) {
-                /*
-                 * GraalVM jar /path/to/xxx.jar in classpath should have sources
-                 * /path/to/xxx.src.zip
-                 */
-                int length = fileNameString.length();
-                fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
-            }
-            Path srcPath = sourcePath.getParent().resolve(fileNameString);
-            if (srcPath.toFile().exists()) {
-                try {
-                    FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
-                    for (Path root : fileSystem.getRootDirectories()) {
-                        if (filterSrcRoot(root)) {
-                            srcRoots.add(root);
+        try {
+            Path sourcePath = Paths.get(sourceRoot);
+            String fileNameString = sourcePath.getFileName().toString();
+            if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
+                if (fromClassPath && fileNameString.endsWith(".jar")) {
+                    /*
+                     * GraalVM jar /path/to/xxx.jar in classpath should have sources
+                     * /path/to/xxx.src.zip
+                     */
+                    int length = fileNameString.length();
+                    fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
+                }
+                Path srcPath = sourcePath.getParent().resolve(fileNameString);
+                if (srcPath.toFile().exists()) {
+                    try {
+                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, null);
+                        for (Path root : fileSystem.getRootDirectories()) {
+                            if (filterSrcRoot(root)) {
+                                srcRoots.add(root);
+                            }
                         }
+                    } catch (IOException | FileSystemNotFoundException ioe) {
+                        /* ignore this entry */
                     }
-                } catch (IOException ioe) {
-                    /* ignore this entry */
-                } catch (FileSystemNotFoundException fnfe) {
-                    /* ignore this entry */
-                }
-            }
-        } else {
-            if (fromClassPath) {
-                /* graal classpath dir entries should have a src and/or src_gen subdirectory */
-                Path srcPath = sourcePath.resolve("src");
-                if (filterSrcRoot(srcPath)) {
-                    srcRoots.add(srcPath);
-                }
-                srcPath = sourcePath.resolve("src_gen");
-                if (filterSrcRoot(srcPath)) {
-                    srcRoots.add(srcPath);
                 }
             } else {
-                // try the path as provided
-                if (filterSrcRoot(sourcePath)) {
-                    srcRoots.add(sourcePath);
+                if (fromClassPath) {
+                    /* graal classpath dir entries should have a src and/or src_gen subdirectory */
+                    Path srcPath = sourcePath.resolve("src");
+                    if (filterSrcRoot(srcPath)) {
+                        srcRoots.add(srcPath);
+                    }
+                    srcPath = sourcePath.resolve("src_gen");
+                    if (filterSrcRoot(srcPath)) {
+                        srcRoots.add(srcPath);
+                    }
+                } else {
+                    // try the path as provided
+                    if (filterSrcRoot(sourcePath)) {
+                        srcRoots.add(sourcePath);
+                    }
                 }
             }
+        } catch (NullPointerException npe) {
+            // do nothing
         }
     }
 

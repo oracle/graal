@@ -72,9 +72,7 @@ public class JDKSourceCache extends SourceCache {
                 for (Path root : srcFileSystem.getRootDirectories()) {
                     srcRoots.add(root);
                 }
-            } catch (IOException ioe) {
-                /* ignore this entry */
-            } catch (FileSystemNotFoundException fnfe) {
+            } catch (IOException | FileSystemNotFoundException ioe) {
                 /* ignore this entry */
             }
         }
