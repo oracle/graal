@@ -28,7 +28,10 @@ package com.oracle.objectfile.debuginfo;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import org.graalvm.compiler.debug.DebugContext;
 
 /**
  * Interfaces used to allow a native image to communicate details of types, code and data to the
@@ -45,6 +48,8 @@ public interface DebugInfoProvider {
      * access details of a specific compiled method.
      */
     interface DebugCodeInfo {
+        void debugContext(Consumer<DebugContext> action);
+
         /**
          * @return the name of the file containing a compiled method excluding any path
          */
