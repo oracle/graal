@@ -580,7 +580,7 @@ public final class GraalServices {
                 throw new InternalError(throwable);
             }
         }
-        throw new NoSuchMethodException("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
     }
 
     public static boolean hasLookupReferencedType() {
