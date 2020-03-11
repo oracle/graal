@@ -326,9 +326,9 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     public abstract static class LLVMVoidDataEscapeNode extends LLVMDataEscapeNode {
 
         @Specialization
-        public Object doVoid(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            assert escapingValue == null;
-            return LLVMNativePointer.createNull();
+        public Object doVoid(LLVMPointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            assert escapingValue.isNull();
+            return escapingValue;
         }
     }
 }
