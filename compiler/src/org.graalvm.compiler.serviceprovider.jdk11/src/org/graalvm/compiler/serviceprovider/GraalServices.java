@@ -452,7 +452,7 @@ public final class GraalServices {
         constantPoolLookupReferencedType = lookupReferencedType;
     }
 
-    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) throws NoSuchMethodException {
+    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
         if (constantPoolLookupReferencedType != null) {
             try {
                 return (JavaType) constantPoolLookupReferencedType.invoke(constantPool, cpi, opcode);
