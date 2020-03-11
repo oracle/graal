@@ -98,6 +98,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private volatile ConcurrentHashMap<UnsafePartitionKind, Collection<AnalysisField>> unsafeAccessedFields;
 
     AnalysisType[] subTypes;
+    AnalysisType superClass;
 
     private final int id;
 
@@ -164,7 +165,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         }
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
-        getSuperclass();
+        superClass = universe.lookup(wrapped.getSuperclass());
         interfaces = convertTypes(wrapped.getInterfaces());
         if (isArray()) {
             this.componentType = universe.lookup(wrapped.getComponentType());
@@ -765,7 +766,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public AnalysisType getSuperclass() {
-        return universe.lookup(wrapped.getSuperclass());
+        return superClass;
     }
 
     @Override
