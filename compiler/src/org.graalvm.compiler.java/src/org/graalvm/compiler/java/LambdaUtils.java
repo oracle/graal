@@ -33,9 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
@@ -45,6 +43,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
+
+import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/[^/]+;");
@@ -105,11 +107,7 @@ public final class LambdaUtils {
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        final boolean isFinal = type.isFinalFlagSet();
-        final boolean containsSlash = typeName.contains("/");
-        final boolean lamdaInName = typeName.contains("$$Lambda$");
-        final boolean matchesLamda = lambdaMatcher(type.getName()).find();
-        return isFinal && containsSlash && lamdaInName && matchesLamda;
+        return type.isFinalFlagSet() && typeName.contains("/") && typeName.contains("$$Lambda$") && lambdaMatcher(type.getName()).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
