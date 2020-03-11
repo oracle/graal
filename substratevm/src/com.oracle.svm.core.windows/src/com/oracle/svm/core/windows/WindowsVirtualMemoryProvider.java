@@ -24,17 +24,14 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.windows.headers.WinBase;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -43,7 +40,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -61,8 +62,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void initCaches() {
-        WinBase.SYSTEM_INFO sysInfo = StackValue.get(WinBase.SYSTEM_INFO.class);
-        WinBase.GetSystemInfo(sysInfo);
+        SysinfoAPI.SYSTEM_INFO sysInfo = StackValue.get(SysinfoAPI.SYSTEM_INFO.class);
+        SysinfoAPI.GetSystemInfo(sysInfo);
         int pageSize = sysInfo.dwPageSize();
         Word value = WordFactory.unsigned(pageSize);
         CACHED_PAGE_SIZE.get().write(value);
