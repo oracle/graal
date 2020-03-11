@@ -151,7 +151,7 @@ local espresso_benchmark(env, suite) =
   build_espresso(env) +
   {
     run+: maybe_set_ld_debug_flag(env) + [
-        _mx(env, ['--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss32m']),
+        _mx(env, ['benchmark', '--results-file', 'bench-results.json', suite, '--', '--jvm=espresso', '--jvm-config=launcher', '--vm.Xss32m']),
         ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '3:00:00',
@@ -195,7 +195,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
 
     // Benchmarks
-    jdk8_daily_bench_linux        + espresso_benchmark('native-ce', 'scala-dacapo:*')                     + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
-    jdk8_daily_bench_linux        + espresso_benchmark('native-ee', 'scala-dacapo:*')                     + {name: 'espresso-bench-native-ee-scala-dacapo-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('native-ce', 'dacapo:*')                           + {name: 'espresso-bench-native-ce-dacapo-jdk8-linux-amd64'},
+    jdk8_daily_bench_linux        + espresso_benchmark('native-ee', 'dacapo:*')                           + {name: 'espresso-bench-native-ee-dacapo-jdk8-linux-amd64'},
   ],
 }
