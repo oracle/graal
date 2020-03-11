@@ -217,6 +217,7 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
+        public abstract <T> Iterable<T> loadServices(Class<T> type);
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
 
