@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
@@ -285,7 +286,7 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
-        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE) != Integer.MAX_VALUE) {
+        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE, JDK <= 8) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
     }

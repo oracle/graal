@@ -222,7 +222,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     protected Value[] createNativeABICallerSaveRegisters(GraalHotSpotVMConfig config, RegisterConfig regConfig) {
         List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
-        if (config.windowsOs) {
+        if (config.osName.equals("windows")) {
             // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
             callerSave.remove(AMD64.rdi);
             callerSave.remove(AMD64.rsi);
