@@ -44,6 +44,9 @@ public class LinuxStat {
     public interface stat64 extends PointerBase {
         @CField
         long st_ino();
+
+        @CField
+        long st_size();
     }
 
     @CFunction
