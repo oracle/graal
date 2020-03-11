@@ -64,6 +64,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -998,6 +999,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * actually be used.
          */
         ArrayList<MonitorEnterNode> enters = null;
+        FrameState stateBefore = SnippetTemplate.findLastFrameState(insertionPoint);
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             List<MonitorIdNode> locks = commit.getLocks(objIndex);
             if (locks.size() > 1) {
@@ -1012,6 +1014,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addAfterFixed(insertionPoint, enter);
+                enter.setStateAfter(stateBefore);
                 insertionPoint = enter;
                 if (enters == null) {
                     enters = new ArrayList<>();

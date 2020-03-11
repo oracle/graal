@@ -111,7 +111,7 @@ public final class MonitorSnippets extends SubstrateTemplates implements Snippet
 
         @Override
         public void lower(MonitorEnterNode node, LoweringTool tool) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
                 return;
             }
             Arguments args = new Arguments(monitorEnter, node.graph().getGuardsStage(), tool.getLoweringStage());
@@ -126,7 +126,7 @@ public final class MonitorSnippets extends SubstrateTemplates implements Snippet
 
         @Override
         public void lower(MonitorExitNode node, LoweringTool tool) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
                 return;
             }
             Arguments args = new Arguments(monitorExit, node.graph().getGuardsStage(), tool.getLoweringStage());
