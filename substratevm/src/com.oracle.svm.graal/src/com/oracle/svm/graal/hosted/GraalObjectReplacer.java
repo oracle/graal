@@ -35,6 +35,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -127,6 +128,8 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             dest = providerReplacements.getMetaAccessProvider();
         } else if (source instanceof HotSpotJVMCIRuntime) {
             throw new UnsupportedFeatureException("HotSpotJVMCIRuntime should not appear in the image: " + source);
+        } else if (source instanceof GraalHotSpotVMConfig) {
+            throw new UnsupportedFeatureException("GraalHotSpotVMConfig should not appear in the image: " + source);
         } else if (source instanceof HotSpotBackendFactory) {
             HotSpotBackendFactory factory = (HotSpotBackendFactory) source;
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
