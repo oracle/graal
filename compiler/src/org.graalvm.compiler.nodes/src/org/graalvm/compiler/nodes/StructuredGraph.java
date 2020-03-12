@@ -80,13 +80,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  */
 public final class StructuredGraph extends Graph implements JavaMethodContext {
 
-    public enum CompilationType {
-        STUB_COMPILATION,
-        GRAPH_ENCODING,
-        ROOT_COMPILATION,
-        SNIPPET_COMPILATION
-    }
-
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
      * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
@@ -338,16 +331,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                             callerContext);
             // @formatter:on
         }
-    }
-
-    private CompilationType compType = CompilationType.ROOT_COMPILATION;
-
-    public void setCompType(CompilationType compType) {
-        this.compType = compType;
-    }
-
-    public CompilationType getCompType() {
-        return compType;
     }
 
     public boolean checkStates = true;

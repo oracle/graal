@@ -102,7 +102,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
         public static final NodeClass<SideEffectFreeWrite> TYPE = NodeClass.create(SideEffectFreeWrite.class);
 
-        public SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        protected SideEffectFreeWrite(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
             super(TYPE, address, location, value, barrierType);
         }
 

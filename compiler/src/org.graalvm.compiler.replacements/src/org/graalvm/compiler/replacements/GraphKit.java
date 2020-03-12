@@ -376,7 +376,6 @@ public class GraphKit implements GraphBuilderTool {
         }
 
         calleeGraph.clearAllStateAfter();
-        calleeGraph.setCompType(invoke.graph().getCompType());
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
         InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);

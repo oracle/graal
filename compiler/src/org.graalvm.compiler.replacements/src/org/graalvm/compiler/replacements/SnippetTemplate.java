@@ -91,6 +91,7 @@ import org.graalvm.compiler.nodes.BCISupplier;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -106,12 +107,10 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.CompilationType;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -821,8 +820,6 @@ public class SnippetTemplate {
                     }
                 }
             }
-
-            snippetCopy.setCompType(CompilationType.SNIPPET_COMPILATION);
 
             explodeLoops(snippetCopy, providers);
 

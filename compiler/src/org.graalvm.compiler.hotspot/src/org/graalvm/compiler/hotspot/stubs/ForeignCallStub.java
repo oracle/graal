@@ -55,7 +55,6 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.StructuredGraph.CompilationType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
@@ -246,10 +245,6 @@ public class ForeignCallStub extends Stub {
             ResolvedJavaMethod thisMethod = getGraphMethod();
             GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString());
             StructuredGraph graph = kit.getGraph();
-            /*
-             * Do not verify frame states
-             */
-            graph.setCompType(CompilationType.STUB_COMPILATION);
             ParameterNode[] params = createParameters(kit, args);
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, params, thread);
