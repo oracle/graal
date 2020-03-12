@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -46,10 +45,10 @@ public final class InvokeSpecialNode extends QuickNode {
     public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         if (!method.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // update to the latest method verison and grab a new direct call target
+            // update to the latest method version and grab a new direct call target
             method = method.getMethod().getMethodVersion();
-            directCallNode = DirectCallNode.create(method.getMethod().getCallTarget());
+            directCallNode = DirectCallNode.create(method.getCallTarget());
+            adoptChildren();
         }
         // TODO(peterssen): IsNull Node?
         Object receiver = nullCheck(root.peekReceiver(frame, top, method.getMethod()));
