@@ -26,6 +26,7 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
@@ -36,6 +37,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 // Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
@@ -157,6 +161,23 @@ public final class ReferenceInternals {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> void clearQueueNext(Reference<T> instance) {
         cast(instance).nextInQueue = instance;
+    }
+
+    public static ResolvedJavaType getReferenceType(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(Reference.class);
+    }
+
+    public static ResolvedJavaField getReferentField(MetaAccessProvider metaAccess) {
+        return getField(getReferenceType(metaAccess), ReferenceInternals.REFERENT_FIELD_NAME);
+    }
+
+    private static ResolvedJavaField getField(ResolvedJavaType type, String fieldName) {
+        for (ResolvedJavaField field : type.getInstanceFields(true)) {
+            if (field.getName().equals(fieldName)) {
+                return field;
+            }
+        }
+        throw new GraalError("missing field " + fieldName + " in type " + type);
     }
 
     private ReferenceInternals() {

@@ -48,15 +48,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class G1BarrierSet implements BarrierSet {
     private final ResolvedJavaType objectArrayType;
-    private final ResolvedJavaType referenceType;
-    private final String referentFieldName;
-    private final ReferenceOffsets referenceOffsets;
+    private final ResolvedJavaField referentField;
 
-    public G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaType referenceType, String referentFieldName, ReferenceOffsets referenceOffsets) {
+    public G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
         this.objectArrayType = objectArrayType;
-        this.referenceType = referenceType;
-        this.referentFieldName = referentFieldName;
-        this.referenceOffsets = referenceOffsets;
+        this.referentField = referentField;
     }
 
     @Override
@@ -64,13 +60,14 @@ public class G1BarrierSet implements BarrierSet {
         if (load.object().getStackKind() == JavaKind.Object &&
                         load.accessKind() == JavaKind.Object &&
                         !StampTool.isPointerAlwaysNull(load.object())) {
-            long referentOffset = referenceOffsets.getReferentOffset();
+            long referentOffset = referentField.getOffset();
             assert referentOffset > 0;
 
             if (load.offset().isJavaConstant() && referentOffset != load.offset().asJavaConstant().asLong()) {
                 // Reading at a constant offset which is different than the referent field.
                 return BarrierType.NONE;
             }
+            ResolvedJavaType referenceType = referentField.getDeclaringClass();
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && referenceType.isAssignableFrom(type)) {
                 // It's definitely a field of a Reference type
@@ -97,8 +94,7 @@ public class G1BarrierSet implements BarrierSet {
 
     @Override
     public BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        if (field.getJavaKind() == JavaKind.Object && referenceType.equals(field.getDeclaringClass()) &&
-                        field.getName().equals(referentFieldName)) {
+        if (field.getJavaKind() == JavaKind.Object && field.equals(referentField)) {
             return BarrierType.WEAK_FIELD;
         }
         return BarrierType.NONE;

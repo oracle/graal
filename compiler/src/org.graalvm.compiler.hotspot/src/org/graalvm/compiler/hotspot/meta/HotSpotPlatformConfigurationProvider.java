@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HotSpotPlatformConfigurationProvider implements PlatformConfigurationProvider {
@@ -63,11 +64,8 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
         if (config.useG1GC) {
-            ResolvedJavaType referenceType = HotSpotReplacementsUtil.referenceType(metaAccess);
-            String referentFieldName = HotSpotReplacementsUtil.referentFieldName();
-            long referentOffset = HotSpotReplacementsUtil.referentOffset(metaAccess);
-            HotSpotReferenceOffsets referenceOffsets = new HotSpotReferenceOffsets(referentOffset);
-            return new G1BarrierSet(objectArrayType, referenceType, referentFieldName, referenceOffsets) {
+            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
+            return new G1BarrierSet(objectArrayType, referentField) {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
                     if (!super.writeRequiresPostBarrier(node, writtenValue)) {
