@@ -279,6 +279,9 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
 
     def rules(self, out, benchmarks, bm_suite_args):
         return [
+            # We collect all our measures as "warmup"s. `AveragingBenchmarkMixin.addAverageAcrossLatestResults` then
+            # takes care of creating one final "memory" point which is the average of the last N points, where N is
+            # obtained from `AveragingBenchmarkMixin.getExtraIterationCount`.
             mx_benchmark.StdOutRule(r"(?P<path>.*): (warmup )?iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
                 "benchmark": ("<path>", str),
                 "metric.better": "lower",
