@@ -2776,7 +2776,9 @@ public class BytecodeParser implements GraphBuilderContext {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             assert receiver != null && receiver.getStackKind() == JavaKind.Object;
             if (RegisterFinalizerNode.mayHaveFinalizer(receiver, graph.getAssumptions())) {
-                append(new RegisterFinalizerNode(receiver));
+                RegisterFinalizerNode regFin = new RegisterFinalizerNode(receiver);
+                append(regFin);
+                regFin.setStateAfter(graph.start().stateAfter());
             }
         }
         genInfoPointNode(InfopointReason.METHOD_END, x);

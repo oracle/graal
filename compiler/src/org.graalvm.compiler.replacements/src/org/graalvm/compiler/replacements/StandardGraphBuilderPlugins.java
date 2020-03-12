@@ -833,7 +833,9 @@ public class StandardGraphBuilderPlugins {
                 if (targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                        b.add(new RegisterFinalizerNode(object));
+                        RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
+                        b.add(regFin);
+                        b.setStateAfter(regFin);
                     }
                     return true;
                 }

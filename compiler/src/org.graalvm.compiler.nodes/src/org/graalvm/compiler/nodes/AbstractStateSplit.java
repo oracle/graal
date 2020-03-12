@@ -63,4 +63,14 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
         super(c, stamp);
         this.stateAfter = stateAfter;
     }
+
+    @Override
+    public boolean verify() {
+        if (hasSideEffect() && !this.graph().isSubstitution()) {
+            if (this.graph().getGuardsStage().areFrameStatesAtSideEffects()) {
+                assertTrue(this.stateAfter != null, "State split %s with side-effect must have a state until FSA", this);
+            }
+        }
+        return super.verify();
+    }
 }
