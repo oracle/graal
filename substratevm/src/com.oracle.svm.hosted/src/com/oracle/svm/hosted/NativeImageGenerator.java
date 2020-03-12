@@ -608,7 +608,7 @@ public class NativeImageGenerator {
 
                 codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform, tempDirectory());
                 codeCache.layoutConstants();
-                codeCache.layoutMethods(debug, imageName);
+                codeCache.layoutMethods(debug, imageName, bigbang, compilationExecutor);
 
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
@@ -854,11 +854,11 @@ public class NativeImageGenerator {
 
                 prepareLibC();
 
-                CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
-                if (!("llvm".equals(SubstrateOptions.CompilerBackend.getValue()) && NativeImageOptions.ExitAfterRelocatableImageWrite.getValue())) {
+                if (!(SubstrateOptions.useLLVMBackend() && NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && CAnnotationProcessorCache.Options.UseCAPCache.getValue())) {
+                    CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
                     compilerInvoker.verifyCompiler();
+                    ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
                 }
-                ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
 
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializationSupport, debug);
 
@@ -1173,7 +1173,7 @@ public class NativeImageGenerator {
         }
 
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
-        final boolean arrayEqualsSubstitution = !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
         registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks,
                         arrayEqualsSubstitution);
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.options.OptionType.User;
 
 import java.nio.file.Paths;
@@ -208,7 +210,7 @@ public class SubstrateOptions {
              * Spawning isolates results in a significant performance hit, so we disable them on the
              * LLVM backend unless they were explicitly requested.
              */
-            return (value != null) ? value : !CompilerBackend.getValue().equals("llvm");
+            return (value != null) ? value : !useLLVMBackend();
         }
     };
 
@@ -360,9 +362,18 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                /*
+                 * The LLVM backend doesn't support speculative execution attack mitigation
+                 */
+                MitigateSpeculativeExecutionAttacks.update(values, None);
             }
         }
     };
+
+    @Fold
+    public static boolean useLLVMBackend() {
+        return "llvm".equals(CompilerBackend.getValue());
+    }
 
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);

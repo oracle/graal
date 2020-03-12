@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
@@ -46,6 +47,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.code.CodeInfo;
@@ -131,7 +133,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public abstract void layoutMethods(DebugContext debug, String imageName);
+    public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
 
     public void layoutConstants() {
         for (CompilationResult compilation : compilations.values()) {
@@ -298,7 +300,9 @@ public abstract class NativeImageCodeCache {
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
 
-    public abstract Path[] getCCInputFiles(Path tempDirectory, String imageName);
+    public Path[] getCCInputFiles(Path tempDirectory, String imageName) {
+        return new Path[]{tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix())};
+    }
 
     public abstract List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile);
 

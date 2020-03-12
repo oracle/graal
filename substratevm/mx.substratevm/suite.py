@@ -61,6 +61,53 @@ suite = {
                 "version" : "2.6.2-jaxb-1.0.6",
            },
         },
+
+        "LLVM_WRAPPER_SHADOWED": {
+            "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
+            "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
+            "dependencies" : ["JAVACPP_SHADOWED"],
+            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2.jar"],
+            "sourceUrls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-sources.jar"],
+            "license" : "GPLv2-CPE"
+        },
+        "JAVACPP_SHADOWED": {
+            "sha1" : "212aaddcd73448c7b6da781fb6cde934c667dc2c",
+            "sourceSha1" : "3e9cfc02750ba8ea3babc1b8546a50ec36b849a2",
+            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+            "urls": ["{urlbase}/javacpp-shadowed-1.5.2.jar"],
+            "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.2-sources.jar"],
+            "license" : "GPLv2-CPE"
+        },
+        "LLVM_PLATFORM_SPECIFIC_SHADOWED": {
+            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+            "os_arch": {
+                "linux": {
+                    "amd64": {
+                        "sha1": "53acc3692e0f67f3b4a4e5fa5b4a5a1de1aa7947",
+                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-x86_64.jar"],
+                    },
+                    "aarch64": {
+                        "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
+                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
+                    },
+                    "<others>": {
+                        "optional": True,
+                    },
+                },
+                "darwin": {
+                    "amd64": {
+                        "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
+                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "optional": True,
+                    }
+                }
+            },
+        }
     },
 
     "projects": {
@@ -229,7 +276,8 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
-                "compiler:GRAAL_LLVM"
+                "LLVM_WRAPPER_SHADOWED",
+                "LLVM_PLATFORM_SPECIFIC_SHADOWED",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -1083,12 +1131,15 @@ suite = {
             "dependencies" : ["com.oracle.svm.core.graal.llvm"],
             "distDependencies" : [
                 "SVM",
-                "compiler:GRAAL_LLVM",
                 "sdk:LLVM_TOOLCHAIN"
             ],
             "javaProperties": {
                 "llvm.bin.dir": "<path:LLVM_TOOLCHAIN>/bin/",
             },
+            "exclude": [
+                "LLVM_WRAPPER_SHADOWED",
+                "LLVM_PLATFORM_SPECIFIC_SHADOWED"
+            ],
             "maven" : False,
         },
 
