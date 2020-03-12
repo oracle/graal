@@ -263,6 +263,7 @@ public abstract class BigBang {
         unsafeLoads = null;
         unsafeStores = null;
         unknownTypeFlow = null;
+        scannedObjects = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
 

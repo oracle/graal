@@ -78,6 +78,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     private final LocalVariableTable localVariableTable;
     private final String qualifiedName;
     private MethodTypeFlow typeFlow;
+    private final AnalysisType declaringClass;
 
     private boolean isRootMethod;
     private boolean isIntrinsicMethod;
@@ -98,6 +99,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         this.universe = universe;
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
+        declaringClass = universe.lookup(wrapped.getDeclaringClass());
 
         if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
             startTrackInvocations();
@@ -341,7 +343,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public AnalysisType getDeclaringClass() {
-        return universe.lookup(wrapped.getDeclaringClass());
+        return declaringClass;
     }
 
     @Override
