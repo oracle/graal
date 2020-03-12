@@ -174,7 +174,6 @@ class NFIContext {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
 
-    @TruffleBoundary
     Object lookupSymbol(LibFFILibrary library, String name) {
         return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
     }
@@ -306,6 +305,7 @@ class NFIContext {
 
     private static native long loadLibrary(long nativeContext, String name, int flags);
 
+    @TruffleBoundary
     private static native long lookup(long nativeContext, long library, String name);
 
     static native void freeLibrary(long library);
