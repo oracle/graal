@@ -30,9 +30,8 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -45,34 +44,11 @@ import com.oracle.svm.core.graal.snippets.DeoptTester;
  * {@link DeoptTester#deoptTest()}.
  */
 @NodeInfo(allowedUsageTypes = InputType.Memory, cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class DeoptTestNode extends FixedWithNextNode implements Lowerable, DeoptimizingNode.DeoptAfter, SingleMemoryKill {
+public final class DeoptTestNode extends AbstractStateSplit implements Lowerable, DeoptimizingNode.DeoptAfter, SingleMemoryKill {
     public static final NodeClass<DeoptTestNode> TYPE = NodeClass.create(DeoptTestNode.class);
-
-    @OptionalInput(InputType.State) protected FrameState deoptState;
 
     public DeoptTestNode() {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
-    }
-
-    @Override
-    public boolean hasSideEffect() {
-        return true;
-    }
-
-    @Override
-    public FrameState stateAfter() {
-        return deoptState;
-    }
-
-    @Override
-    public void setStateAfter(FrameState f) {
-        updateUsages(deoptState, f);
-        deoptState = f;
     }
 
     @Override
@@ -83,5 +59,10 @@ public final class DeoptTestNode extends FixedWithNextNode implements Lowerable,
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 }

@@ -1174,6 +1174,7 @@ public class CompileQueue {
                 fixedWithNext.setNext(null);
                 testNode.setNext(next);
                 fixedWithNext.setNext(testNode);
+                testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
             }
         }
     }
