@@ -333,9 +333,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    public boolean checkStates = true;
-    public boolean resetChecking = false;
-
     public static final long INVALID_GRAPH_ID = -1;
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 

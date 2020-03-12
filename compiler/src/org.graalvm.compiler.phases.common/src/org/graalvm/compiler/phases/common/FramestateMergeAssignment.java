@@ -121,7 +121,7 @@ public class FramestateMergeAssignment {
             /*
              * The state at a merge is either the before or after state, but if multiple effects
              * exist predeceessing a merge we must have a merged state, and this state can only
-             * differ in its return values, TODO this is currently not supported
+             * differ in its return values, TODO this is currently not supported nor needed
              */
             MergeStateAssignment single = states.get(0);
             for (int i = 1; i < states.size(); i++) {
@@ -135,10 +135,8 @@ public class FramestateMergeAssignment {
                 // find out if just one was set
                 for (int i = 0; i < states.size(); i++) {
                     if (states.get(i) == MergeStateAssignment.AFTER_BCI) {
-                        if (afterSeen == 0) {
-                            afterSeen++;
-                        } else {
-                            afterSeen++;
+                        afterSeen++;
+                        if (afterSeen > 0) {
                             break;
                         }
                     }
@@ -147,6 +145,7 @@ public class FramestateMergeAssignment {
                     }
                 }
                 if (afterSeen == 1) {
+                    // next one is invalid
                     mergeMaps.put(merge, MergeStateAssignment.AFTER_BCI);
                     return MergeStateAssignment.INVALID;
                 }
