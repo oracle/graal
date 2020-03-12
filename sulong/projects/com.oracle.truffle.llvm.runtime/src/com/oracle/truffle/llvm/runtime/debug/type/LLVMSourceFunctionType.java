@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug.type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -128,6 +129,36 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
             this.sourceArgIndex = sourceArgIndex;
             this.offset = offset;
             this.size = size;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            SourceArgumentInformation that = (SourceArgumentInformation) o;
+            return bitcodeArgIndex == that.bitcodeArgIndex &&
+                            sourceArgIndex == that.sourceArgIndex &&
+                            offset == that.offset &&
+                            size == that.size;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(bitcodeArgIndex, sourceArgIndex, offset, size);
+        }
+
+        @Override
+        public String toString() {
+            return "SourceArgumentInformation(" +
+                            "bcArgIdx=" + bitcodeArgIndex +
+                            ", srcArgIdx=" + sourceArgIndex +
+                            ", offset=" + offset +
+                            ", size=" + size +
+                            ')';
         }
 
         public long getBitcodeArgIndex() {
