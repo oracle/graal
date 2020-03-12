@@ -127,6 +127,8 @@ public final class LLVMContext {
 
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
+    private final ArrayList<LLVMLocalScope> localScopes;
+
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
@@ -196,6 +198,7 @@ public final class LLVMContext {
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
+        this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
@@ -299,6 +302,10 @@ public final class LLVMContext {
             AssumedValue<LLVMPointer>[] symbols = symbolStorage[functionDetail.getBitcodeID(false)];
             symbols[functionDetail.getSymbolIndex(false)] = new AssumedValue<>(LLVMManagedPointer.create(functionDescriptor));
             globalScope.register(functionDetail);
+            LLVMLocalScope localScope = new LLVMLocalScope();
+            localScope.register(functionDetail);
+            localScope.addID(LLVMSymbol.MISCFUNCTION_ID);
+            localScopes.add(localScope);
         }
     }
 
@@ -719,6 +726,19 @@ public final class LLVMContext {
 
     public LLVMScope getGlobalScope() {
         return globalScope;
+    }
+
+    public void addLocalScope(LLVMLocalScope scope) {
+        localScopes.add(scope);
+    }
+
+    public LLVMLocalScope getLocalScope(int id) {
+        for (LLVMLocalScope scope : localScopes) {
+            if (scope.containID(id)) {
+                return scope;
+            }
+        }
+        throw new IllegalStateException("No local global scope matching the id: " + id);
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {

@@ -396,13 +396,13 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
