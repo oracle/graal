@@ -72,7 +72,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
+import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
@@ -91,9 +94,10 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-public final class Method extends Member<Signature> implements TruffleObject, ContextAccess, MethodRef {
+public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
+    public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
 
     private static final byte GETTER_LENGTH = 5;
     private static final byte STATIC_GETTER_LENGTH = 4;
@@ -124,7 +128,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
-    private boolean obsolete;
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -817,38 +820,30 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     // region jdwp-specific
-
-    @Override
     public long getBCIFromLine(int line) {
         return getLineNumberTable().getBCI(line);
     }
 
-    @Override
     public boolean hasLine(int lineNumber) {
         return getLineNumberTable().getBCI(lineNumber) != -1;
     }
 
-    @Override
     public String getNameAsString() {
         return getName().toString();
     }
 
-    @Override
     public String getSignatureAsString() {
         return getRawSignature().toString();
     }
 
-    @Override
     public boolean isMethodNative() {
         return isNative();
     }
 
-    @Override
     public KlassRef[] getParameters() {
         return resolveParameterKlasses();
     }
 
-    @Override
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
             Object theCallee = InterpreterToVM.newObject(getDeclaringKlass(), false);
@@ -858,7 +853,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return invokeWithConversions(callee, args);
     }
 
-    @Override
     public boolean isLastLine(long codeIndex) {
         LineNumberTableAttribute table = getLineNumberTable();
         int lastLine = table.getLastLine();
@@ -866,12 +860,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return lastLine == lineAt;
     }
 
-    @Override
     public int getFirstLine() {
         return getLineNumberTable().getFirstLine();
     }
 
-    @Override
     public int getLastLine() {
         return getLineNumberTable().getLastLine();
     }
@@ -892,17 +884,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private MethodBreakpoint[] infos = new MethodBreakpoint[0];
 
-    @Override
     public boolean hasActiveBreakpoint() {
         return hasActiveBreakpoints.get();
     }
 
-    @Override
     public MethodBreakpoint[] getMethodBreakpointInfos() {
         return infos;
     }
 
-    @Override
     public void addMethodBreakpointInfo(MethodBreakpoint info) {
         hasActiveBreakpoints.set(true);
         if (infos.length == 0) {
@@ -914,7 +903,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         infos[infos.length - 1] = info;
     }
 
-    @Override
     public void removeMethodBreakpointInfo(int requestId) {
         // shrink the array to avoid null values
         if (infos.length == 0) {
@@ -938,7 +926,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public void redefine(ParserMethod newMethod, ParserKlass newKlass) {
+    public void redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
@@ -946,12 +934,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion oldVersion = methodVersion;
         methodVersion = new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) newMethod.getAttribute(Name.Code));
         oldVersion.getAssumption().invalidate();
-        // an already obsolete method stays obsolete on subsequent redefines
-        obsolete = obsolete ? true : newMethod.isChanged();
-    }
-
-    public boolean isObsolete() {
-        return obsolete;
+        ids.replaceObject(oldVersion, methodVersion);
     }
 
     public MethodVersion getMethodVersion() {
@@ -962,7 +945,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return version;
     }
 
-    public final class MethodVersion {
+    public final class MethodVersion implements MethodRef {
         private final Assumption assumption;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
@@ -1024,7 +1007,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                             // Bind native method.
                             // If the loader is null we have a system class, so we attempt a lookup in
                             // the native Java library.
-                            if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
+                            if (StaticObject.isNull(getMethod().getDeclaringKlass().getDefiningClassLoader())) {
                                 // Look in libjava
                                 for (boolean withSignature : new boolean[]{false, true}) {
                                     String mangledName = Mangle.mangleMethod(getMethod(), withSignature);
@@ -1073,7 +1056,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         } else {
                             if (getCodeAttribute() == null) {
                                 throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                        "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                        "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                             }
 
                             FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
@@ -1100,6 +1083,136 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 return lineNumberTable != null ? lineNumberTable : LineNumberTableAttribute.EMPTY;
             }
             return LineNumberTableAttribute.EMPTY;
+        }
+
+        @Override
+        public long getBCIFromLine(int line) {
+            return getMethod().getBCIFromLine(line);
+        }
+
+        @Override
+        public Source getSource() {
+            return getMethod().getSource();
+        }
+
+        @Override
+        public boolean hasLine(int lineNumber) {
+            return getMethod().hasLine(lineNumber);
+        }
+
+        @Override
+        public String getSourceFile() {
+            return getMethod().getSourceFile();
+        }
+
+        @Override
+        public String getNameAsString() {
+            return getMethod().getNameAsString();
+        }
+
+        @Override
+        public String getSignatureAsString() {
+            return getMethod().getSignatureAsString();
+        }
+
+        @Override
+        public String getGenericSignatureAsString() {
+            return getMethod().getGenericSignatureAsString();
+        }
+
+        @Override
+        public int getModifiers() {
+            return getMethod().getModifiers();
+        }
+
+        @Override
+        public int bciToLineNumber(int bci) {
+            return getMethod().bciToLineNumber(bci);
+        }
+
+        @Override
+        public boolean isMethodNative() {
+            return getMethod().isMethodNative();
+        }
+
+        @Override
+        public byte[] getOriginalCode() {
+            return getMethod().getOriginalCode();
+        }
+
+        @Override
+        public KlassRef[] getParameters() {
+            return getMethod().getParameters();
+        }
+
+        @Override
+        public LocalVariableTableRef getLocalVariableTable() {
+            return getMethod().getLocalVariableTable();
+        }
+
+        @Override
+        public LocalVariableTableRef getLocalVariableTypeTable() {
+            return getMethod().getLocalVariableTypeTable();
+        }
+
+        @Override
+        public LineNumberTableRef getLineNumberTable() {
+            return getMethod().getLineNumberTable();
+        }
+
+        @Override
+        public Object invokeMethod(Object callee, Object[] args) {
+            return getMethod().invokeMethod(callee, args);
+        }
+
+        @Override
+        public boolean hasSourceFileAttribute() {
+            return getMethod().hasSourceFileAttribute();
+        }
+
+        @Override
+        public boolean isLastLine(long codeIndex) {
+            return getMethod().isLastLine(codeIndex);
+        }
+
+        @Override
+        public KlassRef getDeclaringKlass() {
+            return getMethod().getDeclaringKlass();
+        }
+
+        @Override
+        public int getFirstLine() {
+            return getMethod().getFirstLine();
+        }
+
+        @Override
+        public int getLastLine() {
+            return getMethod().getLastLine();
+        }
+
+        @Override
+        public MethodBreakpoint[] getMethodBreakpointInfos() {
+            return getMethod().getMethodBreakpointInfos();
+        }
+
+        @Override
+        public void addMethodBreakpointInfo(MethodBreakpoint info) {
+            getMethod().addMethodBreakpointInfo(info);
+        }
+
+        @Override
+        public void removeMethodBreakpointInfo(int requestId) {
+            getMethod().removeMethodBreakpointInfo(requestId);
+        }
+
+        @Override
+        public boolean hasActiveBreakpoint() {
+            return getMethod().hasActiveBreakpoint();
+        }
+
+        @Override
+        public boolean isObsolete() {
+            return !assumption.isValid();
         }
     }
     // endregion jdwp-specific

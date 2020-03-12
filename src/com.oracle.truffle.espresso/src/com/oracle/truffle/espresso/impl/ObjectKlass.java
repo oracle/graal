@@ -50,6 +50,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -430,6 +431,15 @@ public final class ObjectKlass extends Klass {
     @Override
     public Method[] getDeclaredMethods() {
         return declaredMethods;
+    }
+
+    @Override
+    public MethodRef[] getDeclaredMethodRefs() {
+        MethodRef[] result = new MethodRef[declaredMethods.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = declaredMethods[i].getMethodVersion();
+        }
+        return result;
     }
 
     @Override

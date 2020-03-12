@@ -111,7 +111,7 @@ public final class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
                 eventListener.increaseMethodBreakpointCount();
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
-                    for (MethodRef method : klass.getDeclaredMethods()) {
+                    for (MethodRef method : klass.getDeclaredMethodRefs()) {
                         method.addMethodBreakpointInfo(methodInfo);
                         methodInfo.addMethod(method);
                     }

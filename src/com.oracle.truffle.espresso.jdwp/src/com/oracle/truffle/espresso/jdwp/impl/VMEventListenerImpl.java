@@ -493,7 +493,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         // location
         stream.writeByte(top.getTypeTag());
         stream.writeLong(top.getClassId());
-        stream.writeLong(top.getMethodId());
+        stream.writeLong(ids.getIdAsLong(top.getMethod()));
         stream.writeLong(top.getCodeIndex());
 
         // exception
@@ -503,7 +503,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         // catch-location
         boolean caught = false;
         for (CallFrame callFrame : callFrames) {
-            MethodRef method = (MethodRef) context.getIds().fromId((int) callFrame.getMethodId());
+            MethodRef method = callFrame.getMethod();
             int catchLocation = context.getCatchLocation(method, exception, (int) callFrame.getCodeIndex());
             if (catchLocation != -1) {
                 stream.writeByte(callFrame.getTypeTag());

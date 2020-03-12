@@ -2281,7 +2281,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (context.getJDWPListener().hasMethodBreakpoint(method.getMethod(), returnValue)) {
+            if (context.getJDWPListener().hasMethodBreakpoint(method, returnValue)) {
                 enterAt(frame, statementIndex);
             }
         }

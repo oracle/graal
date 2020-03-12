@@ -51,7 +51,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, vtableIndex)") MethodVersion resolvedMethod,
-                    @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
+                    @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
 
@@ -65,7 +65,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_AbstractMethodError);
         }
-        return indirectCallNode.call(target.getMethod().getCallTarget(), arguments);
+        return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
     InvokeVirtualNode(Method resolutionSeed, int top, int curBCI) {

@@ -112,4 +112,10 @@ public final class Ids<T> {
         JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
         return id;
     }
+
+    public void replaceObject(T original, T replacement) {
+        int id = (int) getIdAsLong(original);
+        objects[id] = new WeakReference<>(replacement);
+        JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
+    }
 }

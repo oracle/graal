@@ -173,7 +173,7 @@ public final class DebuggerController implements ContextsListener {
         KlassRef[] klasses = debuggerCommand.getRequestFilter().getKlassRefPatterns();
         List<Breakpoint> breakpoints = new ArrayList<>();
         for (KlassRef klass : klasses) {
-            for (MethodRef method : klass.getDeclaredMethods()) {
+            for (MethodRef method : klass.getDeclaredMethodRefs()) {
                 int line = method.getFirstLine();
                 Breakpoint bp;
                 if (line != -1) {
@@ -225,7 +225,7 @@ public final class DebuggerController implements ContextsListener {
             // if so, we need to STEP_OUT to reach the caller
             // location
             CallFrame currentFrame = susp.getStackFrames()[0];
-            MethodRef method = (MethodRef) ids.fromId((int) currentFrame.getMethodId());
+            MethodRef method = currentFrame.getMethod();
             if (method.isLastLine(currentFrame.getCodeIndex())) {
                 doStepOut(susp);
             } else {
@@ -644,8 +644,8 @@ public final class DebuggerController implements ContextsListener {
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
-                KlassRef klass = null;
-                MethodRef method = null;
+                KlassRef klass;
+                MethodRef method;
                 RootNode root = getRootNode(frameInstance);
                 if (root == null) {
                     return null;
@@ -681,7 +681,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodId, codeIndex, frame, root, instrument.getEnv(), null));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, instrument.getEnv(), null));
                 return null;
             }
         });
@@ -923,7 +923,6 @@ public final class DebuggerController implements ContextsListener {
         private CallFrame[] createCallFrames(long threadId, Iterable<DebugStackFrame> stackFrames, int frameLimit) {
             LinkedList<CallFrame> list = new LinkedList<>();
             int frameCount = 0;
-
             for (DebugStackFrame frame : stackFrames) {
                 if (frame.getSourceSection() == null) {
                     continue;
@@ -973,7 +972,7 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, instrument.getEnv(), frame));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);

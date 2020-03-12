@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -264,7 +265,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public MethodRef getMethodFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
-            return ((EspressoRootNode) root).getMethod();
+            return ((EspressoRootNode) root).getMethodVersion();
         }
         return null;
     }
@@ -536,8 +537,8 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getCatchLocation(MethodRef method, Object guestException, int bci) {
         if (guestException instanceof StaticObject) {
-            Method guestMethod = (Method) method;
-            return guestMethod.getCatchLocation(bci, (StaticObject) guestException);
+            MethodVersion guestMethod = (MethodVersion) method;
+            return guestMethod.getMethod().getCatchLocation(bci, (StaticObject) guestException);
         } else {
             return -1;
         }
@@ -593,8 +594,8 @@ public final class JDWPContextImpl implements JDWPContext {
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
-        MethodRef method = context.getMeta().java_lang_Object_wait;
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), ids.getIdAsLong(method), 0, null, null, null, null);
+        MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
     }
 
     @Override
@@ -652,7 +653,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int redefineClasses(RedefineInfo[] redefineInfos) {
         for (RedefineInfo redefineInfo : redefineInfos) {
-            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context);
+            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds());
             if (result != 0) {
                 return result;
             }
