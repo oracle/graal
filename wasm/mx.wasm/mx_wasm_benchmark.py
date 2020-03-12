@@ -273,8 +273,8 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
         benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
         jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
         vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
-        run_args = ["--warmup_iterations", str(MEMORY_WARMUP_ITERATIONS),
-                    "--result_iterations", str(self.getExtraIterationCount(MEMORY_WARMUP_ITERATIONS))]
+        run_args = ["--warmup-iterations", str(MEMORY_WARMUP_ITERATIONS),
+                    "--result-iterations", str(self.getExtraIterationCount(MEMORY_WARMUP_ITERATIONS))]
         return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
 
     def rules(self, out, benchmarks, bm_suite_args):

@@ -62,7 +62,7 @@ import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
  * </p>
  *
  * <pre>
- * $ java org.graalvm.wasm.benchmark.MemoryProfiler --warmup_iterations 10 --result_iterations 6 go-hello
+ * $ java org.graalvm.wasm.benchmark.MemoryProfiler --warmup-iterations 10 --result-iterations 6 go-hello
  * </pre>
  *
  * <p>
@@ -100,8 +100,8 @@ public class MemoryFootprintBenchmarkRunner {
             return;
         }
 
-        if (args.length < 5 || !args[0].equals("--warmup_iterations") || !args[2].equals("--result_iterations")) {
-            System.err.println("Usage: --warmup_iterations <n> --result_iterations <n> <case_spec>...");
+        if (args.length < 5 || !args[0].equals("--warmup-iterations") || !args[2].equals("--result-iterations")) {
+            System.err.println("Usage: --warmup-iterations <n> --result-iterations <n> <case_spec>...");
         }
 
         final int warmup_iterations = Integer.parseInt(args[1]);
