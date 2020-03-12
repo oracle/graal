@@ -26,12 +26,18 @@ package org.graalvm.component.installer.remote;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
@@ -42,6 +48,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.FileIterable.FileComponent;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -118,12 +125,77 @@ public class CatalogIterable implements ComponentIterable {
 
         @Override
         public boolean hasNext() {
-            return input.hasParameter();
+            return !expandedIds.isEmpty() || input.hasParameter();
         }
+
+        private List<String> expandId(String pattern, Version.Match vm) {
+            PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // NOI18N
+            Set<String> ids = new HashSet<>(getRegistry().getComponentIDs());
+            Map<ComponentInfo, String> abbreviatedIds = new HashMap<>();
+            for (String id : ids) {
+                Collection<ComponentInfo> infos = getRegistry().loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
+                for (ComponentInfo info : infos) {
+                    abbreviatedIds.put(info, getRegistry().shortenComponentId(info));
+                }
+            }
+
+            // merge full IDs with unambiguous abbreviations.
+            ids.addAll(abbreviatedIds.values());
+            if (ids.contains(pattern)) {
+                // no wildcards, apparently
+                return Collections.singletonList(pattern);
+            }
+            for (Iterator<String> it = ids.iterator(); it.hasNext();) {
+                String s = it.next();
+                if (!pm.matches(SystemUtils.fromUserString(s))) {
+                    it.remove();
+                }
+            }
+            // translate back to components, to merge abbreviations and full Ids.
+            Set<ComponentInfo> infos = new HashSet<>();
+            ids.forEach(s -> infos.add(getRegistry().findComponent(s, vm)));
+            List<String> sorted = new ArrayList<>();
+            for (ComponentInfo ci : infos) {
+                String ab = abbreviatedIds.get(ci);
+                if (pm.matches(SystemUtils.fromUserString(ab))) {
+                    sorted.add(ab);
+                } else {
+                    sorted.add(ci.getId());
+                }
+            }
+            Collections.sort(sorted);
+            return sorted;
+        }
+
+        /**
+         * The command line parameters expanded from wildcards.
+         */
+        private final List<String> expandedIds = new ArrayList<>();
 
         @Override
         public ComponentParam next() {
+            if (!expandedIds.isEmpty()) {
+                return processParameter(expandedIds.remove(0));
+            }
             String s = input.nextParameter();
+            Version.Match[] m = new Version.Match[1];
+            String id = Version.idAndVersion(s, m);
+            if (m[0].getType() == Version.Match.Type.MOSTRECENT && versionFilter != null) {
+                m[0] = versionFilter;
+            }
+            List<String> expanded = expandId(id, m[0]);
+            if (expanded.isEmpty()) {
+                // just process it ;)
+                return processParameter(s);
+            }
+            String suffix = s.substring(id.length());
+            for (String ei : expanded) {
+                expandedIds.add(ei + suffix);
+            }
+            return processParameter(expandedIds.remove(0));
+        }
+
+        private ComponentParam processParameter(String s) {
             ComponentInfo info;
             try {
                 Version.Match[] m = new Version.Match[1];
