@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,19 +63,19 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     @Parameters(name = "{0}_{1}")
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
-        configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testObjectPointer", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testLongDouble", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testBooleans", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testBitFields", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testStructures.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testUnions.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testDecorators.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testControlFlow.c", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
 

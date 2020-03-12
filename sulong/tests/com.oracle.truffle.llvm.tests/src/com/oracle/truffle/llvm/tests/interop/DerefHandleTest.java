@@ -54,7 +54,7 @@ public class DerefHandleTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("derefHandleTest");
+        testLibrary = loadTestBitcodeInternal("derefHandleTest.c");
     }
 
     public class TestAllocateDerefHandleNode extends SulongTestNode {

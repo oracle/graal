@@ -70,7 +70,7 @@ public class HostAllocatedNativePointer extends InteropTestBase {
         NativeValue myRawPointer = new NativeValue(buf);
 
         try (Context context = Context.newBuilder().allowAllAccess(true).allowNativeAccess(true).build()) {
-            Value file = loadTestBitcodeValue("strcmp");
+            Value file = loadTestBitcodeValue("strcmp.c");
             Value strcmp = file.getMember("compare_with_native");
             strcmp.execute(myRawPointer);
         }
