@@ -95,6 +95,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.HashMap;
+import java.util.ServiceLoader;
 
 final class EngineAccessor extends Accessor {
 
@@ -291,6 +293,28 @@ final class EngineAccessor extends Accessor {
             FileSystem fileSystem = context.config.fileSystem;
             Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
             return EngineAccessor.LANGUAGE.getTruffleFile(uri, fileSystem, fileTypeDetectorsSupplier);
+        }
+
+        @Override
+        public <T> Iterable<T> loadServices(Class<T> type) {
+            Map<Class<?>, T> found = new HashMap<>();
+            for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
+                ClassLoader loader = loaderSupplier.get();
+                if (seesTheSameClass(loader, type)) {
+                    for (T service : ServiceLoader.load(type, loader)) {
+                        found.putIfAbsent(service.getClass(), service);
+                    }
+                }
+            }
+            return found.values();
+        }
+
+        private static boolean seesTheSameClass(ClassLoader loader, Class<?> type) {
+            try {
+                return loader != null && loader.loadClass(type.getName()) == type;
+            } catch (ClassNotFoundException ex) {
+                return false;
+            }
         }
 
         @Override

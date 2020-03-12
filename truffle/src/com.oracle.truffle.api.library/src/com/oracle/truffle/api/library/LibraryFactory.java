@@ -48,7 +48,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -353,7 +352,7 @@ public abstract class LibraryFactory<T extends Library> {
     private static Map<String, List<DefaultExportProvider>> loadExternalDefaultProviders() {
         Map<String, List<DefaultExportProvider>> providers;
         providers = new LinkedHashMap<>();
-        for (DefaultExportProvider provider : ServiceLoader.load(DefaultExportProvider.class)) {
+        for (DefaultExportProvider provider : LibraryAccessor.engineAccessor().loadServices(DefaultExportProvider.class)) {
             String libraryClassName = provider.getLibraryClassName();
             List<DefaultExportProvider> providerList = providers.get(libraryClassName);
             if (providerList == null) {
