@@ -92,6 +92,7 @@ import org.graalvm.compiler.nodes.BCISupplier;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -1853,8 +1854,8 @@ public class SnippetTemplate {
         for (FixedNode fixed : GraphUtil.predecessorIterable(start)) {
             if (fixed instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) fixed;
-                assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
-                if (stateSplit.stateAfter() != null) {
+                if (stateSplit.hasSideEffect()) {
+                    assert stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
                     return stateSplit.stateAfter();
                 }
             }
@@ -1864,6 +1865,14 @@ public class SnippetTemplate {
             NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
             TTY.printf("Last fixed node %s\n With source position -> \n %s", lastFixedNode,
                             p == null ? "null" : p.toString());
+            if (lastFixedNode instanceof MergeNode) {
+                MergeNode merge = (MergeNode) lastFixedNode;
+                TTY.printf("Last fixed node is a merge with predecessors:\n");
+                for (EndNode end : merge.forwardEnds()) {
+                    NodeSourcePosition sp = end.predecessor().getNodeSourcePosition();
+                    TTY.printf("\t->%s:source position%s\n", end.predecessor(), sp != null ? sp.toString() : "null");
+                }
+            }
         }
         return null;
     }
