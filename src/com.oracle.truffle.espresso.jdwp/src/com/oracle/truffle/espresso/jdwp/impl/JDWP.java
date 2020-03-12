@@ -1404,7 +1404,6 @@ final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-
                 KlassRef refType = verifyRefType(input.readLong(), reply, context);
 
                 if (refType == null) {

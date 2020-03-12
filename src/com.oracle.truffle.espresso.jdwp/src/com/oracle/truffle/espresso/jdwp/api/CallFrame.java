@@ -116,7 +116,7 @@ public final class CallFrame {
         }
         try {
             return INTEROP.readMember(theScope.getVariables(), identifier);
-        } catch (UnknownIdentifierException  | UnsupportedMessageException e) {
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw e;
         }
     }

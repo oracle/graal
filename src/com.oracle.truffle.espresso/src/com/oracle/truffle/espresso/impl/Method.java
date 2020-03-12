@@ -984,10 +984,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
                 // Initializing a class costs a lock, do it outside of this method's lock to avoid
                 // congestion.
-                // Note that requesting a call target is immediately followed by a call to the method,
+                // Note that requesting a call target is immediately followed by a call to the
+                // method,
                 // before advancing BCI.
                 // This ensures that we are respecting the specs, saying that a class must be
-                // initialized before a method is called, while saving a call to safeInitialize after a
+                // initialized before a method is called, while saving a call to safeInitialize
+                // after a
                 // method lookup.
                 declaringKlass.safeInitialize();
 
@@ -1005,7 +1007,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     } else {
                         if (getMethod().isNative()) {
                             // Bind native method.
-                            // If the loader is null we have a system class, so we attempt a lookup in
+                            // If the loader is null we have a system class, so we attempt a lookup
+                            // in
                             // the native Java library.
                             if (StaticObject.isNull(getMethod().getDeclaringKlass().getDefiningClassLoader())) {
                                 // Look in libjava
@@ -1041,9 +1044,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                      * MethodHandle.invoke(Object... args), or
                                      * MethodHandle.invokeExact(Object... args).
                                      *
-                                     * The method was obtained through a regular lookup (since it is in
-                                     * the declared method). Delegate it to a polysignature method
-                                     * lookup.
+                                     * The method was obtained through a regular lookup (since it is
+                                     * in the declared method). Delegate it to a polysignature
+                                     * method lookup.
                                      *
                                      * Redundant callTarget assignment. Better sure than sorry.
                                      */
@@ -1056,7 +1059,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         } else {
                             if (getCodeAttribute() == null) {
                                 throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                        "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                                "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                             }
 
                             FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
