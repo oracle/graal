@@ -45,7 +45,6 @@ import java.lang.ref.WeakReference;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -263,13 +262,12 @@ final class PolyglotReferences {
 
     }
 
-    private static final class StrongSingleContext extends ContextReference<Object> implements CleanableReference {
+    private static final class StrongSingleContext extends ContextReference<Object> {
 
         private static final Object NO_CONTEXT = new Object();
 
         private final PolyglotLanguage language;
         @CompilationFinal private volatile Object languageContextImpl = NO_CONTEXT;
-        private final Assumption languageContextImplValid = Truffle.getRuntime().createAssumption("LanguageContextImpl Valid");
 
         // only set if assertions are enabled
         private volatile PolyglotLanguageContext languageContext;
@@ -281,10 +279,6 @@ final class PolyglotReferences {
         @Override
         public Object get() {
             assert language.assertCorrectEngine();
-            if (!languageContextImplValid.isValid()) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException();
-            }
             Object context = languageContextImpl;
             if (context == NO_CONTEXT) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -297,20 +291,13 @@ final class PolyglotReferences {
             return context;
         }
 
-        @Override
-        public void notifyLanguageFreed() {
-            languageContextImpl = null;
-            languageContext = null;
-            languageContextImplValid.invalidate();
-        }
-
         private boolean setLanguageContext(PolyglotLanguageContext langContext) {
             this.languageContext = langContext;
             return true;
         }
     }
 
-    private static final class AssumeSingleContext extends ContextReference<Object> implements CleanableReference {
+    private static final class AssumeSingleContext extends ContextReference<Object> {
 
         private final ContextReference<Object> singleContextReference;
         private final ContextReference<Object> fallbackReference;
@@ -334,13 +321,6 @@ final class PolyglotReferences {
             }
             assert fallbackReference.get() == context;
             return context;
-        }
-
-        @Override
-        public void notifyLanguageFreed() {
-            if (singleContextReference instanceof CleanableReference) {
-                ((CleanableReference) singleContextReference).notifyLanguageFreed();
-            }
         }
     }
 
@@ -394,10 +374,6 @@ final class PolyglotReferences {
             assert language.assertCorrectEngine();
             return PolyglotContextImpl.currentEntered(language.engine).getContextImpl(language);
         }
-    }
-
-    interface CleanableReference {
-        void notifyLanguageFreed();
     }
 
 }

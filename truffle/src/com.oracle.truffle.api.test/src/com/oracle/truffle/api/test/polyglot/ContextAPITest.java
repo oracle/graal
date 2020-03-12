@@ -780,6 +780,7 @@ public class ContextAPITest {
         Value res = context.eval(ProxyLanguage.ID, "");
         assertEquals(42, res.asInt());
         context.close();
+        ProxyLanguage.setDelegate(new ProxyLanguage());
         assertNotNull(currentLangContext.get());
         Reference<?> langContextRef = new WeakReference<>(currentLangContext.getAndSet(null));
         GCUtils.assertGc("Language context should be freed when polyglot Context is closed.", langContextRef);

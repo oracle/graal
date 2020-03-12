@@ -62,7 +62,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import com.oracle.truffle.polyglot.PolyglotReferences.CleanableReference;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -270,10 +269,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     void freeInstance(PolyglotLanguageInstance instance) {
         synchronized (engine) {
             profile.notifyLanguageFreed();
-            ContextReference<Object> contextReference = instance.getDirectContextSupplier();
-            if (contextReference instanceof CleanableReference) {
-                ((CleanableReference) contextReference).notifyLanguageFreed();
-            }
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     // nothing to do
@@ -288,6 +283,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     throw new AssertionError("Unknown context cardinality.");
             }
         }
+    }
+
+    void close() {
+        assert Thread.holdsLock(engine);
+        instancePool.clear();
     }
 
     /**
