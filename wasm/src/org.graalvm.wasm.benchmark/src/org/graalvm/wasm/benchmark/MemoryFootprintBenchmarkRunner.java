@@ -41,12 +41,12 @@
 package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,7 +62,7 @@ import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
  * </p>
  *
  * <pre>
- * $ java org.graalvm.wasm.benchmark.MemoryProfiler bench/wasm/memory/go-hello
+ * $ java org.graalvm.wasm.benchmark.MemoryProfiler --warmup-iterations 10 --result-iterations 6 go-hello
  * </pre>
  *
  * <p>
@@ -93,8 +93,6 @@ public class MemoryFootprintBenchmarkRunner {
     // generalize this to include more paths, if that turns out necessary.
     private static String BENCHCASES_TYPE = "bench";
     private static String BENCHCASES_RESOURCE = "wasm/memory";
-    private static int WARMUP_ITERATIONS = 10;
-    private static int ITERATIONS = 10;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("--list")) {
@@ -102,7 +100,14 @@ public class MemoryFootprintBenchmarkRunner {
             return;
         }
 
-        for (final String caseSpec : args) {
+        if (args.length < 5 || !args[0].equals("--warmup-iterations") || !args[2].equals("--result-iterations")) {
+            System.err.println("Usage: --warmup-iterations <n> --result-iterations <n> <case_spec>...");
+        }
+
+        final int warmup_iterations = Integer.parseInt(args[1]);
+        final int result_iterations = Integer.parseInt(args[3]);
+
+        for (final String caseSpec : Arrays.copyOfRange(args, 4, args.length)) {
             final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
@@ -111,7 +116,7 @@ public class MemoryFootprintBenchmarkRunner {
 
             final List<Double> results = new ArrayList<>();
 
-            for (int i = 0; i < WARMUP_ITERATIONS + ITERATIONS; ++i) {
+            for (int i = 0; i < warmup_iterations + result_iterations; ++i) {
                 final Context context = contextBuilder.build();
 
                 final double heapSizeBefore = getHeapSize();
@@ -121,7 +126,7 @@ public class MemoryFootprintBenchmarkRunner {
 
                 final double heapSizeAfter = getHeapSize();
                 final double result = heapSizeAfter - heapSizeBefore;
-                if (i < WARMUP_ITERATIONS) {
+                if (i < warmup_iterations) {
                     System.out.format("%s: warmup iteration[%d]: %.3f MB%n", caseSpec, i, result);
                 } else {
                     results.add(result);
@@ -140,12 +145,20 @@ public class MemoryFootprintBenchmarkRunner {
         }
     }
 
-    private static double getHeapSize() throws InterruptedException {
-        Thread.sleep(100);
+    static double getHeapSize() {
+        sleep();
         System.gc();
-        Thread.sleep(500);
+        sleep();
         final Runtime runtime = Runtime.getRuntime();
         return (runtime.totalMemory() - runtime.freeMemory()) / 1000000.0;
+    }
+
+    static void sleep() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static double median(List<Double> xs) {
