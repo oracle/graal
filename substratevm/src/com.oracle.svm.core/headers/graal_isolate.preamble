@@ -14,9 +14,9 @@ struct __graal_isolatethread_t;
 typedef struct __graal_isolatethread_t graal_isolatethread_t;
 
 #ifdef _WIN64
-typedef unsigned long long ulong;
+typedef unsigned long long __graal_uword;
 #else
-typedef unsigned long ulong;
+typedef unsigned long __graal_uword;
 #endif
 
 
@@ -26,6 +26,10 @@ struct __graal_create_isolate_params_t {
     int version;                                /* Version of this struct */
 
     /* Fields introduced in version 1 */
-    ulong reserved_address_space_size;  /* Size of address space to reserve */
+    __graal_uword  reserved_address_space_size; /* Size of address space to reserve */
+
+    /* Fields introduced in version 2 */
+    const char    *auxiliary_image_path;                /* Path to an auxiliary image to load. */
+    __graal_uword  auxiliary_image_reserved_space_size; /* Reserved bytes for loading an auxiliary image. */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;

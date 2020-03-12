@@ -22,26 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.hosted;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
-    public LinearImageHeapLayouter() {
+    private final ImageHeapInfo heapInfo;
+    private boolean compressedNullPadding;
+
+    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
+        this.heapInfo = heapInfo;
+        this.compressedNullPadding = compressedNullPadding;
     }
 
     @Override
     public void initialize() {
-        if (useHeapBase()) {
+        if (compressedNullPadding && useHeapBase()) {
             /*
              * Zero designates null, so adding some explicit padding at the beginning of the native
              * image heap is the easiest approach to make object offsets strictly greater than 0.
@@ -89,7 +89,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
         if (lastReadOnlyReferenceObject == null) {
             lastReadOnlyReferenceObject = getReadOnlyReference().lastObject;
         }
-        HeapImpl.getImageHeapInfo().initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, firstReadOnlyReferenceObject, lastReadOnlyReferenceObject,
+        heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, firstReadOnlyReferenceObject, lastReadOnlyReferenceObject,
                         getWritablePrimitive().firstObject, getWritablePrimitive().lastObject, getWritableReference().firstObject, getWritableReference().lastObject);
     }
 }

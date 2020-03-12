@@ -92,8 +92,8 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
             LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             return LinuxStat.fstat64(fd, stat);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
-            return DarwinStat.fstat(fd, stat);
+            DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
+            return DarwinStat.fstat64(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }

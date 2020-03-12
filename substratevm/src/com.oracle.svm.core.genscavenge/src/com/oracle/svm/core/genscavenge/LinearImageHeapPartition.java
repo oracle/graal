@@ -22,10 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.hosted;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.image.AbstractImageHeapLayouter.AbstractImageHeapPartition;
 import com.oracle.svm.core.image.ImageHeapObject;
@@ -33,7 +30,6 @@ import com.oracle.svm.core.image.ImageHeapObject;
 /**
  * An unstructured image heap partition that just contains a linear sequence of image heap objects.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
 public class LinearImageHeapPartition extends AbstractImageHeapPartition {
     long size;
     Object firstObject;

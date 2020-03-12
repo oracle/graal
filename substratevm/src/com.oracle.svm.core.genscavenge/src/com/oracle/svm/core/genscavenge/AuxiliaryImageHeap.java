@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.image;
+package com.oracle.svm.core.genscavenge;
 
-public interface ImageHeapObject {
-    long getSize();
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.Pointer;
 
-    Object getObject();
+import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.ObjectVisitor;
 
-    void setHeapPartition(ImageHeapPartition partition);
+public interface AuxiliaryImageHeap {
+    @Fold
+    static boolean isPresent() {
+        return ImageSingletons.contains(AuxiliaryImageHeap.class);
+    }
 
-    ImageHeapPartition getPartition();
+    @Fold
+    static AuxiliaryImageHeap singleton() {
+        return ImageSingletons.lookup(AuxiliaryImageHeap.class);
+    }
 
-    void setOffsetInPartition(long offset);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean containsObject(Pointer address);
 
-    long getOffsetInPartition();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean containsObjectSlow(Pointer address);
+
+    boolean walkObjects(ObjectVisitor visitor);
+
+    boolean walkRegions(MemoryWalker.Visitor visitor);
 }

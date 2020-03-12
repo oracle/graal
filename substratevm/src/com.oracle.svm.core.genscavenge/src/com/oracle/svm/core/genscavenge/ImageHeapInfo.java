@@ -25,8 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -50,12 +48,19 @@ public class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstWritableReferenceObject;
     @UnknownObjectField(types = Object.class) public Object lastWritableReferenceObject;
 
-    @Platforms(value = Platform.HOSTED_ONLY.class)
+    @UnknownObjectField(types = Object.class) public Object firstReadOnlyObject;
+    @UnknownObjectField(types = Object.class) public Object lastReadOnlyObject;
+
+    @UnknownObjectField(types = Object.class) public Object firstWritableObject;
+    @UnknownObjectField(types = Object.class) public Object lastWritableObject;
+
+    @UnknownObjectField(types = Object.class) public Object firstObject;
+    @UnknownObjectField(types = Object.class) public Object lastObject;
+
     public ImageHeapInfo() {
     }
 
     @SuppressWarnings("hiding")
-    @Platforms(value = Platform.HOSTED_ONLY.class)
     public void initialize(Object firstReadOnlyPrimitiveObject, Object lastReadOnlyPrimitiveObject, Object firstReadOnlyReferenceObject, Object lastReadOnlyReferenceObject,
                     Object firstWritablePrimitiveObject, Object lastWritablePrimitiveObject, Object firstWritableReferenceObject, Object lastWritableReferenceObject) {
         this.firstReadOnlyPrimitiveObject = firstReadOnlyPrimitiveObject;
@@ -66,6 +71,14 @@ public class ImageHeapInfo {
         this.lastWritablePrimitiveObject = lastWritablePrimitiveObject;
         this.firstWritableReferenceObject = firstWritableReferenceObject;
         this.lastWritableReferenceObject = lastWritableReferenceObject;
+
+        // Compute boundaries for checks considering partitions can be empty (first == last == null)
+        this.firstReadOnlyObject = (firstReadOnlyPrimitiveObject != null) ? firstReadOnlyPrimitiveObject : firstReadOnlyReferenceObject;
+        this.lastReadOnlyObject = (lastReadOnlyReferenceObject != null) ? lastReadOnlyReferenceObject : lastReadOnlyPrimitiveObject;
+        this.firstWritableObject = (firstWritablePrimitiveObject != null) ? firstWritablePrimitiveObject : firstWritableReferenceObject;
+        this.lastWritableObject = (lastWritableReferenceObject != null) ? lastWritableReferenceObject : lastWritablePrimitiveObject;
+        this.firstObject = (firstReadOnlyObject != null) ? firstReadOnlyObject : firstWritableObject;
+        this.lastObject = (lastWritableObject != null) ? lastWritableObject : lastReadOnlyObject;
     }
 
     /*
@@ -78,21 +91,25 @@ public class ImageHeapInfo {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyPrimitivePartition(final Pointer ptr) {
+        assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyPrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritablePrimitivePartition(final Pointer ptr) {
+        assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritablePrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyReferencePartition(final Pointer ptr) {
+        assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritableReferencePartition(final Pointer ptr) {
+        assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
     }
 
@@ -120,13 +137,15 @@ public class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objectPointer) {
         boolean result;
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+        if (objectPointer.isNull()) {
+            result = false;
+        } else if (SubstrateOptions.SpawnIsolates.getValue()) {
+            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
         } else {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject)) &&
-                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject)) ||
-                            objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstWritablePrimitiveObject)) &&
-                                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyObject)) &&
+                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyObject)) ||
+                            objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstWritableObject)) &&
+                                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableObject));
         }
 
         assert result == isInImageHeapSlow(objectPointer);
@@ -136,11 +155,12 @@ public class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeapSlow(Pointer objectPointer) {
         boolean result = false;
-        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-        result |= imageHeapInfo.isInReadOnlyPrimitivePartition(objectPointer);
-        result |= imageHeapInfo.isInReadOnlyReferencePartition(objectPointer);
-        result |= imageHeapInfo.isInWritablePrimitivePartition(objectPointer);
-        result |= imageHeapInfo.isInWritableReferencePartition(objectPointer);
+        if (objectPointer.isNonNull()) {
+            result |= isInReadOnlyPrimitivePartition(objectPointer);
+            result |= isInReadOnlyReferencePartition(objectPointer);
+            result |= isInWritablePrimitivePartition(objectPointer);
+            result |= isInWritableReferencePartition(objectPointer);
+        }
         return result;
     }
 }
