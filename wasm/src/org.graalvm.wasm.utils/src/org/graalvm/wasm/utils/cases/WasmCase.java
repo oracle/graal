@@ -52,7 +52,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
-import com.sun.istack.internal.NotNull;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.utils.Assert;
@@ -232,7 +231,6 @@ public abstract class WasmCase {
         return null;
     }
 
-    @NotNull
     public static WasmCase loadBenchmarkCase(String resource) throws IOException {
         final String name = SystemProperties.BENCHMARK_NAME;
 
