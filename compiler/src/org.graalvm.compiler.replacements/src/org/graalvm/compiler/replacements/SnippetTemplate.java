@@ -1749,6 +1749,10 @@ public class SnippetTemplate {
                     stateAfter = ((StateSplit) replacee).stateAfter();
                     assert stateAfter != null : "Statesplit with side-effect needs a framestate " + replacee;
                 } else {
+                    /*
+                     * We dont have a state split as a replacee, thus we take the prev state as the
+                     * state after for the merges in the snippet.
+                     */
                     stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
                     assert stateAfter != null : "Must find a prev state (this can be transitively broken) for node " +
                                     replaceeGraphCFGPredecessor + " " + findLastFrameState(replaceeGraphCFGPredecessor, true);
@@ -1851,28 +1855,36 @@ public class SnippetTemplate {
 
     public static FrameState findLastFrameState(FixedNode start, boolean debug) {
         FixedNode lastFixedNode = null;
-        for (FixedNode fixed : GraphUtil.predecessorIterable(start)) {
-            if (fixed instanceof StateSplit) {
-                StateSplit stateSplit = (StateSplit) fixed;
-                if (stateSplit.hasSideEffect()) {
-                    assert stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
-                    return stateSplit.stateAfter();
+        FixedNode currentStart = start;
+        while (true) {
+            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
+                if (fixed instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) fixed;
+                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
+                    if (stateSplit.stateAfter() != null) {
+                        return stateSplit.stateAfter();
+                    }
+                }
+                lastFixedNode = fixed;
+            }
+            if (lastFixedNode instanceof LoopBeginNode) {
+                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
+                continue;
+            }
+            if (debug) {
+                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
+                TTY.printf("Last fixed node %s\n With source position -> \n %s", lastFixedNode,
+                                p == null ? "null" : p.toString());
+                if (lastFixedNode instanceof MergeNode) {
+                    MergeNode merge = (MergeNode) lastFixedNode;
+                    TTY.printf("Last fixed node is a merge with predecessors:\n");
+                    for (EndNode end : merge.forwardEnds()) {
+                        NodeSourcePosition sp = end.predecessor().getNodeSourcePosition();
+                        TTY.printf("\t->%s:source position%s\n", end.predecessor(), sp != null ? sp.toString() : "null");
+                    }
                 }
             }
-            lastFixedNode = fixed;
-        }
-        if (debug) {
-            NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-            TTY.printf("Last fixed node %s\n With source position -> \n %s", lastFixedNode,
-                            p == null ? "null" : p.toString());
-            if (lastFixedNode instanceof MergeNode) {
-                MergeNode merge = (MergeNode) lastFixedNode;
-                TTY.printf("Last fixed node is a merge with predecessors:\n");
-                for (EndNode end : merge.forwardEnds()) {
-                    NodeSourcePosition sp = end.predecessor().getNodeSourcePosition();
-                    TTY.printf("\t->%s:source position%s\n", end.predecessor(), sp != null ? sp.toString() : "null");
-                }
-            }
+            break;
         }
         return null;
     }
