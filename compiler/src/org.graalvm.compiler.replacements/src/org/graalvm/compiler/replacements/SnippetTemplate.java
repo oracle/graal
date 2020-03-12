@@ -72,6 +72,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
@@ -1749,7 +1750,7 @@ public class SnippetTemplate {
                 } else {
                     stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
                     assert stateAfter != null : "Must find a prev state (this can be transitively broken) for node " +
-                                    replaceeGraphCFGPredecessor;
+                                    replaceeGraphCFGPredecessor + " " + findLastFrameState(replaceeGraphCFGPredecessor, true);
                 }
                 NodeMap<MergeStateAssignment> mergeStates = framestateMergeAssignment.getMergeMaps();
                 MapCursor<Node, MergeStateAssignment> stateAssignments = mergeStates.getEntries();
@@ -1844,6 +1845,11 @@ public class SnippetTemplate {
     }
 
     public static FrameState findLastFrameState(FixedNode start) {
+        return findLastFrameState(start, false);
+    }
+
+    public static FrameState findLastFrameState(FixedNode start, boolean debug) {
+        FixedNode lastFixedNode = null;
         for (FixedNode fixed : GraphUtil.predecessorIterable(start)) {
             if (fixed instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) fixed;
@@ -1852,6 +1858,12 @@ public class SnippetTemplate {
                     return stateSplit.stateAfter();
                 }
             }
+            lastFixedNode = fixed;
+        }
+        if (debug) {
+            NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
+            TTY.printf("Last fixed node %s\n With source position -> \n %s", lastFixedNode,
+                            p == null ? "null" : p.toString());
         }
         return null;
     }
