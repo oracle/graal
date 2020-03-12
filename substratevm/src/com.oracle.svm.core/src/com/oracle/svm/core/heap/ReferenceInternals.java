@@ -51,7 +51,7 @@ import sun.misc.Unsafe;
  */
 public final class ReferenceInternals {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-    public static final String REFERENT_FIELD_NAME = "rawReferent";
+    public static final String REFERENT_FIELD_NAME = "referent";
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -79,7 +79,7 @@ public final class ReferenceInternals {
     }
 
     static <T> void doClear(Target_java_lang_ref_Reference<T> instance) {
-        instance.rawReferent = null;
+        instance.referent = null;
     }
 
     public static <T> boolean enqueue(Reference<T> instance) {
@@ -87,30 +87,30 @@ public final class ReferenceInternals {
     }
 
     public static <T> boolean doEnqueue(Target_java_lang_ref_Reference<T> instance) {
-        Target_java_lang_ref_ReferenceQueue<? super T> q = instance.futureQueue;
+        Target_java_lang_ref_ReferenceQueue<? super T> q = instance.queue;
         if (q != null) {
             return ReferenceQueueInternals.doEnqueue(q, uncast(instance));
         }
         return false;
     }
 
-    /** Barrier-less read of {@link Target_java_lang_ref_Reference#rawReferent} as pointer. */
+    /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as pointer. */
     public static <T> Pointer getReferentPointer(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.rawReferentFieldOffset)));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
 
-    /** Barrier-less write of {@link Target_java_lang_ref_Reference#rawReferent} as pointer. */
+    /** Barrier-less write of {@link Target_java_lang_ref_Reference#referent} as pointer. */
     public static <T> void setReferentPointer(Reference<T> instance, Pointer value) {
-        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.rawReferentFieldOffset), value.toObject());
+        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value.toObject());
     }
 
     public static <T> boolean isDiscovered(Reference<T> instance) {
         return cast(instance).isDiscovered;
     }
 
-    /** Barrier-less read of {@link Target_java_lang_ref_Reference#nextDiscovered}. */
+    /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
     public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
-        return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.nextDiscoveredFieldOffset)), Reference.class);
+        return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);
     }
 
     public static <T> void clearDiscovered(Reference<T> instance) {
@@ -122,15 +122,15 @@ public final class ReferenceInternals {
         return instance;
     }
 
-    /** Barrier-less write of {@link Target_java_lang_ref_Reference#nextDiscovered}. */
+    /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */
     private static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext, boolean newIsDiscovered) {
-        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.nextDiscoveredFieldOffset), newNext);
+        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
         cast(instance).isDiscovered = newIsDiscovered;
     }
 
-    /** Address of field {@link Target_java_lang_ref_Reference#nextDiscovered} in the instance. */
+    /** Address of field {@link Target_java_lang_ref_Reference#discovered} in the instance. */
     public static <T> Pointer getNextDiscoveredFieldPointer(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(instance).add(WordFactory.signed(Target_java_lang_ref_Reference.nextDiscoveredFieldOffset));
+        return Word.objectToUntrackedPointer(instance).add(WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset));
     }
 
     /**
@@ -140,27 +140,27 @@ public final class ReferenceInternals {
      */
     @SuppressWarnings("unchecked")
     static <T> Target_java_lang_ref_ReferenceQueue<? super T> clearFutureQueue(Reference<T> instance) {
-        return (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(instance, Target_java_lang_ref_Reference.futureQueueFieldOffset, null);
+        return (Target_java_lang_ref_ReferenceQueue<? super T>) UNSAFE.getAndSetObject(instance, Target_java_lang_ref_Reference.queueFieldOffset, null);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> boolean isEnqueued(Reference<T> instance) {
-        return cast(instance).nextInQueue != instance;
+        return cast(instance).next != instance;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> Reference<?> getQueueNext(Reference<T> instance) {
-        return cast(instance).nextInQueue;
+        return cast(instance).next;
     }
 
     static <T> void setQueueNext(Reference<T> instance, Reference<?> newNext) {
         assert newNext != instance : "Creating self-loop.";
-        cast(instance).nextInQueue = newNext;
+        cast(instance).next = newNext;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> void clearQueueNext(Reference<T> instance) {
-        cast(instance).nextInQueue = instance;
+        cast(instance).next = instance;
     }
 
     public static ResolvedJavaType getReferenceType(MetaAccessProvider metaAccess) {

@@ -34,7 +34,9 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
@@ -65,14 +67,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * <p>
  * This class serves three purposes:
  * <ul>
- * <li>It has a {@linkplain #rawReferent reference to an object,} which is not strong. Therefore, if
+ * <li>It has a {@linkplain #referent reference to an object,} which is not strong. Therefore, if
  * the object is not otherwise strongly reachable, the garbage collector can choose to reclaim it
  * and will then set our reference (and possibly others) to {@code null}.
- * <li>It has {@linkplain #nextDiscovered linkage} to become part of a linked list of reference
- * objects that are discovered during garbage collection, when allocation is restricted.
- * <li>It has {@linkplain #nextInQueue linkage} to optionally become part of a
- * {@linkplain #futureQueue linked reference queue,} which is used to clean up resources associated
- * with reclaimed objects.
+ * <li>It has {@linkplain #discovered linkage} to become part of a linked list of reference objects
+ * that are discovered during garbage collection, when allocation is restricted.
+ * <li>It has {@linkplain #next linkage} to optionally become part of a {@linkplain #queue linked
+ * reference queue,} which is used to clean up resources associated with reclaimed objects.
  * </ul>
  */
 @UnknownClass
@@ -80,16 +81,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Substitute
 public final class Target_java_lang_ref_Reference<T> {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = ReferenceInternals.REFERENT_FIELD_NAME, declClass = Target_java_lang_ref_Reference.class) //
-    static long rawReferentFieldOffset;
+    static long referentFieldOffset;
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "nextDiscovered", declClass = Target_java_lang_ref_Reference.class) //
-    static long nextDiscoveredFieldOffset;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "discovered", declClass = Target_java_lang_ref_Reference.class) //
+    static long discoveredFieldOffset;
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "futureQueue", declClass = Target_java_lang_ref_Reference.class) //
-    static long futureQueueFieldOffset;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "queue", declClass = Target_java_lang_ref_Reference.class) //
+    static long queueFieldOffset;
 
     /** @see ReferenceInternals#isInitialized */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTrue.class) //
     final boolean initialized;
 
     /**
@@ -98,39 +99,39 @@ public final class Target_java_lang_ref_Reference<T> {
      * to the field. This is fine from the point of view of the static analysis, because the field
      * stores by the garbage collector do not change the type of the referent.
      */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeReferenceValue.class) //
     @ExcludeFromReferenceMap("Field is manually processed by the garbage collector.") //
-    T rawReferent;
+    T referent;
 
     /**
-     * Whether this reference is currently {@linkplain #nextDiscovered on a list} of references
+     * Whether this reference is currently {@linkplain #discovered on a list} of references
      * discovered during garbage collection.
      * <p>
-     * This cannot be replaced with the same self-link trick that is used for {@link #nextInQueue}
-     * because during reference discovery, our reference object could have been moved, but
-     * {@link #nextDiscovered} might not have been updated yet, and {@code this == next} would fail.
-     * ({@link #nextDiscovered} != null is not valid either because there might not be a next node)
+     * This cannot be replaced with the same self-link trick that is used for {@link #next} because
+     * during reference discovery, our reference object could have been moved, but
+     * {@link #discovered} might not have been updated yet, and {@code this == next} would fail.
+     * ({@link #discovered} != null is not valid either because there might not be a next node)
      */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     boolean isDiscovered;
 
     @SuppressWarnings("unused") //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Reference<?> nextDiscovered;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    Reference<?> discovered;
 
     /**
      * The queue to which this reference object will be added when the referent becomes unreachable.
      * This field becomes {@code null} when the reference object is enqueued.
      */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
-    volatile Target_java_lang_ref_ReferenceQueue<? super T> futureQueue;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
+    volatile Target_java_lang_ref_ReferenceQueue<? super T> queue;
 
     /**
      * If this reference is on a {@linkplain Target_java_lang_ref_ReferenceQueue queue}, the next
      * reference object on the queue. If the reference is not (yet) on a queue, set to {@code this}.
      */
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeThisInstanceValue.class) //
-    Reference<?> nextInQueue;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeThisInstanceValue.class) //
+    Reference<?> next;
 
     @Substitute
     Target_java_lang_ref_Reference(T referent) {
@@ -140,17 +141,17 @@ public final class Target_java_lang_ref_Reference<T> {
     @Substitute
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
     Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
-        this.rawReferent = referent;
-        this.nextDiscovered = null;
+        this.referent = referent;
+        this.discovered = null;
         this.isDiscovered = false;
-        this.futureQueue = queue;
+        this.queue = queue;
         ReferenceQueueInternals.doClearQueuedState(ReferenceInternals.uncast(this));
         this.initialized = true;
     }
 
     @Substitute
     T get() {
-        return rawReferent;
+        return referent;
     }
 
     @Substitute
