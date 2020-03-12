@@ -340,6 +340,11 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
         /* The static invokes should be updated only once and the callee should be null. */
         guarantee(callee == null, "static invoke updated multiple times!");
 
+        // Unlinked methods can not be parsed
+        if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
+            return;
+        }
+
         /*
          * Initialize the callee lazily so that if the invoke flow is not reached in this context,
          * i.e. for this clone, there is no callee linked/
