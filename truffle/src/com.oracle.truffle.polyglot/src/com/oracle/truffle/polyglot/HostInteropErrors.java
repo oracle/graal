@@ -45,8 +45,12 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-class HostInteropErrors {
+final class HostInteropErrors {
+
+    private HostInteropErrors() {
+    }
 
     @TruffleBoundary
     static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object nullValue, Type targetType) {
@@ -195,7 +199,7 @@ class HostInteropErrors {
         throw new PolyglotClassCastException(message);
     }
 
-    static final RuntimeException newIllegalArgumentException(String message) {
+    private static RuntimeException newIllegalArgumentException(String message) {
         CompilerDirectives.transferToInterpreter();
         throw new PolyglotIllegalArgumentException(message);
     }
@@ -205,4 +209,13 @@ class HostInteropErrors {
         throw new PolyglotArrayIndexOutOfBoundsException(message);
     }
 
+    @TruffleBoundary
+    static UnsupportedTypeException unsupportedTypeException(Object[] args, Throwable e) {
+        return UnsupportedTypeException.create(args, e.getMessage());
+    }
+
+    @TruffleBoundary
+    static UnsupportedTypeException unsupportedTypeException(Object arg, Throwable e) {
+        return UnsupportedTypeException.create(new Object[]{arg}, e.getMessage());
+    }
 }

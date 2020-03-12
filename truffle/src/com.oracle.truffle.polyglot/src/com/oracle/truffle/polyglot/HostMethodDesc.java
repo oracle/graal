@@ -57,7 +57,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class HostMethodDesc {
@@ -215,8 +214,7 @@ abstract class HostMethodDesc {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
+                    throw HostInteropErrors.unsupportedTypeException(arguments, ex);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -258,8 +256,7 @@ abstract class HostMethodDesc {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
                 } catch (IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
+                    throw HostInteropErrors.unsupportedTypeException(arguments, ex);
                 } catch (InvocationTargetException e) {
                     throw e.getCause();
                 }
@@ -295,8 +292,7 @@ abstract class HostMethodDesc {
                 try {
                     return invokeHandle(handle, receiver, arguments);
                 } catch (ClassCastException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
+                    throw HostInteropErrors.unsupportedTypeException(arguments, ex);
                 }
             }
 
@@ -339,8 +335,7 @@ abstract class HostMethodDesc {
                     try {
                         ret = invokeHandle(methodHandle, receiver, arguments);
                     } catch (ClassCastException ex) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw HostInteropReflect.rethrow(UnsupportedTypeException.create(arguments, ex.getMessage()));
+                        throw HostInteropReflect.rethrow(HostInteropErrors.unsupportedTypeException(arguments, ex));
                     } catch (Throwable e) {
                         throw HostInteropReflect.rethrow(e);
                     }
