@@ -359,14 +359,17 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
             instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
 
                 public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
 
                 public void onEnter(EventContext context, VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
             });
@@ -739,8 +742,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     execOtherLang = new ExecutableNode(fakeOtherLanguage) {
                         @Override
                         public Object execute(VirtualFrame frame) {
-                            assertNotNull(getParent());
+                            doAssertions();
                             return "";
+                        }
+
+                        @TruffleBoundary
+                        private void doAssertions() {
+                            assertNotNull(getParent());
                         }
                     };
                     // Do the correct inline parsing finally:
@@ -806,8 +814,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    assertNotNull(getParent());
+                    doAssertions();
                     return "Parsed by " + ID;
+                }
+
+                @TruffleBoundary
+                private void doAssertions() {
+                    assertNotNull(getParent());
                 }
             };
         }

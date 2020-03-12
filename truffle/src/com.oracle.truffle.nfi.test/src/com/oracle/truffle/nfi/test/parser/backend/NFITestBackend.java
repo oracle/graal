@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.test.parser.backend;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -89,6 +90,7 @@ public class NFITestBackend extends TruffleLanguage<Env> {
 
             @Override
             public Object execute(VirtualFrame frame) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
         });

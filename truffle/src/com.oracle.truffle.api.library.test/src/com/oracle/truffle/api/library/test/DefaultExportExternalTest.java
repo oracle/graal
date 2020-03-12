@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
@@ -180,6 +181,7 @@ public class DefaultExportExternalTest extends AbstractParametrizedLibraryTest {
     public static class ObjectExport {
         @ExportMessage
         static String m0(@SuppressWarnings("unused") Object receiver) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
         }
     }
