@@ -200,23 +200,24 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
+        setWaitForClose();
         executorWrapper.executeWithDefaultContext(() -> {
-            Context context = builder.build();
-            context.enter();
-
-            Instrument instrument = context.getEngine().getInstruments().get(ID);
-            EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
-            truffleAdapter.register(envProvider.getEnvironment(), executorWrapper);
-
             HostAndPort hostAndPort = options.get(Lsp);
             try {
+                Context context = builder.build();
+                context.enter();
+
+                Instrument instrument = context.getEngine().getInstruments().get(ID);
+                EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
+                truffleAdapter.register(envProvider.getEnvironment(), executorWrapper);
+
                 InetSocketAddress socketAddress = hostAndPort.createSocket();
                 int port = socketAddress.getPort();
                 Integer backlog = options.get(SocketBacklogSize);
                 InetAddress address = socketAddress.getAddress();
                 ServerSocket serverSocket = new ServerSocket(port, backlog, address);
                 List<Pair<String, SocketAddress>> delegates = createDelegateSockets(options.get(Delegates));
-                LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket, delegates, () -> setWaitForClose()).thenRun(() -> {
+                LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket, delegates).thenRun(() -> {
                     try {
                         executorWrapper.executeWithDefaultContext(() -> {
                             context.leave();
