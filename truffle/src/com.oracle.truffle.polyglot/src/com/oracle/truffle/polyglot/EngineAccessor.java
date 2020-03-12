@@ -300,13 +300,21 @@ final class EngineAccessor extends Accessor {
             Map<Class<?>, T> found = new HashMap<>();
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
-                if (loader != null) {
+                if (seesTheSameClass(loader, type)) {
                     for (T service : ServiceLoader.load(type, loader)) {
                         found.putIfAbsent(service.getClass(), service);
                     }
                 }
             }
             return found.values();
+        }
+
+        private static boolean seesTheSameClass(ClassLoader loader, Class<?> type) {
+            try {
+                return loader != null && loader.loadClass(type.getName()) == type;
+            } catch (ClassNotFoundException ex) {
+                return false;
+            }
         }
 
         @Override
