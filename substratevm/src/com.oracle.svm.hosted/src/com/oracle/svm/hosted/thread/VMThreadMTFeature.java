@@ -226,7 +226,9 @@ public class VMThreadMTFeature implements GraalFeature {
 
     private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
-        b.addPush(targetMethod.getSignature().getReturnKind(), new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update));
+        CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update);
+        b.addPush(targetMethod.getSignature().getReturnKind(), cas);
+        b.setStateAfter(cas);
         return true;
     }
 
