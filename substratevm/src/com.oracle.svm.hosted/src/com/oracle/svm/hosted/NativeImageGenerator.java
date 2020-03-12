@@ -576,6 +576,9 @@ public class NativeImageGenerator {
                 recordMethodsWithStackValues();
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
 
+                FeatureImpl.AfterUniverseCreationAccessImpl afterUniverseCreation = new FeatureImpl.AfterUniverseCreationAccessImpl(featureHandler, loader, hUniverse, hMetaAccess, debug);
+                featureHandler.forEachFeature(feature -> feature.afterUniverseCreation(afterUniverseCreation));
+
                 /*
                  * After this point, all TypeFlow (and therefore also TypeState) objects are
                  * unreachable and can be garbage collected. This is important to keep the overall

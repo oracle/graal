@@ -312,6 +312,15 @@ public interface Feature {
     }
 
     /**
+     * Access methods available for {@link Feature#afterUniverseCreation}.
+     *
+     * @since 20.1
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface AfterUniverseCreationAccess extends FeatureAccess {
+    }
+
+    /**
      * Access methods available for {@link Feature#beforeCompilation} and
      * {@link Feature#afterCompilation}.
      *
@@ -485,6 +494,16 @@ public interface Feature {
      * @since 19.0
      */
     default void onAnalysisExit(OnAnalysisExitAccess access) {
+    }
+
+    /**
+     * Handler for code that needs to run after the universe creation.
+     *
+     * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 20.1
+     */
+    default void afterUniverseCreation(AfterUniverseCreationAccess access) {
     }
 
     /**

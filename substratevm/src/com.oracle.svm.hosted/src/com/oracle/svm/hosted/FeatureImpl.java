@@ -431,6 +431,25 @@ public class FeatureImpl {
         }
     }
 
+    public static class AfterUniverseCreationAccessImpl extends FeatureAccessImpl implements Feature.AfterUniverseCreationAccess {
+        private final HostedUniverse hUniverse;
+        private final HostedMetaAccess hMetaAccess;
+
+        AfterUniverseCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
+            this.hUniverse = hUniverse;
+            this.hMetaAccess = hMetaAccess;
+        }
+
+        public HostedUniverse getUniverse() {
+            return hUniverse;
+        }
+
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAccess;
+        }
+    }
+
     public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
