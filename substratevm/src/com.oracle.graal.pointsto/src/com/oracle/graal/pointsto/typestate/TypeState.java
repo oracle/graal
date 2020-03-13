@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.MultiTypeState.Range;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.BitArrayUtils;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -444,10 +445,7 @@ public abstract class TypeState {
 
     public static TypeState forIntersection(BigBang bb, TypeState s1, TypeState s2) {
         if (s1.isUnknown() || s2.isUnknown()) {
-            // Intersection with unknown type state is undefined.
-            bb.getUnsupportedFeatures().addMessage("Intersection with unknown type state is undefined.", null,
-                            "Intersection with unknown type state is undefined");
-            return TypeState.forEmpty();
+            throw AnalysisError.shouldNotReachHere("Intersection with unknown type state is undefined.");
         }
 
         if (s1.isEmpty()) {
@@ -472,10 +470,7 @@ public abstract class TypeState {
 
     public static TypeState forSubtraction(BigBang bb, TypeState s1, TypeState s2) {
         if (s1.isUnknown() || s2.isUnknown()) {
-            // Subtraction of unknown type state is undefined.
-            bb.getUnsupportedFeatures().addMessage("Subtraction of unknown type state is undefined.", null,
-                            "Subtraction of unknown type state is undefined");
-            return TypeState.forEmpty();
+            throw AnalysisError.shouldNotReachHere("Subtraction of unknown type state is undefined");
         }
 
         if (s1.isEmpty()) {
