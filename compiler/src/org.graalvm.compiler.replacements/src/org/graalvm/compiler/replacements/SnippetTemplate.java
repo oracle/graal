@@ -1879,8 +1879,10 @@ public class SnippetTemplate {
                     MergeNode merge = (MergeNode) lastFixedNode;
                     TTY.printf("Last fixed node is a merge with predecessors:\n");
                     for (EndNode end : merge.forwardEnds()) {
-                        NodeSourcePosition sp = end.predecessor().getNodeSourcePosition();
-                        TTY.printf("\t->%s:source position%s\n", end.predecessor(), sp != null ? sp.toString() : "null");
+                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
+                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
+                            TTY.printf("\t->%s:source position%s\n", fixed, sp != null ? sp.toString() : "null");
+                        }
                     }
                 }
             }
