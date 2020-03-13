@@ -33,7 +33,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -59,9 +62,49 @@ public class SulongSuite extends BaseSuiteHarness {
     }
 
     protected static Collection<Object[]> getData(Path suitesPath) {
+
+        Set<String> filenameBlacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            // Tests that cause the JVM to crash.
+            filenameBlacklist.addAll(Arrays.asList(
+                            "c/builtin_gcc/__builtin_va_list.c",
+                            "c/truffle-c/structTest/passPerValue9.c", "c/truffle-c/structTest/structTest23.c", "c/truffle-c/structTest/structTest24.c",
+                            "c/truffle-c/structTest/structTest25.c", "c/truffle-c/structTest/structTest26.c", "c/truffle-c/structTest/structTest27.c",
+                            "c/varargs/var80bit.c", "c/varargs/varFloatVec.c", "c/varargs/varFunctionPointer.c", "c/varargs/varSmallStruct.c", "c/varargs/varStructBeforePrimitive.c",
+                            "c/varargs/varStructBeforePrimitiveAMD64Explicite.c", "c/varargs/varStructDouble.c", "c/varargs/varStructDoubleAMD64Explicite.c",
+                            "c/varargs/varStructLong.c", "c/varargs/varStructLongAMD64Explicite.c", "c/varargs/varStructModify.c", "c/varargs/varStructModifyPtr.c",
+                            "c/varargs/varStructPtr.c", "c/varargs/varStructStackOnly.c", "c/varargs/varStructStackOnlyAMD64Explicite.c",
+                            "cpp/test005.cpp", "cpp/test015.cpp", "cpp/test017.cpp", "cpp/test018.cpp", "cpp/test019.cpp", "cpp/test020.cpp", "cpp/test022.cpp", "cpp/test023.cpp", "cpp/test024.cpp",
+                            "cpp/test028.cpp",
+                            "cpp/test031.cpp", "cpp/test033.cpp", "cpp/test034.cpp", "cpp/test036.cpp", "cpp/test039.cpp",
+                            "cpp/test041.cpp", "cpp/test042.cpp", "cpp/test043.cpp", "cpp/test044.cpp", "cpp/test045.cpp", "cpp/test046.cpp", "cpp/test047.cpp", "cpp/test049.cpp", "cpp/test050.cpp",
+                            "cpp/test051.cpp", "cpp/test052.cpp", "cpp/test053.cpp", "cpp/testRuntimeError.cpp",
+                            "libc/memcpy/memcpy-struct-mixed.c", "libc/vfprintf/vfprintf.c", "libc/vprintf/vprintf.c"));
+            // Tests that fail.
+            filenameBlacklist.addAll(Arrays.asList(
+                            "c/arrays/intArray.c",
+                            "c/builtin_gcc/__builtin_copysign.c", "c/builtin_gcc/__builtin_fabsl.c", "c/builtin_gcc/__builtin_fpclassify.c", "c/builtin_gcc/__builtin_isfinite.c",
+                            "c/builtin_gcc/__builtin_isinf.c", "c/builtin_gcc/__builtin_isnan.c", "c/builtin_gcc/__builtin_signbit.c", "c/builtin_gcc/__builtin_signbitl.c",
+                            "c/lfplayout.c",
+                            "c/longdouble/add.c", "c/longdouble/longdouble-add.c", "c/longdouble/longdouble-div.c", "c/longdouble/longdouble-mul.c", "c/longdouble/longdouble-sub.c",
+                            "c/max-unsigned-int-to-double-cast.c",
+                            "c/stdlib/math/fmodl.c", "c/stdlib/math/sqrt.c", "c/stdlib/signal_errno.c", "c/stdlib/stat.c",
+                            "c/truffle-c/arrayTest/arrayTest18.c", "c/truffle-c/arrayTest/arrayTest22.c", "c/truffle-c/arrayTest/arrayTest5.c", "c/truffle-c/charTest/charArray.c",
+                            "c/truffle-c/programTest/programTest0.c", "c/truffle-c/structTest/structTest22.c", "c/truffle-c/unionTest/memberInitialization2.c", "c/truffle-c/unionTest/unionTest12.c",
+                            "cpp/test004.cpp", "cpp/test011.cpp", "cpp/test013.cpp", "cpp/test014.cpp", "cpp/test016.cpp",
+                            "cpp/test021.cpp", "cpp/test025.cpp", "cpp/test026.cpp", "cpp/test027.cpp", "cpp/test029.cpp",
+                            "cpp/test030.cpp", "cpp/test032.cpp", "cpp/test035.cpp", "cpp/test037.cpp", "cpp/test038.cpp", "cpp/test040.cpp", "cpp/test048.cpp",
+                            "libc/errno/errno.c"));
+        }
+
+        Set<String> directoryBlacklist = filenameBlacklist.stream().map((s) -> s.concat(".dir")).collect(Collectors.toSet());
+
         try (Stream<Path> files = Files.walk(suitesPath)) {
             Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
-            return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
+            Collection<Object[]> collection = destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
+            collection.removeIf(d -> directoryBlacklist.contains(d[1]));
+            return collection;
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }

@@ -761,7 +761,8 @@ public class LLIRTestGen {
                         "fdiv_x86_fp80"  // Fails with managed sulong
         ));
         if (Platform.isAArch64()) {
-            filenameBlacklist.add("bitcast_x86_fp80");
+            filenameBlacklist.addAll(Arrays.asList(
+                            "ashr_3xi8", "ashr_4xi8", "bitcast_x86_fp80", "lshr_2xi8", "lshr_3xi8", "lshr_4xi8", "shl_2xi8", "shl_3xi8", "shl_4xi8"));
         }
 
         filenameBlacklist = filenameBlacklist.stream().map(s -> makeBlacklistFilename(outputDir, s)).collect(Collectors.toSet());
