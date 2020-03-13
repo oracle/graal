@@ -128,8 +128,19 @@ public final class ProbeNode extends Node {
     // returned from chain nodes whose bindings ignore the unwind
     private static final Object UNWIND_ACTION_IGNORED = new Object();
 
+    public static class OldNodeReference {
+        private volatile Node node;
+        private volatile Set<Class<? extends Tag>> materializeTags;
+        private volatile OldNodeReference next;
+
+        public OldNodeReference(Node node, Set<Class<? extends Tag>> materializeTags) {
+            this.node = node;
+            this.materializeTags = materializeTags;
+        }
+    }
+
     private final InstrumentationHandler handler;
-    private Node oldNode;
+    private volatile OldNodeReference oldNodeReference;
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
@@ -147,12 +158,47 @@ public final class ProbeNode extends Node {
         this.context = new EventContext(this, sourceSection);
     }
 
-    public Node getOldNode() {
-        return oldNode;
+    Node[] getOldNodes() {
+        OldNodeReference nodeRef = oldNodeReference;
+        int count = 0;
+        while (nodeRef != null) {
+            nodeRef = nodeRef.next;
+            count++;
+        }
+        nodeRef = oldNodeReference;
+        Node[] result = new Node[count];
+        int i = 0;
+        while (nodeRef != null) {
+            result[i] = nodeRef.node;
+            nodeRef = nodeRef.next;
+            i++;
+        }
+        return result;
     }
 
-    public void setOldNode(Node oldNode) {
-        this.oldNode = oldNode;
+    void setOldNode(Node oldNode, Set<Class<? extends Tag>> materializeTags) {
+        if (oldNodeReference == null) {
+            oldNodeReference = new OldNodeReference(oldNode, materializeTags);
+        } else {
+            OldNodeReference nodeRef = oldNodeReference;
+            while (nodeRef != null) {
+                assert !nodeRef.materializeTags.equals(materializeTags) || nodeRef.node == oldNode;
+                if (nodeRef.node == oldNode) {
+                    assert nodeRef.materializeTags.equals(materializeTags);
+                    return;
+                }
+                nodeRef = nodeRef.next;
+            }
+            OldNodeReference lastOldNodeReference = oldNodeReference;
+            while (lastOldNodeReference.next != null) {
+                lastOldNodeReference = lastOldNodeReference.next;
+            }
+            lastOldNodeReference.next = new OldNodeReference(oldNode, materializeTags);
+        }
+    }
+
+    public ProbeNode copyUninitialized() {
+        return new ProbeNode(handler, context.getInstrumentedSourceSection());
     }
 
     /**
@@ -326,7 +372,7 @@ public final class ProbeNode extends Node {
             if (nextChain == null) {
                 // chain is null -> remove wrapper;
                 // Note: never set child nodes to null, can cause races
-                if (oldNode == null) {
+                if (oldNodeReference == null) {
                     InstrumentationHandler.removeWrapper(ProbeNode.this);
                     return null;
                 } else {
