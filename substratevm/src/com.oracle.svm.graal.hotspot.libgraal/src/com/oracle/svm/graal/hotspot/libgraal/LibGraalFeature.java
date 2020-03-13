@@ -75,6 +75,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
+import org.graalvm.compiler.hotspot.SymbolicSnippetEncoder;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -514,6 +515,19 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     public void afterAnalysis(AfterAnalysisAccess access) {
         visitedElements.clear();
         verifyReachableTruffleClasses(access);
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
+        SymbolicSnippetEncoder.EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
+
+        // These fields are all immutable but the snippet object table isn't since symbolic JVMCI
+        // references are converted into real references during decoding.
+        access.registerAsImmutable(encodedSnippets.getOriginalMethods());
+        access.registerAsImmutable(encodedSnippets.getSnippetEncoding());
+        access.registerAsImmutable(encodedSnippets.getSnippetNodeClasses());
+        access.registerAsImmutable(encodedSnippets.getSnippetStartOffsets());
     }
 
     /**
