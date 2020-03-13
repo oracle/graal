@@ -29,56 +29,144 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
-public class LanguageContextFreedTest extends TestWithSynchronousCompiling {
+public class LanguageContextFreedTest {
+
+    private static final int COMPILATION_THRESHOLD = 10;
+
+    private static final AtomicReference<OptimizedCallTarget> currentTarget = new AtomicReference<>();
+    private static final AtomicReference<LanguageContext> currentLangContext = new AtomicReference<>();
 
     @Test
-    public void testContexConstantFreed() {
-        final int compilationThreshold = 10;
-        AtomicReference<OptimizedCallTarget> currentTarget = new AtomicReference<>();
-        AtomicReference<ProxyLanguage.LanguageContext> currentLangContext = new AtomicReference<>();
-        try (Context ctx = setupContext("engine.CompilationThreshold", String.valueOf(compilationThreshold))) {
-            ProxyLanguage.setDelegate(new ProxyLanguage() {
-                @Override
-                protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                    currentLangContext.set(ProxyLanguage.getCurrentContext());
-                    TruffleRuntime runtime = Truffle.getRuntime();
-                    OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(languageInstance) {
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            lookupContextReference(ProxyLanguage.class).get();
-                            return 0;
-                        }
-                    });
-                    assertEquals(compilationThreshold, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
-                    currentTarget.set(target);
-                    return target;
-                }
-            });
-            for (int i = 0; i < compilationThreshold; i++) {
-                ctx.eval(Source.create(ProxyLanguage.ID, ""));
-            }
-            assertNotNull(currentTarget.get());
-            assertTrue(currentTarget.get().isValid());
-            ctx.eval(Source.create(ProxyLanguage.ID, ""));
+    public void testLanguageContexFreedNoSharing() {
+        doTest(() -> {
+            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
+                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+        });
+    }
+
+    @Test
+    public void testLanguageContexFreedSharedEngine() {
+        doTest(() -> {
+            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
+                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            return Context.newBuilder().engine(engine).allowAllAccess(true).build();
+        });
+    }
+
+    private static void doTest(Supplier<Context> contextFactory) {
+        try (Context ctx = contextFactory.get()) {
+            testRun(ctx, Exclusive.ID, Exclusive.ID);
         }
+        try (Context ctx = contextFactory.get()) {
+            testRun(ctx, Exclusive.ID, Shared.ID);
+        }
+        try (Context ctx = contextFactory.get()) {
+            testRun(ctx, Shared.ID, Exclusive.ID);
+        }
+        try (Context ctx = contextFactory.get()) {
+            testRun(ctx, Shared.ID, Shared.ID);
+        }
+    }
+
+    private static void testRun(Context ctx, String sourceLanguage, String targetLanguage) {
+        Source src = Source.create(sourceLanguage, targetLanguage);
+        ctx.initialize(Exclusive.ID);
+        ctx.initialize(Shared.ID);
+        for (int i = 0; i < COMPILATION_THRESHOLD; i++) {
+            ctx.eval(src);
+        }
+        assertTrue(Optional.ofNullable(currentTarget.getAndSet(null)).map(OptimizedCallTarget::isValid).isPresent());
+        ctx.eval(src);
+        ctx.close();
         assertNotNull(currentLangContext.get());
         Reference<?> langContextRef = new WeakReference<>(currentLangContext.getAndSet(null));
         GCUtils.assertGc("Language context should be freed when polyglot Context is closed.", langContextRef);
+    }
+
+    private static class LanguageContext {
+
+        LanguageContext() {
+        }
+    }
+
+    public abstract static class Base extends TruffleLanguage<LanguageContext> {
+
+        @Override
+        protected LanguageContext createContext(Env env) {
+            return new LanguageContext();
+        }
+
+        @Override
+        protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+            String id = request.getSource().getCharacters().toString();
+            Class<? extends TruffleLanguage<LanguageContext>> accessLanguage;
+            switch (id) {
+                case Shared.ID:
+                    accessLanguage = Shared.class;
+                    break;
+                case Exclusive.ID:
+                    accessLanguage = Exclusive.class;
+                    break;
+                default:
+                    throw new IllegalArgumentException(id);
+            }
+            TruffleRuntime runtime = Truffle.getRuntime();
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(this) {
+                @CompilationFinal ContextReference<LanguageContext> ref;
+
+                @SuppressWarnings("unchecked")
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    if (ref == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        ref = lookupContextReference(accessLanguage);
+                    }
+                    LanguageContext ctx = ref.get();
+                    CompilerAsserts.partialEvaluationConstant(ctx);
+                    currentLangContext.set(ctx);
+                    return true;
+                }
+            });
+            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+            currentTarget.set(target);
+            return target;
+        }
+    }
+
+    @Registration(id = Exclusive.ID, name = Exclusive.ID, contextPolicy = ContextPolicy.EXCLUSIVE)
+    public static class Exclusive extends Base {
+
+        static final String ID = "LanguageContextFreedTestExclusive";
+
+    }
+
+    @Registration(id = Shared.ID, name = Shared.ID, contextPolicy = ContextPolicy.SHARED)
+    public static class Shared extends Base {
+
+        static final String ID = "LanguageContextFreedTestShared";
+
     }
 }
