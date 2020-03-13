@@ -44,6 +44,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Collections;
 
+import org.graalvm.polyglot.Value;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
@@ -72,6 +73,11 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
 
         public void foo(@SuppressWarnings("unused") int a) {
             fail("foo called");
+        }
+
+        public void cce(Object human) {
+            Value cannotCast = (Value) human;
+            cannotCast.invokeMember("hello");
         }
 
         @Override
@@ -175,6 +181,18 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
                         "Unknown identifier: finalField");
         assertFails(() -> INTEROP.writeMember(hostObj, "finalField", env.asGuestValue(Collections.emptyMap())), UnknownIdentifierException.class,
                         "Unknown identifier: finalField");
+    }
+
+    @Test
+    public void testClassCastExceptionInHostMethod() throws InteropException, ClassNotFoundException {
+        Object hostObj = env.asGuestValue(new MyHostObj(42));
+
+        Object foo = INTEROP.readMember(hostObj, "cce");
+
+        Class<? extends Exception> hostExceptionClass = Class.forName("com.oracle.truffle.polyglot.HostException").asSubclass(Exception.class);
+
+        assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), hostExceptionClass, null);
+        assertFails(() -> INTEROP.execute(foo, 42), hostExceptionClass, null);
     }
 
     @ExportLibrary(InteropLibrary.class)
