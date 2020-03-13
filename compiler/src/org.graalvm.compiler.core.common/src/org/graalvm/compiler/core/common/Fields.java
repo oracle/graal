@@ -40,6 +40,7 @@ import sun.misc.Unsafe;
 public class Fields {
 
     private static final Unsafe UNSAFE = getUnsafe();
+    private static final Fields EMPTY_FIELDS = new Fields(new ArrayList<>());
 
     /**
      * Offsets used with {@link Unsafe} to access the fields.
@@ -61,10 +62,10 @@ public class Fields {
     public static Fields forClass(Class<?> clazz, Class<?> endClazz, boolean includeTransient, FieldsScanner.CalcOffset calcOffset) {
         FieldsScanner scanner = new FieldsScanner(calcOffset == null ? new FieldsScanner.DefaultCalcOffset() : calcOffset);
         scanner.scan(clazz, endClazz, includeTransient);
-        return new Fields(scanner.data);
+        return create(scanner.data);
     }
 
-    public Fields(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
+    protected Fields(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
@@ -78,6 +79,13 @@ public class Fields {
             declaringClasses[index] = f.declaringClass;
             index++;
         }
+    }
+
+    public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
+        if (fields.size() == 0) {
+            return EMPTY_FIELDS;
+        }
+        return new Fields(fields);
     }
 
     /**

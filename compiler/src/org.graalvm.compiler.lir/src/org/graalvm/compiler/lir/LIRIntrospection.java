@@ -61,22 +61,31 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         super(clazz);
     }
 
-    protected static class Values extends Fields {
+    protected static final class Values extends Fields {
         private final int directCount;
         private final EnumSet<OperandFlag>[] flags;
 
-        public Values(OperandModeAnnotation mode) {
-            this(mode.directCount, mode.values);
-        }
+        private static final Values EMPTY_VALUES = new Values(0, new ArrayList<>());
 
         @SuppressWarnings({"unchecked"})
-        public Values(int directCount, ArrayList<ValueFieldInfo> fields) {
+        private Values(int directCount, ArrayList<ValueFieldInfo> fields) {
             super(fields);
             this.directCount = directCount;
             flags = (EnumSet<OperandFlag>[]) new EnumSet<?>[fields.size()];
             for (int i = 0; i < fields.size(); i++) {
                 flags[i] = fields.get(i).flags;
             }
+        }
+
+        public static Values create(int directCount, ArrayList<ValueFieldInfo> fields) {
+            if (directCount == 0 && fields.size() == 0) {
+                return EMPTY_VALUES;
+            }
+            return new Values(directCount, fields);
+        }
+
+        public static Values create(OperandModeAnnotation mode) {
+            return create(mode.directCount, mode.values);
         }
 
         public int getDirectCount() {
