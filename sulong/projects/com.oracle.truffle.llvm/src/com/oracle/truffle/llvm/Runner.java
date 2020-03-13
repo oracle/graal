@@ -1024,7 +1024,7 @@ final class Runner {
      */
     private ArrayList<ExternalLibrary> processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ParseContext parseContext) {
         ArrayList<ExternalLibrary> dependencies = new ArrayList<>();
-        for (String lib : context.injectDependencies(library, binaryParserResult.getLibraries())) {
+        for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {
             ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
             if (dependency != null) {
                 dependencies.add(dependency);

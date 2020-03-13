@@ -519,20 +519,14 @@ public final class LLVMContext {
     }
 
     /**
-     * Inject implicit dependency for a {@code library}.
-     * 
+     * Inject implicit or modify explicit dependencies for a {@code library}.
+     *
      * @param library the library for which dependencies might be injected
      * @param libraries a (potentially unmodifiable) list of dependencies
      */
-    public List<String> injectDependencies(ExternalLibrary library, List<String> libraries) {
-        String injectedDependency = language.getCapability(PlatformCapability.class).injectDependency(this, library);
-        if (injectedDependency == null) {
-            return libraries;
-        }
-        List<String> newList = new ArrayList<>();
-        newList.addAll(libraries);
-        newList.add(injectedDependency);
-        return newList;
+    @SuppressWarnings("unchecked")
+    public List<String> preprocessDependencies(ExternalLibrary library, List<String> libraries) {
+        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, library, libraries);
     }
 
     public ExternalLibrary addInternalLibrary(String lib, Object reason) {
