@@ -341,4 +341,44 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.executeStep(cmd::prepareInstallation, false);
         assertFalse(cmd.getDependencies().isEmpty());
     }
+
+    /**
+     * Tests, that a correct java version flavour gets selected if the catalog contains two flavours
+     * of the component in the requested version.
+     */
+    @Test
+    public void testInstallCorrectJavaVersion8() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "8");
+        setupVersion("1.0.0.0");
+        setupCatalog("catalogMultiFlavours.properties");
+
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("ruby");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        List<Installer> installers = cmd.getInstallers();
+        assertEquals(1, installers.size());
+    }
+
+    @Test
+    public void testInstallCorrectJavaVersion11() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "11");
+        setupVersion("1.0.0.0");
+        setupCatalog("catalogMultiFlavours.properties");
+
+        paramIterable = new CatalogIterable(this, this);
+        textParams.add("ruby");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        List<Installer> installers = cmd.getInstallers();
+        assertEquals(1, installers.size());
+    }
 }

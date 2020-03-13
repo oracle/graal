@@ -97,6 +97,8 @@ public final class ComponentInfo {
 
     private boolean nativeComponent;
 
+    private String tag = "";
+
     /**
      * Component direct dependencies. Contains component canonical IDs.
      */
@@ -112,11 +114,16 @@ public final class ComponentInfo {
      */
     private DistributionType distributionType = DistributionType.OPTIONAL;
 
-    public ComponentInfo(String id, String name, String versionString) {
+    public ComponentInfo(String id, String name, String versionString, String tag) {
         this.id = id;
         this.versionString = versionString;
         this.name = name;
         this.version = Version.fromString(versionString);
+        this.tag = tag;
+    }
+
+    public ComponentInfo(String id, String name, String versionString) {
+        this(id, name, versionString, ""); // NOI18N
     }
 
     public ComponentInfo(String id, String name, Version v) {
@@ -250,6 +257,7 @@ public final class ComponentInfo {
         if (origin != null) {
             hash = 37 * hash + Objects.hashCode(this.origin);
         }
+        hash = 37 * hash + Objects.hashCode(this.tag);
         return hash;
     }
 
@@ -275,6 +283,9 @@ public final class ComponentInfo {
             return false;
         }
         if (!Objects.equals(this.origin, other.origin)) {
+            return false;
+        }
+        if (!Objects.equals(this.tag, other.tag)) {
             return false;
         }
         return true;
@@ -303,7 +314,8 @@ public final class ComponentInfo {
 
     @Override
     public String toString() {
-        return getId() + "[" + getVersion().toString() + "]"; // NOI18N
+        return getId() + "[" + getVersion().toString() +
+                        (tag.isEmpty() ? "" : "/" + tag) + "]"; // NOI18N
     }
 
     public static Comparator<ComponentInfo> versionComparator() {
@@ -366,5 +378,19 @@ public final class ComponentInfo {
      */
     public boolean isInstalled() {
         return infoPath != null;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    /**
+     * Sets the component tag. WARNING: do not use this after Component has been constructed; the
+     * call will change the hashCode + equals !
+     * 
+     * @param tag component tag/serial
+     */
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 }

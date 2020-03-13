@@ -283,7 +283,12 @@ public class CatalogIterable implements ComponentIterable {
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            FileComponent fc = new FileIterable.FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
+            String serial = getCatalogInfo().getTag();
+            FileDownloader theDownloader = getDownloader();
+            if (serial == null || "".equals(serial)) {
+                serial = theDownloader != null ? SystemUtils.fingerPrint(theDownloader.getReceivedDigest(), false) : null;
+            }
+            FileComponent fc = new FileIterable.FileComponent(localFile.toFile(), isVerifyJars(), serial, getFeedback());
             return fc.createFileLoader();
             // return channel.createLocalFileLoader(getCatalogInfo(), localFile, isVerifyJars());
         }
