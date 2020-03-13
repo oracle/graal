@@ -217,7 +217,9 @@ public class VMThreadMTFeature implements GraalFeature {
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_WRITE));
         }
-        b.add(new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE));
+        StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE);
+        b.add(store);
+        b.setStateAfter(store);
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_WRITE));
         }

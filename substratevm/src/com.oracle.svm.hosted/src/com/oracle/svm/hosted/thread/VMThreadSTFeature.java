@@ -181,7 +181,9 @@ public class VMThreadSTFeature implements GraalFeature {
     private boolean handleSet(GraphBuilderContext b, Receiver receiver, ValueNode valueNode) {
         VMThreadLocalInfo info = threadLocalCollector.findInfo(b, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
-        b.add(new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.ARRAY));
+        StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.ARRAY);
+        b.add(store);
+        b.setStateAfter(store);
         return true;
     }
 
