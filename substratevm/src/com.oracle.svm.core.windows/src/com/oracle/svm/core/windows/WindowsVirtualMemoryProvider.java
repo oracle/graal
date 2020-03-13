@@ -129,23 +129,6 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         }
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    private static int accessForMap(int access) {
-        int prot = 0;
-
-        if ((access & Access.EXECUTE) != 0) {
-            prot |= WinBase.FILE_MAP_EXECUTE();
-        }
-        if ((access & Access.WRITE) != 0) {
-            prot |= WinBase.FILE_MAP_WRITE();
-        }
-        if ((access & Access.READ) != 0) {
-            prot |= WinBase.FILE_MAP_READ();
-        }
-
-        return prot;
-    }
-
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes) {
@@ -155,21 +138,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
-        long fHandle = fileHandle.rawValue();
-        int prot = accessAsProt(access);
-        int sizeHi = (int) (nbytes.rawValue() >>> 32);
-        int sizeLo = (int) (nbytes.rawValue() & 0xFFFFFFFF);
-
-        Pointer fileMapping = WinBase.CreateFileMapping(fHandle, null, prot, sizeHi, sizeLo, null);
-        if (fileMapping.isNull()) {
-            return WordFactory.nullPointer();
-        }
-
-        int offsetHi = (int) (offset.rawValue() >>> 32);
-        int offsetLo = (int) (offset.rawValue() & 0xFFFFFFFF);
-        Pointer addr = WinBase.MapViewOfFile(fileMapping, accessForMap(access), offsetHi, offsetLo, nbytes);
-
-        return fileMapping.isNull() ? WordFactory.nullPointer() : addr;
+        return WordFactory.nullPointer();
     }
 
     @Override

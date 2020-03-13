@@ -73,31 +73,6 @@ public class WinBase {
     }
 
     /**
-     * CreateFileMapping - reserve, commit or change states of a region of pages.
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer CreateFileMapping(long hFile, Pointer lpFileMappingAttributes, int flProtect, int dwMaximumSizeHigh, int dwMaximumSizeLow, Pointer lpName);
-
-    /**
-     * MapViewOfFile - dwDesiredAccess Constants
-     */
-
-    @CConstant
-    public static native int FILE_MAP_EXECUTE();
-
-    @CConstant
-    public static native int FILE_MAP_READ();
-
-    @CConstant
-    public static native int FILE_MAP_WRITE();
-
-    /**
-     * MapViewOfFile - Maps a view of a file into the address space
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer MapViewOfFile(Pointer hFileMappingObject, int dwDesiredAccess, int dwFileOffsetHigh, int dwFileOffsetLow, UnsignedWord dwNumberOfBytesToMap);
-
-    /**
      * VirtualAlloc - flAllocationType Constants
      */
     @CConstant
