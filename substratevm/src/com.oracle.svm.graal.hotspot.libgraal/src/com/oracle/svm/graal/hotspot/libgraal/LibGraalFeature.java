@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -438,15 +439,11 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             String archPackage = "." + osArch + ".";
 
             final Field servicesCacheField = ReflectionUtil.lookupField(Services.class, "servicesCache");
-            Map<Class<Object>, List<Object>> services = (Map<Class<Object>, List<Object>>) servicesCacheField.get(null);
-            for (List<Object> list : services.values()) {
-                list.removeIf(o -> {
-                    String name = o.getClass().getName();
-                    if (name.contains(".aarch64.") || name.contains(".sparc.") || name.contains(".amd64.")) {
-                        return !name.contains(archPackage);
-                    }
-                    return false;
-                });
+            filterArchitectureServices(archPackage, (Map<Class<?>, List<?>>) servicesCacheField.get(null));
+
+            if (JAVA_SPEC > 8) {
+                final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
+                filterArchitectureServices(archPackage, (Map<Class<?>, List<?>>) graalServicesCacheField.get(null));
             }
 
             Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
@@ -454,6 +451,18 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             cachedHotSpotJVMCIBackendFactories.removeIf(factory -> !factory.getArchitecture().equalsIgnoreCase(osArch));
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    private static void filterArchitectureServices(String archPackage, Map<Class<?>, List<?>> services) {
+        for (List<?> list : services.values()) {
+            list.removeIf(o -> {
+                String name = o.getClass().getName();
+                if (name.contains(".aarch64.") || name.contains(".sparc.") || name.contains(".amd64.")) {
+                    return !name.contains(archPackage);
+                }
+                return false;
+            });
         }
     }
 
