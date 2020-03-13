@@ -45,13 +45,17 @@ public abstract class FrameLibrary extends Library {
         return UncachedDefault.DEFAULT;
     }
 
-    public abstract Object readMember(
+    public Object readMember(
                     Query env,
-                    String member) throws UnknownIdentifierException;
+                    String member) throws UnknownIdentifierException {
+        return getUncached().readMember(env, member);
+    }
 
-    public abstract void collectNames(
+    public void collectNames(
                     Query env,
-                    Set<String> names) throws InteropException;
+                    Set<String> names) throws InteropException {
+        getUncached().collectNames(env, names);
+    }
 
     public static final class Query {
         private final Node where;

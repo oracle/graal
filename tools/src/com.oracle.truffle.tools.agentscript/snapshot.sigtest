@@ -72,9 +72,9 @@ meth public void registerAgentScript(com.oracle.truffle.api.source.Source)
 CLSS public abstract com.oracle.truffle.tools.agentscript.FrameLibrary
 cons public init()
 innr public final static Query
-meth public abstract java.lang.Object readMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException
-meth public abstract void collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.util.Set<java.lang.String>) throws com.oracle.truffle.api.interop.InteropException
+meth public java.lang.Object readMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException
 meth public static com.oracle.truffle.tools.agentscript.FrameLibrary getUncached()
+meth public void collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.util.Set<java.lang.String>) throws com.oracle.truffle.api.interop.InteropException
 supr com.oracle.truffle.api.library.Library
 hcls UncachedDefault
 

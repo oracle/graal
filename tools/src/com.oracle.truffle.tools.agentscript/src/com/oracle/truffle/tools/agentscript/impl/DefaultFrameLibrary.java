@@ -24,27 +24,11 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.tools.agentscript.FrameLibrary;
 import com.oracle.truffle.tools.agentscript.FrameLibrary.Query;
-import java.util.Set;
 
 @SuppressWarnings("unused")
 @ExportLibrary(value = FrameLibrary.class, receiverType = Query.class)
 public final class DefaultFrameLibrary {
-    @ExportMessage
-    static Object readMember(
-                    Query env,
-                    String member) throws UnknownIdentifierException {
-        return FrameLibrary.getUncached().readMember(env, member);
-    }
-
-    @ExportMessage
-    static void collectNames(Query env,
-                    Set<String> names) throws InteropException {
-        FrameLibrary.getUncached().collectNames(env, names);
-    }
 }
