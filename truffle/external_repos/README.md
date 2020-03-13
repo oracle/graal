@@ -1,4 +1,4 @@
-# Public maven repositories
+# External maven repositories
 
 As part of Truffle documentation we provide two maven projects that serve as a
 starting point for developing a Truffle language
