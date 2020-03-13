@@ -45,6 +45,8 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 public class ReferenceObjectProcessing {
 
+    private static Reference<?> discoveredReferencesList;
+
     @AlwaysInline("GC performance")
     public static void discoverIfReference(Object object) {
         assert object != null;
@@ -74,8 +76,8 @@ public class ReferenceObjectProcessing {
         trace.string("]").newline();
     }
 
-    public static Reference<?> getGCDiscoveredListHead() {
-        return HeapImpl.getHeapImpl().getGCImpl().getDiscoveredReferencesListHead();
+    public static Reference<?> getDiscoveredReferencesList() {
+        return discoveredReferencesList;
     }
 
     static void clearDiscoveredList() {
@@ -84,7 +86,7 @@ public class ReferenceObjectProcessing {
             trace.string("  current: ").object(current).string("  referent: ").hex(ReferenceInternals.getReferentPointer(current)).newline();
             ReferenceInternals.clearDiscovered(current);
         }
-        setGCDiscoveredListHead(null);
+        discoveredReferencesList = null;
         trace.string("]");
     }
 
@@ -95,9 +97,10 @@ public class ReferenceObjectProcessing {
             trace.string("  already on list]").newline();
             return;
         }
-        trace.newline().string("  [adding to list:").string("  oldList: ").object(getGCDiscoveredListHead());
-        setGCDiscoveredListHead(ReferenceInternals.setNextDiscovered(dr, getGCDiscoveredListHead()));
-        trace.string("  new list: ").object(getGCDiscoveredListHead()).string("]");
+        trace.newline().string("  [adding to list:").string("  oldList: ").object(discoveredReferencesList);
+        ReferenceInternals.setNextDiscovered(dr, discoveredReferencesList);
+        discoveredReferencesList = dr;
+        trace.string("  new list: ").object(discoveredReferencesList).string("]");
         trace.string("]").newline();
     }
 
@@ -106,7 +109,7 @@ public class ReferenceObjectProcessing {
      * retains those references on the list for which the referent won't survive the collection.
      */
     static void processDiscoveredReferences() {
-        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(getGCDiscoveredListHead()).newline();
+        final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.processDiscoveredReferences: ").string("  discoveredList: ").object(discoveredReferencesList).newline();
         /* Start a new list. */
         Reference<?> newList = null;
         for (Reference<?> current = popDiscoveredReference(); current != null; current = popDiscoveredReference()) {
@@ -117,13 +120,14 @@ public class ReferenceObjectProcessing {
              */
             if (!processReferent(current)) {
                 trace.string("  unpromoted current: ").object(current).newline();
-                newList = ReferenceInternals.setNextDiscovered(current, newList);
+                ReferenceInternals.setNextDiscovered(current, newList);
+                newList = current;
                 HeapImpl.getHeapImpl().dirtyCardIfNecessary(current, newList);
             } else {
                 trace.string("  promoted current: ").object(current).newline();
             }
         }
-        setGCDiscoveredListHead(newList);
+        discoveredReferencesList = newList;
         trace.string("]").newline();
     }
 
@@ -172,16 +176,12 @@ public class ReferenceObjectProcessing {
     }
 
     private static Reference<?> popDiscoveredReference() {
-        final Reference<?> result = getGCDiscoveredListHead();
+        final Reference<?> result = discoveredReferencesList;
         if (result != null) {
-            setGCDiscoveredListHead(ReferenceInternals.getNextDiscovered(result));
+            discoveredReferencesList = ReferenceInternals.getNextDiscovered(result);
             ReferenceInternals.clearDiscovered(result);
         }
         return result;
-    }
-
-    private static void setGCDiscoveredListHead(Reference<?> value) {
-        HeapImpl.getHeapImpl().getGCImpl().setDiscoveredReferencesListHead(value);
     }
 
     public static boolean verify(Reference<?> dr) {
@@ -229,7 +229,7 @@ public class ReferenceObjectProcessing {
         static void distributeReferences() {
             final Log trace = Log.noopLog().string("[ReferenceObjectProcessing.Scatterer.distributeReferences:").newline();
             // Put discovered references on their queues
-            for (Reference<?> dr = ReferenceObjectProcessing.getGCDiscoveredListHead(); dr != null; dr = ReferenceInternals.getNextDiscovered(dr)) {
+            for (Reference<?> dr = discoveredReferencesList; dr != null; dr = ReferenceInternals.getNextDiscovered(dr)) {
                 enqueueReference(dr, trace);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) { // notify waiters on ReferenceQueue

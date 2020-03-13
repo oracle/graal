@@ -120,9 +120,8 @@ public final class ReferenceInternals {
         setNextDiscovered(instance, null, false);
     }
 
-    public static <T> Reference<T> setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
+    public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
         setNextDiscovered(instance, newNext, true);
-        return instance;
     }
 
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */

@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -144,7 +143,6 @@ public class GCImpl implements GC {
         this.collectionEpoch = WordFactory.zero();
         this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
-        this.discoveredReferencesListHead = null;
         this.completeCollection = false;
         this.sizeBefore = WordFactory.zero();
 
@@ -1081,16 +1079,6 @@ public class GCImpl implements GC {
 
     private void setPolicy(final CollectionPolicy newPolicy) {
         policy = newPolicy;
-    }
-
-    private Reference<?> discoveredReferencesListHead = null;
-
-    Reference<?> getDiscoveredReferencesListHead() {
-        return discoveredReferencesListHead;
-    }
-
-    void setDiscoveredReferencesListHead(Reference<?> newList) {
-        discoveredReferencesListHead = newList;
     }
 
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
