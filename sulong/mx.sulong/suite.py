@@ -428,6 +428,9 @@ suite = {
     "com.oracle.truffle.llvm.tests.llirtestgen" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests",
+      ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "license" : "BSD-new",
@@ -447,6 +450,7 @@ suite = {
       "buildEnv" : {
         "LDFLAGS": "-lm",
         "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+        "SULONG_TEST_JAR" : "<path:SULONG_TEST>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -1149,6 +1153,9 @@ suite = {
       "relpath" : True,
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "distDependencies" : [
+        "SULONG_TEST",
       ],
       "license" : "BSD-new",
       "testDistribution" : True,
