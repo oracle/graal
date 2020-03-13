@@ -41,6 +41,10 @@ import java.util.Set;
 @GenerateLibrary(defaultExportLookupEnabled = true)
 @GenerateLibrary.DefaultExport(DefaultFrameLibrary.class)
 public abstract class FrameLibrary extends Library {
+    public static FrameLibrary getUncached() {
+        return UncachedDefault.DEFAULT;
+    }
+
     public abstract Object readMember(
                     Query env,
                     String member) throws UnknownIdentifierException;
@@ -48,68 +52,6 @@ public abstract class FrameLibrary extends Library {
     public abstract void collectNames(
                     Query env,
                     Set<String> names) throws InteropException;
-
-    @CompilerDirectives.TruffleBoundary
-    public static Object defaultReadMember(Query env, String member) throws UnknownIdentifierException {
-        InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        for (Scope scope : env.findLocalScopes()) {
-            if (scope == null) {
-                continue;
-            }
-            if (member.equals(scope.getReceiverName())) {
-                return scope.getReceiver();
-            }
-            Object variable = readMemberImpl(member, scope.getVariables(), iop);
-            if (variable != null) {
-                return variable;
-            }
-            Object argument = readMemberImpl(member, scope.getArguments(), iop);
-            if (argument != null) {
-                return argument;
-            }
-        }
-        throw UnknownIdentifierException.create(member);
-    }
-
-    static Object readMemberImpl(String name, Object map, InteropLibrary iop) {
-        if (map != null && iop.hasMembers(map)) {
-            try {
-                return iop.readMember(map, name);
-            } catch (InteropException e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static void defaultCollectNames(Query env, Set<String> names) throws InteropException {
-        InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        for (Scope scope : env.findLocalScopes()) {
-            if (scope == null) {
-                continue;
-            }
-            final String receiverName = scope.getReceiverName();
-            if (receiverName != null) {
-                names.add(receiverName);
-            }
-            readMemberNames(names, scope.getVariables(), iop);
-            readMemberNames(names, scope.getArguments(), iop);
-        }
-    }
-
-    private static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {
-        if (map != null && iop.hasMembers(map)) {
-            Object members = iop.getMembers(map);
-            long size = iop.getArraySize(members);
-            for (long i = 0; i < size; i++) {
-                Object at = iop.readArrayElement(members, i);
-                if (at instanceof String) {
-                    names.add((String) at);
-                }
-            }
-        }
-    }
 
     public static final class Query {
         private final Node where;
@@ -139,5 +81,81 @@ public abstract class FrameLibrary extends Library {
             }
         };
         assert AccessorFrameLibrary.DEFAULT == accessor;
+    }
+
+    private static final class UncachedDefault extends FrameLibrary {
+        static final FrameLibrary DEFAULT = new UncachedDefault();
+
+        private UncachedDefault() {
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Override
+        public Object readMember(Query env, String member) throws UnknownIdentifierException {
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            for (Scope scope : env.findLocalScopes()) {
+                if (scope == null) {
+                    continue;
+                }
+                if (member.equals(scope.getReceiverName())) {
+                    return scope.getReceiver();
+                }
+                Object variable = readMemberImpl(member, scope.getVariables(), iop);
+                if (variable != null) {
+                    return variable;
+                }
+                Object argument = readMemberImpl(member, scope.getArguments(), iop);
+                if (argument != null) {
+                    return argument;
+                }
+            }
+            throw UnknownIdentifierException.create(member);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Override
+        public void collectNames(Query env, Set<String> names) throws InteropException {
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            for (Scope scope : env.findLocalScopes()) {
+                if (scope == null) {
+                    continue;
+                }
+                final String receiverName = scope.getReceiverName();
+                if (receiverName != null) {
+                    names.add(receiverName);
+                }
+                readMemberNames(names, scope.getVariables(), iop);
+                readMemberNames(names, scope.getArguments(), iop);
+            }
+        }
+
+        @Override
+        public boolean accepts(Object receiver) {
+            return receiver instanceof Query;
+        }
+
+        static Object readMemberImpl(String name, Object map, InteropLibrary iop) {
+            if (map != null && iop.hasMembers(map)) {
+                try {
+                    return iop.readMember(map, name);
+                } catch (InteropException e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {
+            if (map != null && iop.hasMembers(map)) {
+                Object members = iop.getMembers(map);
+                long size = iop.getArraySize(members);
+                for (long i = 0; i < size; i++) {
+                    Object at = iop.readArrayElement(members, i);
+                    if (at instanceof String) {
+                        names.add((String) at);
+                    }
+                }
+            }
+        }
     }
 }

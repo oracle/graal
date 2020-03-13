@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -36,18 +35,16 @@ import java.util.Set;
 @SuppressWarnings("unused")
 @ExportLibrary(value = FrameLibrary.class, receiverType = Query.class)
 public final class DefaultFrameLibrary {
-    @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static Object readMember(
                     Query env,
                     String member) throws UnknownIdentifierException {
-        return FrameLibrary.defaultReadMember(env, member);
+        return FrameLibrary.getUncached().readMember(env, member);
     }
 
-    @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static void collectNames(Query env,
                     Set<String> names) throws InteropException {
-        FrameLibrary.defaultCollectNames(env, names);
+        FrameLibrary.getUncached().collectNames(env, names);
     }
 }
