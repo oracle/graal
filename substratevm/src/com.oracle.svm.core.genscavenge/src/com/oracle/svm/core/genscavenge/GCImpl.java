@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,8 +74,8 @@ import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -86,6 +87,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -314,9 +316,6 @@ public class GCImpl implements GC {
 
         postcondition();
 
-        /* Distribute any discovered references to their queues. */
-        ReferenceObjectProcessing.Scatterer.distributeReferences();
-
         trace.string("]").newline();
     }
 
@@ -524,9 +523,6 @@ public class GCImpl implements GC {
         try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
             final Log trace = Log.noopLog().string("[GCImpl.scavenge:").string("  fromDirtyRoots: ").bool(fromDirtyRoots).newline();
 
-            /* Empty the list of DiscoveredReferences before walking the heap. */
-            ReferenceObjectProcessing.clearDiscoveredList();
-
             try (Timer rst = rootScanTimer.open()) {
                 trace.string("  Cheney scan: ");
                 if (fromDirtyRoots) {
@@ -539,7 +535,8 @@ public class GCImpl implements GC {
             trace.string("  Discovered references: ");
             /* Process the list of DiscoveredReferences after walking the heap. */
             try (Timer drt = referenceObjectsTimer.open()) {
-                ReferenceObjectProcessing.processDiscoveredReferences();
+                Reference<?> pending = ReferenceObjectProcessing.processDiscoveredReferences();
+                HeapImpl.getHeapImpl().setReferencePendingList(pending);
             }
 
             trace.string("  Release spaces: ");
@@ -972,8 +969,18 @@ public class GCImpl implements GC {
             return;
         }
 
-        CleanerSupport.drainReferenceQueues();
+        processPendingReferences();
+
         visitWatchersReport();
+    }
+
+    private void processPendingReferences() {
+        ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
+        try {
+            ReferenceInternals.processPendingReferences();
+        } finally {
+            ThreadingSupportImpl.resumeRecurringCallback();
+        }
     }
 
     /* Collection counting. */

@@ -101,6 +101,8 @@ public class HeapImpl extends Heap {
     /** A list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
 
+    private Reference<?> referencePendingList;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(FeatureAccess access) {
         this.youngGeneration = new YoungGeneration("YoungGeneration");
@@ -643,9 +645,13 @@ public class HeapImpl extends Heap {
         return new CardTableBarrierSet(objectArrayType);
     }
 
+    public void setReferencePendingList(Reference<?> list) {
+        this.referencePendingList = list;
+    }
+
     @Override
     public boolean hasReferencePendingList() {
-        return false;
+        return (referencePendingList != null);
     }
 
     @Override
@@ -654,7 +660,9 @@ public class HeapImpl extends Heap {
 
     @Override
     public Reference<?> getAndClearReferencePendingList() {
-        return null;
+        Reference<?> list = referencePendingList;
+        referencePendingList = null;
+        return list;
     }
 }
 

@@ -135,6 +135,10 @@ public final class ReferenceInternals {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset));
     }
 
+    public static boolean hasFutureQueue(Reference<?> instance) {
+        return cast(instance).queue != null;
+    }
+
     /**
      * Clears the queue on which the reference should eventually be enqueued and returns the
      * previous value, which may be {@code null} if this reference should not be put on a queue, but
@@ -205,7 +209,7 @@ public final class ReferenceInternals {
     }
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
-    static boolean waitForReferenceProcessing() throws InterruptedException {
+    public static boolean waitForReferenceProcessing() throws InterruptedException {
         synchronized (processPendingLock) {
             if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {
                 processPendingLock.wait(); // Wait for progress, not necessarily completion

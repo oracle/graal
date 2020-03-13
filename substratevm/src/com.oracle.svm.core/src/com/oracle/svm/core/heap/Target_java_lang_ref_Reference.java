@@ -28,6 +28,7 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -45,7 +46,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
-import com.oracle.svm.core.jdk.CleanerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
@@ -56,8 +56,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Substitution of {@link Reference}, which is the abstract base class of all non-strong reference
- * classes, the basis of the {@linkplain CleanerSupport cleaner mechanism,} and subject to special
- * treatment by the garbage collector.
+ * classes, the basis of the cleaner mechanism, and subject to special treatment by the garbage
+ * collector.
  * <p>
  * Implementation methods are in the separate class {@link ReferenceInternals} because
  * {@link Reference} can be subclassed and subclasses could otherwise inadvertently override
@@ -104,8 +104,8 @@ public final class Target_java_lang_ref_Reference<T> {
     T referent;
 
     /**
-     * Whether this reference is currently {@linkplain #discovered on a list} of references
-     * discovered during garbage collection.
+     * Whether this reference is currently either {@linkplain #discovered on a list} of references
+     * discovered during garbage collection or pending to be enqueued in a {@link ReferenceQueue}.
      * <p>
      * This cannot be replaced with the same self-link trick that is used for {@link #next} because
      * during reference discovery, our reference object could have been moved, but

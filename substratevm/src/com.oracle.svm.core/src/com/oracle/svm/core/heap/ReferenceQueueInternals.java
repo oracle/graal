@@ -37,7 +37,6 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -79,6 +78,7 @@ public final class ReferenceQueueInternals {
             head = getHead(instance);
             ReferenceInternals.setQueueNext(ref, head);
         } while (!instance.queueHead.compareAndSet(head, ref));
+        signalWaiters();
         return true;
     }
 
@@ -186,7 +186,6 @@ public final class ReferenceQueueInternals {
     }
 
     public static void signalWaiters() {
-        VMOperation.guaranteeGCInProgress("Must only be called during garbage collection");
         REF_MUTEX.lock();
         try {
             REF_CONDITION.broadcast();
