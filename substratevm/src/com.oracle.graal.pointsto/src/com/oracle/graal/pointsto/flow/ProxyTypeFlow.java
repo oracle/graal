@@ -25,17 +25,19 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.graph.Node;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 /**
  * A proxy class to be used for {@link AllInstantiatedTypeFlow}s. The cloning mechanism needs a
  * mechanism to clone only those uses of these global flows that belong to the current cloned
  * method. Thus the proxy is just a level of indirection to the global flows where the local uses
  * can be attached.
- *
- * TODO: The use of proxy field flows can be avoided by adding an input list in each flow so that
- * when a flow is cloned it can register it's clones to it's inputs.
+ * 
+ * A proxy type flow doesn't participate in any type flow updates. When a method is cloned it links
+ * the clones of the uses/observers of the proxy flow directly to the input flow.
  */
 public class ProxyTypeFlow extends TypeFlow<Node> {
 
@@ -47,59 +49,28 @@ public class ProxyTypeFlow extends TypeFlow<Node> {
         this.input = input;
     }
 
-    public ProxyTypeFlow(ProxyTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows);
-        this.input = original.input;
-    }
-
     @Override
     public TypeFlow<Node> copy(BigBang bb, MethodFlowsGraph methodFlows) {
-        return new ProxyTypeFlow(this, methodFlows);
+        return this;
     }
 
-    @Override
-    public void initClone(BigBang bb) {
-        assert this.isClone();
-        this.input.addUse(bb, this);
+    public TypeFlow<?> getInput() {
+        return input;
     }
 
     @Override
     public boolean addState(BigBang bb, TypeState add) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-        // nothing to do here, trigger update and propagate input state to uses
-        bb.postFlow(this);
-        return true;
+        throw AnalysisError.shouldNotReachHere();
     }
 
     @Override
     public void update(BigBang bb) {
-        // propagate input state to uses
-        TypeState curState = input.getState();
-        for (TypeFlow<?> use : getUses()) {
-            use.addState(bb, curState);
-        }
-        notifyObservers(bb);
-    }
-
-    @Override
-    public boolean addUse(BigBang bb, TypeFlow<?> use) {
-        assert use != null;
-        // propagate input state to use
-        if (doAddUse(bb, use, false)) {
-            use.addState(bb, input.getState());
-            return true;
-        }
-        return false;
+        throw AnalysisError.shouldNotReachHere();
     }
 
     @Override
     public TypeState getState() {
-        return input.getState();
-    }
-
-    public TypeFlow<?> getInput() {
-        return this.input;
+        throw AnalysisError.shouldNotReachHere();
     }
 
     @Override
