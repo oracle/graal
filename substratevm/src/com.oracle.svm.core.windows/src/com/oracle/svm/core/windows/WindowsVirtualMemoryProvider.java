@@ -40,8 +40,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
-import com.oracle.svm.core.windows.headers.WinBase;
 
 @AutomaticFeature
 class WindowsVirtualMemoryProviderFeature implements Feature {
@@ -99,40 +99,40 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     private static int accessAsProt(int access) {
         if (access == Access.NONE) {
-            return WinBase.PAGE_NOACCESS();
+            return MemoryAPI.PAGE_NOACCESS();
         }
 
         if ((access & Access.EXECUTE) != 0) {
             if ((access & Access.READ) != 0) {
                 if ((access & Access.WRITE) != 0) {
-                    return WinBase.PAGE_EXECUTE_READWRITE();
+                    return MemoryAPI.PAGE_EXECUTE_READWRITE();
                 } else {
-                    return WinBase.PAGE_EXECUTE_READ();
+                    return MemoryAPI.PAGE_EXECUTE_READ();
                 }
             }
             if ((access & Access.WRITE) != 0) {
-                return WinBase.PAGE_EXECUTE_READWRITE();
+                return MemoryAPI.PAGE_EXECUTE_READWRITE();
             }
-            return WinBase.PAGE_EXECUTE();
+            return MemoryAPI.PAGE_EXECUTE();
         } else {
             if ((access & Access.READ) != 0) {
                 if ((access & Access.WRITE) != 0) {
-                    return WinBase.PAGE_READWRITE();
+                    return MemoryAPI.PAGE_READWRITE();
                 } else {
-                    return WinBase.PAGE_READONLY();
+                    return MemoryAPI.PAGE_READONLY();
                 }
             }
             if ((access & Access.WRITE) != 0) {
-                return WinBase.PAGE_READWRITE();
+                return MemoryAPI.PAGE_READWRITE();
             }
-            return WinBase.PAGE_NOACCESS();
+            return MemoryAPI.PAGE_NOACCESS();
         }
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes) {
-        return WinBase.VirtualAlloc(WordFactory.nullPointer(), nbytes, WinBase.MEM_RESERVE(), WinBase.PAGE_READWRITE());
+        return MemoryAPI.VirtualAlloc(WordFactory.nullPointer(), nbytes, MemoryAPI.MEM_RESERVE(), MemoryAPI.PAGE_READWRITE());
     }
 
     @Override
@@ -144,7 +144,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
-        Pointer addr = WinBase.VirtualAlloc(start, nbytes, WinBase.MEM_COMMIT(), accessAsProt(access));
+        Pointer addr = MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), accessAsProt(access));
         return addr.isNull() ? WordFactory.nullPointer() : addr;
     }
 
@@ -152,20 +152,20 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int protect(PointerBase start, UnsignedWord nbytes, int access) {
         CIntPointer oldProt = StackValue.get(CIntPointer.class);
-        int result = WinBase.VirtualProtect(start, nbytes, accessAsProt(access), oldProt);
+        int result = MemoryAPI.VirtualProtect(start, nbytes, accessAsProt(access), oldProt);
         return (result != 0) ? 0 : -1;
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int uncommit(PointerBase start, UnsignedWord nbytes) {
-        int result = WinBase.VirtualFree(start, nbytes, WinBase.MEM_DECOMMIT());
+        int result = MemoryAPI.VirtualFree(start, nbytes, MemoryAPI.MEM_DECOMMIT());
         return (result != 0) ? 0 : -1;
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
-        return WinBase.VirtualFree(start, nbytes, WinBase.MEM_RELEASE());
+        return MemoryAPI.VirtualFree(start, nbytes, MemoryAPI.MEM_RELEASE());
     }
 }
