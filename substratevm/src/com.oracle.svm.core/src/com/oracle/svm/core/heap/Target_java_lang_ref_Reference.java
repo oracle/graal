@@ -117,7 +117,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @SuppressWarnings("unused") //
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Reference<?> discovered;
+    Target_java_lang_ref_Reference<?> discovered;
 
     /**
      * The queue to which this reference object will be added when the referent becomes unreachable.
@@ -176,11 +176,11 @@ public final class Target_java_lang_ref_Reference<T> {
         throw VMError.unimplemented();
     }
 
+    /** May be used by {@code JavaLangRefAccess} via {@code SharedSecrets}. */
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)
-    @SuppressWarnings("unused")
-    static boolean waitForReferenceProcessing() {
-        throw VMError.unimplemented();
+    static boolean waitForReferenceProcessing() throws InterruptedException {
+        return ReferenceInternals.waitForReferenceProcessing();
     }
 
     @Override

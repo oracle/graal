@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -640,6 +641,20 @@ public class HeapImpl extends Heap {
     public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
         return new CardTableBarrierSet(objectArrayType);
+    }
+
+    @Override
+    public boolean hasReferencePendingList() {
+        return false;
+    }
+
+    @Override
+    public void waitForReferencePendingList() {
+    }
+
+    @Override
+    public Reference<?> getAndClearReferencePendingList() {
+        return null;
     }
 }
 

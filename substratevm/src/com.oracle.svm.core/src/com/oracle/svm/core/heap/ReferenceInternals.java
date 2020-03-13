@@ -26,6 +26,7 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
@@ -35,11 +36,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.Target_jdk_internal_ref_Cleaner;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+
 // Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
@@ -162,6 +165,59 @@ public final class ReferenceInternals {
     static <T> void clearQueueNext(Reference<T> instance) {
         cast(instance).next = instance;
     }
+
+    /*
+     * We duplicate the JDK 11 reference processing code here so we can also use it with JDK 8.
+     */
+
+    // Checkstyle: allow synchronization
+
+    private static final Object processPendingLock = new Object();
+    private static boolean processPendingActive = false;
+
+    @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "Notifies on progress, not a specific state change.")
+    public static void processPendingReferences() {
+        Heap.getHeap().waitForReferencePendingList();
+        Target_java_lang_ref_Reference<?> pendingList;
+        synchronized (processPendingLock) {
+            pendingList = cast(Heap.getHeap().getAndClearReferencePendingList());
+            processPendingActive = true;
+        }
+        while (pendingList != null) {
+            Target_java_lang_ref_Reference<?> ref = pendingList;
+            pendingList = ref.discovered;
+            ref.discovered = null;
+
+            if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
+                Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
+                // Cleaner catches all exceptions, cannot be overridden due to private constructor
+                cleaner.clean();
+                synchronized (processPendingLock) {
+                    processPendingLock.notifyAll();
+                }
+            } else {
+                doEnqueue(ref);
+            }
+        }
+        synchronized (processPendingLock) {
+            processPendingActive = false;
+            processPendingLock.notifyAll();
+        }
+    }
+
+    @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
+    static boolean waitForReferenceProcessing() throws InterruptedException {
+        synchronized (processPendingLock) {
+            if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {
+                processPendingLock.wait(); // Wait for progress, not necessarily completion
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    // Checkstyle: disallow synchronization
 
     public static ResolvedJavaType getReferenceType(MetaAccessProvider metaAccess) {
         return metaAccess.lookupJavaType(Reference.class);

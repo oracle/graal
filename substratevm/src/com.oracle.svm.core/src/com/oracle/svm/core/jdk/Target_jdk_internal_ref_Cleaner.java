@@ -68,7 +68,7 @@ public final class Target_jdk_internal_ref_Cleaner {
     static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 
     @Alias
-    native void clean();
+    public native void clean();
 }
 
 /**
