@@ -28,8 +28,9 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-JAVA=$(JAVA_HOME)/bin/java
-LLIRTESTGEN_CMD=$(JAVA) -Dllirtestgen.prelude=prelude.ll -cp $(LLIR_TEST_GEN_JAR):$(SULONG_TEST_JAR) com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen
+ifndef LLIRTESTGEN_CMD
+  $(error LLIRTESTGEN_CMD not set)
+endif
 OUTPUT_DIR=gen
 GENERATED=$(TESTS:.dir=)
 TIMESTAMP=timestamp
