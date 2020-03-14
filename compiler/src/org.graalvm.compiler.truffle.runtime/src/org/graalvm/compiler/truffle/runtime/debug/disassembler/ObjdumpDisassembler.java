@@ -40,8 +40,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Disassembles machine code by running it through objdump, which needs to be available on the path. Standard versions
- * included in at least recent Linux distributions and macOS can be used.
+ * Disassembles machine code by running it through objdump, which needs to be available on the path.
+ * Standard versions included in at least recent Linux distributions and macOS can be used.
  */
 public class ObjdumpDisassembler implements Disassembler {
 
@@ -50,9 +50,7 @@ public class ObjdumpDisassembler implements Disassembler {
 
     @Override
     public String disassemble(MachineCodeAccessor machineCode) throws IOException {
-        final Process process = new ProcessBuilder()
-                .command("objdump", "--no-show-raw-insn", "-d", "/dev/stdin")
-                .start();
+        final Process process = new ProcessBuilder().command("objdump", "--no-show-raw-insn", "-d", "/dev/stdin").start();
         final OutputStream objdumpInputStream = process.getOutputStream();
         final InputStream objdumpErrorStream = process.getErrorStream();
         final InputStream objdumpOutputStream = process.getInputStream();
@@ -92,7 +90,8 @@ public class ObjdumpDisassembler implements Disassembler {
                 if (line.isEmpty() || line.startsWith("/dev/stdin:") || line.startsWith("Disassembly of section .text:") || line.startsWith(".text:")) {
                     continue;
                 }
-                // Some objdumps print relative addresses as for example <.text+0x341e>, when we'd prefer an absolute address for our purposes
+                // Some objdumps print relative addresses as for example <.text+0x341e>, when we'd
+                // prefer an absolute address for our purposes
                 final Matcher relativeMatcher = RELATIVE_CODE_ADDRESS_PATTERN.matcher(line);
                 while (relativeMatcher.find()) {
                     final MatchResult matchResult = relativeMatcher.toMatchResult();
@@ -109,20 +108,16 @@ public class ObjdumpDisassembler implements Disassembler {
                     final MatchResult matchResult = addressMatcher.toMatchResult();
                     final long address = Long.parseLong(matchResult.group(1), 16);
                     final long offset = address - machineCode.getAddress() - machineCode.getHeaderLength();
-                    machineCode.getInfopoints()
-                            .filter(i -> i.pcOffset == offset)
-                            .filter(i -> i instanceof Call)
-                            .findFirst()
-                            .ifPresent(i -> {
-                                if (i.debugInfo != null) {
-                                    BytecodePosition position = i.debugInfo.getBytecodePosition();
-                                    while (position != null) {
-                                        builder.append("\t\t\t\t; " + position.getMethod().asStackTraceElement(position.getBCI()).toString());
-                                        builder.append(System.lineSeparator());
-                                        position = position.getCaller();
-                                    }
-                                }
-                            });
+                    machineCode.getInfopoints().filter(i -> i.pcOffset == offset).filter(i -> i instanceof Call).findFirst().ifPresent(i -> {
+                        if (i.debugInfo != null) {
+                            BytecodePosition position = i.debugInfo.getBytecodePosition();
+                            while (position != null) {
+                                builder.append("\t\t\t\t; " + position.getMethod().asStackTraceElement(position.getBCI()).toString());
+                                builder.append(System.lineSeparator());
+                                position = position.getCaller();
+                            }
+                        }
+                    });
                 }
             }
             return builder.toString().trim();
@@ -130,7 +125,5 @@ public class ObjdumpDisassembler implements Disassembler {
             return objdumpError.toString(Charset.defaultCharset().name());
         }
     }
-
-
 
 }

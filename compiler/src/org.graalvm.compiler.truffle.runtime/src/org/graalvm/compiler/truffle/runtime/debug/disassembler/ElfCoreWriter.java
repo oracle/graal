@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug.disassembler;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+
+import jdk.vm.ci.services.Services;
 
 /**
  * Writes machine code into a simple ELF core format.
@@ -44,7 +47,7 @@ public class ElfCoreWriter {
 
     public static byte[] writeElf(MachineCodeAccessor machineCode) {
         final int codePadding = machineCode.getLength() % 8;
-        final ByteBuffer buffer = ByteBuffer.allocate(START_OF_SECTIONS + SECTION_NAMES.length + machineCode.getLength() + codePadding + 3*SECTION_HEADER_LENGTH);
+        final ByteBuffer buffer = ByteBuffer.allocate(START_OF_SECTIONS + SECTION_NAMES.length + machineCode.getLength() + codePadding + 3 * SECTION_HEADER_LENGTH);
         buffer.order(ByteOrder.nativeOrder());
         writeFileHeader(buffer, machineCode, codePadding);
         writeProgramHeader(buffer, machineCode);
@@ -55,7 +58,7 @@ public class ElfCoreWriter {
         writeSectionHeader(buffer, 1, 3, 0x20, 0, START_OF_SECTIONS, SECTION_NAMES.length);
         writeSectionHeader(buffer, 11, 1, 2 | 4, machineCode.getAddress(), START_OF_SECTIONS + SECTION_NAMES.length, machineCode.getLength() + codePadding);
         final byte[] bytes = new byte[buffer.position()];
-        buffer.flip();
+        ((Buffer) buffer).flip();
         buffer.get(bytes);
         return bytes;
     }
@@ -74,7 +77,7 @@ public class ElfCoreWriter {
         buffer.putLong(machineCode.getAddress());       // entry point
         buffer.putLong(FILE_HEADER_LENGTH);             // location of program header
         buffer.putLong(START_OF_SECTIONS + SECTION_NAMES.length + machineCode.getLength() + codePadding);
-                                                        // location of section header table
+        // location of section header table
         buffer.putInt(0);                               // flags
         buffer.putShort(FILE_HEADER_LENGTH);
         buffer.putShort(PROGRAM_HEADER_LENGTH);
@@ -120,7 +123,7 @@ public class ElfCoreWriter {
     }
 
     private static short getArchCode() {
-        final String osArch = System.getProperty("os.arch");
+        final String osArch = Services.getSavedProperties().get("os.arch");
         switch (osArch) {
             case "sparc":
                 return 0x02;

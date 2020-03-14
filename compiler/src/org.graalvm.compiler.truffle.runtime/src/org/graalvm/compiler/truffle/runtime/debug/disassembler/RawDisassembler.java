@@ -30,8 +30,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 /**
- * Facilitates disassembling or other analysis of machine code by writing it to a file. You'll probably need to know the
- * address to load it at to be able to use it.
+ * Facilitates disassembling or other analysis of machine code by writing it to a file. You'll
+ * probably need to know the address to load it at to be able to use it.
  */
 public class RawDisassembler implements Disassembler {
 

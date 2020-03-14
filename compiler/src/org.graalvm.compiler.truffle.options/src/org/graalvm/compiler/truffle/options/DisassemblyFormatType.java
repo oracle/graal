@@ -33,13 +33,17 @@ import java.util.stream.Collectors;
  * Formats that can be used with the disassembler.
  */
 public enum DisassemblyFormatType {
-    HEX,        /** Hexadecimal written to the log */
-    RAW,        /** Raw machine code written to a file, needs to be loaded at the correct address in tooling */
-    ELF,        /** Machine code dumped in the ELF file format */
-    OBJDUMP;    /** Disassembly by the objdump command, which needs to be on your system */
+    HEX,
+    /** Hexadecimal written to the log */
+    RAW,
+    /** Raw machine code written to a file, needs to be loaded at the correct address in tooling */
+    ELF,
+    /** Machine code dumped in the ELF file format */
+    OBJDUMP;
+    /** Disassembly by the objdump command, which needs to be on your system */
 
     public static final OptionType<DisassemblyFormatType> OPTION_TYPE = new OptionType<>(
-            Arrays.stream(DisassemblyFormatType.values()).map(Enum<DisassemblyFormatType>::toString).map(String::toLowerCase).collect(Collectors.joining("|")),
-            name -> DisassemblyFormatType.valueOf(name.toUpperCase()));
+                    Arrays.stream(DisassemblyFormatType.values()).map(Enum<DisassemblyFormatType>::toString).map(String::toLowerCase).collect(Collectors.joining("|")),
+                    name -> DisassemblyFormatType.valueOf(name.toUpperCase()));
 
 }

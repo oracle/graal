@@ -41,5 +41,4 @@ public class ElfDisassembler implements Disassembler {
         return String.format("written to %s", elfFile, machineCode.getAddress());
     }
 
-
 }
