@@ -35,7 +35,7 @@ public class LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native CCharPointerPointer getEnviron();
 
-    @CFunction(transition = Transition.NO_TRANSITION)
+    @CFunction(transition = Transition.TO_NATIVE)
     public static native CCharPointer customFindJavaTZmd(CCharPointer tzmappings);
 
 }

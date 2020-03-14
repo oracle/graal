@@ -26,11 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
@@ -38,18 +38,15 @@ import org.graalvm.compiler.options.OptionKey;
 
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
-//Checkstyle: stop
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
+//Checkstyle: stop
 import sun.security.action.GetPropertyAction;
 //Checkstyle: resume
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,18 +58,6 @@ import java.util.TimeZone;
 @SuppressWarnings("unused")
 final class Target_java_util_TimeZone {
 
-    static final class TimeZoneSupport {
-        final byte[] tzMappingsContent;
-
-        TimeZoneSupport(final byte[] content) {
-            this.tzMappingsContent = content;
-        }
-
-        public byte[] getTzMappingsContent() {
-            return tzMappingsContent;
-        }
-    }
-
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private static volatile TimeZone defaultTimeZone;
 
     @Alias
@@ -81,14 +66,20 @@ final class Target_java_util_TimeZone {
     // Checkstyle: resume
 
     @Alias
-    static native TimeZone getDefaultRef();
+    private static native TimeZone getTimeZone(String id, boolean fallback);
+
+    @Alias
+    private static native String getSystemGMTOffsetID();
+
+    @Alias
+    @TargetElement(name = "getSystemTimeZoneID", onlyWith = OSTargets.UnixLike.class)
+    private static native String getSystemTimeZoneID(String javaHome);
 
     @Substitute
-    private static String getSystemTimeZoneID(String javaHome) {
-        // in windows call the custom function
-        // in unix call the normal function, can I call the jdk native function
+    @TargetElement(name = "getSystemTimeZoneID", onlyWith = {OSTargets.Windows.class})
+    private static String getSystemTimeZoneIDWindows(String javaHome) {
         TimeZoneSupport timeZoneSupport = ImageSingletons.lookup(TimeZoneSupport.class);
-        final byte[] content = timeZoneSupport.getTzMappingsContent();
+        byte[] content = timeZoneSupport.getTzMappingsContent();
         String tzmappings = new String(content);
         try (CTypeConversion.CCharPointerHolder tzMappingsHolder = CTypeConversion.toCString(tzmappings)) {
             CCharPointer tzMappings = tzMappingsHolder.get();
@@ -97,41 +88,70 @@ final class Target_java_util_TimeZone {
         }
     }
 
-    /*
-     * @Alias private static native TimeZone getTimeZone(String id, boolean fallback);
-     * 
-     * @Alias private static native String getSystemGMTOffsetID();
-     * 
-     * @Substitute // Checkstyle: stop private static synchronized TimeZone setDefaultZone() { //
-     * Checkstyle: resume TimeZone tz; // get the time zone ID from the system properties Properties
-     * props = System.getProperties(); String zoneID = AccessController.doPrivileged( new
-     * GetPropertyAction("user.timezone"));
-     * 
-     * // if the time zone ID is not set (yet), perform the // platform to Java time zone ID
-     * mapping. if (zoneID == null || zoneID.isEmpty()) { try { // This is only different part from
-     * the JDK // because native-image java.home property is null zoneID = getSystemTimeZoneID("");
-     * if (zoneID == null) { zoneID = GMT_ID; } } catch (NullPointerException e) { zoneID = GMT_ID;
-     * } }
-     * 
-     * // Get the time zone for zoneID. But not fall back to // "GMT" here. tz = getTimeZone(zoneID,
-     * false);
-     * 
-     * if (tz == null) { // If the given zone ID is unknown in Java, try to // get the
-     * GMT-offset-based time zone ID, // a.k.a. custom time zone ID (e.g., "GMT-08:00"). String
-     * gmtOffsetID = getSystemGMTOffsetID(); if (gmtOffsetID != null) { zoneID = gmtOffsetID; } tz =
-     * getTimeZone(zoneID, true); } assert tz != null;
-     * 
-     * final String id = zoneID; props.setProperty("user.timezone", id);
-     * 
-     * defaultTimeZone = tz; return tz; }
-     */
+    @Substitute
+    // Checkstyle: stop
+    private static synchronized TimeZone setDefaultZone() {
+        // Checkstyle: resume
+        TimeZone tz;
+        // get the time zone ID from the system properties
+        Properties props = System.getProperties();
+        String zoneID = AccessController.doPrivileged(
+                        new GetPropertyAction("user.timezone"));
+
+        // if the time zone ID is not set (yet), perform the
+        // platform to Java time zone ID mapping.
+        if (zoneID == null || zoneID.isEmpty()) {
+            try {
+                // Send empty for as java home as opposed to null
+                if (OS.getCurrent() == OS.WINDOWS) {
+                    zoneID = getSystemTimeZoneIDWindows("");
+                } else {
+                    zoneID = getSystemTimeZoneID("");
+                }
+                if (zoneID == null) {
+                    zoneID = GMT_ID;
+                }
+            } catch (NullPointerException e) {
+                zoneID = GMT_ID;
+            }
+        }
+
+        // Get the time zone for zoneID. But not fall back to
+        // "GMT" here.
+        tz = getTimeZone(zoneID, false);
+
+        if (tz == null) {
+            // If the given zone ID is unknown in Java, try to
+            // get the GMT-offset-based time zone ID,
+            // a.k.a. custom time zone ID (e.g., "GMT-08:00").
+            String gmtOffsetID = getSystemGMTOffsetID();
+            if (gmtOffsetID != null) {
+                zoneID = gmtOffsetID;
+            }
+            tz = getTimeZone(zoneID, true);
+        }
+        assert tz != null;
+
+        final String id = zoneID;
+        props.setProperty("user.timezone", id);
+
+        defaultTimeZone = tz;
+        return tz;
+    }
 }
 
-// Add feature again
-// Replace Java_java_util_TimeZone_getSystemTimeZoneID with and call a CFunction
-// it seems like I am going to have to pull in also all function that calls
-// the jdk8 and jdk 11 implementations are different
-// it brings functions from libjvm
+final class TimeZoneSupport {
+    final byte[] tzMappingsContent;
+
+    TimeZoneSupport(final byte[] content) {
+        this.tzMappingsContent = content;
+    }
+
+    public byte[] getTzMappingsContent() {
+        return tzMappingsContent;
+    }
+
+}
 
 @AutomaticFeature
 final class TimeZoneFeature implements Feature {
@@ -161,18 +181,35 @@ final class TimeZoneFeature implements Feature {
         }
     }
 
+    private static byte[] cleanCR(byte[] buffer) {
+        byte[] scratch = new byte[buffer.length];
+        int copied = 0;
+        for (byte b : buffer) {
+            if (b == 13) {
+                continue;
+            }
+            scratch[copied++] = b;
+        }
+        byte[] content = new byte[copied];
+        System.arraycopy(scratch, 0, content, 0, copied);
+        return content;
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
 
         if (OS.getCurrent() != OS.WINDOWS) {
+            ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(null));
             return;
         }
 
         // read tzmappings on windows
         Path tzMappingsPath = Paths.get(System.getProperty("java.home"), "lib", "tzmappings");
         try {
-            byte[] content = Files.readAllBytes(tzMappingsPath);
-            ImageSingletons.add(Target_java_util_TimeZone.TimeZoneSupport.class, new Target_java_util_TimeZone.TimeZoneSupport(content));
+            byte[] buffer = Files.readAllBytes(tzMappingsPath);
+            // tzmappings has windows line endings on windows??
+            byte[] content = cleanCR(buffer);
+            ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(content));
         } catch (IOException e) {
             VMError.shouldNotReachHere("Failed to read time zone mappings. The time zone mappings should be part" +
                             "of your JDK usually found: " + tzMappingsPath.toAbsolutePath(), e);

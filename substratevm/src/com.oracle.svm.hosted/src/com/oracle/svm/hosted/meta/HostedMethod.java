@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -476,8 +477,16 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         if (result == 0) {
             result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
         }
+
+        if (result == 0 && (isSubstitution() || other.isSubstitution())) {
+            result = isSubstitution() ? 1 : -1;
+        }
         assert result != 0;
         return result;
+    }
+
+    protected boolean isSubstitution() {
+        return wrapped.getWrapped() instanceof SubstitutionMethod;
     }
 
     @Override

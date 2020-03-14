@@ -21,13 +21,18 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ */ 
+
+/*
+ * The following is an identical copy of the TimeZone_md.c file found at
+ * https://github.com/graalvm/labs-openjdk-11/blob/67ddc3bcadd985ea26997457aec6696f21caf154/src/java.base/unix/native/libjava/TimeZone_md.c
+ * With the exceptions of the commented functions this file has not been modified from its original.
  */
 
 #ifdef _WIN64
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include "jvm.h"
 
 #define VALUE_UNKNOWN           0
 #define VALUE_KEY               1
@@ -36,7 +41,6 @@
 
 #define MAX_ZONE_CHAR           256
 #define MAX_MAPID_LENGTH        32
-#define MAX_REGION_LENGTH       4
 
 #define NT_TZ_KEY               "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones"
 #define WIN_TZ_KEY              "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Time Zones"
@@ -146,7 +150,7 @@ static void customZoneName(LONG bias, char *buffer) {
 /*
  * Gets the current time zone entry in the "Time Zones" registry.
  */
-static int getWinTimeZone(char *winZoneName)
+static int getWinTimeZone(char *winZoneName, char *winMapID)
 {
     DYNAMIC_TIME_ZONE_INFORMATION dtzi;
     DWORD timeType;
@@ -232,6 +236,7 @@ static int getWinTimeZone(char *winZoneName)
         WCHAR stdNameInReg[MAX_ZONE_CHAR];
         TziValue tempTzi;
         WCHAR *stdNamePtr = tzi.StandardName;
+        DWORD valueSize;
         int onlyMapID;
 
         timeType = GetTimeZoneInformation(&tzi);
@@ -372,7 +377,24 @@ static int getWinTimeZone(char *winZoneName)
             (void) RegCloseKey(hSubKey);
         }
 
+        /*
+         * Get the "MapID" value of the registry to be able to eliminate
+         * duplicated key names later.
+         */
+        valueSize = MAX_MAPID_LENGTH;
+        ret = RegQueryValueExA(hSubKey, "MapID", NULL, &valueType, winMapID, &valueSize);
+        (void) RegCloseKey(hSubKey);
         (void) RegCloseKey(hKey);
+
+        if (ret != ERROR_SUCCESS) {
+            /*
+             * Vista doesn't have mapID. VALUE_UNKNOWN should be returned
+             * only for Windows NT.
+             */
+            if (onlyMapID == 1) {
+                return VALUE_UNKNOWN;
+            }
+        }
     }
 
     return VALUE_KEY;
@@ -385,25 +407,51 @@ static int getWinTimeZone(char *winZoneName)
 }
 
 /*
- * The mapping table file name.
+ * An implementation of fgets on a buffer as opposed to a file object.
+ *
  */
-#define MAPPINGS_FILE "\\lib\\tzmappings"
+static int readnewLine(char *dst, int num, int offset, char *source, int source_len) {
+    int read = 0;
+    while(read < num - 1) {
+        if (offset + read == source_len) {
+            break;
+        }
+        dst[read] = source[offset + read];
+        if (dst[read] == '\n') {
+            read++;
+            break;
+        }
+        read++;
+    }
+    dst[read+1] = '\0';
+    return read;
+}
 
 /*
  * Index values for the mapping table.
  */
 #define TZ_WIN_NAME     0
-#define TZ_REGION       1
-#define TZ_JAVA_NAME    2
+#define TZ_MAPID        1
+#define TZ_REGION       2
+#define TZ_JAVA_NAME    3
 
-#define TZ_NITEMS       3       /* number of items (fields) */
+#define TZ_NITEMS       4       /* number of items (fields) */
 
 /*
  * Looks up the mapping table (tzmappings) and returns a Java time
  * zone ID (e.g., "America/Los_Angeles") if found. Otherwise, NULL is
  * returned.
+ *
+ * value_type is one of the following values:
+ *      VALUE_KEY for exact key matching
+ *      VALUE_MAPID for MapID (this is
+ *      required for the old Windows, such as NT 4.0 SP3).
+ *
+ * The following function differs from the original by accepting a buffer and reading
+ * tzmappings data from it. The original function opens and reads  such data from a file.
  */
-static char *matchJavaTZ(char *tzName, const char *tzmappings)
+static char *matchJavaTZ_Java11(const char *tzmappings, int value_type, char *tzName,
+                         char *mapID)
 {
     int line;
     int IDmatched = 0;
@@ -412,33 +460,23 @@ static char *matchJavaTZ(char *tzName, const char *tzmappings)
     char *items[TZ_NITEMS];
     char *mapFileName;
     char lineBuffer[MAX_ZONE_CHAR * 4];
+    int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
     int offset = 0;
     const char* errorMessage = "unknown error";
-    char region[MAX_REGION_LENGTH];
+    int tzmappingsLen;
+    int currLocation;
+    int readChars;
 
-    // Get the user's location
-    if (GetGeoInfo(GetUserGeoID(GEOCLASS_NATION),
-            GEO_ISO2, region, MAX_REGION_LENGTH, 0) == 0) {
-        // If GetGeoInfo fails, fallback to LCID's country
-        LCID lcid = GetUserDefaultLCID();
-        if (GetLocaleInfo(lcid,
-                          LOCALE_SISO3166CTRYNAME, region, MAX_REGION_LENGTH) == 0 &&
-            GetLocaleInfo(lcid,
-                          LOCALE_SISO3166CTRYNAME2, region, MAX_REGION_LENGTH) == 0) {
-            region[0] = '\0';
-        }
-    }
-
-    // Parsing below
     line = 0;
-    int tzmappingsLen = strlen(tzmappings);
-    //while (fgets(lineBuffer, sizeof(lineBuffer), fp) != NULL) {
-    for(int i =0 ; i < tzmappingsLen; i+= sizeof(lineBuffer)) { 
+    tzmappingsLen = strlen(tzmappings);
+    currLocation = 0;
+    readChars = 0;
+    while((readChars = readnewLine(lineBuffer, sizeof(lineBuffer), currLocation, tzmappings, tzmappingsLen)) != 0) {
         char *start, *idx, *endp;
         int itemIndex = 0;
 
+        currLocation += readChars;
         line++;
-        strncpy(lineBuffer, tzmappings + i, sizeof(lineBuffer));
         start = idx = lineBuffer;
         endp = &lineBuffer[sizeof(lineBuffer)];
 
@@ -473,19 +511,26 @@ static char *matchJavaTZ(char *tzName, const char *tzmappings)
             goto illegal_format;
         }
 
-        /*
-         * We need to scan items until the
-         * exact match is found or the end of data is detected.
-         */
-        if (strcmp(items[TZ_WIN_NAME], tzName) == 0) {
+        if (noMapID || strcmp(mapID, items[TZ_MAPID]) == 0) {
             /*
-             * Found the time zone in the mapping table.
-             * Check the region code and select the appropriate entry
+             * When there's no mapID, we need to scan items until the
+             * exact match is found or the end of data is detected.
              */
-            if (strcmp(items[TZ_REGION], region) == 0 ||
-                strcmp(items[TZ_REGION], "001") == 0) {
+            if (!noMapID) {
+                IDmatched = 1;
+            }
+            if (strcmp(items[TZ_WIN_NAME], tzName) == 0) {
+                /*
+                 * Found the time zone in the mapping table.
+                 */
                 javaTZName = _strdup(items[TZ_JAVA_NAME]);
-                printf("Found item %s", javaTZName);
+                break;
+            }
+        } else {
+            if (IDmatched == 1) {
+                /*
+                 * No need to look up the mapping table further.
+                 */
                 break;
             }
         }
@@ -496,14 +541,16 @@ static char *matchJavaTZ(char *tzName, const char *tzmappings)
  illegal_format:
     jio_fprintf(stderr, "Illegal format in tzmappings file: %s at line %d, offset %d.\n",
                 errorMessage, line, offset);
-    printf("illegal format");
     return NULL;
 }
 
 /**
  * Returns a GMT-offset-based time zone ID.
+ *
+ * No change from original just different function name
  */
-char * customGetGMTOffsetID()
+static char *
+customGetGMTOffsetID()
 {
     LONG bias = 0;
     LONG ret;
@@ -540,20 +587,29 @@ char * customGetGMTOffsetID()
 
 /*
  * Detects the platform time zone which maps to a Java time zone ID.
+ *
+ * The following function only differs from the original by calling a custom parsing
+ * function called "matchJavaTZ_Java11" that accepts a data buffer.
+ *
+ * This function expects its argument to contain the whole tzmappings data as an argument.
+ * The original function expected a buffer whose content was the path to JAVA_HOME
  */
 char *customFindJavaTZmd(const char *tzmappings)
 {
     char winZoneName[MAX_ZONE_CHAR];
+    char winMapID[MAX_MAPID_LENGTH];
     char *std_timezone = NULL;
     int  result;
 
-    result = getWinTimeZone(winZoneName);
+    winMapID[0] = 0;
+    result = getWinTimeZone(winZoneName, winMapID);
 
     if (result != VALUE_UNKNOWN) {
         if (result == VALUE_GMTOFFSET) {
             std_timezone = _strdup(winZoneName);
         } else {
-            std_timezone = matchJavaTZ(winZoneName, tzmappings);
+            std_timezone = matchJavaTZ_Java11(tzmappings, result,
+                                       winZoneName, winMapID);
             if (std_timezone == NULL) {
                 std_timezone = customGetGMTOffsetID();
             }
@@ -562,12 +618,7 @@ char *customFindJavaTZmd(const char *tzmappings)
     return std_timezone;
 }
 #else
-#include <stdio.h>
 char *customFindJavaTZmd(const char *tzmappings) {
-    printf("here2\n");
-    printf("%d\n", strlen(tzmappings));
-
-    return "EGZ";
+    return ((void*)0);
 }
-#endif
-
+#endif // _WIN64
