@@ -31,6 +31,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
@@ -38,26 +39,82 @@ import com.oracle.truffle.tools.agentscript.impl.AccessorFrameLibrary;
 import com.oracle.truffle.tools.agentscript.impl.DefaultFrameLibrary;
 import java.util.Set;
 
+/**
+ * Encapsulating access to execution frames.
+ * <a href="https://github.com/oracle/graal/blob/master/tools/docs/T-Trace.md">T-Trace</a> scripts
+ * can access local variables of the dynamically <a href=
+ * "https://github.com/oracle/graal/blob/master/tools/docs/T-Trace-Manual.md#inspecting-values">
+ * instrumented source code</a>. This library handles such accesses. {@linkplain ExportLibrary
+ * Implement your own} to respond to various messages (like
+ * {@link #readMember(com.oracle.truffle.tools.agentscript.FrameLibrary.Query, java.lang.String) })
+ * in a different way - for example by exposing more than it is in their {@linkplain Frame frames}
+ * for some specific languages.
+ * <p>
+ * It is expected more messages appear in this library during its evolution. Such messages will be
+ * provided with their appropriate {@link #getUncached() default} implementation.
+ * 
+ * @since 20.1
+ */
 @GenerateLibrary(defaultExportLookupEnabled = true)
 @GenerateLibrary.DefaultExport(DefaultFrameLibrary.class)
 public abstract class FrameLibrary extends Library {
+    /**
+     * Default constructor.
+     * 
+     * @since 20.1
+     */
+    protected FrameLibrary() {
+    }
+
+    /**
+     * Default implementation of the {@code FrameLibrary}. Provides the same view of local variables
+     * as available to debugger.
+     * 
+     * @return a shared instance of the library
+     * @since 20.1
+     */
     public static FrameLibrary getUncached() {
         return UncachedDefault.DEFAULT;
     }
 
+    /**
+     * Reads a value of a local variable.
+     * 
+     * @param env location, environment, etc. to read values from
+     * @param member the name of the variable to read
+     * @return value of the variable
+     * @throws UnknownIdentifierException thrown when the member is unknown
+     * @since 20.1
+     */
     public Object readMember(
                     Query env,
                     String member) throws UnknownIdentifierException {
         return getUncached().readMember(env, member);
     }
 
+    /**
+     * Collect names of local variables.
+     * 
+     * @param env location, environment, etc. to read values from
+     * @param names collection to add the names to
+     * @throws InteropException thrown when something goes wrong
+     * @since 20.1
+     */
     public void collectNames(
                     Query env,
                     Set<String> names) throws InteropException {
         getUncached().collectNames(env, names);
     }
 
-    public static final class Query {
+    /**
+     * Holds location, environment, etc. Used to provide necessary information for implementation of
+     * individual {@link FrameLibrary} messages like
+     * {@link FrameLibrary#collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary.Query, java.util.Set)}
+     * and co.
+     * 
+     * @since 20.1
+     */
+    public final class Query {
         private final Node where;
         private final Frame frame;
         private final TruffleInstrument.Env env;
@@ -68,10 +125,22 @@ public abstract class FrameLibrary extends Library {
             this.env = env;
         }
 
+        /**
+         * Access to current and enclosing {@link Scope}.
+         * 
+         * @return iterable providing access to the frames.
+         * @since 20.1
+         */
         public Iterable<Scope> findLocalScopes() {
             return env.findLocalScopes(where, frame);
         }
 
+        /**
+         * Currently active frame to read values from.
+         * 
+         * @return the currently active frame
+         * @since 20.1
+         */
         public Frame frame() {
             return frame;
         }
@@ -81,7 +150,7 @@ public abstract class FrameLibrary extends Library {
         AccessorFrameLibrary accessor = new AccessorFrameLibrary() {
             @Override
             protected Query create(Node where, Frame frame, TruffleInstrument.Env env) {
-                return new Query(where, frame, env);
+                return UncachedDefault.DEFAULT.new Query(where, frame, env);
             }
         };
         assert AccessorFrameLibrary.DEFAULT == accessor;
