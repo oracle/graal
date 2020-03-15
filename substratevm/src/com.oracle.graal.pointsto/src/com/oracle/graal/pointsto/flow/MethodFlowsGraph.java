@@ -219,6 +219,10 @@ public class MethodFlowsGraph {
             /* All instantiated is not cloneable. */
             return original;
         }
+        if (original instanceof ProxyTypeFlow) {
+            /* The ProxyTypeFlow is just a place holder in the original graph for its input. */
+            return (T) ((ProxyTypeFlow) original).getInput();
+        }
 
         int slot = original.getSlot();
 
