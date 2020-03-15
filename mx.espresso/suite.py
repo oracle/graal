@@ -195,11 +195,11 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
-            ],
-            "cflags": ["-Wall", "-Werror"],
+            ],            
             "os_arch": {
                 "darwin": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-install_name,@rpath/libjvm.dylib",
                             "-Wl,-rpath,@loader_path/.",
@@ -211,11 +211,17 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
                     },
+                },
+                "windows" : {
+                    "<others>" : {
+                        "cflags" : []
+                    }
                 },
             },
         },

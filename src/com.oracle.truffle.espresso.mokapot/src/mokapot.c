@@ -21,17 +21,13 @@
  * questions.
  */
 #include "mokapot.h"
+#include "os.h"
 
 #include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <sys/poll.h>
-#include <sys/time.h>
 
 // Global
 MokapotEnv *mokaEnv = NULL;
@@ -39,14 +35,6 @@ MokapotEnv *mokaEnv = NULL;
 JavaVM* getJavaVM() {
   return (*mokaEnv)->vm;
 }
-
-// macros for restartable system calls
-
-#define RESTARTABLE_RETURN_INT(_cmd) do { \
-  int _result; \
-  RESTARTABLE(_cmd, _result); \
-  return _result; \
-} while(0)
 
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
@@ -959,95 +947,17 @@ jboolean JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jclass class2) {
 
 jint JVM_GetLastErrorString(char *buf, int len) {
   NATIVE(JVM_GetLastErrorString);
-
-  if (errno == 0)  return 0;
-
-  const char *s = strerror(errno);
-  size_t n = strlen(s);
-  if (n >= len) {
-    n = len - 1;
-  }
-  strncpy(buf, s, n);
-  buf[n] = '\0';
-  return n;
+  return os_lasterror(buf, len);
 }
 
 char *JVM_NativePath(char *pathname) {
-  IMPLEMENTED(JVM_NativePath);
-  // TODO(peterssen): This mimics the HotSpot implementation... yet another useless method.
-  return pathname;
-}
-
-int __open(const char *path, int oflag, int mode) {
-    if (strlen(path) > MAX_PATH - 1) {
-    errno = ENAMETOOLONG;
-    return -1;
-  }
-  int fd;
-  int o_delete = (oflag & O_DELETE);
-  oflag = oflag & ~O_DELETE;
-
-  fd = open(path, oflag, mode);
-  if (fd == -1) return -1;
-
-  //If the open succeeded, the file might still be a directory
-  {
-    struct stat buf;
-    int ret = fstat(fd, &buf);
-    int st_mode = buf.st_mode;
-
-    if (ret != -1) {
-      if ((st_mode & S_IFMT) == S_IFDIR) {
-        errno = EISDIR;
-        close(fd);
-        return -1;
-      }
-    } else {
-      close(fd);
-      return -1;
-    }
-  }
-
-    /*
-     * All file descriptors that are opened in the JVM and not
-     * specifically destined for a subprocess should have the
-     * close-on-exec flag set.  If we don't set it, then careless 3rd
-     * party native code might fork and exec without closing all
-     * appropriate file descriptors (e.g. as we do in closeDescriptors in
-     * UNIXProcess.c), and this in turn might:
-     *
-     * - cause end-of-file to fail to be detected on some file
-     *   descriptors, resulting in mysterious hangs, or
-     *
-     * - might cause an fopen in the subprocess to fail on a system
-     *   suffering from bug 1085341.
-     *
-     * (Yes, the default setting of the close-on-exec flag is a Unix
-     * design flaw)
-     *
-     * See:
-     * 1085341: 32-bit stdio routines should support file descriptors >255
-     * 4843136: (process) pipe file descriptor from Runtime.exec not being closed
-     * 6339493: (process) Runtime.exec does not close all file descriptors on Solaris 9
-     */
-#ifdef FD_CLOEXEC
-    {
-        int flags = fcntl(fd, F_GETFD);
-        if (flags != -1)
-            fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-    }
-#endif
-
-  if (o_delete != 0) {
-    unlink(path);
-  }
-
-  return fd;
+  NATIVE(JVM_NativePath);  
+  return os_native_path(pathname);
 }
 
 jint JVM_Open(const char *fname, jint flags, jint mode) {
   NATIVE(JVM_Open);
-  int result = __open(fname, flags, mode);
+  int result = os_open(fname, flags, mode);
   if (result >= 0) {
     return result;
   } else {
@@ -1062,7 +972,7 @@ jint JVM_Open(const char *fname, jint flags, jint mode) {
 
 jint JVM_Close(jint fd) {
   NATIVE(JVM_Close);
-  return close(fd);
+  return os_close(fd);
 }
 
 jint JVM_Read(jint fd, char *buf, jint nbytes) {
@@ -1105,88 +1015,47 @@ jint JVM_InitializeSocketLibrary(void) {
 
 jint JVM_Socket(jint domain, jint type, jint protocol) {
   NATIVE(JVM_Socket);
-  return socket(domain, type, protocol);
+  return os_socket(domain, type, protocol);
 }
 
 jint JVM_SocketClose(jint fd) {
   NATIVE(JVM_SocketClose);
-  return close(fd);
+  return os_close(fd);
 }
 
 jint JVM_SocketShutdown(jint fd, jint howto) {
   NATIVE(JVM_SocketShutdown);
-  return shutdown(fd, howto);
-}
-
-inline int __recv(int fd, char* buf, size_t nBytes, uint flags) {
-  RESTARTABLE_RETURN_INT(recv(fd, buf, nBytes, flags));
+  return os_shutdown(fd, howto);
 }
 
 jint JVM_Recv(jint fd, char *buf, jint nBytes, jint flags) {
   NATIVE(JVM_Recv);
-  return __recv(fd, buf, (size_t)nBytes, (uint)flags);
-}
-
-static inline int __send(int fd, char* buf, size_t nBytes, uint flags) {
-  RESTARTABLE_RETURN_INT(send(fd, buf, nBytes, flags));
+  return os_recv(fd, buf, (size_t)nBytes, (uint)flags);
 }
 
 jint JVM_Send(jint fd, char *buf, jint nBytes, jint flags) {
   NATIVE(JVM_Send);
-  return __send(fd, buf, (size_t)nBytes, (uint)flags);
+  return os_send(fd, buf, (size_t)nBytes, (uint)flags);
 }
 
 jint JVM_Timeout(int fd, long timeout) {
   NATIVE(JVM_Timeout);
-
-  julong prevtime,newtime;
-  struct timeval t;
-
-  gettimeofday(&t, NULL);
-  prevtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
-
-  for(;;) {
-    struct pollfd pfd;
-
-    pfd.fd = fd;
-    pfd.events = POLLIN | POLLERR;
-
-    int res = poll(&pfd, 1, timeout);
-
-    if (res == OS_ERR && errno == EINTR) {
-
-      // On Linux any value < 0 means "forever"
-
-      if(timeout >= 0) {
-        gettimeofday(&t, NULL);
-        newtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
-        timeout -= newtime - prevtime;
-        if(timeout <= 0)
-          return OS_OK;
-        prevtime = newtime;
-      }
-    } else
-      return res;
-  }
+  return os_timeout(fd, timeout);
 }
 
 jint JVM_Listen(jint fd, jint count) {
   NATIVE(JVM_Listen);
-  return listen(fd, count);
-}
-
-static inline int __connect(int fd, struct sockaddr* him, socklen_t len) {
-  RESTARTABLE_RETURN_INT(connect(fd, him, len));
+  return os_listen(fd, count);
 }
 
 jint JVM_Connect(jint fd, struct sockaddr *him, jint len) {
   NATIVE(JVM_Connect);
-  return __connect(fd, him, len);
+  return os_connect(fd, him, len);
 }
 
 jint JVM_Bind(jint fd, struct sockaddr *him, jint len) {
   NATIVE(JVM_Bind);
-  return bind(fd, him, (socklen_t)len);
+  return os_bind(fd, him, (socklen_t)len);
 }
 
 jint JVM_Accept(jint fd, struct sockaddr *him, jint *len) {
@@ -1194,33 +1063,22 @@ jint JVM_Accept(jint fd, struct sockaddr *him, jint *len) {
   socklen_t socklen = (socklen_t)(*len);
   // Linux doc says this can't return EINTR, unlike accept() on Solaris.
   // But see attachListener_linux.cpp, LinuxAttachListener::dequeue().
-  jint result = (int)accept(fd, him, &socklen);
+  jint result = (int)os_accept(fd, him, &socklen);
   *len = (jint)socklen;
   return result;
-}
-
-static inline int __recvfrom(int fd, char* buf, size_t nBytes, uint flags,
-                        struct sockaddr* from, socklen_t* fromlen) {
-  RESTARTABLE_RETURN_INT((int)recvfrom(fd, buf, nBytes, flags, from, fromlen));
 }
 
 jint JVM_RecvFrom(jint fd, char *buf, int nBytes, int flags, struct sockaddr *from, int *fromlen) {
   NATIVE(JVM_RecvFrom);
   socklen_t socklen = (socklen_t)(*fromlen);
-  jint result = __recvfrom(fd, buf, (size_t)nBytes, (uint)flags, from, &socklen);
+  jint result = os_recvfrom(fd, buf, (size_t)nBytes, (uint)flags, from, &socklen);
   *fromlen = (int)socklen;
   return result;
 }
 
-
-static inline int __sendto(int fd, char* buf, size_t len, uint flags,
-                      struct sockaddr* to, socklen_t tolen) {
-  RESTARTABLE_RETURN_INT((int)sendto(fd, buf, len, flags, to, tolen));
-}
-
 jint JVM_SendTo(jint fd, char *buf, int len, int flags, struct sockaddr *to, int tolen) {
   NATIVE(JVM_SendTo);
-  return __sendto(fd, buf, len, flags, to, tolen);
+  return os_sendto(fd, buf, len, flags, to, tolen);
 }
 
 jint JVM_SocketAvailable(jint fd, jint *result) {
@@ -1236,7 +1094,7 @@ jint JVM_SocketAvailable(jint fd, jint *result) {
 jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
   NATIVE(JVM_GetSockName);
   socklen_t socklen = (socklen_t)(*len);
-  jint result = getsockname(fd, him, &socklen);
+  jint result = os_get_sock_name(fd, him, &socklen);
   *len = (int)socklen;
   return result;
 }
@@ -1244,19 +1102,19 @@ jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
 jint JVM_GetSockOpt(jint fd, int level, int optname, char *optval, int *optlen) {
   NATIVE(JVM_GetSockOpt);
   socklen_t socklen = (socklen_t)(*optlen);
-  jint result = getsockopt(fd, level, optname, optval, &socklen);
+  jint result = os_getsockopt(fd, level, optname, optval, &socklen);
   *optlen = (int)socklen;
   return result;
 }
 
 jint JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int optlen) {
   NATIVE(JVM_SetSockOpt);
-  return setsockopt(fd, level, optname, optval, optlen);
+  return os_set_sock_opt(fd, level, optname, optval, optlen);
 }
 
 int JVM_GetHostName(char *name, int namelen) {
   NATIVE(JVM_GetHostName);
-  return gethostname(name, namelen);
+  return os_get_host_name(name, namelen);
 }
 
 static JNIEnv* getGuestJNI() {
