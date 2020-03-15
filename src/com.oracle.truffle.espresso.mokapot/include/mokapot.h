@@ -26,6 +26,8 @@
 #include "jvm.h"
 #include <jni.h>
 #include <trufflenfi.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct MokapotNativeInterface_;
 struct MokapotEnv_;
@@ -50,16 +52,6 @@ typedef uint8_t  jubyte;
 typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
-
-// Platform-independent error return values from OS functions
-enum OSReturn {
-  OS_OK         =  0,        // Operation was successful
-  OS_ERR        = -1,        // Operation failed
-  OS_INTRPT     = -2,        // Operation was interrupted
-  OS_TIMEOUT    = -3,        // Operation timed out
-  OS_NOMEM      = -5,        // Operation failed for lack of memory
-  OS_NORESOURCE = -6         // Operation failed for lack of nonmemory resource
-};
 
 #define VM_METHOD_LIST(V) \
     V(JVM_Accept) \
@@ -278,7 +270,7 @@ enum OSReturn {
     V(JVM_UnloadLibrary) \
     V(JVM_Write) \
     V(JVM_Yield) \
-    V(JVM_handle_linux_signal) \
+    /* V(JVM_handle_linux_signal) */ \
     /* Invocation API */ \
     V(JNI_GetCreatedJavaVMs)
 
@@ -743,11 +735,6 @@ jbyteArray (*JVM_GetMethodAnnotations)(JNIEnv *env, jobject method);
 jbyteArray (*JVM_GetMethodDefaultAnnotationValue)(JNIEnv *env, jobject method);
 
 jbyteArray (*JVM_GetMethodParameterAnnotations)(JNIEnv *env, jobject method);
-
-int (*JVM_handle_linux_signal)(int sig,
-                          siginfo_t* info,
-                          void* ucVoid,
-                          int abort_if_unrecognized);
 
 // Invocation API
 jint (*JNI_GetCreatedJavaVMs)(JavaVM **vm_buf, jsize buf_len, jsize *numVMs);

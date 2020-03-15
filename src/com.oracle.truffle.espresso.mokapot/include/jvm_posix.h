@@ -28,8 +28,6 @@
  * This file is currently collecting system-specific dregs for the
  * JNI conversion, which should be sorted out later.
  */
-
-#include <dirent.h>             /* For DIR */
 #include <sys/param.h>          /* For MAXPATHLEN */
 #include <unistd.h>             /* For F_OK, R_OK, W_OK */
 #include <stddef.h>             /* For ptrdiff_t */
@@ -103,7 +101,7 @@
 #define O_DELETE 0x10000
 #endif
 
-const size_t K = 1024;
+#define K           (1024)
 
 #define MAX_PATH    (2 * K)
 

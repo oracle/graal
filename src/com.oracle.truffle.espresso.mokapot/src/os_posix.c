@@ -25,6 +25,8 @@
 #if !defined(_WIN32)
 
 #include "os.h"
+#include "mokapot.h"
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -39,7 +41,7 @@
   return _result; \
 } while(0)
 
-char * native_path(char *path) {
+char * os_native_path(char *path) {
     return path;
 }
 
@@ -114,8 +116,9 @@ int os_close(int fd) {
     return close(fd);
 }
 
-int os_vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
-int os_snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+int os_vsnprintf(char* buf, size_t len, const char* fmt, va_list args) {
+  return vsnprintf(buf, len, fmt, args);
+}
 
 size_t os_lasterror(char *buf, size_t len) {
   if (errno == 0)  return 0;
@@ -199,11 +202,11 @@ int os_accept(int fd, struct sockaddr* him, socklen_t* len) {
     return accept(fd, him, len);
 }
 
-int os_recvfrom(int fd, char* buf, size_t nbytes, uint flags,
-                      struct sockaddr* from, socklen_t* fromlen) {                          
+int os_recvfrom(int fd, char* buf, size_t nBytes, uint flags,
+                      struct sockaddr* from, socklen_t* fromlen) {
   RESTARTABLE_RETURN_INT((int)recvfrom(fd, buf, nBytes, flags, from, fromlen));
 }
-                      }
+
 int os_get_sock_name(int fd, struct sockaddr* him, socklen_t* len) {
     return getsockname(fd, him, len);
 }
@@ -213,7 +216,14 @@ int os_sendto(int fd, char* buf, size_t len, uint flags,
   RESTARTABLE_RETURN_INT((int)sendto(fd, buf, len, flags, to, tolen));
 }
 
-int os_socket_available(int fd, jint* pbytes);
+int os_socket_available(int fd, jint* pbytes) {
+  // Linux doc says EINTR not returned, unlike Solaris
+  int ret = ioctl(fd, FIONREAD, pbytes);
+
+  //%% note ioctl can return 0 when successful, JVM_SocketAvailable
+  // is expected to return 0 on failure and 1 on success to the jdk.
+  return (ret < 0) ? 0 : 1;
+}
 
 int os_get_sock_opt(int fd, int level, int optname,
                           char* optval, socklen_t* optlen) {
@@ -227,6 +237,14 @@ int os_set_sock_opt(int fd, int level, int optname,
 
 int os_get_host_name(char* name, int namelen) {
     return gethostname(name, namelen);
+}
+
+int JVM_handle_linux_signal(int sig,
+                          siginfo_t* info,
+                          void* ucVoid,
+                          int abort_if_unrecognized) {
+  UNIMPLEMENTED(JVM_handle_linux_signal);
+  return 0;
 }
 
 #endif // !defined(_WIN32)

@@ -25,23 +25,10 @@
 #ifndef SHARE_VM_PRIMS_JVM_H
 #define SHARE_VM_PRIMS_JVM_H
 
- Unused/not-implemented in Espresso
-#include "jni.h"
-#if defined(_WIN32)
-# include "jvm_windows.h"
-#else
-# include "jvm_posix.h"
-#endif
-
 #ifndef _JAVASOFT_JVM_H_
 #define _JAVASOFT_JVM_H_
 
-// HotSpot integration note:
-//
-// This file and jvm.h used with the JDK are identical,
-// except for the three includes removed below
-
-#include <sys/stat.h>
+#include <jni.h>
 
 #ifdef __cplusplus
 extern "C" {

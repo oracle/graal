@@ -1025,7 +1025,7 @@ jint JVM_SocketClose(jint fd) {
 
 jint JVM_SocketShutdown(jint fd, jint howto) {
   NATIVE(JVM_SocketShutdown);
-  return os_shutdown(fd, howto);
+  return os_socket_shutdown(fd, howto);
 }
 
 jint JVM_Recv(jint fd, char *buf, jint nBytes, jint flags) {
@@ -1083,12 +1083,7 @@ jint JVM_SendTo(jint fd, char *buf, int len, int flags, struct sockaddr *to, int
 
 jint JVM_SocketAvailable(jint fd, jint *result) {
   NATIVE(JVM_SocketAvailable);
-  // Linux doc says EINTR not returned, unlike Solaris
-  int ret = ioctl(fd, FIONREAD, result);
-
-  //%% note ioctl can return 0 when successful, JVM_SocketAvailable
-  // is expected to return 0 on failure and 1 on success to the jdk.
-  return (ret < 0) ? 0 : 1;
+  return os_socket_available(fd, result);  
 }
 
 jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
@@ -1102,7 +1097,7 @@ jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
 jint JVM_GetSockOpt(jint fd, int level, int optname, char *optval, int *optlen) {
   NATIVE(JVM_GetSockOpt);
   socklen_t socklen = (socklen_t)(*optlen);
-  jint result = os_getsockopt(fd, level, optname, optval, &socklen);
+  jint result = os_get_sock_opt(fd, level, optname, optval, &socklen);
   *optlen = (int)socklen;
   return result;
 }
@@ -1246,14 +1241,6 @@ jbyteArray JVM_GetMethodParameterAnnotations(JNIEnv *env, jobject method) {
   return NULL;
 }
 
-int JVM_handle_linux_signal(int sig,
-                          siginfo_t* info,
-                          void* ucVoid,
-                          int abort_if_unrecognized) {
-  UNIMPLEMENTED(JVM_handle_linux_signal);
-  return 0;
-}
-
 // region Invocation API
 
 jint JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {
@@ -1265,7 +1252,7 @@ jint JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
     NATIVE(jio_vsnprintf);
-    return vsnprintf(str, count, fmt, args);
+    return os_vsnprintf(str, count, fmt, args);
 }
 
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
