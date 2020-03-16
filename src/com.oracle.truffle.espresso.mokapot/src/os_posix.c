@@ -239,12 +239,4 @@ int os_get_host_name(char* name, int namelen) {
     return gethostname(name, namelen);
 }
 
-JNIEXPORT int JVM_handle_linux_signal(int sig,
-                          siginfo_t* info,
-                          void* ucVoid,
-                          int abort_if_unrecognized) {
-  UNIMPLEMENTED(JVM_handle_linux_signal);
-  return 0;
-}
-
 #endif // !defined(_WIN32)

@@ -21,6 +21,8 @@
  * questions.
  */
 
+#if !defined(_WIN32)
+
 #ifndef _JAVASOFT_JVM_MD_H_
 #define _JAVASOFT_JVM_MD_H_
 
@@ -106,6 +108,11 @@
 
 #define MAX_PATH    (2 * K)
 
+JNIEXPORT int JVM_handle_linux_signal(int sig,
+                          siginfo_t* info,
+                          void* ucVoid,
+                          int abort_if_unrecognized);
 
 #endif /* !_JAVASOFT_JVM_MD_H_ */
  
+#endif /* !defined(_WIN32) */

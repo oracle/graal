@@ -79,6 +79,7 @@ JNIEXPORT jlong initializeManagementContext(TruffleEnv *truffle_env, void* (*fet
       fn_ptr = fetch_by_name(#name); \
       (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
       management->name = fn_ptr;
+
   MANAGEMENT_METHOD_LIST(INIT__)
   #undef INIT_
 
