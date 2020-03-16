@@ -223,7 +223,6 @@ suite = {
         "com.oracle.truffle.espresso.mokapot": {
             "subDir": "src",
             "native": "shared_lib",
-            "deliverable": "mokapot",
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
@@ -232,6 +231,7 @@ suite = {
             "os_arch": {
                 "darwin": {
                     "<others>": {
+                        "deliverable": "mokapot",
                         "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-install_name,@rpath/libjvm.dylib",
@@ -244,6 +244,7 @@ suite = {
                 },
                 "linux": {
                     "<others>": {
+                        "deliverable": "mokapot",
                         "cflags": ["-Wall", "-Werror"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
@@ -253,6 +254,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
+                        "deliverable": "jvm",
                         "cflags": ["-Wall"],
                     },
                 }
@@ -331,16 +333,30 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
                 ],
             },
             "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "layout": {
+                            "lib/<lib:mokapot>": "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
+                        },
+                    },
+                },
                 "darwin": {
                     "<others>": {
                         "layout": {
                             # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
+                            "lib/<lib:mokapot>": "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
                             "lib/<lib:jvm>": "link:<lib:mokapot>",
+                        },
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "layout": {
+                            "lib/<lib:mokapot>": "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                         },
                     },
                 },
