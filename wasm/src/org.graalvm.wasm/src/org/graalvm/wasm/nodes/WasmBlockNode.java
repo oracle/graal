@@ -1971,8 +1971,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case F32_CONST: {
                     // region Load int value
-                    int value = codeEntry().intConstant(intConstantOffset);
-                    intConstantOffset++;
+                    int value = BinaryStreamParser.peek4(codeEntry().data(), offset);
                     // endregion
                     offset += 4;
                     pushInt(frame, stackPointer, value);
@@ -2122,8 +2121,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case F64_CONST: {
                     // region Load long value
-                    long value = codeEntry().longConstant(longConstantOffset);
-                    longConstantOffset++;
+                    long value = BinaryStreamParser.peek8(codeEntry().data(), offset);
                     // endregion
                     offset += 8;
                     push(frame, stackPointer, value);

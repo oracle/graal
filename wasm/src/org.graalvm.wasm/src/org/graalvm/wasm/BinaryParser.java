@@ -675,14 +675,12 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_CONST: {
-                    int value = readFloatAsInt32();
-                    state.useIntConstant(value);
+                    read4();
                     state.push();
                     break;
                 }
                 case Instructions.F64_CONST: {
-                    long value = readFloatAsInt64();
-                    state.useLongConstant(value);
+                    read8();
                     state.push();
                     break;
                 }

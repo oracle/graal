@@ -178,7 +178,7 @@ public abstract class BinaryStreamParser {
         return data[offset];
     }
 
-    protected static int peek4(byte[] data, int offset) {
+    public static int peek4(byte[] data, int offset) {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
             int x = peek1(data, offset + i) & 0xFF;
@@ -187,7 +187,7 @@ public abstract class BinaryStreamParser {
         return result;
     }
 
-    protected static long peek8(byte[] data, int offset) {
+    public static long peek8(byte[] data, int offset) {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
             long x = peek1(data, offset + i) & 0xFF;
