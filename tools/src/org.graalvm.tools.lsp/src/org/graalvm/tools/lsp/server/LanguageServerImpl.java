@@ -449,7 +449,7 @@ public final class LanguageServerImpl extends LanguageServer {
         return resultOnError;
     }
 
-    public CompletableFuture<?> start(final ServerSocket serverSocket, final List<Pair<String, SocketAddress>> delegateAddresses, Runnable onConnect) {
+    public CompletableFuture<?> start(final ServerSocket serverSocket, final List<Pair<String, SocketAddress>> delegateAddresses) {
         clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
@@ -471,7 +471,6 @@ public final class LanguageServerImpl extends LanguageServer {
 
                     info.println("[Graal LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
                     try (Socket clientSocket = serverSocket.accept()) {
-                        onConnect.run();
                         info.println("[Graal LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
 
                         ExecutorService lspRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
