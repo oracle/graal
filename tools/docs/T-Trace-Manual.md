@@ -611,7 +611,7 @@ Hundred thousand prime numbers in 288 ms
 
 Well, there is a significant slowdown. What is it's reason? The primary reason
 for the slowdown is the ability of GraalVM to inline the T-Trace frame access
-to the local variable `frame.n`. Let's demonstrate it. Right now there are three
+to the local variable `frame.number`. Let's demonstrate it. Right now there are three
 accesses - let's replace them with a single one:
 ```js
 agent.on('enter', (ctx, frame) => {
@@ -640,17 +640,17 @@ inlined - e.g. it is not optimized enough right now. If we just could get
 better inlining!
 
 Luckily we can. GraalVM EE is known for having better inlining characteristics
-then GraalVM CE. Let's try to use it:
+than GraalVM CE. Let's try to use it:
 
 ```bash
-$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+$ graalvm-ee/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
 Hundred thousand prime numbers in 76 ms
 ```
 
 Voilà! [T-Trace](T-Trace.md) gives us great instrumentation capabilities - when combined with
 the great inlining algorithms of [GraalVM Enterprise Edition](http://graalvm.org/downloads)
-we can even access local variables without almost no performance penalty!
+we can even access local variables with almost no performance penalty!
 
 <!--
 
