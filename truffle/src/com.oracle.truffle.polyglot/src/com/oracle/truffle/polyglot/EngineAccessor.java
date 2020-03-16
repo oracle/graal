@@ -817,7 +817,9 @@ final class EngineAccessor extends Accessor {
         public boolean isInstrumentExceptionsAreThrown(Object polyglotEngine) {
             // We want to enable this option for testing in general, to ensure tests fail if
             // instruments throw.
-            return areAssertionsEnabled() || getEngine(polyglotEngine).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+            OptionValuesImpl engineOptionValues = getEngine(polyglotEngine).engineOptionValues;
+            return areAssertionsEnabled() && !engineOptionValues.hasBeenSet(PolyglotEngineOptions.InstrumentExceptionsAreThrown) ||
+                            engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
         }
 
         @SuppressWarnings("all")

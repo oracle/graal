@@ -93,6 +93,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -513,6 +515,78 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     onEnter++;
+                }
+            });
+        }
+
+    }
+
+    /*
+     * Test that instrumentation exceptions in SourceFilter.Builder#sourceIs(Predicate) are attached
+     * as suppressed exceptions.
+     */
+    @Test
+    public void testInstrumentException4() throws IOException {
+        assureEnabled(engine.getInstruments().get("testInstrumentException4"));
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
+    }
+
+    @Registration(name = "", version = "", id = "testInstrumentException4", services = Object.class)
+    public static class TestInstrumentException4 extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            // Not to get error: declares service, but doesn't register it
+            env.registerService(new Object());
+            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs((s) -> {
+                throw new MyLanguageException();
+            }).build(), new LoadSourceListener() {
+                @Override
+                public void onLoad(LoadSourceEvent event) {
+                }
+            }, true);
+        }
+
+    }
+
+    /*
+     * Test that instrumentation exceptions in SourceSectionFilter.Builder#rootNameIs(Predicate) are
+     * attached as suppressed exceptions.
+     */
+    @Test
+    public void testInstrumentException5() throws IOException {
+        assureEnabled(engine.getInstruments().get("testInstrumentException5"));
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
+    }
+
+    @Registration(name = "", version = "", id = "testInstrumentException5", services = Object.class)
+    public static class TestInstrumentException5 extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            // Not to get error: declares service, but doesn't register it
+            env.registerService(new Object());
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().rootNameIs((name) -> {
+                throw new MyLanguageException();
+            }).build(), new ExecutionEventListener() {
+
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+
+                public void onEnter(EventContext context, VirtualFrame frame) {
                 }
             });
         }
