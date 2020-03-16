@@ -27,7 +27,7 @@ It is recommended to verify this output before running `build`.
 
 ### Example: build the base GraalVM CE image
 The base GraalVM CE image includes:
-- SubstrateVM (with the `native-image` tool)
+- SubstrateVM (without the `native-image` tool)
 - GraalVM compiler & the Truffle partial evaluator (imported as a dependency of `substratevm`)
 - The inspector, profiler, and VisualVM tools
 - Sulong
