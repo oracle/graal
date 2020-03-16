@@ -41,7 +41,6 @@
 package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
