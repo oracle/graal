@@ -749,5 +749,12 @@ struct MokapotEnv_ {
     #endif
 };
 
+JNIEXPORT JavaVM* getJavaVM();
+
+JNIEXPORT MokapotEnv* initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env,
+                                               void* (*fetch_by_name)(const char *));
+
+JNIEXPORT void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env);
+
 
 #endif
