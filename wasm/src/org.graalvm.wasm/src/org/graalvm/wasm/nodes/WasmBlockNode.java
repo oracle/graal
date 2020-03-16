@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.nodes;
 
-import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
 import static org.graalvm.wasm.WasmTracing.trace;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
@@ -442,13 +441,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 case BR: {
                     // region Load LEB128 Unsigned32 -> unwindCounterValue
-                    boolean inPool = isLeb128InPool(offset);
-                    int unwindCounterValue = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int unwindCounterValue = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
@@ -473,13 +469,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case BR_IF: {
                     stackPointer--;
                     // region Load LEB128 Unsigned32 -> unwindCounterValue
-                    boolean inPool = isLeb128InPool(offset);
-                    int unwindCounterValue = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int unwindCounterValue = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     // region Load int continuationStackPointer
                     int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
@@ -539,13 +532,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case CALL: {
                     // region Load LEB128 Unsigned32 -> functionIndex
-                    boolean inPool = isLeb128InPool(offset);
-                    int functionIndex = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int functionIndex = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
 
                     WasmFunction function = module().symbolTable().function(functionIndex);
@@ -614,13 +604,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     // Extract the function type index.
                     // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
-                    boolean inPool = isLeb128InPool(offset);
-                    int expectedFunctionTypeIndex = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int expectedFunctionTypeIndex = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
                     // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT instruction.
@@ -703,13 +690,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case LOCAL_GET: {
                     // region Load LEB128 Unsigned32 -> index
-                    boolean inPool = isLeb128InPool(offset);
-                    int index = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int index = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
@@ -749,13 +733,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case LOCAL_SET: {
                     // region Load LEB128 Unsigned32 -> index
-                    boolean inPool = isLeb128InPool(offset);
-                    int index = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int index = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
@@ -795,13 +776,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case LOCAL_TEE: {
                     // region Load LEB128 Unsigned32 -> index
-                    boolean inPool = isLeb128InPool(offset);
-                    int index = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int index = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
@@ -849,13 +827,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case GLOBAL_GET: {
                     // region Load LEB128 Unsigned32 -> index
-                    boolean inPool = isLeb128InPool(offset);
-                    int index = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int index = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
 
                     byte type = module().symbolTable().globalValueType(index);
@@ -900,13 +875,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case GLOBAL_SET: {
                     // region Load LEB128 Unsigned32 -> index
+                    int index = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     boolean inPool = isLeb128InPool(offset);
-                    int index = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
                     // endregion
 
                     byte type = module().symbolTable().globalValueType(index);
@@ -968,20 +941,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_LOAD32_U: {
                     /* The memAlign hint is not currently used or taken into account. */
                     if (isLeb128InPool(offset)) {
-                        offset += getByteConstant(byteConstantOffset);
+                        offset += codeEntry().byteConstant(byteConstantOffset);
                         byteConstantOffset++;
                     } else {
                         offset += getLeb128Length(offset);
                     }
 
                     // region Load LEB128 Unsigned32 -> memOffset
-                    boolean inPool = isLeb128InPool(offset);
-                    int memOffset = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int memOffset = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
 
                     stackPointer--;
@@ -1082,20 +1052,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_STORE_32: {
                     /* The memAlign hint is not currently used or taken into account. */
                     if (isLeb128InPool(offset)) {
-                        offset += getByteConstant(byteConstantOffset);
+                        offset += codeEntry().intConstant(byteConstantOffset);
                         byteConstantOffset++;
                     } else {
                         offset += getLeb128Length(offset);
                     }
 
                     // region Load LEB128 Unsigned32 -> memOffset
-                    boolean inPool = isLeb128InPool(offset);
-                    int memOffset = inPool ? getIntConstant(intConstantOffset) : readLeb128Unsigned32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int memOffset = unsignedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
 
                     WasmMemory memory = module().symbolTable().memory();
@@ -1221,13 +1188,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case I32_CONST: {
                     // region Load LEB128 Signed32 -> value
-                    boolean inPool = isLeb128InPool(offset);
-                    int value = inPool ? getIntConstant(intConstantOffset) : readLeb128Signed32(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        intConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    int value = signedIntConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
@@ -1236,13 +1200,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case I64_CONST: {
                     // region Load LEB128 Signed64 -> value
-                    boolean inPool = isLeb128InPool(offset);
-                    long value = inPool ? getLongConstant(longConstantOffset) : readLeb128Signed64(offset);
-                    offset += inPool ? getByteConstant(byteConstantOffset) : getLeb128Length(offset);
-                    if (inPool) {
-                        longConstantOffset++;
-                        byteConstantOffset++;
-                    }
+                    long value = signedLongConstant(offset, intConstantOffset);
+                    intConstantOffset += intConstantDelta(offset);
+                    byteConstantOffset += byteConstantDelta(offset);
+                    offset += offsetDelta(offset, byteConstantOffset);
                     // endregion
                     push(frame, stackPointer, value);
                     stackPointer++;
@@ -2513,28 +2474,28 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return typeLength(continuationTypeId);
     }
 
-    public byte getByteConstant(int byteConstantOffset) {
-        return codeEntry().byteConstant(byteConstantOffset);
+    private int signedIntConstant(int offset, int intConstantOffset) {
+        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
     }
 
-    public int getIntConstant(int intConstantOffset) {
-        return codeEntry().intConstant(intConstantOffset);
+    private int unsignedIntConstant(int offset, int intConstantOffset) {
+        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : BinaryStreamParser.peekUnsignedInt32(codeEntry().data(), offset);
     }
 
-    public long getLongConstant(int longConstantOffset) {
-        return codeEntry().longConstant(longConstantOffset);
+    public long signedLongConstant(int offset, int longConstantOffset) {
+        return isLeb128InPool(offset) ? codeEntry().longConstant(longConstantOffset) : BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
     }
 
-    public long readLeb128Signed64(int offset) {
-        return BinaryStreamParser.peekSignedInt64(codeEntry().data(), offset);
+    private int offsetDelta(int offset, int intConstantOffset) {
+        return isLeb128InPool(offset) ? codeEntry().intConstant(intConstantOffset) : getLeb128Length(offset);
     }
 
-    public int readLeb128Unsigned32(int offset) {
-        return BinaryStreamParser.peekUnsignedInt32(codeEntry().data(), offset);
+    private int intConstantDelta(int offset) {
+        return isLeb128InPool(offset) ? 1 : 0;
     }
 
-    public int readLeb128Signed32(int offset) {
-        return BinaryStreamParser.peekSignedInt32(codeEntry().data(), offset);
+    private int byteConstantDelta(int offset) {
+        return isLeb128InPool(offset) ? 1 : 0;
     }
 
     public int getLeb128Length(int offset) {
