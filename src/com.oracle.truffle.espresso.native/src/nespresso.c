@@ -373,43 +373,43 @@ static const struct VarargsInterface jvalues_functions = {
 };
 
 // Exported
-jboolean pop_boolean(struct Varargs* varargs) {
+JNIEXPORT jboolean pop_boolean(struct Varargs* varargs) {
   return varargs->functions->pop_boolean(varargs);
 }
 
-jbyte pop_byte(struct Varargs* varargs) {
+JNIEXPORT jbyte pop_byte(struct Varargs* varargs) {
   return varargs->functions->pop_byte(varargs);
 }
 
-jchar pop_char(struct Varargs* varargs) {
+JNIEXPORT jchar pop_char(struct Varargs* varargs) {
   return varargs->functions->pop_char(varargs);
 }
 
-jshort pop_short(struct Varargs* varargs) {
+JNIEXPORT jshort pop_short(struct Varargs* varargs) {
   return varargs->functions->pop_short(varargs);
 }
 
-jint pop_int(struct Varargs* varargs) {
+JNIEXPORT jint pop_int(struct Varargs* varargs) {
   return varargs->functions->pop_int(varargs);
 }
 
-jfloat pop_float(struct Varargs* varargs) {
+JNIEXPORT jfloat pop_float(struct Varargs* varargs) {
   return varargs->functions->pop_float(varargs);
 }
 
-jdouble pop_double(struct Varargs* varargs) {
+JNIEXPORT jdouble pop_double(struct Varargs* varargs) {
   return varargs->functions->pop_double(varargs);
 }
 
-jlong pop_long(struct Varargs* varargs) {
+JNIEXPORT jlong pop_long(struct Varargs* varargs) {
   return varargs->functions->pop_long(varargs);
 }
 
-jobject pop_object(struct Varargs* varargs) {
+JNIEXPORT jobject pop_object(struct Varargs* varargs) {
   return varargs->functions->pop_object(varargs);
 }
 
-void* pop_word(struct Varargs* varargs) {
+JNIEXPORT void* pop_word(struct Varargs* varargs) {
   return varargs->functions->pop_word(varargs);
 }
 
