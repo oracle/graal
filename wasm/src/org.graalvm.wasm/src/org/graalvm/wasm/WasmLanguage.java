@@ -102,8 +102,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     private void readModuleSynchronously(WasmContext context, WasmModule module, byte[] data) {
-        final BinaryParser reader = new BinaryParser(this, module, data);
-        reader.readModule(context);
+        final BinaryParser reader = new BinaryParser(this, module, context, data);
+        reader.readModule();
     }
 
     @Override
