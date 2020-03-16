@@ -2503,6 +2503,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     public boolean isLeb128InPool(int offset) {
-        return BinaryStreamParser.storeLeb128InPool(codeEntry().data(), offset);
+        return BinaryStreamParser.storeLeb128InPool(codeEntry().data(), offset, module().storeConstantsInPool);
     }
 }

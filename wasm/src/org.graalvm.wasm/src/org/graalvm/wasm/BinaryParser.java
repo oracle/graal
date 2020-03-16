@@ -621,7 +621,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during execution.
-                    if(storeLeb128InPool(data, offset)) {
+                    if (storeLeb128InPool()) {
                         state.useByteConstant(getLeb128Length(data, offset));
                     }
                     readUnsignedInt32(); // align
@@ -643,7 +643,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // We don't store the `align` literal, as our implementation does not make use
                     // of it, but we need to store it's byte length, so that we can skip it
                     // during the execution.
-                    if(storeLeb128InPool(data, offset)) {
+                    if (storeLeb128InPool()) {
                         state.useByteConstant(getLeb128Length(data, offset));
                     }
                     readUnsignedInt32(); // align
@@ -1324,7 +1324,7 @@ public class BinaryParser extends BinaryStreamParser {
     protected int readUnsignedInt32(ExecutionState state) {
         int value = peekUnsignedInt32(data, offset);
         byte length = getLeb128Length(data, offset);
-        if(state != null && storeLeb128InPool(data, offset)) {
+        if (state != null && storeLeb128InPool()) {
             state.useIntConstant(value);
             state.useByteConstant(length);
         }
@@ -1335,7 +1335,7 @@ public class BinaryParser extends BinaryStreamParser {
     protected int readSignedInt32(ExecutionState state) {
         int value = peekSignedInt32(data, offset);
         byte length = getLeb128Length(data, offset);
-        if(state != null && storeLeb128InPool(data, offset)) {
+        if (state != null && storeLeb128InPool()) {
             state.useIntConstant(value);
             state.useByteConstant(length);
         }
@@ -1343,15 +1343,19 @@ public class BinaryParser extends BinaryStreamParser {
         return value;
     }
 
-    protected long readSignedInt64(ExecutionState state){
+    protected long readSignedInt64(ExecutionState state) {
         long value = peekSignedInt64(data, offset);
         byte length = getLeb128Length(data, offset);
-        if(state != null && storeLeb128InPool(data, offset)) {
+        if (state != null && storeLeb128InPool()) {
             state.useLongConstant(value);
             state.useByteConstant(length);
         }
         offset += length;
         return value;
+    }
+
+    public boolean storeLeb128InPool() {
+        return storeLeb128InPool(data, offset, module.storeConstantsInPool);
     }
 
     private boolean tryJumpToSection(int targetSectionId) {

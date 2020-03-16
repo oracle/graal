@@ -276,9 +276,16 @@ public abstract class BinaryStreamParser {
         return length;
     }
 
-    public static boolean storeLeb128InPool(byte[] data, int offset) {
-        return false;
-        //return true;
-        //return (data[offset] & 0x80) != 0;
+    public static boolean storeLeb128InPool(byte[] data, int offset, WasmOptions.StoreConstantsInPoolChoice storeConstantsInPool) {
+        switch (storeConstantsInPool) {
+            case ALWAYS:
+                return true;
+            case ONLY_BIG:
+                return (data[offset] & 0x80) != 0;
+            case NONE:
+                return false;
+            default:
+                throw new RuntimeException("Invalid StoreConstantsInPoolChoice");
+        }
     }
 }
