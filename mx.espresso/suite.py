@@ -197,7 +197,14 @@ suite = {
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "cflags": ["-Wall", "-Werror"],            
+            "os": {
+                "windows": {
+                    "cflags": ["-Wall"],
+                },
+                "<others>": {
+                    "cflags": ["-Wall", "-Werror"],
+                },
+            },
         },
 
         # libjvm Espresso implementation
