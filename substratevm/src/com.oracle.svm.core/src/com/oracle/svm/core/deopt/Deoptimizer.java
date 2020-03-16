@@ -59,6 +59,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
@@ -681,11 +682,11 @@ public final class Deoptimizer {
             CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptInfo.getDeoptMethodOffset(), deoptInfo.getEncodedBci());
             if (targetInfo == null || targetInfo.getFrameInfo() == null) {
                 throw VMError.shouldNotReachHere("Deoptimization: no matching target bytecode frame found for bci " +
-                                deoptInfo.getBci() + " (encodedBci " + deoptInfo.getEncodedBci() + ") in method at address " +
+                                FrameInfoDecoder.readableBci(deoptInfo.getEncodedBci()) + " in method at address " +
                                 Long.toHexString(deoptInfo.getDeoptMethodAddress().rawValue()));
             } else if (!targetInfo.getFrameInfo().isDeoptEntry()) {
                 throw VMError.shouldNotReachHere("Deoptimization: target frame information not marked as deoptimization entry point for bci " +
-                                deoptInfo.getBci() + " (encodedBci " + deoptInfo.getEncodedBci() + ") in method at address" +
+                                FrameInfoDecoder.readableBci(deoptInfo.getEncodedBci()) + " in method at address" +
                                 Long.toHexString(deoptInfo.getDeoptMethodAddress().rawValue()));
             } else if (targetInfo.getFrameInfo().getDeoptMethod() != null && targetInfo.getFrameInfo().getDeoptMethod().hasCalleeSavedRegisters()) {
                 /*
@@ -1131,19 +1132,20 @@ public final class Deoptimizer {
             int count = 0;
             while (sourceFrame != null) {
                 SharedMethod deoptMethod = sourceFrame.getDeoptMethod();
-                int bci = sourceFrame.getBci();
 
                 log.string("        at ");
                 if (deoptMethod != null) {
-                    StackTraceElement element = deoptMethod.asStackTraceElement(bci);
+                    StackTraceElement element = deoptMethod.asStackTraceElement(sourceFrame.getBci());
                     if (element.getFileName() != null && element.getLineNumber() >= 0) {
                         log.string(element.toString());
                     } else {
-                        log.string(deoptMethod.format("%H.%n(%p)")).string(" bci ").signed(bci);
+                        log.string(deoptMethod.format("%H.%n(%p)"));
                     }
                 } else {
-                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress()).string(" bci ").signed(bci);
+                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress());
                 }
+                log.string(" bci ");
+                FrameInfoDecoder.logReadableBci(log, sourceFrame.getEncodedBci());
                 log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
 
                 if (printOnlyTopFrames || Options.TraceDeoptimizationDetails.getValue()) {
@@ -1170,7 +1172,8 @@ public final class Deoptimizer {
             log.string("            ").string(sourceReference).newline();
         }
 
-        log.string("            bci: ").signed(frameInfo.getBci());
+        log.string("            bci: ");
+        FrameInfoDecoder.logReadableBci(log, frameInfo.getEncodedBci());
         log.string("  deoptMethodOffset: ").signed(frameInfo.getDeoptMethodOffset());
         log.string("  deoptMethod: ").hex(frameInfo.getDeoptMethodAddress());
         log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
