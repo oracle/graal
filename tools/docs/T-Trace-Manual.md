@@ -544,6 +544,114 @@ The mixture of `lli`, polyglot and T-Trace opens enormous possibilities in traci
 controlling and interactive or batch debugging of native programs. Write in
 C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 
+### Minimal Overhead when Accessing Locals
+
+[T-Trace](T-Trace.md) is capable to access local variables. Is that for free
+or is there an inherent slowdown associated with each variable access? The answer
+is: **it depends**!
+
+Let's demonstrate the issue on [sieve.js](https://raw.githubusercontent.com/jtulach/sieve/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js) -
+an algorithm to compute hundred thousand of prime numbers. It keeps the
+so far found prime numbers in a linked list constructed via following
+function:
+
+```js
+function Filter(number) {
+    this.number = number;
+    this.next = null;
+    this.last = this;
+}
+```
+
+First of all let's test the behavior by invoking the computation fifty times
+and measuring time it takes to finish the last round:
+
+```bash
+$ graalvm/bin/js -e "var count=50" --file sieve.js | grep Hundred | tail -n 1
+Hundred thousand prime numbers in 73 ms
+```
+
+and now let's tease the system by observing each allocation of a new prime
+number slot - e.g. the call to `new Filter` constructor:
+
+```js
+var sum = 0;
+var max = 0;
+
+agent.on('enter', (ctx, frame) => {
+    sum += frame.number;
+    if (frame.number > max) {
+        max = frame.number;
+    }
+}, {
+  roots: true,
+  rootNameFilter: (name) => name === 'Filter'
+});
+
+agent.on('return', (ctx, frame) => {
+    log(`Hundred thousand prime numbers from 2 to ${max} is sum ${sum}`);
+    sum = 0;
+    max = 0;
+}, {
+    roots: true,
+    rootNameFilter: (name) => name === 'measure'
+});
+```
+
+Everytime a `new Filter(number)` is allocated, we capture the maximum value
+of `number` (e.g. the highest prime number found) and also `sum` of all prime
+numbers found so far. When the main loop in 'measure' is over - e.g. we have
+all hundred thousand prime numbers, we print the result. Let's try it:
+
+```bash
+$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers in 288 ms
+```
+
+Well, there is a significant slowdown. What is it's reason? The primary reason
+for the slowdown is the ability of GraalVM to inline the T-Trace frame access
+to the local variable `frame.n`. Let's demonstrate it. Right now there are three
+accesses - let's replace them with a single one:
+```js
+agent.on('enter', (ctx, frame) => {
+    let n = frame.number;
+    sum += n;
+    if (n > max) {
+        max = n;
+    }
+}, {
+  roots: true,
+  rootNameFilter: (name) => name === 'Filter'
+});
+```
+
+after storing the `frame.number` into the temporary variable `n` we get following
+performance results:
+
+```bash
+$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers in 151 ms
+```
+
+Faster. That confirms our expectations - the access to `frame.number` isn't
+inlined - e.g. it is not optimized enough right now. If we just could get
+better inlining!
+
+Luckily we can. GraalVM EE is known for having better inlining characteristics
+then GraalVM CE. Let's try to use it:
+
+```bash
+$ graalvm/bin/js --experimental-options  -e "var count=50" --agentscript=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+Hundred thousand prime numbers from 2 to 1299709 is sum 62260698721
+Hundred thousand prime numbers in 76 ms
+```
+
+Voilá! [T-Trace](T-Trace.md) gives us great instrumentation capabilities - when combined with
+the great inlining algorithms of [GraalVM Enterprise Edition](http://graalvm.org/downloads)
+we can even access local variables without almost no performance penalty!
+
 <!--
 
 ### TODO:
