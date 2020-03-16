@@ -319,7 +319,7 @@ builds += [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
       ${notify-nexus-deploy}
-      [set-export, GRAALVM_HOME, ${mx_vm_common} [graalvm-home]]
+      [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
     ] ${scan_malware.run}
     logs: ${common_vm.logs} ${scan_malware.logs}
     timelimit: "1:30:00"
