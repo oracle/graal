@@ -29,6 +29,7 @@ import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
 
@@ -40,7 +41,7 @@ import sun.misc.Unsafe;
 public class Fields {
 
     private static final Unsafe UNSAFE = getUnsafe();
-    private static final Fields EMPTY_FIELDS = new Fields(new ArrayList<>());
+    private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
 
     /**
      * Offsets used with {@link Unsafe} to access the fields.
@@ -65,7 +66,7 @@ public class Fields {
         return create(scanner.data);
     }
 
-    protected Fields(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
+    protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];

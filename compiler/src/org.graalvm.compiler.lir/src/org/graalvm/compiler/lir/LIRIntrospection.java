@@ -33,7 +33,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -65,10 +67,10 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         private final int directCount;
         private final EnumSet<OperandFlag>[] flags;
 
-        private static final Values EMPTY_VALUES = new Values(0, new ArrayList<>());
+        private static final Values EMPTY_VALUES = new Values(0, Collections.emptyList());
 
         @SuppressWarnings({"unchecked"})
-        private Values(int directCount, ArrayList<ValueFieldInfo> fields) {
+        private Values(int directCount, List<ValueFieldInfo> fields) {
             super(fields);
             this.directCount = directCount;
             flags = (EnumSet<OperandFlag>[]) new EnumSet<?>[fields.size()];
